@@ -36,15 +36,17 @@ class DataAnalyzer:
         self.last_filter_params = None
         self.storage_manager = data_storage.DataStorageManager()
 
-    def filter_by_amount(self, min_amount: float) -> pd.DataFrame:
+    def filter_by_amount(self, min_amount: float, limit: Optional[int] = None) -> pd.DataFrame:
         """
         金額閾値で部品をフィルタリング
 
         指定金額以上の高額部品を抽出:
         - amount >= min_amount
+        - オプションで上位N件に制限
 
         Args:
             min_amount: 最低金額閾値（例: 100000）
+            limit: 取得件数制限（Noneの場合は全件）
 
         Returns:
             フィルタリング済みDataFrame
@@ -69,10 +71,15 @@ class DataAnalyzer:
             if 'amount' in df.columns:
                 df = df.sort_values('amount', ascending=False)
 
+            # 件数制限を適用
+            if limit is not None and limit > 0:
+                df = df.head(limit)
+
             # 結果を保存
             self.filtered_data = df.reset_index(drop=True)
             self.last_filter_params = {
-                'min_amount': min_amount
+                'min_amount': min_amount,
+                'limit': limit
             }
 
             return self.filtered_data
@@ -259,12 +266,13 @@ class DataAnalyzer:
         except Exception as e:
             return False, f"JSONエクスポート失敗: {str(e)}"
 
-    def filter_by_short_model(self, search_text: str) -> pd.DataFrame:
+    def filter_by_short_model(self, search_text: str, apply_to_filtered: bool = True) -> pd.DataFrame:
         """
         略式型式で部分一致検索
 
         Args:
             search_text: 検索テキスト（部分一致）
+            apply_to_filtered: Trueの場合は現在のfiltered_dataに対して検索、Falseの場合はすべてのデータに対して検索
 
         Returns:
             フィルタリング済みDataFrame
@@ -272,9 +280,12 @@ class DataAnalyzer:
         try:
             if not search_text or not search_text.strip():
                 # 空文字列の場合はフィルタリング済みデータをそのまま返す
-                return self.filtered_data.copy() if self.filtered_data is not None else pd.DataFrame()
+                return self.filtered_data.copy() if apply_to_filtered and self.filtered_data is not None else pd.DataFrame()
 
-            df = self.filtered_data.copy() if self.filtered_data is not None else self.data.copy()
+            if apply_to_filtered:
+                df = self.filtered_data.copy() if self.filtered_data is not None else self.data.copy()
+            else:
+                df = self.data.copy()
 
             # 部分一致検索（大文字小文字区別なし）
             if 'short_model' in df.columns:

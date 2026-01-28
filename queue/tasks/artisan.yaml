@@ -1,0 +1,90 @@
+# Artisan へのタスク割り振り - 機能実装
+task_id: "ARTISAN-001"
+assigned_to: "Artisan"
+priority: "high"
+phase: "2-3"
+status: "pending"
+created_at: "2026-01-28T20:30:00Z"
+
+task_title: "5つの機能拡張の実装"
+
+task_description: |
+  Sageの分析方針に基づき、高額部品抽出ツールの5つの機能を実装する。
+  実装は3つのフェーズに分かれており、各フェーズを段階的に実装すること。
+
+phases:
+  - phase: 1
+    name: "データ処理基盤強化"
+    tasks:
+      - "機能2: 最低金額検索で10件取得機能（data_analyzer.py）"
+      - "機能1: 略式型式での曖昧検索機能（data_analyzer.py）"
+
+  - phase: 2
+    name: "UI機能追加"
+    tasks:
+      - "機能3: 列ヘッダークリックでのソート機能（ui.py）"
+
+  - phase: 3
+    name: "詳細表示機能"
+    tasks:
+      - "機能4: ダブルクリックで詳細ポップアップ表示（ui.py）"
+      - "機能5: ポップアップUIの視認性最適化（縦横比3:4）（ui.py）"
+
+implementation_details:
+  feature_1:
+    name: "略式型式での曖昧検索機能"
+    files: ["ui.py", "data_analyzer.py"]
+    implementation:
+      - "data_analyzer.py: filter_by_short_model() メソッド実装"
+      - "ui.py: 検索ボックスUI追加"
+      - "金額フィルタとの組み合わせ対応"
+
+  feature_2:
+    name: "最低金額検索で10件取得機能"
+    files: ["ui.py", "data_analyzer.py"]
+    implementation:
+      - "data_analyzer.py: get_top_n_records() メソッド実装"
+      - "ui.py: 「上位N件のみ表示」チェックボックス追加"
+      - "ui.py: 件数入力スピンボックス追加（デフォルト10、範囲1-1000）"
+
+  feature_3:
+    name: "列ヘッダークリックでのソート機能"
+    files: ["ui.py"]
+    implementation:
+      - "self.sort_column, self.sort_ascending のクラス変数管理"
+      - "Treeviewヘッダークリックイベントハンドラ実装"
+      - "ソート状態を視認的に表示（▲▼インジケータ）"
+
+  feature_4:
+    name: "ダブルクリックで詳細ポップアップ表示"
+    files: ["ui.py"]
+    implementation:
+      - "Treeviewダブルクリックイベント実装"
+      - "Toplevelウィンドウによる詳細ダイアログ作成"
+      - "全列情報の整形・表示"
+
+  feature_5:
+    name: "ポップアップUIの視認性最適化"
+    files: ["ui.py"]
+    implementation:
+      - "ウィンドウサイズ: 縦横比3:4（例:600x800px）"
+      - "LabelFrameによるカテゴリ分けレイアウト"
+      - "基本情報、車両情報、在庫・品質情報、その他情報の区分"
+
+acceptance_criteria:
+  - "✓ 略式型式フィールドへの入力で部分一致検索が動作"
+  - "✓ 「上位10件のみ表示」チェックで10件のみ表示"
+  - "✓ 列ヘッダークリックで昇順/降順ソート実行"
+  - "✓ 行ダブルクリックで詳細ウィンドウ表示"
+  - "✓ 詳細ウィンドウが縦横比3:4で視認性が高い"
+  - "✓ 既存機能（CSVエクスポート、JSON保存）が正常動作"
+  - "✓ 10,000件以上でもパフォーマンス維持（1秒以内ソート）"
+
+deliverables:
+  - "拡張版 ui.py"
+  - "拡張版 data_analyzer.py"
+  - "memory/artisan_implementation_20260128.md - 実装レポート"
+
+note: |
+  Sageの分析報告が却下された場合、再割り振り待機状態となる。
+  全てのテストが合格するまで、完了と認めない。

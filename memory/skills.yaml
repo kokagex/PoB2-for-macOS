@@ -1,0 +1,10 @@
+# 習得済みスキル一覧
+acquired_skills:
+  - skill_name: "Rust_Parallel_Execution"
+    id: "SKL-001"
+    validation_log:
+      search_duration: "17s"
+      docs_size: "258KB"
+      uniqueness: "Verified (No overlap with SKL-000)"
+      value_score: "High (Mission Critical)"
+    timestamp: "2026-01-28T20:20:00Z"

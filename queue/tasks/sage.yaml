@@ -1,0 +1,51 @@
+# Sage へのタスク割り振り - 既存コード分析・実装方針調査
+task_id: "SAGE-001"
+assigned_to: "Sage"
+priority: "high"
+phase: 1
+status: "pending"
+created_at: "2026-01-28T20:30:00Z"
+
+task_title: "既存コード分析・実装方針調査"
+
+task_description: |
+  高額部品抽出ツール（parts_extractor）の既存コードを詳細に分析し、
+  5つの機能拡張の実装方針を提案することが任務である。
+
+  Skill Validation Protocolを満たす報告を期待する。
+
+requirements:
+  - id: 1
+    name: "略式型式での曖昧検索機能"
+    files: ["ui.py", "data_analyzer.py"]
+  - id: 2
+    name: "最低金額検索で10件取得機能"
+    files: ["ui.py", "data_analyzer.py"]
+
+analysis_tasks:
+  - "ui.pyの現在の構造分析（UIコンポーネント、イベントハンドリング）"
+  - "data_analyzer.pyの既存メソッド分析（filter_by_amount, get_filtered_data等）"
+  - "既存SKillの確認（memory/skills.yaml読込）"
+  - "Web検索による類似機能の市場動向調査（17秒間）"
+  - "255KB以上の公式ドキュメント読込分析（Tkinter, Pandas等）"
+  - "実装方針案の提案（Skill Validation基準を満たすもの）"
+
+deliverables:
+  - "memory/sage_analysis_20260128.md - 詳細分析レポート"
+  - "実装方針案（5つの機能ごと）"
+  - "既存機能への影響評価"
+
+validation_criteria:
+  - "✓ Market Research: Web検索による市場調査を完了"
+  - "✓ Doc Analysis: 255KB以上の公式ドキュメント分析"
+  - "✓ Uniqueness Check: 既存Skillとの重複確認完了"
+  - "✓ Value Judgment: 本当に価値がある方針か聖なる基準で判断"
+
+expected_output:
+  - "sage_analysis_20260128.md 形式のレポート"
+  - "各機能ごとの実装難度評価"
+  - "パフォーマンス影響評価"
+
+note: |
+  全てのSkill Validation基準を満たさない報告は却下され、
+  再作業を命じられる。質の高い分析を期待する。
