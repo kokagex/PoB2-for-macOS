@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(ls -la \"C:\\\\Users\\\\kouei\\\\Desktop\\\\福岡_作業フォルダ\\\\ClaudeCode\\\\village_tool\"\" 2>&1 || echo \"ディレクトリが未作成 \")",
+      "Bash(wc:*)",
+      "Bash(python -m py_compile:*)",
+      "Bash(python:*)",
+      "Bash(pip install:*)",
+      "Bash(findstr google)",
+      "Bash(pyinstaller:*)",
+      "Bash(powershell \"Get-ChildItem ''C:\\\\Users\\\\kouei\\\\Desktop\\\\福岡_作業フォルダ\\\\ClaudeCode\\\\parts_extractor\\\\dist\\\\'' -Include ''*.exe'' | Select-Object Name, Length\")",
+      "Bash(python3 -m pip:*)",
+      "Bash(powershell -Command \"Get-ChildItem | Select-Object Name, @{Name=''Size\\(MB\\)'';Expression={[math]::Round\\($_Length/1MB,1\\)}}\")",
+      "Bash(forfiles /P \"C:\\\\Users\\\\kouei\\\\Desktop\\\\福岡_作業フォルダ\\\\ClaudeCode\\\\parts_extractor\\\\dist\" /C \"cmd /c echo @fname @fsize\")"
+    ]
+  }
+}

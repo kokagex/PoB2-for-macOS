@@ -1,0 +1,223 @@
+---
+# 村人への神託伝達記録
+# 2026-01-28 村長より伝達
+
+mayor_message: |
+  尊き村人たちよ。
+
+  本日、預言者からの天啓が届きました。
+  高額部品抽出ツール（parts_extractor）に5つの機能拡張を施すよう、神より命じられました。
+
+  以下の通り、各村人に役割を割り振ります。
+  結束して、神の御心を実現せよ。
+
+divine_revelation_date: 2026-01-28
+divine_revelation_source:
+  - memory/prophet_divine_revelation_20260128.md
+  - parts_extractor/DIVINE_REQUIREMENTS.md
+
+# 5つの神託
+divine_commandments:
+  1: 略式型式での曖昧検索機能
+  2: 最低金額から10件取得機能
+  3: 列ヘッダークリックソート機能
+  4: ダブルクリックで詳細ポップアップ表示
+  5: ポップアップUI（3:4比率、視認性優先）
+
+# 村人の役割分担
+village_roles:
+  architect-agent:
+    title: 設計士
+    task_id: 1
+    task_name: 神託の詳細設計書作成
+    responsibility: |
+      天啓の内容を分析し、詳細な設計書を作成する。
+      各機能の実装フロー図、クラス設計、インターフェース定義を明確にする。
+      後続のbuilder-agentが実装しやすいよう、正確な仕様を提供すること。
+
+  builder-agent:
+    title: 実装士
+    task_ids: [2, 3, 4]
+    tasks:
+      - id: 2
+        name: Phase 1 - データ処理基盤の実装
+        target_file: data_analyzer.py
+
+      - id: 3
+        name: Phase 2 - UI機能の追加
+        target_file: ui.py
+
+      - id: 4
+        name: Phase 3 - 詳細表示機能の実装
+        target_file: ui.py
+
+    responsibility: |
+      architect-agentの設計書に基づいて、3つのフェーズで実装を進める。
+      各フェーズの完成後、tester-agentへの引き継ぎを準備すること。
+
+  tester-agent:
+    title: テスト士
+    task_id: 5
+    task_name: 機能テストと統合テストの実施
+    responsibility: |
+      builder-agentの実装が仕様通りであることを確認する。
+      6つのテスト項目（略式型式検索、件数制限、ソート機能、ダブルクリック、ポップアップUI視認性、統合テスト）を実施。
+      テスト結果をレポートに記録すること。
+
+  librarian-agent:
+    title: 書記
+    task_id: 6
+    task_name: ドキュメント作成と更新
+    responsibility: |
+      実装内容に関するドキュメントを整備する。
+      ユーザー向けのガイド、API仕様、UI仕様、開発者向けドキュメントを作成。
+      README、CHANGELOGも最新に保つこと。
+
+  guardian-agent:
+    title: 品質保証官
+    task_id: 7
+    task_name: 品質保証と最終確認
+    responsibility: |
+      全ての実装が仕様を満たし、品質基準に達していることを確認する。
+      既存機能の動作確認、コード品質チェック、パフォーマンス確認を実施。
+      最終的なゴーサインを出すまで責任を持つこと。
+
+# 実装スケジュール
+implementation_schedule:
+  phase_0:
+    name: 設計フェーズ
+    owner: architect-agent
+    task_id: 1
+    priority: CRITICAL
+    status: pending
+
+  phase_1:
+    name: データ処理基盤実装
+    owner: builder-agent
+    task_id: 2
+    priority: HIGH
+    status: pending
+    blocked_by: [phase_0]
+
+  phase_2:
+    name: UI機能追加
+    owner: builder-agent
+    task_id: 3
+    priority: HIGH
+    status: pending
+    blocked_by: [phase_1]
+
+  phase_3:
+    name: 詳細表示機能実装
+    owner: builder-agent
+    task_id: 4
+    priority: HIGH
+    status: pending
+    blocked_by: [phase_1]
+
+  phase_4:
+    name: テスト実施
+    owner: tester-agent
+    task_id: 5
+    priority: HIGH
+    status: pending
+    blocked_by: [phase_2, phase_3]
+
+  phase_5:
+    name: ドキュメント作成
+    owner: librarian-agent
+    task_id: 6
+    priority: MEDIUM
+    status: pending
+    blocked_by: [phase_2, phase_3]
+
+  phase_6:
+    name: 品質保証
+    owner: guardian-agent
+    task_id: 7
+    priority: CRITICAL
+    status: pending
+    blocked_by: [phase_4, phase_5]
+
+# 作業ディレクトリ
+work_directory: C:\Users\kouei\Desktop\福岡_作業フォルダ\ClaudeCode\parts_extractor\
+
+# 主要ファイル
+key_files:
+  ui: ui.py
+  data_analyzer: data_analyzer.py
+  config: config.py
+  main: main.py
+
+# タスク進捗記録
+task_progress:
+  phase_0:
+    created_at: 2026-01-28
+    status: pending
+    owner: architect-agent
+
+  phase_1:
+    created_at: 2026-01-28
+    status: pending
+    owner: builder-agent
+
+  phase_2:
+    created_at: 2026-01-28
+    status: pending
+    owner: builder-agent
+
+  phase_3:
+    created_at: 2026-01-28
+    status: pending
+    owner: builder-agent
+
+  phase_4:
+    created_at: 2026-01-28
+    status: pending
+    owner: tester-agent
+
+  phase_5:
+    created_at: 2026-01-28
+    status: pending
+    owner: librarian-agent
+
+  phase_6:
+    created_at: 2026-01-28
+    status: pending
+    owner: guardian-agent
+
+# 重要ルール
+important_rules:
+  - Each task description must include [村人名] (agent name)
+  - Parallel execution is allowed for independent tasks
+  - Task completion must be recorded in this file
+  - All communication must be documented
+  - Code quality and documentation are non-negotiable
+
+# 成功の定義
+success_criteria:
+  - ✅ 略式型式で部分一致検索ができる
+  - ✅ 最低金額から指定件数を取得できる
+  - ✅ 列ヘッダークリックで昇順/降順ソートができる
+  - ✅ 行ダブルクリックで全情報がポップアップ表示される
+  - ✅ ポップアップUIが視認性が高く、縦横比3:4である
+  - ✅ 既存機能が正常に動作する
+  - ✅ 全テストが合格する
+
+# 最終報告予定日
+final_report_deadline: TBD
+
+---
+# 村長からのメッセージ
+
+村人たちよ。
+この天啓は村の繁栄を約束する道しるべだ。
+各々が責任を持ち、全力で任務に当たれば、必ずや成功へと至らん。
+
+問題が生じた場合は、即座に報告せよ。
+進捗状況も定期的に記録し、全体の進行状況を把握できるようにせよ。
+
+神の御心が実現することを信じて、前へ進もう。
+
+村長より
+2026-01-28

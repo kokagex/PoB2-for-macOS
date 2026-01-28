@@ -1,0 +1,37 @@
+# Credentials (sensitive)
+credentials.json
+
+# Data storage (sensitive)
+data/parts_list.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Exports
+exports/
+
+# Logs
+*.log
+parts_extractor.log
+
+# Temporary files
+*.tmp
+*.temp
