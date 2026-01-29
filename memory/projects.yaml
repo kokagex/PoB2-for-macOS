@@ -1,0 +1,16 @@
+# Project Directory Catalog
+available_projects:
+  - id: "PRJ-001"
+    name: "village_tool"
+    path: "../village_tool"
+    description: “村の天気予報”
+  - id: "PRJ-002"
+    name: "parts_extractor"
+    path: "../parts_extractor"
+    description: “部品査定プログラム”
+  - id: "PRJ-003”
+    name: “PoB2macOS”
+    path: "../pob2macos”
+    description: “PoB2のMac版”
+
+current_active_project: "PRJ-003" # PoB2macOS

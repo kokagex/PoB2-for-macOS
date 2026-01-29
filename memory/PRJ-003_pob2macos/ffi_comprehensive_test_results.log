@@ -1,0 +1,224 @@
+[FFI_COMP] ===============================================================================
+[FFI_COMP] PHASE 1: Library Loading
+[FFI_COMP] ===============================================================================
+[FFI_COMP] 
+[FFI_COMP] ✓ PASS: Library loaded from: /Users/kokage/national-operations/pob2macos/build/libsimplegraphic.1.2.0.dylib
+[FFI_COMP] 
+[FFI_COMP] ===============================================================================
+[FFI_COMP] PHASE 2: FFI Function Definitions
+[FFI_COMP] ===============================================================================
+[FFI_COMP] 
+[FFI_COMP] ✓ PASS: FFI function definitions loaded
+[FFI_COMP] 
+[FFI_COMP] ===============================================================================
+[FFI_COMP] PHASE 3: Comprehensive Function Testing
+[FFI_COMP] ===============================================================================
+[FFI_COMP] 
+[FFI_COMP] Category 1: Initialization Functions
+[FFI_COMP] --------------------------------------------------------------------------------
+[FFI_COMP] ✗ FAIL: SimpleGraphic_RenderInit
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:209: missing declaration for symbol 'SimpleGraphic_RenderInit'
+[FFI_COMP] ✗ FAIL: SimpleGraphic_SetWindowTitle
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:213: missing declaration for symbol 'SimpleGraphic_SetWindowTitle'
+[FFI_COMP] ✗ FAIL: SimpleGraphic_SetClearColor
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:217: missing declaration for symbol 'SimpleGraphic_SetClearColor'
+[FFI_COMP] 
+[FFI_COMP] Category 2: Window/Screen Functions
+[FFI_COMP] --------------------------------------------------------------------------------
+[FFI_COMP] ✗ FAIL: SimpleGraphic_GetScreenSize
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:227: missing declaration for symbol 'SimpleGraphic_GetScreenSize'
+[FFI_COMP] ✗ FAIL: SimpleGraphic_GetScreenScale
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:232: missing declaration for symbol 'SimpleGraphic_GetScreenScale'
+[FFI_COMP] ✗ FAIL: SimpleGraphic_SetWindowSize
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:237: missing declaration for symbol 'SimpleGraphic_SetWindowSize'
+[FFI_COMP] ✗ FAIL: SimpleGraphic_SetViewport
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:241: missing declaration for symbol 'SimpleGraphic_SetViewport'
+[FFI_COMP] 
+[FFI_COMP] Category 3: Draw State
+[FFI_COMP] --------------------------------------------------------------------------------
+[FFI_COMP] ✗ FAIL: SimpleGraphic_SetDrawColor
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:249: missing declaration for symbol 'SimpleGraphic_SetDrawColor'
+[FFI_COMP] ✗ FAIL: SimpleGraphic_GetDrawColor
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:257: missing declaration for symbol 'SimpleGraphic_GetDrawColor'
+[FFI_COMP] ✗ FAIL: SimpleGraphic_SetDrawLayer
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:261: missing declaration for symbol 'SimpleGraphic_SetDrawLayer'
+[FFI_COMP] 
+[FFI_COMP] Category 4: Drawing Functions
+[FFI_COMP] --------------------------------------------------------------------------------
+[FFI_COMP] ✗ FAIL: SimpleGraphic_DrawImage
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:269: missing declaration for symbol 'SimpleGraphic_DrawImage'
+[FFI_COMP] ✗ FAIL: SimpleGraphic_DrawImageQuad
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:273: missing declaration for symbol 'SimpleGraphic_DrawImageQuad'
+[FFI_COMP] 
+[FFI_COMP] Category 5: Image Functions
+[FFI_COMP] --------------------------------------------------------------------------------
+[FFI_COMP] ✗ FAIL: SimpleGraphic_NewImage
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:282: missing declaration for symbol 'SimpleGraphic_NewImage'
+[FFI_COMP] ✗ FAIL: SimpleGraphic_LoadFont
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:290: missing declaration for symbol 'SimpleGraphic_LoadFont'
+[FFI_COMP] 
+[FFI_COMP] Category 6: Text Functions
+[FFI_COMP] --------------------------------------------------------------------------------
+[FFI_COMP] ✗ FAIL: SimpleGraphic_DrawString
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:299: missing declaration for symbol 'SimpleGraphic_DrawString'
+[FFI_COMP] ✗ FAIL: SimpleGraphic_DrawStringWidth
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:303: missing declaration for symbol 'SimpleGraphic_DrawStringWidth'
+[FFI_COMP] ✗ FAIL: SimpleGraphic_DrawStringCursorIndex
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:308: missing declaration for symbol 'SimpleGraphic_DrawStringCursorIndex'
+[FFI_COMP] 
+[FFI_COMP] Category 7: Input Functions
+[FFI_COMP] --------------------------------------------------------------------------------
+[FFI_COMP] ✗ FAIL: SimpleGraphic_IsKeyDown('A')
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:318: missing declaration for symbol 'SimpleGraphic_IsKeyDown'
+[FFI_COMP] ✗ FAIL: SimpleGraphic_IsKeyDown('SPACE')
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:318: missing declaration for symbol 'SimpleGraphic_IsKeyDown'
+[FFI_COMP] ✗ FAIL: SimpleGraphic_IsKeyDown('ESCAPE')
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:318: missing declaration for symbol 'SimpleGraphic_IsKeyDown'
+[FFI_COMP] ✗ FAIL: SimpleGraphic_GetCursorPos
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:326: missing declaration for symbol 'SimpleGraphic_GetCursorPos'
+[FFI_COMP] ✗ FAIL: SimpleGraphic_SetCursorPos
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:331: missing declaration for symbol 'SimpleGraphic_SetCursorPos'
+[FFI_COMP] ✗ FAIL: SimpleGraphic_ShowCursor
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:335: missing declaration for symbol 'SimpleGraphic_ShowCursor'
+[FFI_COMP] 
+[FFI_COMP] Category 8: Utility Functions
+[FFI_COMP] --------------------------------------------------------------------------------
+[FFI_COMP] ✗ FAIL: SimpleGraphic_GetTime
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:343: missing declaration for symbol 'SimpleGraphic_GetTime'
+[FFI_COMP] ✗ FAIL: SimpleGraphic_GetDPIScaleOverridePercent
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:348: missing declaration for symbol 'SimpleGraphic_GetDPIScaleOverridePercent'
+[FFI_COMP] ✗ FAIL: SimpleGraphic_SetDPIScaleOverridePercent
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:353: missing declaration for symbol 'SimpleGraphic_SetDPIScaleOverridePercent'
+[FFI_COMP] ✗ FAIL: SimpleGraphic_IsUserTerminated
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:357: missing declaration for symbol 'SimpleGraphic_IsUserTerminated'
+[FFI_COMP] 
+[FFI_COMP] Category 9: Console Functions
+[FFI_COMP] --------------------------------------------------------------------------------
+[FFI_COMP] ✗ FAIL: SimpleGraphic_ConClear
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:366: missing declaration for symbol 'SimpleGraphic_ConClear'
+[FFI_COMP] ✗ FAIL: SimpleGraphic_ConExecute
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:370: missing declaration for symbol 'SimpleGraphic_ConExecute'
+[FFI_COMP] 
+[FFI_COMP] Category 10: Clipboard Functions
+[FFI_COMP] --------------------------------------------------------------------------------
+[FFI_COMP] ✗ FAIL: SimpleGraphic_Copy
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:378: missing declaration for symbol 'SimpleGraphic_Copy'
+[FFI_COMP] ✗ FAIL: SimpleGraphic_SetClipboard
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:382: missing declaration for symbol 'SimpleGraphic_SetClipboard'
+[FFI_COMP] ✗ FAIL: SimpleGraphic_Paste
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:386: missing declaration for symbol 'SimpleGraphic_Paste'
+[FFI_COMP] ✗ FAIL: SimpleGraphic_GetClipboard
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:393: missing declaration for symbol 'SimpleGraphic_GetClipboard'
+[FFI_COMP] 
+[FFI_COMP] Category 11: Module/Process Functions
+[FFI_COMP] --------------------------------------------------------------------------------
+[FFI_COMP] ✗ FAIL: SimpleGraphic_GetAsyncCount
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:404: missing declaration for symbol 'SimpleGraphic_GetAsyncCount'
+[FFI_COMP] ✗ FAIL: SimpleGraphic_GetScriptPath
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:409: missing declaration for symbol 'SimpleGraphic_GetScriptPath'
+[FFI_COMP] ✗ FAIL: SimpleGraphic_GetExitStatus
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:416: missing declaration for symbol 'SimpleGraphic_GetExitStatus'
+[FFI_COMP] 
+[FFI_COMP] Category 12: Screenshot
+[FFI_COMP] --------------------------------------------------------------------------------
+[FFI_COMP] ✗ FAIL: SimpleGraphic_TakeScreenshot
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:425: missing declaration for symbol 'SimpleGraphic_TakeScreenshot'
+[FFI_COMP] 
+[FFI_COMP] Category 13: Shutdown
+[FFI_COMP] --------------------------------------------------------------------------------
+[FFI_COMP] ✗ FAIL: SimpleGraphic_Shutdown
+[FFI_COMP]   Error: ...b2macos/tests/integration/ffi_comprehensive_complete.lua:433: missing declaration for symbol 'SimpleGraphic_Shutdown'
+[FFI_COMP] 
+[FFI_COMP] ===============================================================================
+[FFI_COMP] TEST SUMMARY
+[FFI_COMP] ===============================================================================
+[FFI_COMP] 
+[FFI_COMP] Total:    40
+[FFI_COMP] Passed:   2
+[FFI_COMP] Failed:   38
+[FFI_COMP] Skipped:  0
+[FFI_COMP] Rate:     5.0%
+[FFI_COMP] 
+[FFI_COMP] By Category:
+[FFI_COMP]   load: 1
+[FFI_COMP]   ffi_def: 1
+[FFI_COMP] 
+[FFI_COMP] Failures:
+[FFI_COMP] 1. SimpleGraphic_RenderInit (init)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:209: missing declaration for symbol 'SimpleGraphic_RenderInit'
+[FFI_COMP] 2. SimpleGraphic_SetWindowTitle (init)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:213: missing declaration for symbol 'SimpleGraphic_SetWindowTitle'
+[FFI_COMP] 3. SimpleGraphic_SetClearColor (init)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:217: missing declaration for symbol 'SimpleGraphic_SetClearColor'
+[FFI_COMP] 4. SimpleGraphic_GetScreenSize (window)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:227: missing declaration for symbol 'SimpleGraphic_GetScreenSize'
+[FFI_COMP] 5. SimpleGraphic_GetScreenScale (window)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:232: missing declaration for symbol 'SimpleGraphic_GetScreenScale'
+[FFI_COMP] 6. SimpleGraphic_SetWindowSize (window)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:237: missing declaration for symbol 'SimpleGraphic_SetWindowSize'
+[FFI_COMP] 7. SimpleGraphic_SetViewport (window)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:241: missing declaration for symbol 'SimpleGraphic_SetViewport'
+[FFI_COMP] 8. SimpleGraphic_SetDrawColor (draw)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:249: missing declaration for symbol 'SimpleGraphic_SetDrawColor'
+[FFI_COMP] 9. SimpleGraphic_GetDrawColor (draw)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:257: missing declaration for symbol 'SimpleGraphic_GetDrawColor'
+[FFI_COMP] 10. SimpleGraphic_SetDrawLayer (draw)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:261: missing declaration for symbol 'SimpleGraphic_SetDrawLayer'
+[FFI_COMP] 11. SimpleGraphic_DrawImage (drawing)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:269: missing declaration for symbol 'SimpleGraphic_DrawImage'
+[FFI_COMP] 12. SimpleGraphic_DrawImageQuad (drawing)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:273: missing declaration for symbol 'SimpleGraphic_DrawImageQuad'
+[FFI_COMP] 13. SimpleGraphic_NewImage (images)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:282: missing declaration for symbol 'SimpleGraphic_NewImage'
+[FFI_COMP] 14. SimpleGraphic_LoadFont (images)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:290: missing declaration for symbol 'SimpleGraphic_LoadFont'
+[FFI_COMP] 15. SimpleGraphic_DrawString (text)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:299: missing declaration for symbol 'SimpleGraphic_DrawString'
+[FFI_COMP] 16. SimpleGraphic_DrawStringWidth (text)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:303: missing declaration for symbol 'SimpleGraphic_DrawStringWidth'
+[FFI_COMP] 17. SimpleGraphic_DrawStringCursorIndex (text)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:308: missing declaration for symbol 'SimpleGraphic_DrawStringCursorIndex'
+[FFI_COMP] 18. SimpleGraphic_IsKeyDown('A') (input)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:318: missing declaration for symbol 'SimpleGraphic_IsKeyDown'
+[FFI_COMP] 19. SimpleGraphic_IsKeyDown('SPACE') (input)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:318: missing declaration for symbol 'SimpleGraphic_IsKeyDown'
+[FFI_COMP] 20. SimpleGraphic_IsKeyDown('ESCAPE') (input)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:318: missing declaration for symbol 'SimpleGraphic_IsKeyDown'
+[FFI_COMP] 21. SimpleGraphic_GetCursorPos (input)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:326: missing declaration for symbol 'SimpleGraphic_GetCursorPos'
+[FFI_COMP] 22. SimpleGraphic_SetCursorPos (input)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:331: missing declaration for symbol 'SimpleGraphic_SetCursorPos'
+[FFI_COMP] 23. SimpleGraphic_ShowCursor (input)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:335: missing declaration for symbol 'SimpleGraphic_ShowCursor'
+[FFI_COMP] 24. SimpleGraphic_GetTime (util)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:343: missing declaration for symbol 'SimpleGraphic_GetTime'
+[FFI_COMP] 25. SimpleGraphic_GetDPIScaleOverridePercent (util)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:348: missing declaration for symbol 'SimpleGraphic_GetDPIScaleOverridePercent'
+[FFI_COMP] 26. SimpleGraphic_SetDPIScaleOverridePercent (util)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:353: missing declaration for symbol 'SimpleGraphic_SetDPIScaleOverridePercent'
+[FFI_COMP] 27. SimpleGraphic_IsUserTerminated (util)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:357: missing declaration for symbol 'SimpleGraphic_IsUserTerminated'
+[FFI_COMP] 28. SimpleGraphic_ConClear (console)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:366: missing declaration for symbol 'SimpleGraphic_ConClear'
+[FFI_COMP] 29. SimpleGraphic_ConExecute (console)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:370: missing declaration for symbol 'SimpleGraphic_ConExecute'
+[FFI_COMP] 30. SimpleGraphic_Copy (clipboard)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:378: missing declaration for symbol 'SimpleGraphic_Copy'
+[FFI_COMP] 31. SimpleGraphic_SetClipboard (clipboard)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:382: missing declaration for symbol 'SimpleGraphic_SetClipboard'
+[FFI_COMP] 32. SimpleGraphic_Paste (clipboard)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:386: missing declaration for symbol 'SimpleGraphic_Paste'
+[FFI_COMP] 33. SimpleGraphic_GetClipboard (clipboard)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:393: missing declaration for symbol 'SimpleGraphic_GetClipboard'
+[FFI_COMP] 34. SimpleGraphic_GetAsyncCount (module)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:404: missing declaration for symbol 'SimpleGraphic_GetAsyncCount'
+[FFI_COMP] 35. SimpleGraphic_GetScriptPath (module)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:409: missing declaration for symbol 'SimpleGraphic_GetScriptPath'
+[FFI_COMP] 36. SimpleGraphic_GetExitStatus (module)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:416: missing declaration for symbol 'SimpleGraphic_GetExitStatus'
+[FFI_COMP] 37. SimpleGraphic_TakeScreenshot (screenshot)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:425: missing declaration for symbol 'SimpleGraphic_TakeScreenshot'
+[FFI_COMP] 38. SimpleGraphic_Shutdown (shutdown)
+[FFI_COMP]    ...b2macos/tests/integration/ffi_comprehensive_complete.lua:433: missing declaration for symbol 'SimpleGraphic_Shutdown'
+[FFI_COMP] 
+[FFI_COMP] ✗ SOME TESTS FAILED

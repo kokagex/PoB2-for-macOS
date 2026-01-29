@@ -1,0 +1,477 @@
+# Phase 15 Task Assignment - MERCHANT (商人)
+# Performance & E2E Testing
+# Issued: 2026-01-29T22:30:00Z
+
+project: PRJ-003 PoB2macOS
+phase: Phase 15 - Architectural Refinement & Production Readiness
+agent: Merchant (商人)
+status: ASSIGNED (BLOCKED until Artisan A4 complete)
+issued_by: Mayor (村長)
+issued_at: "2026-01-29T22:30:00Z"
+
+authority: Merchant is performance & quality guardian - approves release if all QA gates pass
+
+---
+
+## Overall Task Summary
+
+**Total Estimated Time**: 7 hours
+**Blockers**: Blocked until Artisan A4 complete (build needed)
+**Parallelization**: M1 baseline measurements can start after A4; M2/M3 can parallel
+**Quality Gate**: E2E scenarios all passing, performance regression <2%
+
+---
+
+## Task M1: Performance Profiling - Cooperative Shutdown (2 hours)
+
+**Deliverable**: `/Users/kokage/national-operations/claudecode01/memory/PHASE15_PERFORMANCE_PROFILE.md`
+
+**Description**: Comprehensive performance analysis comparing Phase 14 baseline to Phase 15 optimized implementation.
+
+### Baseline Measurements (Phase 14 Reference):
+
+**Normal Sub-Script Execution** (document from Phase 14)
+- 100 iterations: measure average execution time
+- Record latency distribution (min, max, p50, p95)
+- Memory usage during execution
+- FPS impact during execution
+
+**Timeout Event Latency** (document from Phase 14)
+- Time from timeout trigger to thread exit
+- Time from thread exit to lua_close() completion
+- Resource availability after cleanup
+
+**Memory Usage** (document from Phase 14)
+- Peak RSS during 10 concurrent scripts
+- Memory growth rate over time
+- Baseline for comparison
+
+**FPS Impact** (document from Phase 14)
+- Rendering during normal operation
+- Rendering during timeout event
+- Expected: maintained at 60fps
+
+### Post-Cooperative-Shutdown Measurements:
+
+**Repeat All Measurements** with new implementation
+- Compare overhead (target: <2% difference)
+- Validate 60fps maintained
+- Check memory doesn't increase
+- Verify no regression
+
+**Detailed Metrics Table**:
+| Metric | Phase 14 Baseline | Phase 15 Result | Regression | Status |
+|--------|------------------|-----------------|------------|--------|
+| Sub-script creation time (avg) | Xms | Yms | <2% | ✓/✗ |
+| Shutdown latency (new) | N/A | Zms | <500ms | ✓/✗ |
+| Resource tracker overhead | N/A | <1us | <1us | ✓/✗ |
+| Memory peak (10 concurrent) | XXX MB | YYY MB | <2% | ✓/✗ |
+| FPS sustained | 60 | 60 | 0% | ✓/✗ |
+| Peak memory per timeout | X KB | Y KB | <2% | ✓/✗ |
+
+### Load Testing (10 min duration):
+
+**Rapid Launch/Timeout Cycles**
+- 100 rapid sub-script launches/timeouts
+- Peak memory usage
+- Sustained FPS
+- Any performance degradation
+
+**Memory Stability Test**
+- Run for full 10 minutes
+- Sample memory every 1 second
+- Calculate memory growth rate
+- Verify linear growth (not exponential)
+
+### Report Sections:
+
+1. **Executive Summary** (100 words)
+   - Overall performance: PASS/FAIL
+   - Key metrics summary
+   - Regression assessment
+
+2. **Methodology** (200 words)
+   - Test environment specification
+   - Measurement tools (time, ps, top)
+   - Methodology justification
+   - Reproducibility notes
+
+3. **Baseline Measurements** (300 words)
+   - Phase 14 reference data
+   - Measurement conditions
+   - Historical context
+
+4. **Phase 15 Results** (300 words)
+   - Side-by-side comparisons
+   - Performance graphs/tables
+   - Anomalies noted
+
+5. **Analysis** (300 words)
+   - Overhead breakdown
+   - Root causes for any regression
+   - Optimization opportunities
+   - Conclusions
+
+### Success Criteria:
+- [ ] No regression from baseline >2%
+- [ ] Timeout latency <500ms
+- [ ] Memory peak <600MB (with 10 concurrent)
+- [ ] FPS maintained at 60fps
+- [ ] Report with tables and visualizations
+- [ ] Reproducible methodology documented
+
+---
+
+## Task M2: E2E User Scenario Testing (3 hours)
+
+**Deliverable**: Test results document + evidence (screenshots/logs)
+
+**Description**: Execute complete Path of Building user workflows to verify stability and correctness.
+
+### Scenario A: Basic Build Creation (15 min)
+
+**Steps**:
+1. Start PoB2 macOS
+2. Navigate to "Build" tab
+3. Set character class (Shadow)
+4. Set passive tree start point
+5. Allocate 10 passive points
+6. Allocate 5 more passives (verify no crashes)
+
+**Verification Points**:
+- [ ] No crashes or segfaults
+- [ ] Stable 60fps maintained throughout
+- [ ] Memory <500MB
+- [ ] UI responsive (no freezes)
+- [ ] Sub-scripts (if triggered) complete normally
+
+**Evidence Required**:
+- Screenshots: UI at each step
+- Log: start/end timestamps, memory samples
+- Status: PASS/FAIL
+
+### Scenario B: Save & Load Build (15 min)
+
+**Steps**:
+1. Set build configuration (10 passive points, 2 items)
+2. Click "Save" → set filename "test_build_001"
+3. Exit PoB2
+4. Restart PoB2
+5. Click "Load" → select saved file
+6. Verify build identical to saved state
+
+**Verification Points**:
+- [ ] File saved successfully
+- [ ] File loaded without errors
+- [ ] Build state matches (identical passives, items)
+- [ ] No memory leaks on load
+- [ ] FPS stable after load
+
+**Evidence Required**:
+- Screenshots: before save, after load
+- File: test_build_001 exists and loads
+- Comparison: state before/after identical
+- Status: PASS/FAIL
+
+### Scenario C: Build Editing with Sub-Scripts (20 min)
+
+**Steps**:
+1. Load saved build (from Scenario B)
+2. Allocate 5 more passive points (may trigger sub-script)
+3. Change equipment (may trigger sub-script)
+4. Edit active skill (may trigger sub-script)
+5. Allocate 10 more points (heavy sub-script load)
+6. Verify all sub-scripts complete
+
+**Verification Points**:
+- [ ] All sub-scripts triggered by actions
+- [ ] Sub-scripts complete within timeout
+- [ ] Results display correctly in UI
+- [ ] UI responsive throughout
+- [ ] No crashes during sub-script execution
+- [ ] Memory doesn't spike above 600MB
+
+**Evidence Required**:
+- Log: sub-script execution times
+- Screenshots: results displayed correctly
+- Timing: all sub-scripts <30 seconds
+- Status: PASS/FAIL
+
+### Scenario D: High Load Stress Test (10 min)
+
+**Steps**:
+1. Start PoB2, load build
+2. Rapid passive tree clicking: 3 clicks/second for 30 seconds
+3. Each click may trigger sub-script
+4. Monitor for: crashes, memory growth, FPS drops
+
+**Verification Points**:
+- [ ] No crashes during rapid interaction
+- [ ] FPS doesn't drop below 50fps
+- [ ] Memory stable (growth <10MB/min after initial)
+- [ ] Sub-scripts don't queue excessively
+- [ ] UI remains responsive
+
+**Evidence Required**:
+- Log: CPU/memory samples during test
+- Video or screenshots: stability demonstration
+- Analysis: memory growth rate
+- Status: PASS/FAIL
+
+### Scenario E: Long-Running Session (60 min)
+
+**Steps**:
+1. Start PoB2, load build
+2. Periodic interactions every 2-3 minutes (changes to build)
+3. Monitor memory growth over full hour
+4. Log any spikes or anomalies
+
+**Verification Points**:
+- [ ] No crashes over 1 hour
+- [ ] Memory growth linear (not exponential)
+- [ ] Memory growth rate <10KB/min average
+- [ ] No performance degradation over time
+- [ ] FPS stable throughout
+
+**Evidence Required**:
+- Log: memory samples every 5 minutes (12 samples total)
+- Analysis: memory growth trend
+- Anomalies: any unusual patterns noted
+- Status: PASS/FAIL
+
+### Test Report Format:
+
+```markdown
+# Phase 15 E2E Test Results
+
+## Scenario Summary
+| Scenario | Duration | Status | Notes |
+|----------|----------|--------|-------|
+| A: Build Creation | 15m | PASS/FAIL | ... |
+| B: Save & Load | 15m | PASS/FAIL | ... |
+| C: Editing w/ SubScripts | 20m | PASS/FAIL | ... |
+| D: High Load | 10m | PASS/FAIL | ... |
+| E: 1-Hour Session | 60m | PASS/FAIL | ... |
+
+## Overall Result: [ ] ALL PASS / [ ] SOME FAILED
+```
+
+### Success Criteria:
+- [ ] All 5 scenarios completed without crash
+- [ ] Memory profile clean (no leaks over 1 hour)
+- [ ] FPS maintained at 60fps (all scenarios)
+- [ ] Sub-scripts execute correctly (all complete)
+- [ ] Save/load cycle perfect fidelity
+- [ ] Documented with timestamps and evidence
+
+---
+
+## Task M3: Regression Testing Suite (2 hours)
+
+**Deliverable**: Automated regression test script (location: `pob2macos/tests/regression_test.sh`)
+
+**Description**: Create reusable test harness for automated regression detection.
+
+### Test Harness Contents:
+
+**1. Build Verification**
+```bash
+# Ensure clean build succeeds
+make clean && make -j4
+if [ $? -ne 0 ]; then
+    echo "BUILD FAILED"
+    exit 1
+fi
+```
+
+**2. mvp_test Execution**
+```bash
+# Existing test suite must still pass 100%
+./mvp_test
+if [ $? -ne 0 ]; then
+    echo "MVP_TEST FAILED"
+    exit 1
+fi
+```
+
+**3. New Sub-Script Timeout Tests** (10+ test cases)
+```bash
+# Test 1: Single timeout
+# Test 2: Rapid timeouts (10x)
+# Test 3: Concurrent timeouts
+# Test 4: Timeout with resource cleanup
+# ... (8+ more)
+```
+
+**4. Performance Baseline Validation**
+```bash
+# Measure key metrics
+# Compare to Phase 14 baseline
+# Fail if regression >2%
+```
+
+**5. Memory Leak Detection (automated)**
+```bash
+# Run with Valgrind in CI mode
+# Parse output for "definitely lost"
+# Fail if any leaks detected
+```
+
+**6. ThreadSanitizer Validation (automated)**
+```bash
+# Run with ThreadSanitizer
+# Parse output for "0 races detected"
+# Fail if any races found
+```
+
+### Test Coverage:
+
+- [ ] Cooperative shutdown correctness
+- [ ] Resource cleanup completeness
+- [ ] Performance baselines
+- [ ] Memory leak absence
+- [ ] ThreadSanitizer clean
+- [ ] Valgrind clean
+
+### Test Harness Features:
+
+1. **Automated Execution**
+   - Single command: `./regression_test.sh`
+   - Runs all tests in sequence
+   - Total runtime target: <5 seconds
+
+2. **Result Reporting**
+   - Timestamped output
+   - Pass/fail status for each test
+   - Summary at end
+   - Exit code: 0 (all pass) or 1 (any fail)
+
+3. **CI/CD Integration**
+   - Suitable for pre-commit hook
+   - Suitable for nightly build verification
+   - Machine-parseable output (JSON or CSV)
+
+4. **Reproducibility**
+   - Tests deterministic (no timing-dependent failures)
+   - Clean environment between tests
+   - Same results on re-run
+
+### Script Template:
+
+```bash
+#!/bin/bash
+
+# Phase 15 Regression Test Suite
+# Usage: ./regression_test.sh [--verbose] [--no-sanitizers]
+
+set -e
+
+TESTS_PASSED=0
+TESTS_FAILED=0
+
+function run_test() {
+    local name=$1
+    local command=$2
+
+    echo "[TEST] $name..."
+    if eval "$command" > /tmp/test_$$.log 2>&1; then
+        echo "[PASS] $name"
+        ((TESTS_PASSED++))
+    else
+        echo "[FAIL] $name"
+        ((TESTS_FAILED++))
+    fi
+}
+
+# Execute tests
+run_test "Build" "make clean && make -j4"
+run_test "MVP Test Suite" "./mvp_test"
+run_test "Sub-Script Timeout" "./tests/test_subscript_timeout.sh"
+run_test "Performance Baseline" "./tests/test_performance.sh"
+# ... more tests
+
+# Report
+echo ""
+echo "======== REGRESSION TEST SUMMARY ========"
+echo "Passed: $TESTS_PASSED"
+echo "Failed: $TESTS_FAILED"
+echo "========================================"
+
+exit $TESTS_FAILED
+```
+
+### Success Criteria:
+- [ ] All tests pass
+- [ ] Total runtime <5 seconds
+- [ ] Reproducible output
+- [ ] Suitable for CI/CD integration
+- [ ] Documented with usage instructions
+
+---
+
+## Dependencies & Sequencing
+
+```
+Artisan A4 (build complete) ← **Merchant blocked until this**
+    ↓
+M1: Performance Profiling (2h) — establish baseline + post-change
+M2: E2E Testing (3h) — user scenarios
+M3: Regression Suite (2h) — automated testing
+    ↓
+M1 + M2 + M3 can partially parallel
+    ↓
+Results → Paladin P4 for compliance check
+Results → Bard documentation input
+```
+
+**Critical Path**: A4 → M1/M2/M3 (parallel)
+
+---
+
+## Quality Gate - QA APPROVAL
+
+After completing M1-M3, Merchant must provide approval:
+
+```
+MERCHANT QA APPROVAL REQUIRED:
+
+Performance: [ ] APPROVED (Regression <2%, targets met)
+E2E Testing: [ ] APPROVED (All 5 scenarios PASS)
+Regression Suite: [ ] APPROVED (Automated, reproducible)
+
+Sign-off: "All Phase 15 QA gates PASSED. System meets performance and stability targets."
+```
+
+---
+
+## Communication Checklist
+
+- [ ] Task received, understand A4 blocker
+- [ ] Waiting for Artisan A4 build (monitor communication.yaml)
+- [ ] A4 build received, M1 baseline profiling starting
+- [ ] M1 performance baseline complete, documenting
+- [ ] M2 E2E Scenario A (Build Creation) in progress
+- [ ] M2 E2E Scenario B (Save & Load) in progress
+- [ ] M2 E2E Scenario C (Editing w/ SubScripts) in progress
+- [ ] M2 E2E Scenario D (High Load) in progress
+- [ ] M2 E2E Scenario E (1-Hour Session) in progress
+- [ ] M2 all scenarios complete, results documented
+- [ ] M3 regression test suite created and passing
+- [ ] Final QA approval provided
+- [ ] Results communicated to Mayor
+
+---
+
+## Reference Materials
+
+**Phase 15 Mandate**: `queue/prophet_phase15_mandate.yaml` (sections M1-M3)
+**Quick Reference**: `memory/PHASE15_QUICK_REFERENCE.md` (E2E scenarios)
+**Sage Test Plan**: `memory/PHASE15_TESTING_STRATEGY.md` (awaiting)
+**Phase 14 Performance**: `memory/PHASE14_COMPLETION_REPORT.md` (baseline)
+**PoB2 Source**: `~/Downloads/PathOfBuilding-PoE2-dev/` (Lua source for reference)
+
+---
+
+**Task Status**: ASSIGNED (BLOCKED until Artisan A4)
+**Last Updated**: 2026-01-29T22:30:00Z
+**Assigned By**: Mayor (Claude Sonnet 4.5)

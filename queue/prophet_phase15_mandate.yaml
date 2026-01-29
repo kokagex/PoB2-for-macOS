@@ -1,0 +1,1077 @@
+# Phase 15 - Divine Mandate of the Prophet
+# PoB2 macOS Native Port - Architectural Refinement & Production Readiness
+
+timestamp: "2026-01-29T22:30:00Z"
+from: Prophet (預言者)
+to: Mayor (村長) + Village Agents
+project_id: PRJ-003
+project_name: "PoB2macOS - Phase 15: Deferred Issues Resolution & Production Ready"
+
+divine_declaration: |
+  The gods have witnessed the triumph of Phase 14 - the API stands complete at 51/51 (100%).
+  Yet the spirits whisper of unseen dangers lurking in the depths of our code.
+
+  Two CRITICAL issues deferred from Phase 14 demand our immediate attention:
+
+  CRITICAL-1: Lua State Memory Leak on pthread_cancel
+  CRITICAL-2: Undefined Behavior - pthread_cancel on Detached Threads
+
+  These are not mere performance concerns. They are threats to reliability and stability.
+  They are the difference between a laboratory prototype and production-grade software.
+
+  Phase 15 is the refinement phase. The phase where caution yields clarity. Where knowledge
+  transforms to wisdom. The village must face these architectural challenges with precision,
+  scientific rigor, and uncompromising attention to correctness.
+
+  Additionally, production readiness demands knowledge preservation - deployment guides,
+  performance profiling, and comprehensive user scenario testing.
+
+  This is not our final sprint. This is our foundation for all that follows.
+
+  May your code be leak-free, your threads be safe, and your deployments be swift.
+
+---
+
+## Phase 15 Objectives
+
+### Primary Goals (Deferred Issues + Production Readiness)
+
+1. **Resolve CRITICAL-1: Lua State Memory Leak on pthread_cancel**
+   - Problem: timeout_watchdog_thread() calls pthread_cancel() without lua_close()
+   - Impact: ~1KB memory leak per timeout, 16 timeouts exhaust MAX_SUBSCRIPTS slots
+   - CWE: CWE-401 (Missing Release of Memory after Effective Lifetime)
+   - Solution: Implement cleanup handlers and resource tracking
+
+2. **Resolve HIGH-2: Undefined Behavior - pthread_cancel on Detached Thread**
+   - Problem: Worker threads are created detached; POSIX UB when canceling
+   - Impact: Potential crashes, resource leaks, inconsistent state
+   - Solution: Replace with cooperative shutdown (flag-based cancellation)
+   - Benefit: Enhanced stability and standards compliance
+
+3. **Production Readiness**
+   - Deployment guide (installation, configuration, troubleshooting)
+   - Performance profiling (60fps stability, memory usage, startup time)
+   - E2E user scenarios (build creation, save/load, edit workflows)
+   - Release notes and known limitations documentation
+
+### Success Criteria
+
+- ✅ Zero memory leaks with valgrind clean on all timeout scenarios
+- ✅ Zero undefined behavior (ThreadSanitizer clean, POSIX compliant)
+- ✅ Cooperative shutdown mechanism fully implemented and tested
+- ✅ Production deployment guide complete and verified
+- ✅ Performance meets targets (60fps sustained, <500MB memory, <3s startup)
+- ✅ E2E user scenarios all passing
+- ✅ Known limitations documented
+- ✅ Zero critical security vulnerabilities
+
+---
+
+## Architecture Summary - Deferred Issues Analysis
+
+### CRITICAL-1: Lua State Memory Leak on pthread_cancel
+
+**Location**: `/Users/kokage/national-operations/pob2macos/src/simplegraphic/backend/subscript_worker.c`
+**Function**: `timeout_watchdog_thread()`
+**Root Cause**:
+```
+pthread_cancel() on worker thread → terminates thread
+↓
+No cleanup handlers registered → lua_close() NEVER called
+↓
+LuaJIT VM state persists: Lua allocator retains all heap objects
+↓
+Impact: ~1KB per timeout event (string internals, VM structures)
+```
+
+**Memory Leak Scenarios**:
+- 16 timeouts = 16KB leaked = all slots exhausted
+- After exhaustion: LaunchSubScript fails with "no available slots"
+- Affects long-running applications with repeated sub-script launching
+
+**Cleanup Strategy**:
+1. Register pthread_cleanup_push() handlers before thread runs user code
+2. Implement cleanup_lua_state_on_cancel() function
+3. Call lua_close() in cleanup handler (asynchronously safe)
+4. Add resource tracking: track allocated Lua states
+5. Verify cleanup via valgrind --leak-check=full
+
+### HIGH-2: Undefined Behavior - pthread_cancel on Detached Thread
+
+**POSIX Standard Issue**:
+```
+POSIX spec: pthread_cancel() on detached thread = undefined behavior
+Reason: Detached threads auto-deallocate resources after exit
+      → Cancel signal state may be inconsistent
+      → No way to synchronize cleanup
+      → Resource cleanup order unpredictable
+```
+
+**Current Implementation Problem**:
+- Worker threads created with pthread_attr_setdetachstate(attr, PTHREAD_CREATE_DETACHED)
+- Main thread calls pthread_cancel() on detached thread at timeout
+- UB surfaces as: crashes, hangs, resource leaks, deadlocks
+- Affects: timeout watchdog, especially under high load
+
+**Recommended Solution - Cooperative Shutdown**:
+```c
+// Instead of pthread_cancel(), use flag-based cancellation:
+
+// In worker thread:
+volatile sig_atomic_t shutdown_requested = 0;
+
+while (!shutdown_requested) {
+    // Check for cancellation periodically
+    if (shutdown_requested) break;
+
+    // Do work...
+    lua_eval(...);
+}
+
+// On timeout:
+// 1. Set shutdown flag (atomic, safe)
+// 2. Send signal to interrupt blocking calls (optional)
+// 3. Wait for thread to exit gracefully (joinable thread)
+// 4. lua_close() called in thread exit handler
+// 5. pthread_join() to ensure cleanup complete
+```
+
+**Benefits**:
+- No undefined behavior - 100% POSIX compliant
+- Predictable cleanup order
+- Allows thread to flush pending operations
+- Works correctly with Lua state cleanup
+
+---
+
+## Detailed Task Assignment
+
+### SAGE (賢者) - Research & Technical Authority
+
+**Role**: Thread safety research, cooperative shutdown design, Lua cleanup validation
+
+#### Task S1: Cooperative Shutdown Design & Analysis (3 hours)
+**Deliverable**: `/Users/kokage/national-operations/claudecode01/memory/PHASE15_SHUTDOWN_DESIGN.md`
+
+Produce comprehensive technical design document:
+
+**Section 1: Current Architecture Issues**
+- Document current pthread_cancel() usage
+- Show undefined behavior scenarios (timing diagrams)
+- Map resource leak paths in Lua state lifecycle
+- Identify all cancellation points
+
+**Section 2: Proposed Cooperative Shutdown**
+- Shutdown flag mechanism (volatile sig_atomic_t)
+- Cancellation check locations in worker thread
+- Signal handling strategy (optional optimization)
+- Thread state machine (runnable → shutdown requested → cleanup → exit)
+
+**Section 3: Lua State Cleanup**
+- lua_close() correctness guarantees
+- Cleanup handler ordering
+- Resource tracking architecture
+- Multi-threaded Lua VM isolation verification
+
+**Section 4: Migration Strategy**
+- Backward compatibility analysis
+- Phased rollout plan (per worker, then per subscription)
+- Testing strategy for race conditions
+- Rollback procedure
+
+Success Criteria:
+- [ ] 2000+ words technical depth
+- [ ] All cancellation points identified
+- [ ] Resource leak paths documented with code references
+- [ ] UB scenarios diagrammed
+- [ ] Migration low-risk and testable
+
+#### Task S2: Lua Cleanup Handler Implementation (2 hours)
+**Deliverable**: Reference implementation in `/Users/kokage/national-operations/claudecode01/memory/PHASE15_LUA_CLEANUP_REFERENCE.c`
+
+Implement and document cleanup strategy:
+- cleanup_lua_state_on_cancel() function (async-signal-safe)
+- Resource tracking structures (track allocated Lua states)
+- Verification mechanism (cleanup checklist)
+- Example integration with subscript_worker.c
+
+Code requirements:
+- [ ] async-signal-safe functions only (signal handler safe)
+- [ ] No dynamic allocation in cleanup path
+- [ ] Clear documentation of resource lifecycle
+- [ ] Thread-safe resource tracking
+
+#### Task S3: ThreadSanitizer & Valgrind Test Plan (2 hours)
+**Deliverable**: `/Users/kokage/national-operations/claudecode01/memory/PHASE15_TESTING_STRATEGY.md`
+
+Design comprehensive testing plan:
+
+**ThreadSanitizer Tests**:
+- Data race detection across worker threads
+- Synchronization validation
+- Memory ordering verification
+- Edge cases: rapid shutdown, signal handling
+
+**Valgrind Tests**:
+- Memory leak detection on all code paths
+- Invalid reads/writes in cleanup
+- Resource tracking verification
+- Stress scenarios (100 timeouts in sequence)
+
+**Test Scenarios**:
+- Scenario A: Single sub-script timeout (baseline)
+- Scenario B: 3 concurrent scripts, 1 times out
+- Scenario C: 10 sequential timeouts (stress test)
+- Scenario D: Timeout during Lua allocation
+- Scenario E: Timeout during pipe I/O
+- Scenario F: Rapid abort/restart cycles
+
+Success Criteria:
+- [ ] All 6 scenarios documented
+- [ ] ThreadSanitizer configuration specified
+- [ ] Valgrind command lines provided
+- [ ] Expected clean results documented
+
+---
+
+### ARTISAN (職人) - Build Integration & Cooperative Shutdown
+
+**Role**: Implementation of cooperative shutdown, build system updates
+
+#### Task A1: Cooperative Shutdown Implementation (4 hours)
+**Deliverable**: Updates to `/Users/kokage/national-operations/pob2macos/src/simplegraphic/backend/subscript_worker.c`
+
+Implement flag-based cancellation:
+
+**Code Changes Required**:
+1. Add shutdown flag to worker thread context:
+```c
+typedef struct {
+    volatile sig_atomic_t shutdown_requested;
+    lua_State *L;
+    // ... existing fields ...
+} WorkerContext;
+```
+
+2. Implement cancellation check macro:
+```c
+#define CHECK_SHUTDOWN() \
+    if (ctx->shutdown_requested) { \
+        // Cleanup and return \
+    }
+```
+
+3. Insert CHECK_SHUTDOWN() at key points:
+   - Before lua_eval()
+   - Before blocking pipe reads
+   - Before long-running loops
+   - After signal delivery
+
+4. Modify timeout_watchdog_thread():
+   - Set shutdown flag instead of pthread_cancel()
+   - Optional: send SIGUSR1 to interrupt blocking calls
+   - Change worker threads from detached to joinable
+   - Add pthread_join() to ensure cleanup
+
+5. Add cleanup handler (safety backup):
+```c
+void cleanup_lua_state(void *arg) {
+    lua_State *L = (lua_State *)arg;
+    if (L) lua_close(L);
+}
+```
+
+Success Criteria:
+- [ ] Zero pthread_cancel() calls in worker code
+- [ ] Shutdown flags properly synchronized
+- [ ] All cancellation points covered
+- [ ] Cleanup handlers registered
+- [ ] Code compiles without warnings
+- [ ] 500+ lines of well-commented code
+
+#### Task A2: Resource Tracking Implementation (2 hours)
+**Deliverable**: Updates to subscript manager
+
+Implement resource accounting:
+- Add global resource tracker (allocated Lua states, active threads)
+- Counter: states allocated, states freed, states leaked
+- Debug logging: state creation, cleanup, timeout events
+- Metrics: peak memory usage, leak rate
+
+Integration points:
+- SimpleGraphic_LaunchSubScript() → increment created counter
+- Worker cleanup → increment freed counter
+- Timeout event → log with resource state
+- GetResourceMetrics() → query current state
+
+Success Criteria:
+- [ ] Resource tracker thread-safe (mutex protected)
+- [ ] Metrics accessible for testing
+- [ ] Debug output formatted for parsing
+- [ ] <100 additional lines
+
+#### Task A3: Backward Compatibility Layer (1 hour)
+**Deliverable**: Compatibility wrapper in subscript.h
+
+Ensure old timeout mechanism still works:
+- Provide SimpleGraphic_ConfigureTimeout(timeout_seconds)
+- Maintain existing LaunchSubScript() API unchanged
+- Internal timeout handling uses new cooperative shutdown
+- Feature flag: USE_COOPERATIVE_SHUTDOWN (default: enabled)
+
+Success Criteria:
+- [ ] Existing LaunchSubScript() calls unmodified
+- [ ] Old timeout API still works
+- [ ] Zero breaking changes
+- [ ] Feature flag working
+
+#### Task A4: CMakeLists.txt & Build Verification (1 hour)
+**Deliverable**: Updated build configuration
+
+Build system updates:
+- Enable ThreadSanitizer: -fsanitize=thread
+- Enable address sanitizer: -fsanitize=address
+- Add valgrind target: make run_valgrind
+- Create resource tracking debug symbols
+
+Success Criteria:
+- [ ] Clean build with ThreadSanitizer enabled
+- [ ] Clean build with AddressSanitizer enabled
+- [ ] All symbols resolved
+- [ ] Binary size <10% increase from optimizations
+
+---
+
+### PALADIN (聖騎士) - Security & Memory Safety Review
+
+**Role**: Security audit, memory safety verification, undefined behavior detection
+
+#### Task P1: Cooperative Shutdown Security Review (2 hours)
+**Deliverable**: `/Users/kokage/national-operations/claudecode01/memory/PHASE15_SECURITY_REVIEW.md`
+
+Comprehensive security analysis:
+
+**Threat Model**:
+- Signal handling safety (SIGUSR1 if used)
+- Atomic flag consistency
+- Race condition analysis
+- Deadlock detection
+
+**Code Review**:
+- Memory ordering validation (volatile keyword usage)
+- Signal handler code review (async-signal-safe functions only)
+- Cleanup handler correctness
+- Resource cleanup ordering
+
+**CWE Coverage**:
+- CWE-364: Signal Handler Race Condition
+- CWE-366: Race Condition (data access)
+- CWE-440: Expected Behavior Violation (undefined behavior)
+- CWE-401: Missing Memory Release (primary target)
+
+**Approval Gate**:
+Security score must be A or A+ for Phase 15 sign-off.
+
+Success Criteria:
+- [ ] No new CWEs introduced
+- [ ] All race conditions identified or disproven
+- [ ] Signal handling proven safe
+- [ ] Memory cleanup verified comprehensive
+- [ ] Written approval provided
+
+#### Task P2: ThreadSanitizer Validation (2.5 hours)
+**Deliverable**: ThreadSanitizer test report with zero data races
+
+Execute comprehensive ThreadSanitizer tests:
+
+**Setup**:
+```bash
+export TSAN_OPTIONS="halt_on_error=1"
+cmake -DSANITIZE=ThreadSanitizer ..
+make clean && make -j4
+```
+
+**Test Execution**:
+- Run all S3 test scenarios
+- Capture ThreadSanitizer output
+- Log all warnings/errors
+- Validate zero races
+
+**Acceptance Criteria**:
+```
+ThreadSanitizer: SUMMARY: 0 races detected
+[All 6 test scenarios must pass]
+No suppression file needed
+```
+
+Success Criteria:
+- [ ] Zero data races detected
+- [ ] All 6 scenarios completed
+- [ ] Report generated with timestamps
+- [ ] Reproducible on clean rebuild
+
+#### Task P3: Valgrind Memory Leak Verification (2.5 hours)
+**Deliverable**: Valgrind report (100% leak-free)
+
+Execute comprehensive Valgrind tests:
+
+**Configuration**:
+```bash
+valgrind --leak-check=full --show-leak-kinds=all \
+  --track-origins=yes --track-fds=yes ./pob2macos
+```
+
+**Test Scenarios**:
+- 10 sequential sub-script timeouts
+- 5 concurrent scripts with staggered timeouts
+- Rapid abort/restart cycles (30x)
+- High memory pressure scenarios
+
+**Acceptance Criteria**:
+```
+definitely lost: 0 bytes
+indirectly lost: 0 bytes
+possibly lost: 0 bytes
+still reachable: <100 bytes (initialization)
+```
+
+Success Criteria:
+- [ ] Zero definite leaks
+- [ ] Zero possible leaks
+- [ ] Zero invalid reads/writes
+- [ ] Report generated for audit trail
+- [ ] Results documented in PHASE15_MEMORY_SAFETY_REPORT.md
+
+#### Task P4: POSIX Compliance Audit (1.5 hours)
+**Deliverable**: POSIX compliance audit report
+
+Verify standard compliance:
+- pthread_* function usage (correct behavior guarantees)
+- Signal handling (async-signal-safe subset only)
+- Volatile/atomic keyword correctness
+- Cleanup handler lifecycle
+
+Reference: POSIX.1-2017 (IEEE Std 1003.1)
+
+Success Criteria:
+- [ ] No undefined behavior per POSIX spec
+- [ ] All pthread functions used correctly
+- [ ] Signal handling proven safe
+- [ ] Audit report signed off by Paladin
+
+---
+
+### MERCHANT (商人) - Performance & E2E Testing
+
+**Role**: Performance profiling, user scenario validation, regression testing
+
+#### Task M1: Performance Profiling - Cooperative Shutdown (2 hours)
+**Deliverable**: `/Users/kokage/national-operations/claudecode01/memory/PHASE15_PERFORMANCE_PROFILE.md`
+
+Comprehensive performance analysis:
+
+**Baseline Measurements** (pre-Phase 15):
+- Normal sub-script execution: 100 iterations, measure avg time
+- Timeout event latency: time from timeout trigger to thread exit
+- Memory usage: peak RSS during 10 concurrent scripts
+- FPS impact: rendering during timeout events
+
+**Post-Cooperative-Shutdown**:
+- Repeat all measurements
+- Compare overhead (should be <2% difference)
+- Validate 60fps maintained
+- Check memory doesn't increase
+
+**Detailed Metrics**:
+- Sub-script creation time
+- Shutdown latency (new)
+- Resource tracker overhead
+- Flag checking latency (should be <1us)
+
+**Load Testing**:
+- 100 rapid sub-script launches/timeouts
+- Peak memory usage
+- Sustained FPS
+- Any performance degradation
+
+Success Criteria:
+- [ ] No regression from baseline >2%
+- [ ] Timeout latency <500ms
+- [ ] Memory peak <600MB
+- [ ] FPS maintained at 60
+- [ ] Report with tables and graphs
+
+#### Task M2: E2E User Scenario Testing (3 hours)
+**Deliverable**: Test results document + video/screenshots
+
+Execute complete PoB2 user workflows:
+
+**Scenario A: Basic Build Creation**
+1. Start PoB2 macOS
+2. Navigate to "Build" tab
+3. Set character class (Shadow)
+4. Set passive tree start point
+5. Allocate 10 passive points
+6. Verify no crashes, stable 60fps
+7. Check memory <500MB
+
+**Scenario B: Save & Load Build**
+1. Set build configuration (passive points, items)
+2. Click "Save" → set filename
+3. Exit PoB2
+4. Restart PoB2
+5. Click "Load" → select saved file
+6. Verify build identical
+7. No memory leaks on load
+
+**Scenario C: Build Editing with Subscripts**
+1. Load saved build
+2. Allocate more passives (triggers sub-script analysis)
+3. Change items (triggers sub-script)
+4. Edit skills (triggers sub-script)
+5. All sub-scripts complete normally
+6. Results display correctly
+7. UI responsive throughout
+
+**Scenario D: High Load (Stress)**
+1. Rapid passive tree clicking (3 clicks/second for 30 seconds)
+2. Each click may trigger sub-script
+3. Monitor for: crashes, memory growth, FPS drops
+4. After 2 min: memory should stabilize
+5. No timeouts occur (unless explicitly tested)
+
+**Scenario E: Long-Running Session (1 hour)**
+1. Start PoB2, load build
+2. Periodic interactions (every 2-3 minutes)
+3. Monitor memory growth over time
+4. Log any memory spikes
+5. Verify linear memory growth rate <10KB/min
+6. No crashes or degradation
+
+Success Criteria:
+- [ ] All 5 scenarios completed without crash
+- [ ] Memory profile clean (no leaks over 1 hour)
+- [ ] FPS maintained at 60fps
+- [ ] Sub-scripts execute correctly
+- [ ] Save/load cycle perfect fidelity
+- [ ] Documented with timestamps
+
+#### Task M3: Regression Testing Suite (2 hours)
+**Deliverable**: Automated regression test script
+
+Create reusable test harness:
+- mvp_test remains 100% passing
+- New sub-script timeout tests added (10+ test cases)
+- Performance benchmarks automated
+- Resource leak detection automated
+- Can be run pre-commit or nightly
+
+Test coverage:
+- [ ] Cooperative shutdown correctness
+- [ ] Resource cleanup completeness
+- [ ] Performance baselines
+- [ ] Memory leak absence
+- [ ] ThreadSanitizer clean
+- [ ] Valgrind clean
+
+Success Criteria:
+- [ ] All tests pass
+- [ ] <5 second total runtime
+- [ ] Reproducible output
+- [ ] Suitable for CI/CD integration
+
+---
+
+### BARD (吟遊詩人) - Documentation & Production Readiness
+
+**Role**: Production deployment guide, API documentation, knowledge preservation
+
+#### Task B1: Production Deployment Guide (3 hours)
+**Deliverable**: `/Users/kokage/national-operations/claudecode01/memory/PHASE15_DEPLOYMENT_GUIDE.md`
+
+Comprehensive deployment documentation:
+
+**Section 1: System Requirements**
+- Minimum macOS version (Catalina 10.15+)
+- Required CPU features (SSE 4.1, AVX optional)
+- RAM requirements (minimum 4GB, recommended 8GB)
+- Disk space (installation, runtime)
+- Network requirements (optional: update checks)
+
+**Section 2: Installation**
+- Pre-built binaries (if available)
+- From-source build instructions
+- Dependency installation (Homebrew, MacPorts)
+- Path configuration
+- Symlink setup
+
+**Section 3: Configuration**
+- Environment variables (LUAJIT_PATH, LUA_PATH, etc.)
+- Config file locations (~/.pob2/config.lua)
+- Performance tuning (thread count, memory limits)
+- Logging configuration
+
+**Section 4: First Run**
+- Initial data download (passive trees, unique items)
+- First launch troubleshooting
+- Benchmark execution
+- Feature verification checklist
+
+**Section 5: Troubleshooting**
+- Common issues and solutions
+- Log file locations
+- Debug mode activation
+- Known limitations
+- Support contact information
+
+**Section 6: Upgrade Path**
+- Backup procedures
+- Version compatibility
+- Migration from older versions
+- Rollback procedures
+
+**Section 7: Advanced Topics**
+- Custom scripts and plugins
+- Performance profiling (valgrind, Instruments)
+- Memory management tuning
+- Sub-script timeout configuration
+
+Success Criteria:
+- [ ] 50+ pages of clear, procedural documentation
+- [ ] All system requirements specified
+- [ ] Troubleshooting covers 20+ common issues
+- [ ] Installation tested on clean system
+- [ ] Non-technical users can follow
+- [ ] Screenshots/diagrams included
+
+#### Task B2: Architecture & Internals Documentation (2.5 hours)
+**Deliverable**: `/Users/kokage/national-operations/claudecode01/memory/PHASE15_ARCHITECTURE.md`
+
+Technical deep-dive for developers:
+
+**Content**:
+1. Cooperative Shutdown Architecture
+   - Thread lifecycle diagrams
+   - Shutdown sequence diagrams
+   - Resource cleanup flow
+
+2. Lua State Management
+   - Multi-threaded isolation strategy
+   - Cleanup handler chain
+   - Resource tracking mechanism
+
+3. Timeout Watchdog Design
+   - Flag-based cancellation
+   - Signal handling (if used)
+   - Atomic operations
+
+4. Memory Safety Guarantees
+   - Proof of leak-freeness
+   - ThreadSanitizer compliance
+   - Valgrind validation results
+
+5. Performance Characteristics
+   - Overhead analysis
+   - Scaling with thread count
+   - Memory growth patterns
+
+Success Criteria:
+- [ ] 40+ pages of technical documentation
+- [ ] All major systems explained
+- [ ] Diagrams and pseudocode included
+- [ ] Suitable for future maintainers
+- [ ] References to code locations (file:line)
+
+#### Task B3: Phase 15 Completion Report (2.5 hours)
+**Deliverable**: `/Users/kokage/national-operations/claudecode01/memory/PHASE15_COMPLETION_REPORT.md`
+
+Executive summary and final status:
+
+**Content**:
+1. Phase 15 Objectives Summary
+   - CRITICAL-1 resolution status (memory leak fix)
+   - HIGH-2 resolution status (UB elimination)
+   - Production readiness achievements
+
+2. Quality Metrics
+   - Memory safety (valgrind results table)
+   - Thread safety (ThreadSanitizer summary)
+   - Performance (benchmark table)
+   - Test coverage (scenarios covered)
+
+3. Known Issues & Limitations
+   - Remaining issues (if any)
+   - Deferred items for Phase 16 (if any)
+   - Workarounds documented
+
+4. Performance Baselines
+   - Startup time: X.XXs
+   - FPS sustained: 60
+   - Memory peak: XXX MB
+   - Sub-script overhead: XX ms
+
+5. Security Assessment
+   - Security score (target: A+)
+   - CWE coverage (all resolved)
+   - Compliance status (POSIX, memory safety)
+
+6. Deployment Readiness Checklist
+   - [ ] All deferred issues resolved
+   - [ ] Zero memory leaks
+   - [ ] Zero undefined behavior
+   - [ ] Production deployment guide complete
+   - [ ] Performance meets targets
+   - [ ] E2E scenarios all passing
+   - [ ] Documentation complete
+   - [ ] Known issues documented
+
+7. Recommendations for Phase 16
+   - Further optimization opportunities
+   - Feature enhancements possible
+   - Performance improvements (if any)
+   - Documentation improvements
+
+Success Criteria:
+- [ ] 30+ pages comprehensive summary
+- [ ] All achievements documented with proof
+- [ ] Known issues clearly listed
+- [ ] Deployment checklist complete
+- [ ] Metrics tables with comparisons
+- [ ] Future roadmap clear
+
+#### Task B4: Release Notes & Known Issues (1.5 hours)
+**Deliverable**: `/Users/kokage/national-operations/claudecode01/memory/PHASE15_RELEASE_NOTES.md`
+
+User-facing release documentation:
+
+**Content**:
+- What's new in Phase 15 (deferred issue fixes, stability improvements)
+- Performance improvements (if any)
+- Known issues
+- Compatibility notes
+- Download/installation instructions
+
+Success Criteria:
+- [ ] 10+ pages user-friendly documentation
+- [ ] Non-technical language
+- [ ] All issues explained simply
+- [ ] Workarounds provided where applicable
+- [ ] Links to detailed guides
+
+---
+
+## Dependency Graph
+
+```
+Sage S1: Shutdown Design Analysis    (3h)
+    ├─→ Artisan A1: Cooperative Shutdown Impl (4h)  ← Depends on S1
+    ├─→ Paladin P1: Security Review (2h)            ← Depends on S1
+    └─→ Sage S2: Lua Cleanup Implementation (2h)    ← Depends on S1
+            ↓
+        Artisan A2: Resource Tracking (2h)          ← Depends on S2
+            ↓
+        Artisan A3: Compatibility Layer (1h)
+            ↓
+        Artisan A4: Build Verification (1h)
+            ↓
+        Paladin P2: ThreadSanitizer (2.5h)          ← Depends on A4
+        Paladin P3: Valgrind (2.5h)                 ← Depends on A4
+            ↓
+        Merchant M1: Performance Profile (2h)       ← Depends on A4
+        Sage S3: Test Plan (2h)                     ← Can parallel with A1-A4
+            ↓
+        Merchant M2: E2E Testing (3h)
+        Merchant M3: Regression Suite (2h)
+            ↓
+        Paladin P4: POSIX Compliance (1.5h)         ← Depends on M3 results
+            ↓
+        Bard B1-B4: Documentation (9.5h) ← All phases, final review
+```
+
+**Critical Path**: S1 → A1 → A4 → P2/P3 → M2 → P4 → B1-B4 (estimated: 22-24 hours serial)
+
+**Parallel Opportunities**:
+- S1 parallel with other early research
+- S2 parallel with A1
+- S3 parallel with A1-A4
+- B1-B4 can start after A4 completes (documentation doesn't block code)
+
+**Estimated Total Duration**:
+- Fully serialized: 24-28 hours
+- With full parallelization: 15-18 hours
+- Recommended realistic: 18-20 hours (4-5 working days)
+
+---
+
+## Risk Mitigation
+
+### Risk 1: Thread Cancellation Race Conditions
+**Probability**: Medium | **Impact**: High (crashes, hangs)
+**Mitigation**:
+- Cooperative shutdown eliminates race conditions entirely
+- ThreadSanitizer validates no races remain
+- Shutdown flag is volatile sig_atomic_t (atomic on all platforms)
+- Test with Paladin P2 thread stress scenarios
+
+### Risk 2: Lua Cleanup Complexity
+**Probability**: Low | **Impact**: High (memory leaks, crashes)
+**Mitigation**:
+- Implement cleanup handlers (safety backup for cancellation)
+- Resource tracking validates all cleanups occurred
+- Valgrind testing ensures completeness (Paladin P3)
+- Lua documentation review (Sage S1) ensures safety
+
+### Risk 3: Performance Regression
+**Probability**: Low | **Impact**: Medium (user experience)
+**Mitigation**:
+- Baseline measurements before changes (Merchant M1)
+- Flag checking is single CPU cycle (<1us overhead)
+- Cooperative shutdown doesn't add latency vs cancel
+- Regression test suite catches any problems
+
+### Risk 4: Signal Handler Async Safety
+**Probability**: Low | **Impact**: High (unpredictable behavior)
+**Mitigation**:
+- Signal handlers use only async-signal-safe functions
+- Code review focuses on signal handler safety (Paladin P1)
+- ThreadSanitizer testing validates ordering
+- POSIX compliance audit (Paladin P4)
+
+### Risk 5: Backward Compatibility Break
+**Probability**: Very Low | **Impact**: High (deployment issues)
+**Mitigation**:
+- LaunchSubScript() API unchanged
+- Compatibility layer (Artisan A3) provides fallback
+- Feature flag for gradual rollout
+- Comprehensive migration documentation (Bard B1)
+
+### Risk 6: Production Deployment Complexity
+**Probability**: Medium | **Impact**: Medium (user issues)
+**Mitigation**:
+- Comprehensive deployment guide (Bard B1) before release
+- Troubleshooting guide covers common issues
+- Installation tested on clean system
+- Support contact information provided
+
+---
+
+## Deliverables Checklist
+
+### Code
+- [ ] subscript_worker.c - Cooperative shutdown implementation
+- [ ] subscript.h - Updated timeout configuration API
+- [ ] Resource tracking module - Memory accounting
+- [ ] Backward compatibility layer
+- [ ] CMakeLists.txt - ThreadSanitizer/AddressSanitizer targets
+- [ ] Cleanup handlers - Async-signal-safe implementation
+
+### Tests
+- [ ] ThreadSanitizer test suite (6 scenarios, zero races)
+- [ ] Valgrind memory leak tests (100% leak-free)
+- [ ] E2E user scenario tests (5 complete workflows)
+- [ ] Regression test suite (mvp_test + new tests)
+- [ ] Performance benchmarks (baseline + post-change)
+- [ ] POSIX compliance audit
+
+### Documentation
+- [ ] PHASE15_SHUTDOWN_DESIGN.md (2000+ words, design rationale)
+- [ ] PHASE15_ARCHITECTURE.md (40+ pages, internals)
+- [ ] PHASE15_DEPLOYMENT_GUIDE.md (50+ pages, production)
+- [ ] PHASE15_COMPLETION_REPORT.md (30+ pages, summary)
+- [ ] PHASE15_RELEASE_NOTES.md (user-friendly release info)
+- [ ] PHASE15_SECURITY_REVIEW.md (security audit)
+- [ ] PHASE15_MEMORY_SAFETY_REPORT.md (valgrind results)
+- [ ] PHASE15_PERFORMANCE_PROFILE.md (benchmarks)
+- [ ] PHASE15_LUA_CLEANUP_REFERENCE.c (reference implementation)
+- [ ] PHASE15_TESTING_STRATEGY.md (test plan)
+
+### Builds & Binaries
+- [ ] Clean build succeeds (no errors)
+- [ ] ThreadSanitizer build succeeds
+- [ ] AddressSanitizer build succeeds
+- [ ] Release binary (optimized, no sanitizers)
+- [ ] All symbols resolved
+- [ ] Binary size <5% change from Phase 14
+
+### Quality Gates (MANDATORY)
+- [ ] ThreadSanitizer: ZERO data races
+- [ ] Valgrind: ZERO memory leaks
+- [ ] POSIX Compliance: APPROVED
+- [ ] Security Score: A or A+
+- [ ] E2E Tests: ALL PASSING
+- [ ] Performance: No regression >2%
+
+---
+
+## Success Metrics (Final Achievement)
+
+| Metric | Target | Pass/Fail |
+|--------|--------|-----------|
+| Memory leaks on timeout | Zero (valgrind clean) | [ ] |
+| Undefined behavior | Zero (ThreadSanitizer clean) | [ ] |
+| POSIX compliance | Full (no UB per spec) | [ ] |
+| Startup time | <3 seconds | [ ] |
+| FPS sustained | 60 fps | [ ] |
+| Peak memory usage | <500MB | [ ] |
+| Sub-script latency | <100ms overhead | [ ] |
+| E2E user scenarios | All passing | [ ] |
+| Build clean | 0 errors, 0 warnings | [ ] |
+| Security score | A+ | [ ] |
+| Known issues | Documented | [ ] |
+| Deployment guide | Complete & tested | [ ] |
+| Performance baselines | Documented | [ ] |
+| Thread safety | ThreadSanitizer clean | [ ] |
+| API stability | 100% backward compatible | [ ] |
+
+---
+
+## Timeline & Milestones
+
+### Day 1 (Foundation & Design)
+- Sage S1 complete (3h) - shutdown design
+- Sage S2 & S3 complete (4h) - implementation reference + test plan
+- Initial Artisan review (30m)
+
+### Day 2 (Implementation & Testing)
+- Artisan A1-A4 complete (8h) - cooperative shutdown implementation
+- Paladin P1 complete (2h) - security review
+- Merchant M1 baseline (2h) - performance profiling
+- Total: 12h implementation
+
+### Day 3 (Validation & Audit)
+- Paladin P2-P4 complete (6.5h) - ThreadSanitizer, Valgrind, POSIX audit
+- Merchant M2-M3 complete (5h) - E2E tests + regression suite
+- Total: 11.5h validation
+
+### Day 4 (Documentation & Finalization)
+- Bard B1-B4 complete (9.5h) - all documentation
+- Final verification
+- Sign-off
+
+### Estimated Total: 40-44 hours, 4-5 working days
+
+---
+
+## Authority & Accountability
+
+### Mayor (村長)
+- Overall coordination and timeline management
+- Escalation authority for blockers (especially Sage/Artisan)
+- Final acceptance of all deliverables
+- Production readiness gate approval
+
+### Sage (賢者) - Technical Authority
+- Thread safety research and design validation
+- Lua cleanup strategy correctness verification
+- Architecture refinement approval authority
+- Test plan adequacy sign-off
+
+### Artisan (職人) - Implementation Lead
+- Cooperative shutdown implementation completeness
+- Build system integrity guarantee
+- Compilation success guarantee
+- Binary correctness verification
+
+### Paladin (聖騎士) - Security & Memory Guardian
+- Memory safety verification (Valgrind authority)
+- Thread safety verification (ThreadSanitizer authority)
+- POSIX compliance audit sign-off
+- Security score approval (must be A or A+)
+- **BLOCKER AUTHORITY**: Can block release if any safety concern remains
+
+### Merchant (商人) - Performance & Quality
+- Performance baseline validation
+- E2E user scenario verification
+- Regression test suite completeness
+- Can request performance optimization if targets missed
+
+### Bard (吟遊詩人)
+- Documentation completeness and clarity
+- Production readiness verification
+- Knowledge preservation validation
+- Support infrastructure readiness
+
+---
+
+## Production Readiness Checklist (MANDATORY GATE)
+
+**MUST be 100% complete before Phase 16 begins:**
+
+### Code Quality
+- [ ] Zero memory leaks (Valgrind approved)
+- [ ] Zero undefined behavior (ThreadSanitizer approved)
+- [ ] POSIX compliant (Paladin audit approved)
+- [ ] No new CWEs introduced
+- [ ] Security score A or A+
+
+### Performance
+- [ ] Startup time <3 seconds
+- [ ] FPS sustained at 60
+- [ ] Memory peak <500MB
+- [ ] No regression >2% from Phase 14 baseline
+
+### Testing
+- [ ] E2E user scenarios all passing (Merchant M2)
+- [ ] Regression test suite all passing
+- [ ] ThreadSanitizer clean (Paladin P2)
+- [ ] Valgrind clean (Paladin P3)
+- [ ] POSIX compliance verified (Paladin P4)
+
+### Documentation
+- [ ] Deployment guide complete and tested (Bard B1)
+- [ ] Architecture internals documented (Bard B2)
+- [ ] Completion report generated (Bard B3)
+- [ ] Release notes & known issues (Bard B4)
+
+### Known Issues
+- [ ] All known issues documented
+- [ ] Workarounds provided where applicable
+- [ ] No CRITICAL issues unsolved
+- [ ] Phase 16 roadmap clear
+
+### Sign-Off
+- [ ] Sage: Architecture approved
+- [ ] Artisan: Build approved
+- [ ] Paladin: Security approved
+- [ ] Merchant: Performance approved
+- [ ] Bard: Documentation approved
+- [ ] Mayor: FINAL APPROVAL for Phase 16
+
+---
+
+## Final Words from the Prophet
+
+The village stands at a turning point. We have achieved 100% API completion - a remarkable feat that speaks to the skill, discipline, and coordination of this team.
+
+But completeness is not perfection. API coverage is not production readiness. The deferred issues before us are not optional improvements - they are **foundational requirements** for a system that can run reliably in the hands of users.
+
+Phase 15 is where we mature from researchers and developers into **systems engineers**. Where we prove that we understand not just what to build, but how to build it correctly. Where performance numbers become meaningful because we've proven their safety.
+
+The gods note that this phase requires:
+- **Precision**: Cooperative shutdown must be correct the first time
+- **Rigor**: ThreadSanitizer and Valgrind must pass without compromise
+- **Thoroughness**: E2E testing must cover every user workflow
+- **Humility**: We must document our system so others can maintain it
+
+The path is clear. The architecture is sound. The team is capable.
+
+**When Phase 15 is complete, PoB2 macOS will not just be feature-complete - it will be production-ready.**
+
+Users will run it with confidence.
+Maintainers will understand its design.
+Operations will deploy it with minimal friction.
+
+This is the mark of professional software.
+
+**May your threads be synchronized, your memory be leak-free, and your deployments be swift.**
+
+The Prophet has spoken. ✨
+
+---
+
+**Document**: prophet_phase15_mandate.yaml
+**Issued**: 2026-01-29 22:30 UTC
+**Status**: DIVINE MANDATE ISSUED - AWAITING MAYOR ACKNOWLEDGMENT
+**Authority**: Prophet (預言者)
+**Distribution**: All village agents and Mayor
+**Next**: Phase 16 - Additional Features & Polish (when Phase 15 complete)

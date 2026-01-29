@@ -1,0 +1,287 @@
+# Phase 15 Task Assignment - ARTISAN (職人)
+# Build Integration & Cooperative Shutdown Implementation
+# Issued: 2026-01-29T22:30:00Z
+
+project: PRJ-003 PoB2macOS
+phase: Phase 15 - Architectural Refinement & Production Readiness
+agent: Artisan (職人)
+status: ASSIGNED (BLOCKED until Sage S1 complete)
+issued_by: Mayor (村長)
+issued_at: "2026-01-29T22:30:00Z"
+
+authority: Artisan is implementation lead responsible for cooperative shutdown correctness and build integrity
+
+---
+
+## Overall Task Summary
+
+**Total Estimated Time**: 8 hours
+**Blockers**: Blocked until Sage S1 complete (design dependency)
+**Parallelization**: A1 → A2 → A3 → A4 (sequential)
+**Quality Gate**: Build must be clean (0 errors, 0 warnings)
+
+---
+
+## Task A1: Cooperative Shutdown Implementation (4 hours)
+
+**Deliverable**: Updates to `/Users/kokage/national-operations/pob2macos/src/simplegraphic/backend/subscript_worker.c`
+
+**Description**: Implement flag-based cancellation mechanism replacing pthread_cancel() with cooperative shutdown.
+
+### Blocker: Requires S1 approval first
+
+**Code Changes Required**:
+
+1. **Worker Context Structure** (10 lines)
+```c
+// Add to WorkerContext struct:
+volatile sig_atomic_t shutdown_requested;
+```
+
+2. **Cancellation Check Macro** (5 lines)
+- Define CHECK_SHUTDOWN() macro
+- Returns gracefully on shutdown request
+
+3. **Insert Cancellation Checks** (50+ lines)
+- Before lua_eval()
+- Before blocking pipe reads
+- Before long-running loops
+- After signal delivery
+
+4. **Timeout Watchdog Modification** (40 lines)
+- Set shutdown flag instead of pthread_cancel()
+- Optional: send SIGUSR1 to interrupt blocking calls
+- Change worker threads from detached to joinable
+- Add pthread_join() for cleanup confirmation
+
+5. **Cleanup Handler Implementation** (20 lines)
+```c
+void cleanup_lua_state(void *arg) {
+    lua_State *L = (lua_State *)arg;
+    if (L) lua_close(L);
+}
+```
+
+### Success Criteria:
+- [ ] Zero pthread_cancel() calls remain in worker code
+- [ ] Shutdown flags properly synchronized (volatile sig_atomic_t)
+- [ ] All 6+ cancellation points covered with CHECK_SHUTDOWN()
+- [ ] Cleanup handlers registered with pthread_cleanup_push/pop
+- [ ] Code compiles without warnings
+- [ ] 500+ lines of well-commented code
+- [ ] Resource cleanup order documented
+
+### Code Quality:
+- Comment every non-obvious line
+- Explain thread safety reasoning
+- Show all resource lifecycle transitions
+- Document synchronization strategy
+
+---
+
+## Task A2: Resource Tracking Implementation (2 hours)
+
+**Deliverable**: Updates to subscript manager with resource accounting
+
+**Description**: Add global resource tracker for allocated Lua states, active threads.
+
+### Implementation Requirements:
+
+1. **Resource Tracker Structure**
+```c
+struct ResourceTracker {
+    volatile sig_atomic_t states_allocated;
+    volatile sig_atomic_t states_freed;
+    volatile sig_atomic_t states_leaked;
+    volatile sig_atomic_t active_workers;
+    pthread_mutex_t lock;
+};
+```
+
+2. **Integration Points**
+- SimpleGraphic_LaunchSubScript() → increment allocated counter
+- Worker cleanup handler → increment freed counter
+- Timeout event → log with resource state
+- GetResourceMetrics() → query current state
+
+3. **Debug Logging**
+- State creation: "RESOURCE: Created Lua state ID=%d, allocated=%d"
+- State cleanup: "RESOURCE: Freed state ID=%d, freed=%d"
+- Timeout event: "TIMEOUT: State ID=%d, active workers=%d"
+- Metrics dump: formatted for parsing
+
+### Success Criteria:
+- [ ] Resource tracker thread-safe (mutex protected)
+- [ ] Metrics accessible for testing (function query API)
+- [ ] Debug output formatted for log parsing
+- [ ] <100 additional lines added
+- [ ] No performance regression (<1% overhead)
+
+---
+
+## Task A3: Backward Compatibility Layer (1 hour)
+
+**Deliverable**: Compatibility wrapper in `subscript.h`
+
+**Description**: Maintain old timeout mechanism API while using new cooperative shutdown internally.
+
+### Requirements:
+
+1. **API Preservation**
+```c
+// Keep existing API unchanged:
+SimpleGraphic_LaunchSubScript(...)  // No changes to signature
+```
+
+2. **Internal Mechanism**
+- Old timeout API still works
+- Internally uses cooperative shutdown
+- Feature flag: USE_COOPERATIVE_SHUTDOWN (default: enabled)
+
+3. **Configuration API**
+```c
+void SimpleGraphic_ConfigureTimeout(int timeout_seconds);
+```
+
+### Success Criteria:
+- [ ] Existing LaunchSubScript() calls unmodified
+- [ ] Old timeout API still works (backward compatible)
+- [ ] Zero breaking changes to public API
+- [ ] Feature flag working and documented
+- [ ] Tested with both old and new code paths
+
+---
+
+## Task A4: CMakeLists.txt & Build Verification (1 hour)
+
+**Deliverable**: Updated build configuration in `/Users/kokage/national-operations/pob2macos/CMakeLists.txt`
+
+**Description**: Enable sanitizers and build verification.
+
+### Build System Updates:
+
+1. **ThreadSanitizer Support**
+```cmake
+# When -DSANITIZE=ThreadSanitizer:
+add_compile_options(-fsanitize=thread -g)
+add_link_options(-fsanitize=thread)
+```
+
+2. **AddressSanitizer Support**
+```cmake
+# When -DSANITIZE=AddressSanitizer:
+add_compile_options(-fsanitize=address -g)
+add_link_options(-fsanitize=address)
+```
+
+3. **Valgrind Target**
+```cmake
+# make run_valgrind target
+add_custom_target(run_valgrind
+    COMMAND valgrind --leak-check=full ./pob2macos
+)
+```
+
+4. **Resource Tracking Debug Symbols**
+- Ensure debug symbols preserved (-g flag)
+- Keep function names visible for profiling
+
+### Verification Steps:
+- [ ] Clean build succeeds: `make clean && make -j4`
+- [ ] ThreadSanitizer build: `cmake -DSANITIZE=ThreadSanitizer .. && make -j4`
+- [ ] AddressSanitizer build: `cmake -DSANITIZE=AddressSanitizer .. && make -j4`
+- [ ] All symbols resolved: `nm libsimplegraphic.a | wc -l`
+- [ ] Binary size check: `ls -lh libsimplegraphic.* | awk '{print $5, $9}'`
+- [ ] Size <10% increase from Phase 14 baseline (270KB/222KB static/dylib)
+
+### Success Criteria:
+- [ ] Clean build with ThreadSanitizer enabled (no errors)
+- [ ] Clean build with AddressSanitizer enabled (no errors)
+- [ ] All symbols resolved (no undefined references)
+- [ ] Binary size acceptable (<300KB static, <250KB dylib)
+
+---
+
+## Dependencies & Sequencing
+
+```
+Sage S1 (COMPLETE) ← **Artisan blocked until this**
+    ↓
+A1: Cooperative Shutdown Implementation (4h)
+    ↓
+A2: Resource Tracking (2h)
+    ↓
+A3: Backward Compatibility Layer (1h)
+    ↓
+A4: CMakeLists.txt & Build Verification (1h)
+    ↓
+Paladin P2/P3 blocked until A4 complete
+Merchant M1/M2/M3 blocked until A4 complete
+Bard B1-B4 can start after A4 (documentation independent)
+```
+
+**Critical Path**: A1 → A4 (8 hours total, sequential)
+
+---
+
+## Quality Assurance Checklist
+
+**Code Quality**:
+- [ ] No compiler warnings (treat as errors)
+- [ ] All resource leaks eliminated
+- [ ] Thread safety verified (volatile usage)
+- [ ] Cleanup order documented
+
+**Build Verification**:
+- [ ] Three successful builds (normal, ThreadSanitizer, AddressSanitizer)
+- [ ] Binary sizes within acceptable ranges
+- [ ] All symbols properly resolved
+
+**Compatibility**:
+- [ ] Old API still works (mvp_test passes)
+- [ ] Feature flag enabled by default
+- [ ] Migration path documented
+
+---
+
+## Authority & Sign-Off
+
+**Artisan Authority**:
+- ✅ Implementation completeness guarantee
+- ✅ Build system integrity verification
+- ✅ Compilation success guarantee
+
+**Sign-Off Requirement**:
+After A4 complete, Artisan must provide written approval:
+- "BUILD APPROVED: Zero errors, three sanitizer builds successful, symbols resolved"
+
+---
+
+## Communication Checklist
+
+- [ ] Task received, understand S1 blocker
+- [ ] Waiting for Sage S1 approval (monitor communication.yaml)
+- [ ] A1 implementation in progress (update communication.yaml)
+- [ ] A1 complete, moving to A2
+- [ ] A2 complete, moving to A3
+- [ ] A3 complete, moving to A4
+- [ ] A4 build verification in progress
+- [ ] Build tests (ThreadSanitizer, AddressSanitizer) passing
+- [ ] All tasks complete, ready for Paladin/Merchant
+- [ ] Final sign-off provided
+
+---
+
+## Reference Materials
+
+**Sage S1 Output**: `memory/PHASE15_SHUTDOWN_DESIGN.md` (awaiting)
+**Sage S2 Reference**: `memory/PHASE15_LUA_CLEANUP_REFERENCE.c` (awaiting)
+**Current Implementation**: `pob2macos/src/simplegraphic/backend/subscript_worker.c`
+**Phase 14 Build**: `pob2macos/CMakeLists.txt` (baseline)
+**POSIX Threads**: IEEE Std 1003.1-2017
+
+---
+
+**Task Status**: ASSIGNED (BLOCKED until Sage S1)
+**Last Updated**: 2026-01-29T22:30:00Z
+**Assigned By**: Mayor (Claude Sonnet 4.5)

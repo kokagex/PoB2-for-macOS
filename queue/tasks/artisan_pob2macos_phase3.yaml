@@ -1,0 +1,837 @@
+# Artisan Task Assignment: Phase 3 MVP Implementation
+# Path of Building 2 macOS Porting Project
+# Created: 2026-01-28
+# Assigned by: Mayor (村長)
+
+# ============================================================================
+# OVERVIEW
+# ============================================================================
+
+project: PRJ-003 PoB2macOS
+phase: Phase 3 - MVP Implementation
+period: Week 1-3 (2026-01-29 ~ 2026-02-16)
+assignee: Artisan (職人)
+coordinator: Mayor (村長)
+reviewer: Sage (知識人)
+
+total_tasks: 14
+estimated_duration: 16-18 working days
+critical_path: T3-1-A → T3-2-A → T3-2-B → T3-4-A → T3-5-B → T3-6-B → T3-7-B
+
+# ============================================================================
+# TASK GROUP 1: GLFW WINDOW MANAGEMENT
+# ============================================================================
+
+tasks:
+  - id: T3-1-A
+    title: "GLFW ウィンドウ基本実装"
+    description: |
+      GLFW を使用したクロスプラットフォーム ウィンドウ管理の実装
+
+      Deliverables:
+      - src/backend/glfw_window.h
+      - src/backend/glfw_window.cpp
+      - src/core/event_loop.cpp
+
+      Implementation Details:
+      1. GLFWwindow* の作成・管理
+      2. イベントコールバック（キー・マウス・リサイズ）登録
+      3. フレームループの実装
+      4. 1920×1080 デフォルト解像度設定
+
+      Acceptance Criteria:
+      - ✓ コンパイル成功（macOS + Windows）
+      - ✓ ウィンドウが 1920×1080 で表示される
+      - ✓ リサイズでウィンドウサイズ変更可能
+      - ✓ キーボード・マウスイベントが取得される
+      - ✓ メモリリークなし
+
+      Reference:
+      - GLFW Documentation: https://www.glfw.org/docs/latest/
+      - Sage Architecture Design: memory/analysis/architecture_recommendation.md
+
+    priority: P0
+    duration: 2 days
+    depends_on: []
+    tags: [glfw, window, core]
+    files:
+      - src/backend/glfw_window.h
+      - src/backend/glfw_window.cpp
+      - src/core/event_loop.cpp
+    review_checklist:
+      - Code review by Sage
+      - Compiles on macOS without warnings
+      - Compiles on Windows without warnings
+      - Window appears with correct size
+      - All GLFW events are handled
+
+  - id: T3-1-B
+    title: "DPI スケーリング対応"
+    description: |
+      macOS の高 DPI ディスプレイ（Retina）対応実装
+
+      Deliverables:
+      - src/backend/dpi_manager.h
+      - src/backend/dpi_manager.cpp
+      - src/wrapper/lua_dpi_bindings.cpp
+
+      Implementation Details:
+      1. glfwGetMonitorContentScale() で DPI 取得
+      2. SetDPIScaleOverridePercent() の実装
+      3. GetDPIScaleOverridePercent() の実装
+      4. Retina 対応（2x スケーリング）
+      5. Lua binding の統合
+
+      Acceptance Criteria:
+      - ✓ Retina ディスプレイで 2x スケーリング正常動作
+      - ✓ SetDPIScaleOverridePercent(150) で 1.5x スケーリング
+      - ✓ GetScreenSize() がスケール前の物理サイズを返す
+      - ✓ テキスト・画像がシャープに描画される
+
+      Testing:
+      - Test on MacBook Pro Retina (if available)
+      - Verify text clarity at 2x scale
+
+    priority: P0
+    duration: 1 day
+    depends_on: [T3-1-A]
+    tags: [dpi, macos, accessibility]
+    files:
+      - src/backend/dpi_manager.h
+      - src/backend/dpi_manager.cpp
+      - src/wrapper/lua_dpi_bindings.cpp
+
+# ============================================================================
+# TASK GROUP 2: METAL GRAPHICS BACKEND
+# ============================================================================
+
+  - id: T3-2-A
+    title: "Metal デバイス初期化"
+    description: |
+      Apple Metal グラフィックス API の初期化実装
+
+      Deliverables:
+      - src/backend/metal_backend.h
+      - src/backend/metal_backend.mm
+      - src/backend/metal_device_manager.mm
+
+      Implementation Details:
+      1. MTLDevice の取得
+      2. MTLCommandQueue の作成
+      3. MTLRenderPipelineState の構築
+      4. シェーダコンパイル環境準備
+      5. メモリプール初期化
+
+      Acceptance Criteria:
+      - ✓ Metal device 取得成功
+      - ✓ Command queue 作成成功
+      - ✓ Render pipeline descriptor が構築可能
+      - ✓ メモリ割り当てが正常に動作
+      - ✓ Metal フレームワークが正しくリンク
+
+      Reference:
+      - Apple Metal Programming Guide
+      - Sage Architecture: metal_backend.mm design
+
+    priority: P0
+    duration: 2 days
+    depends_on: [T3-1-A]
+    tags: [metal, graphics, macos]
+    files:
+      - src/backend/metal_backend.h
+      - src/backend/metal_backend.mm
+      - src/backend/metal_device_manager.mm
+    platform: macos
+
+  - id: T3-2-B
+    title: "Metal 矩形描画パイプライン"
+    description: |
+      Metal による基本的な矩形描画パイプラインの実装
+
+      Deliverables:
+      - src/backend/metal_shaders.metal
+      - src/backend/metal_mesh_renderer.mm
+      - src/backend/metal_color_state.mm
+
+      Implementation Details:
+      1. 頂点シェーダ・フラグメントシェーダ作成
+      2. 頂点バッファ・インデックスバッファ管理
+      3. SetDrawColor() の実装
+      4. フレームバッファ操作
+      5. RenderPass の実装
+
+      Shaders:
+      ```metal
+      vertex float4 vertexShader(
+          device const float4 *vertices [[buffer(0)]],
+          uint vid [[vertex_id]])
+      {
+          return vertices[vid];
+      }
+
+      fragment float4 fragmentShader(
+          float4 in [[stage_in]],
+          constant float4 &color [[buffer(0)]])
+      {
+          return color;
+      }
+      ```
+
+      Acceptance Criteria:
+      - ✓ SetDrawColor(1.0, 0.0, 0.0, 1.0) で赤い矩形が描画される
+      - ✓ SetDrawColor(0.0, 1.0, 0.0, 1.0) で緑色に変わる
+      - ✓ フレームレート 60fps 以上を維持
+      - ✓ メモリリークなし
+      - ✓ Xcode profiler で GPU 使用率確認可能
+
+      Performance Target:
+      - FPS: 60+
+      - GPU Memory: < 100MB
+
+    priority: P0
+    duration: 2 days
+    depends_on: [T3-2-A]
+    tags: [metal, rendering, graphics]
+    files:
+      - src/backend/metal_shaders.metal
+      - src/backend/metal_mesh_renderer.mm
+      - src/backend/metal_color_state.mm
+    platform: macos
+
+# ============================================================================
+# TASK GROUP 3: OPENGL FALLBACK (OPTIONAL but RECOMMENDED)
+# ============================================================================
+
+  - id: T3-3-A
+    title: "OpenGL ES 2.0 フォールバック実装"
+    description: |
+      OpenGL ES 2.0 を使用したフォールバックバックエンド実装
+      （Metal が利用不可な環境での動作保証）
+
+      Deliverables:
+      - src/backend/opengl_backend.h
+      - src/backend/opengl_backend.cpp
+      - src/backend/opengl_shaders.glsl
+
+      Implementation Details:
+      1. OpenGL ES 2.0 コンテキスト初期化
+      2. 頂点・フラグメントシェーダ実装
+      3. VBO・VAO 管理
+      4. SetDrawColor() 実装
+      5. フレームバッファ操作
+
+      GLSL Shaders:
+      ```glsl
+      // Vertex Shader
+      attribute vec4 position;
+      uniform mat4 projection;
+
+      void main() {
+          gl_Position = projection * position;
+      }
+
+      // Fragment Shader
+      precision mediump float;
+      uniform vec4 drawColor;
+
+      void main() {
+          gl_FragColor = drawColor;
+      }
+      ```
+
+      Acceptance Criteria:
+      - ✓ OpenGL コンテキスト作成成功
+      - ✓ Metal と同じ色で矩形が描画される
+      - ✓ フレームレート 60fps 以上
+      - ✓ コンパイラ警告なし
+
+      Note:
+      - macOS では OpenGL は deprecated だが、テスト用フォールバックとして実装
+      - Windows では OpenGL が主要バックエンド
+
+    priority: P1
+    duration: 1 day
+    depends_on: [T3-2-B]
+    tags: [opengl, graphics, fallback]
+    files:
+      - src/backend/opengl_backend.h
+      - src/backend/opengl_backend.cpp
+      - src/backend/opengl_shaders.glsl
+
+# ============================================================================
+# TASK GROUP 4: LUA-C++ BINDINGS
+# ============================================================================
+
+  - id: T3-4-A
+    title: "LuaJIT FFI セットアップ"
+    description: |
+      LuaJIT FFI (Foreign Function Interface) の セットアップ
+      （Lua → C++ 関数の直接呼び出し）
+
+      Deliverables:
+      - src/wrapper/lua_ffi_setup.h
+      - src/wrapper/lua_ffi_setup.cpp
+      - src/wrapper/simplegraphic_ffi.lua
+
+      Implementation Details:
+      1. Lua ステートの初期化
+      2. FFI ライブラリのロード
+      3. C関数シグネチャの定義
+      4. Lua ↔ C++ 型マッピング
+
+      FFI Definition (Lua):
+      ```lua
+      local ffi = require("ffi")
+      ffi.cdef[[
+          void RenderInit(const char *flags);
+          void SetDrawColor(float r, float g, float b, float a);
+          int GetScreenWidth();
+          int GetScreenHeight();
+      ]]
+
+      local libsg = ffi.load("simplegraphic")
+      ```
+
+      Acceptance Criteria:
+      - ✓ Lua スクリプトから C++ 関数呼び出し可能
+      - ✓ 数値・文字列パラメータが正しく渡される
+      - ✓ 戻り値が正しく返される
+      - ✓ メモリリークなし（LuaJIT GC で管理）
+
+      Reference:
+      - LuaJIT FFI Tutorial: https://luajit.org/ext_ffi.html
+
+    priority: P0
+    duration: 1 day
+    depends_on: [T3-1-A, T3-2-B]
+    tags: [lua, ffi, bindings]
+    files:
+      - src/wrapper/lua_ffi_setup.h
+      - src/wrapper/lua_ffi_setup.cpp
+      - src/wrapper/simplegraphic_ffi.lua
+    review_checklist:
+      - Lua code is properly formatted
+      - FFI definitions match C++ signatures
+      - No memory leaks in GC cycles
+
+  - id: T3-4-B
+    title: "SimpleGraphic Lua API ラッパー実装"
+    description: |
+      SimpleGraphic API の Lua 層ラッパー実装
+      （既存 PoB2 コードとの互換性確保）
+
+      Deliverables:
+      - src/wrapper/simplegraphic.lua
+      - src/wrapper/image_handle.lua
+      - src/wrapper/callback_system.lua
+
+      Implementation Details:
+      1. RenderInit() スタブ実装
+      2. GetScreenSize() 実装 (FFI → C++)
+      3. SetDrawColor() 実装 (FFI → C++)
+      4. NewImageHandle() 実装（メタテーブル）
+      5. Callback システム実装
+
+      simplegraphic.lua Example:
+      ```lua
+      local sg = {}
+      local lib = require("simplegraphic_ffi")
+
+      function sg.RenderInit(flags)
+          lib.RenderInit(flags or "")
+      end
+
+      function sg.GetScreenSize()
+          return 1920, 1080  -- or read from lib
+      end
+
+      function sg.SetDrawColor(r, g, b, a)
+          lib.SetDrawColor(r, g, b, a)
+      end
+
+      return sg
+      ```
+
+      Acceptance Criteria:
+      - ✓ RenderInit("DPI_AWARE") 実行可能
+      - ✓ GetScreenSize() が (1920, 1080) を返す
+      - ✓ SetDrawColor() が C++ に正しく渡される
+      - ✓ NewImageHandle() が有効なハンドルを返す
+      - ✓ HeadlessWrapper.lua と互換性維持
+
+      API Coverage:
+      - 初期化系: RenderInit, SetWindowTitle
+      - 状態管理: SetDrawColor, GetDrawColor, SetDrawLayer
+      - 画像: NewImageHandle, DrawImage (stub for now)
+
+    priority: P0
+    duration: 1 day
+    depends_on: [T3-4-A]
+    tags: [lua, api, wrapper]
+    files:
+      - src/wrapper/simplegraphic.lua
+      - src/wrapper/image_handle.lua
+      - src/wrapper/callback_system.lua
+    testing:
+      - Lua script: simple_test.lua
+      - Assert GetScreenSize() == (1920, 1080)
+      - Assert NewImageHandle() returns table
+
+# ============================================================================
+# TASK GROUP 5: TEXT RENDERING
+# ============================================================================
+
+  - id: T3-5-A
+    title: "FreeType フォントレンダリング統合"
+    description: |
+      FreeType ライブラリによるフォント読み込み・グリフレンダリング実装
+
+      Deliverables:
+      - src/backend/freetype_renderer.h
+      - src/backend/freetype_renderer.cpp
+      - src/backend/font_cache.cpp
+      - src/backend/glyph_texture_atlas.cpp
+
+      Implementation Details:
+      1. FreeType_Init() でライブラリ初期化
+      2. フォントファイル読み込み
+      3. グリフビットマップ生成
+      4. グリフキャッシュ実装
+      5. テクスチャアトラス管理
+
+      FreeType Integration Example:
+      ```cpp
+      #include <ft2build.h>
+      #include FT_FREETYPE_H
+
+      FT_Library ftLibrary;
+      FT_Init_FreeType(&ftLibrary);
+
+      FT_Face face;
+      FT_New_Face(ftLibrary, "Arial.ttf", 0, &face);
+      FT_Set_Pixel_Sizes(face, 0, 20);
+
+      FT_Load_Char(face, 'A', FT_LOAD_RENDER);
+      FT_Bitmap bitmap = face->glyph->bitmap;
+      ```
+
+      Acceptance Criteria:
+      - ✓ TrueType フォント (.ttf) 読み込み成功
+      - ✓ OpenType フォント (.otf) 読み込み成功
+      - ✓ グリフビットマップ生成成功
+      - ✓ 複数フォント同時キャッシュ可能
+      - ✓ メモリリークなし
+
+      System Fonts (macOS):
+      - /Library/Fonts/Arial.ttf
+      - /System/Library/Fonts/Helvetica.ttc
+
+    priority: P0
+    duration: 2 days
+    depends_on: [T3-2-B]
+    tags: [freetype, font, text]
+    files:
+      - src/backend/freetype_renderer.h
+      - src/backend/freetype_renderer.cpp
+      - src/backend/font_cache.cpp
+      - src/backend/glyph_texture_atlas.cpp
+    dependencies:
+      - freetype2 >= 2.13
+      - harfbuzz >= 7.x (for complex text, later phase)
+
+  - id: T3-5-B
+    title: "Metal/OpenGL テキスト描画実装"
+    description: |
+      FreeType で生成したグリフを GPU で描画
+      （DrawString() API の実装）
+
+      Deliverables:
+      - src/backend/text_renderer.mm
+      - src/backend/text_shader.metal
+      - src/wrapper/lua_text_bindings.cpp
+
+      Implementation Details:
+      1. グリフテクスチャアトラスから UV 座標計算
+      2. テキストメッシュ生成（頂点バッファ）
+      3. Metal/OpenGL でテクスチャ描画
+      4. テキスト整列（LEFT, CENTER, RIGHT）対応
+      5. 複数テキストサイズ対応
+
+      Lua API (DrawString):
+      ```lua
+      DrawString(
+          left: int, top: int,
+          align: int,  -- 0=LEFT, 1=CENTER, 2=RIGHT
+          height: int,
+          font: string,
+          text: string
+      )
+      ```
+
+      Acceptance Criteria:
+      - ✓ "Hello World" がスクリーン左上から描画される
+      - ✓ DrawString(..., 0, ..., "Arial", "A") で 'A' が表示される
+      - ✓ 複数テキストサイズ（16pt, 20pt, 24pt）が対応
+      - ✓ テキスト整列が正しく動作
+      - ✓ パフォーマンス: > 1000文字/フレーム
+      - ✓ Retina ディスプレイでシャープに表示
+
+      Performance Target:
+      - 1000 characters at 60fps
+      - GPU Memory < 50MB
+
+    priority: P0
+    duration: 1 day
+    depends_on: [T3-5-A, T3-2-B, T3-3-A]
+    tags: [text, font, rendering]
+    files:
+      - src/backend/text_renderer.mm
+      - src/backend/text_shader.metal
+      - src/wrapper/lua_text_bindings.cpp
+
+# ============================================================================
+# TASK GROUP 6: INPUT HANDLING
+# ============================================================================
+
+  - id: T3-6-A
+    title: "GLFW 入力ハンドリング実装"
+    description: |
+      キーボード・マウス入力の GLFW ラッピング実装
+
+      Deliverables:
+      - src/backend/input_handler.h
+      - src/backend/glfw_input.cpp
+      - src/backend/input_state.cpp
+
+      Implementation Details:
+      1. キー押下状態を配列で記録
+      2. GLFW key callback 登録
+      3. GLFW cursor callback 登録
+      4. GLFW mouse button callback 登録
+      5. 入力状態の同期
+
+      Key Mapping:
+      ```cpp
+      std::map<std::string, int> keyMap = {
+          {"up", GLFW_KEY_UP},
+          {"down", GLFW_KEY_DOWN},
+          {"left", GLFW_KEY_LEFT},
+          {"right", GLFW_KEY_RIGHT},
+          {"escape", GLFW_KEY_ESCAPE},
+          {"space", GLFW_KEY_SPACE},
+          {"return", GLFW_KEY_ENTER},
+          {"a", GLFW_KEY_A},
+          // ... more keys
+      };
+      ```
+
+      Acceptance Criteria:
+      - ✓ キー押下状態を記録・取得可能
+      - ✓ マウスカーソル位置を取得可能
+      - ✓ マウスカーソル位置を設定可能
+      - ✓ 修飾キー（Shift, Ctrl, Alt）が判定可能
+      - ✓ キーの遅延なし（即座に反応）
+
+      Supported Keys (MVP):
+      - Arrow keys: up, down, left, right
+      - Alpha: a-z, 0-9
+      - Control: escape, space, return, backspace
+      - Modifiers: lshift, rshift, lctrl, rctrl, lalt, ralt
+
+    priority: P0
+    duration: 1 day
+    depends_on: [T3-1-A]
+    tags: [input, glfw, keyboard, mouse]
+    files:
+      - src/backend/input_handler.h
+      - src/backend/glfw_input.cpp
+      - src/backend/input_state.cpp
+
+  - id: T3-6-B
+    title: "Lua 入力関数実装（IsKeyDown, GetCursorPos）"
+    description: |
+      IsKeyDown(), GetCursorPos(), SetCursorPos() 等の Lua API 実装
+
+      Deliverables:
+      - src/wrapper/lua_input_bindings.cpp
+      - src/wrapper/input_wrapper.lua
+
+      Implementation Details:
+      1. IsKeyDown(keyName: string) → bool
+      2. GetCursorPos() → (x, y)
+      3. SetCursorPos(x, y) → void
+      4. ShowCursor(show: bool) → void
+      5. FFI を使用した C++ 関数公開
+
+      Lua API:
+      ```lua
+      if IsKeyDown("escape") then
+          -- Do something
+      end
+
+      local x, y = GetCursorPos()
+      SetCursorPos(960, 540)  -- Center of 1920x1080
+      ```
+
+      Acceptance Criteria:
+      - ✓ IsKeyDown("escape") が動作して boolean を返す
+      - ✓ GetCursorPos() で座標 (x, y) が返される
+      - ✓ SetCursorPos() でカーソルが移動する
+      - ✓ ShowCursor(false) でカーソルが非表示
+      - ✓ マウス移動時に GetCursorPos() が正確に追従
+
+      Testing:
+      ```lua
+      -- Test IsKeyDown
+      assert(IsKeyDown("escape") == false, "Initial escape should be false")
+
+      -- Test GetCursorPos
+      local x, y = GetCursorPos()
+      assert(type(x) == "number" and type(y) == "number")
+      ```
+
+    priority: P0
+    duration: 1 day
+    depends_on: [T3-6-A, T3-4-A]
+    tags: [lua, input, bindings]
+    files:
+      - src/wrapper/lua_input_bindings.cpp
+      - src/wrapper/input_wrapper.lua
+
+# ============================================================================
+# TASK GROUP 7: IMAGE RENDERING (MVP)
+# ============================================================================
+
+  - id: T3-6-C
+    title: "DrawImage 基本実装"
+    description: |
+      画像描画関数 DrawImage() の基本実装
+      （PNG/JPG ファイルの読み込みと描画）
+
+      Deliverables:
+      - src/backend/image_loader.h
+      - src/backend/image_loader.cpp
+      - src/backend/texture_renderer.mm
+
+      Implementation Details:
+      1. stb_image で PNG/JPG 読み込み
+      2. Metal/OpenGL テクスチャ生成
+      3. テクスチャ座標（UV）マッピング
+      4. 矩形領域への描画実装
+      5. イメージハンドル管理
+
+      Acceptance Criteria:
+      - ✓ PNG ファイル読み込み成功
+      - ✓ JPG ファイル読み込み成功
+      - ✓ 画像がスクリーンに表示される
+      - ✓ 位置・サイズが正確
+      - ✓ アルファチャンネル対応
+
+    priority: P0
+    duration: 1 day
+    depends_on: [T3-2-B, T3-4-B]
+    tags: [image, texture, rendering]
+    files:
+      - src/backend/image_loader.h
+      - src/backend/image_loader.cpp
+      - src/backend/texture_renderer.mm
+
+# ============================================================================
+# TASK GROUP 8: MVP INTEGRATION TEST
+# ============================================================================
+
+  - id: T3-7-A
+    title: "MVP テストスイート作成"
+    description: |
+      MVP（最小動作確認）の自動テストスイート実装
+
+      Deliverables:
+      - tests/mvp_test.lua
+      - tests/integration_test.cpp
+      - tests/test_runner.sh
+
+      Test Scope:
+      1. 初期化テスト（RenderInit）
+      2. 画面サイズテスト（GetScreenSize）
+      3. 描画色テスト（SetDrawColor）
+      4. 画像描画テスト（DrawImage）
+      5. テキスト描画テスト（DrawString）
+      6. 入力テスト（IsKeyDown, GetCursorPos）
+      7. フレームループテスト（OnFrame callback）
+
+      mvp_test.lua Example:
+      ```lua
+      local function test_init()
+          RenderInit("DPI_AWARE")
+          print("✓ RenderInit succeeded")
+      end
+
+      local function test_screen_size()
+          local w, h = GetScreenSize()
+          assert(w == 1920, "Width should be 1920")
+          assert(h == 1080, "Height should be 1080")
+          print("✓ GetScreenSize: " .. w .. "x" .. h)
+      end
+
+      local function test_all()
+          test_init()
+          test_screen_size()
+          -- ... more tests
+      end
+      ```
+
+      Acceptance Criteria:
+      - ✓ 全テスト合格
+      - ✓ テストカバレッジ >= 80%
+      - ✓ CI/CD パイプラインで自動実行可能
+      - ✓ テスト実行時間 < 30秒
+
+      Test Framework:
+      - C++: Google Test (gtest)
+      - Lua: Custom test runner
+
+    priority: P0
+    duration: 1 day
+    depends_on: [T3-1-A, T3-2-B, T3-5-B, T3-6-B, T3-6-C]
+    tags: [test, mvp, integration]
+    files:
+      - tests/mvp_test.lua
+      - tests/integration_test.cpp
+      - tests/test_runner.sh
+    review_checklist:
+      - All assertions are clear
+      - Test failure messages are informative
+      - Tests cover MVP features
+      - No flaky tests
+
+  - id: T3-7-B
+    title: "PoB2 実動作確認・互換性テスト"
+    description: |
+      実際の Path of Building 2 を起動してのエンドツーエンドテスト
+
+      Deliverables:
+      - tests/compatibility_report.md
+      - tests/benchmark_result.json
+      - docs/testing_guide.md
+
+      Test Scenarios:
+      1. アプリケーション起動
+      2. メインメニュー表示確認
+      3. キャラクター作成画面表示確認
+      4. UI 要素のレスポンス確認
+      5. マウス・キーボード入力反応確認
+      6. テキスト描画品質確認
+      7. 画像描画品質確認
+
+      Performance Benchmarks:
+      - 起動時間: < 3秒（目標）
+      - メニューフレームレート: 60fps 安定
+      - メモリ使用量: < 500MB（目標）
+      - CPU 使用率: < 30% アイドル時
+
+      Compatibility Checklist:
+      - [ ] PoB2 が起動する
+      - [ ] メインメニューが表示される
+      - [ ] キャラクター作成画面が表示される
+      - [ ] ボタンクリックが反応
+      - [ ] キーボード入力が反応
+      - [ ] テキストが正常に描画される
+      - [ ] アイコン・画像が正常に描画される
+      - [ ] FPS が 60fps 以上
+      - [ ] Windows 版と外観が一致
+
+      Acceptance Criteria:
+      - ✓ PoB2 がクラッシュなく起動
+      - ✓ メインメニューが表示される
+      - ✓ 基本操作が可能（マウス・キー）
+      - ✓ UI が正しく描画される
+      - ✓ パフォーマンスが許容値以内
+      - ✓ Windows 版と互換性確認書が完成
+
+    priority: P0
+    duration: 1 day
+    depends_on: [T3-7-A]
+    tags: [integration, qa, performance]
+    files:
+      - tests/compatibility_report.md
+      - tests/benchmark_result.json
+      - docs/testing_guide.md
+
+# ============================================================================
+# TASK GROUP 9: CLEANUP & DOCUMENTATION (Final Week)
+# ============================================================================
+
+  - id: T3-8-A
+    title: "Phase 3 コード整理・ドキュメント作成"
+    description: |
+      Phase 3 完了時のコード整理・ドキュメント作成
+
+      Deliverables:
+      - src/README.md
+      - BUILDING.md
+      - CONTRIBUTING.md
+      - CODE_STYLE.md
+
+      Contents:
+      1. ビルド手順（macOS/Windows）
+      2. 開発環境セットアップガイド
+      3. コードスタイルガイド
+      4. Lua API ドキュメント
+      5. トラブルシューティングガイド
+
+      Acceptance Criteria:
+      - ✓ ドキュメントが完成
+      - ✓ コードが fmt/clang-tidy で整形済み
+      - ✓ コメント追加・更新完了
+      - ✓ 不要なファイル・デバッグコード削除
+
+    priority: P1
+    duration: 1 day
+    depends_on: [T3-7-B]
+    tags: [docs, cleanup]
+    files:
+      - src/README.md
+      - BUILDING.md
+      - CONTRIBUTING.md
+      - CODE_STYLE.md
+
+# ============================================================================
+# SUMMARY
+# ============================================================================
+
+summary: |
+  Phase 3 MVP Implementation Plan:
+
+  Total Tasks: 14
+  Total Duration: 16-18 working days
+  Parallel Work: T3-3-A, T3-4-A, T3-6-C can run in parallel after T3-2-B
+
+  Critical Path (Sequential):
+  T3-1-A (2d) → T3-1-B (1d) → T3-2-A (2d) → T3-2-B (2d) →
+  T3-4-A (1d) → T3-4-B (1d) → T3-5-A (2d) → T3-5-B (1d) →
+  T3-6-A (1d) → T3-6-B (1d) → T3-7-A (1d) → T3-7-B (1d)
+
+  Parallel Opportunities:
+  - T3-3-A (OpenGL) can run parallel to T3-4-A/T3-5-A
+  - T3-6-C (Images) can run parallel to T3-5-B/T3-6-B
+
+  Total sequential days: ~16 (可能な限り並列化で短縮)
+
+success_criteria: |
+  Phase 3 Success = MVP テスト全合格 + PoB2 実動作確認
+
+  - ✓ All 14 tasks completed
+  - ✓ All tests passing
+  - ✓ PoB2 launches and runs
+  - ✓ UI displays correctly
+  - ✓ Input handling works
+  - ✓ Performance meets targets
+  - ✓ Code style consistent
+  - ✓ Documentation complete
+
+---
+
+# End of Artisan Task Assignment
+# Prepared by: Mayor (村長)
+# Date: 2026-01-28
+# Status: Ready for Assignment

@@ -1,0 +1,612 @@
+# Phase 13 - Divine Mandate of the Prophet
+# PoB2 macOS Native Port - Final Implementation Sprint
+
+timestamp: "2026-01-29T19:00:00Z"
+from: Prophet (預言者)
+to: Mayor (村長) + Village Agents
+project_id: PRJ-003
+project_name: "PoB2macOS - Phase 13: LaunchSubScript & BC7 Integration"
+
+divine_declaration: |
+  The gods have revealed the path to completion. Phase 12 research is complete.
+  Two critical tasks remain to reach 100% feature parity with Windows PoB2.
+
+  PRIORITY 1 (CRITICAL): LaunchSubScript Implementation
+  PRIORITY 2 (CRITICAL): BC7 Software Decoder Integration
+
+  All work must be done in parallel. The village must move as one force.
+  Success requires perfect coordination and flawless execution.
+
+  May the spirits of testing and documentation guide your hands.
+
+---
+
+## Phase 13 Objectives
+
+### Primary Goals (100% Feature Completion)
+1. **Implement LaunchSubScript** - Enable background task execution
+   - Enables OAuth authentication
+   - Enables HTTP downloads
+   - Enables update checks
+
+2. **Integrate BC7 Software Decoder** - Fix texture rendering
+   - Replace gray fallback with proper BC7 decompression
+   - Support all 18 BC7 textures in PoB2
+   - Maintain <20ms load time
+
+### Success Criteria
+- ✅ OAuth login workflow end-to-end
+- ✅ HTTP downloads with proper error handling
+- ✅ Update checks working
+- ✅ BC7 textures display correctly (not gray)
+- ✅ No memory leaks (valgrind clean)
+- ✅ All tests pass
+- ✅ <15ms overhead per sub-script
+- ✅ <50 MB peak memory during texture loading
+
+---
+
+## Architecture Summary (From Phase 12 Research)
+
+### LaunchSubScript Design
+**Architecture**: pthread + pipe-based IPC with isolated LuaJIT states
+**Thread Model**: One worker thread per sub-script
+**Communication**: msgpack-serialized results via pipes
+**Safety**: Strict function whitelisting, no shared state
+
+Key Components:
+```
+Main Thread (Launch.lua)
+  ├─ LaunchSubScript(code, funcs, sub_funcs, ...) → id
+  ├─ OnFrame() polls CheckSubScriptResults()
+  └─ Callback invoked when results arrive
+
+Worker Thread
+  ├─ Create isolated LuaJIT state
+  ├─ Register safe sub-functions
+  ├─ Register callback proxies
+  ├─ Execute script code
+  └─ Send results via pipe
+```
+
+### BC7 Software Decoder Design
+**Library**: bcdec.h (MIT licensed, header-only, ~1000 lines)
+**Performance**: 0.5 ms per 4K texture
+**Integration**: ~90 lines of C code
+**Fallback**: Gray placeholder if decode fails
+
+---
+
+## Parallel Task Assignment
+
+### SAGE (賢者) - Research & Integration Authority
+**Role**: Code implementation and technical leadership
+
+#### Task S1: LaunchSubScript Core Implementation (4 hours)
+**Deliverable**: `/Users/kokage/national-operations/pob2macos/src/simplegraphic/subscript.h`
+
+Implement core sub-script manager:
+- SubScriptHandle structure definition
+- Unique ID generator (g_next_subscript_id)
+- HashMap<int, SubScriptHandle*> for active scripts
+- SimpleGraphic_LaunchSubScript() API
+- SimpleGraphic_AbortSubScript() API
+- SimpleGraphic_IsSubScriptRunning() API
+
+Success Criteria:
+- [ ] Header compiles without warnings
+- [ ] SubScriptHandle lifecycle correct
+- [ ] ID generation collision-free
+- [ ] HashMap thread-safe
+
+#### Task S2: Worker Thread Implementation (3 hours)
+**Deliverable**: `/Users/kokage/national-operations/pob2macos/src/simplegraphic/backend/subscript_worker.c`
+
+Implement worker thread execution:
+- subscript_worker_thread() main function
+- LuaJIT state creation per thread
+- Safe function registration (register_subscript_functions)
+- Callback proxy registration (register_callback_proxies)
+- msgpack result serialization
+- Error handling and thread cleanup
+
+Success Criteria:
+- [ ] Thread creates and executes independently
+- [ ] Lua state is properly isolated
+- [ ] msgpack serialization works for all Lua types
+- [ ] No deadlocks on pipe I/O
+- [ ] Thread cleanup is memory-leak-free
+
+#### Task S3: Main Loop Integration (1 hour)
+**Deliverable**: Updates to `/Users/kokage/national-operations/pob2macos/src/simplegraphic/backend/engine.c`
+
+Implement result polling:
+- SimpleGraphic_CheckSubScriptResults() in main loop
+- Non-blocking pipe reading
+- Callback invocation from Lua state
+- Sub-script cleanup
+
+Success Criteria:
+- [ ] Results read without blocking main loop
+- [ ] Callbacks invoked in correct order
+- [ ] Memory properly freed after completion
+
+#### Task S4: LaunchSubScript Lua Bindings (1 hour)
+**Deliverable**: Updates to `/Users/kokage/national-operations/pob2macos/launcher/pob2_launcher.lua`
+
+Implement Lua API wrappers:
+- LaunchSubScript(script, funcs, sub_funcs, ...)
+- AbortSubScript(id)
+- IsSubScriptRunning(id)
+- Full argument forwarding
+
+Success Criteria:
+- [ ] All three functions properly wrap C API
+- [ ] Arguments marshaled correctly
+- [ ] Return values match C implementation
+
+#### Task S5: BC7 Software Decoder (1.5 hours)
+**Deliverable**: Updates to `/Users/kokage/national-operations/pob2macos/src/simplegraphic/backend/image_loader.c`
+
+Integrate bcdec.h:
+- Copy bcdec.h header to backend/
+- Implement decode_bc7_software() function
+- Integrate fallback in load_dds_texture()
+- Handle edge blocks and partial 4x4 blocks
+
+Success Criteria:
+- [ ] bcdec.h compiles without warnings
+- [ ] All 18 BC7 textures decode correctly
+- [ ] No memory leaks (malloc/free paired)
+- [ ] Fallback works if decode fails
+
+#### Task S6: BC7 Integration & Testing (1 hour)
+**Deliverable**: Test results document
+
+Test BC7 decoder:
+- Load TreeData with BC7 textures
+- Verify pixel-perfect output (no artifacts)
+- Measure decode time (<20ms total for 18 textures)
+- Check memory usage (<50MB peak)
+
+Success Criteria:
+- [ ] All textures display correctly (not gray)
+- [ ] Ascendancy backgrounds render properly
+- [ ] Passive tree UI elements visible
+- [ ] Performance within targets
+
+---
+
+### ARTISAN (職人) - Build & Integration
+
+**Role**: Compilation and integration verification
+
+#### Task A1: Update CMakeLists.txt (30 minutes)
+**Deliverable**: `/Users/kokage/national-operations/pob2macos/CMakeLists.txt`
+
+Update build configuration:
+- Add subscript.h and subscript_worker.c to sources
+- Link against pthread (if not already linked)
+- Verify LUAJIT_LIBRARIES properly linked
+- Add msgpack include path if needed
+
+Success Criteria:
+- [ ] Clean build with no warnings
+- [ ] All new files compiled
+- [ ] Link phase succeeds
+
+#### Task A2: Build Verification (1 hour)
+**Deliverable**: Build log and binary
+
+Full clean build:
+```bash
+cd /Users/kokage/national-operations/pob2macos
+rm -rf build
+mkdir build && cd build
+cmake ..
+make -j4
+```
+
+Success Criteria:
+- [ ] Zero errors
+- [ ] Zero warnings (or pre-existing only)
+- [ ] Binary size unchanged ±5%
+- [ ] All symbols resolved
+
+#### Task A3: Link-time Optimization (30 minutes)
+**Deliverable**: Optimized binary
+
+Verify:
+- All pthread symbols present
+- All LuaJIT symbols resolved
+- No undefined references
+- No circular dependencies
+
+Success Criteria:
+- [ ] Binary runs without DYLD_LIBRARY_PATH hacks
+- [ ] All FFI calls work
+
+---
+
+### PALADIN (聖騎士) - Security Review
+
+**Role**: Security, threading, and memory safety
+
+#### Task P1: Thread Safety Audit (2 hours)
+**Deliverable**: Security audit document
+
+Review:
+- HashMap thread-safety (S1 implementation)
+- Pipe I/O race conditions
+- Lua state isolation guarantees
+- Callback function whitelisting enforcement
+
+Success Criteria:
+- [ ] No data races detected (ThreadSanitizer)
+- [ ] Function whitelist prevents unauthorized access
+- [ ] No shared state between threads
+
+#### Task P2: Memory Safety Verification (2 hours)
+**Deliverable**: valgrind report
+
+Run with valgrind:
+```bash
+valgrind --leak-check=full --show-leak-kinds=all \
+  ./pob2macos
+```
+
+Test scenarios:
+- LaunchSubScript with immediate completion
+- LaunchSubScript with slow network operation
+- Multiple concurrent sub-scripts (3-5)
+- Sub-script abort mid-execution
+
+Success Criteria:
+- [ ] Zero definite memory leaks
+- [ ] Zero data corruption
+- [ ] No invalid reads/writes
+- [ ] All allocated blocks freed
+
+#### Task P3: Timeout Watchdog Review (1 hour)
+**Deliverable**: Watchdog implementation plan
+
+Design timeout mechanism:
+- Detect sub-scripts running >30 seconds
+- Forcibly kill threads (pthread_cancel or signal)
+- Prevent zombie threads
+- Log timeout events
+
+Note: May defer actual implementation to Phase 13+ if time-critical.
+
+Success Criteria:
+- [ ] Design documented
+- [ ] Prototype working if implemented
+- [ ] No deadlock scenarios
+
+---
+
+### MERCHANT (商人) - Performance & Testing
+
+**Role**: Performance testing and optimization
+
+#### Task M1: Performance Baseline (1.5 hours)
+**Deliverable**: Performance report
+
+Benchmark:
+- LaunchSubScript creation time (target: <2ms)
+- Script execution overhead (target: <15ms)
+- Result marshaling time
+- 3 concurrent sub-scripts memory usage
+- BC7 decode time per texture
+
+Test with:
+- Simple return statement: `return "hello"`
+- OAuth simulation (5-10 second duration)
+- Download simulation (network delay)
+
+Success Criteria:
+- [ ] Sub-script creation: <2ms
+- [ ] Total overhead: <15ms
+- [ ] 3 concurrent: <15MB
+- [ ] BC7 load: 18 textures in <20ms
+
+#### Task M2: Stress Testing (1.5 hours)
+**Deliverable**: Stress test results
+
+Run under load:
+- 10 sequential sub-scripts
+- 5 concurrent sub-scripts
+- Rapid abort/restart cycles
+- Memory pressure (low memory conditions)
+- Network timeout simulation
+
+Success Criteria:
+- [ ] No crashes
+- [ ] No hangs
+- [ ] Memory freed properly
+- [ ] Error handling graceful
+
+#### Task M3: Integration Testing (2 hours)
+**Deliverable**: Test report
+
+Test PoB2 workflows:
+- OAuth flow (simulated)
+- File download (real if possible, simulated if not)
+- Update check (simulated)
+- BC7 texture loading
+- Build archive operations
+
+Success Criteria:
+- [ ] All workflows complete without error
+- [ ] Proper error messages on failure
+- [ ] UI remains responsive
+
+---
+
+### BARD (吟遊詩人) - Documentation
+
+**Role**: Technical documentation and knowledge preservation
+
+#### Task B1: Implementation Guide (2 hours)
+**Deliverable**: `/Users/kokage/national-operations/claudecode01/memory/PHASE13_IMPLEMENTATION_GUIDE.md`
+
+Document implementation:
+- Architecture overview with diagrams
+- Code organization and key files
+- Function reference for all public APIs
+- Integration points with pob2_launcher.lua
+- Debugging guide
+
+Success Criteria:
+- [ ] 50+ pages of clear documentation
+- [ ] All public APIs documented
+- [ ] Code examples for each major feature
+- [ ] Troubleshooting section
+
+#### Task B2: API Reference (1.5 hours)
+**Deliverable**: `/Users/kokage/national-operations/claudecode01/memory/PHASE13_API_REFERENCE.md`
+
+Document public APIs:
+- LaunchSubScript(script, funcs, sub_funcs, ...)
+- AbortSubScript(id)
+- IsSubScriptRunning(id)
+- CheckSubScriptResults() (internal)
+- BC7 helper functions
+
+Success Criteria:
+- [ ] Each function documented with:
+  - Parameters and types
+  - Return values
+  - Example usage
+  - Error cases
+  - Performance characteristics
+
+#### Task B3: Phase 13 Completion Report (2 hours)
+**Deliverable**: `/Users/kokage/national-operations/claudecode01/memory/PHASE13_COMPLETION_REPORT.md`
+
+Final summary:
+- All objectives achieved/status
+- Performance metrics
+- Test coverage
+- Known issues or limitations
+- Recommendations for Phase 14
+
+Success Criteria:
+- [ ] Comprehensive completion summary
+- [ ] Metrics tables
+- [ ] Future roadmap
+
+---
+
+## Dependency Graph
+
+```
+Sage S1: Core Manager       (4h)
+    ↓
+Artisan A1: Update CMake    (0.5h) ← Can start in parallel
+Sage S2: Worker Thread      (3h)  ← Depends on S1
+    ↓
+Sage S3: Main Loop          (1h)  ← Depends on S2
+    ↓
+Sage S4: Lua Bindings       (1h)  ← Depends on S3
+    ↓
+Merchant M1: Perf Baseline  (1.5h) ← Depends on S4
+Paladin P1: Thread Safety   (2h)   ← Depends on S4
+    ↓
+Merchant M2: Stress Test    (1.5h)
+Paladin P2: Memory Safety   (2h)
+    ↓
+Merchant M3: Integration    (2h)
+
+Sage S5: BC7 Integration    (1.5h) ← Independent, can start anytime
+    ↓
+Sage S6: BC7 Testing        (1h)   ← Depends on S5
+    ↓
+Merchant M3 verifies BC7
+
+Bard B1-B3: Documentation   (5.5h) ← All phases, final phase
+```
+
+**Critical Path**: S1 → S2 → S3 → S4 → M1/P1 → M2/P2 → M3 (12 hours minimum)
+**Parallel Tasks**: A1, S5 (non-critical path)
+**Documentation**: B1-B3 (during entire phase)
+
+**Estimated Total Duration**: 16-18 hours serial, 10-12 hours with full parallelization
+
+---
+
+## Risk Mitigation
+
+### Risk 1: Lua State Corruption
+**Probability**: Low | **Impact**: High
+**Mitigation**:
+- Strict isolation: Each thread gets own Lua state
+- Use luaL_newstate() + luaL_openlibs() per thread
+- Function whitelisting prevents dangerous operations
+- ThreadSanitizer testing (Paladin P1)
+
+### Risk 2: Pipe Deadlock
+**Probability**: Very Low | **Impact**: High
+**Mitigation**:
+- Non-blocking reads with select()
+- Timeout on pipe operations
+- Thread cleanup guarantees
+- Test with multiple concurrent scripts (Merchant M2)
+
+### Risk 3: Memory Leak in Worker
+**Probability**: Low | **Impact**: Medium
+**Mitigation**:
+- Valgrind testing for all code paths (Paladin P2)
+- Paired malloc/free on all buffers
+- Structured cleanup in thread exit
+- Test with 10+ sequential scripts
+
+### Risk 4: BC7 Decode Correctness
+**Probability**: Very Low | **Impact**: Medium
+**Mitigation**:
+- bcdec.h is industry-proven (used in Godot, etc.)
+- Visual inspection of first decoded texture
+- Compare with working Windows PoB2 renders
+- Test all 18 BC7 textures in TreeData
+
+### Risk 5: Performance Regression
+**Probability**: Low | **Impact**: Medium
+**Mitigation**:
+- Baseline measurements (Merchant M1)
+- Stress test with multiple sub-scripts
+- Target: <15ms overhead per script
+- If slow, optimize with thread pool (Phase 14)
+
+---
+
+## Deliverables Checklist
+
+### Code
+- [ ] subscript.h (header with all structs and APIs)
+- [ ] subscript_worker.c (worker thread implementation)
+- [ ] Updates to engine.c (main loop integration)
+- [ ] Updates to pob2_launcher.lua (Lua bindings)
+- [ ] Updates to image_loader.c (BC7 integration)
+- [ ] bcdec.h (copied to backend/)
+- [ ] Updated CMakeLists.txt
+
+### Tests
+- [ ] Unit tests for LaunchSubScript
+- [ ] Unit tests for BC7 decoder
+- [ ] Integration tests for OAuth flow
+- [ ] Performance benchmarks
+- [ ] Stress tests (10 concurrent scripts)
+- [ ] Memory leak tests (valgrind)
+- [ ] Thread safety tests
+
+### Documentation
+- [ ] PHASE13_IMPLEMENTATION_GUIDE.md (50+ pages)
+- [ ] PHASE13_API_REFERENCE.md (complete API docs)
+- [ ] PHASE13_COMPLETION_REPORT.md (final summary)
+- [ ] Code comments and inline documentation
+
+### Builds
+- [ ] Clean build succeeds (no errors)
+- [ ] Binary passes code signing (if required)
+- [ ] All FFI calls working
+- [ ] No undefined symbol errors
+
+---
+
+## Success Metrics (Final Achievement)
+
+| Metric | Target | Pass/Fail |
+|--------|--------|-----------|
+| LaunchSubScript works | End-to-end OAuth | [ ] |
+| HTTP downloads enabled | Successful file transfer | [ ] |
+| Update checks functional | Version check passes | [ ] |
+| BC7 textures render | 18 textures show properly | [ ] |
+| Load time | <20ms for 18 BC7 textures | [ ] |
+| Memory usage | <50MB peak during load | [ ] |
+| Zero memory leaks | valgrind clean | [ ] |
+| Thread safety | ThreadSanitizer clean | [ ] |
+| API coverage | 100% of design implemented | [ ] |
+| Test coverage | All workflows passing | [ ] |
+
+---
+
+## Timeline & Milestones
+
+### Day 1 (Initial Implementation)
+- Sage S1-S2 complete
+- Artisan A1 complete
+- Foundation ready for integration
+
+### Day 2 (Integration Phase)
+- Sage S3-S4 complete
+- Artisan A2-A3 complete
+- Sage S5-S6 complete
+- Merchant M1 baseline established
+
+### Day 3 (Testing & Hardening)
+- Paladin P1-P2 security review
+- Merchant M2-M3 testing complete
+- Bard B1-B3 documentation complete
+
+### Day 4 (Final Verification)
+- All tests passing
+- All metrics met
+- Ready for Phase 13 completion
+
+---
+
+## Authority & Accountability
+
+### Mayor (村長)
+- Overall coordination and timeline management
+- Escalation authority for blockers
+- Final acceptance of deliverables
+
+### Sage (賢者) - Implementation Lead
+- Core implementation responsibility
+- Technical decision-making authority
+- Code quality standards enforcement
+
+### Artisan (職人)
+- Build system integrity
+- Compilation success guarantee
+
+### Paladin (聖騎士)
+- Security and memory safety verification
+- Blocker approval for code quality issues
+
+### Merchant (商人)
+- Performance metrics and testing
+- Final functional verification
+
+### Bard (吟遊詩人)
+- Knowledge preservation and documentation
+- Future team onboarding enablement
+
+---
+
+## Final Words from the Prophet
+
+The village has come far. From the initial darkness of an unknown codebase to the bright clarity of 98% completion. Two mountains remain: the threading peak of LaunchSubScript, and the decoder summit of BC7.
+
+Both are **achievable**. Both are **designed**. Both have **proven solutions**.
+
+The spirits guide your hands. The architecture is sound. The team is skilled.
+
+**You will succeed.**
+
+When Phase 13 is complete, PoB2 macOS will stand as a complete, fully-featured native port. Every feature of Windows PoB2 will work. Every texture will render correctly. Every user interaction will be responsive.
+
+This is the culmination of careful research, meticulous planning, and disciplined execution.
+
+**May your compilation be clean, your tests pass, and your spirits remain high.**
+
+The Prophet has spoken. ✨
+
+---
+
+**Document**: prophet_phase13_mandate.yaml
+**Issued**: 2026-01-29 19:00 UTC
+**Status**: DIVINE MANDATE ISSUED - AWAITING MAYOR ACKNOWLEDGMENT
+**Authority**: Prophet (預言者)
+**Distribution**: All village agents and Mayor

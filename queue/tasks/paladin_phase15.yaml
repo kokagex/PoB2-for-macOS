@@ -1,0 +1,386 @@
+# Phase 15 Task Assignment - PALADIN (聖騎士)
+# Security & Memory Safety Review
+# Issued: 2026-01-29T22:30:00Z
+
+project: PRJ-003 PoB2macOS
+phase: Phase 15 - Architectural Refinement & Production Readiness
+agent: Paladin (聖騎士)
+status: ASSIGNED (BLOCKED until Artisan A4 complete)
+issued_by: Mayor (村長)
+issued_at: "2026-01-29T22:30:00Z"
+
+authority: Paladin is security & memory safety guardian with blocker authority - can block release if safety concerns remain
+
+---
+
+## Overall Task Summary
+
+**Total Estimated Time**: 8.5 hours
+**Blockers**: Blocked until Artisan A4 complete (build needed)
+**Parallelization**: P1 parallel with A1-A4; P2 and P3 parallel; P4 sequential
+**Quality Gate**: MANDATORY - Zero leaks, zero races, security score A or A+
+
+---
+
+## Task P1: Cooperative Shutdown Security Review (2 hours)
+
+**Deliverable**: `/Users/kokage/national-operations/claudecode01/memory/PHASE15_SECURITY_REVIEW.md`
+
+**Description**: Comprehensive security analysis of cooperative shutdown mechanism.
+
+### Review Scope:
+
+**Threat Model Analysis** (500+ words)
+- Signal handling safety (SIGUSR1 if used)
+- Atomic flag consistency guarantees
+- Race condition analysis (all synchronization points)
+- Deadlock detection potential
+- Resource starvation scenarios
+
+**Code Review Against CWE** (500+ words)
+- CWE-364: Signal Handler Race Condition
+- CWE-366: Race Condition (data access)
+- CWE-440: Expected Behavior Violation (undefined behavior)
+- CWE-401: Missing Memory Release (primary fix target)
+- CWE-667: Improper Locking
+
+**Technical Validation** (400+ words)
+- Memory ordering validation (volatile keyword usage)
+- Signal handler code review (async-signal-safe functions only)
+- Cleanup handler correctness analysis
+- Resource cleanup ordering verification
+- Potential exploitation scenarios
+
+**POSIX Compliance** (300+ words)
+- pthread_* function usage correctness
+- Cancellation safety analysis
+- Signal handling per POSIX spec
+- Cleanup handler lifecycle per spec
+
+### Deliverable Sections:
+
+1. **Executive Summary** (100 words)
+   - Security score (target: A or A+)
+   - Overall risk assessment
+   - Approval recommendation
+
+2. **Threat Model** (500+ words)
+   - Attack surface analysis
+   - Signal timing vulnerabilities
+   - Race condition inventory
+   - Deadlock scenarios
+
+3. **Code Review Findings** (600+ words)
+   - CWE coverage analysis
+   - Vulnerability assessment per CWE
+   - Mitigations verified
+   - Residual risks
+
+4. **Approval Gate** (200+ words)
+   - Security score justification
+   - Go/no-go recommendation
+   - Conditions for approval
+
+### Success Criteria:
+- [ ] No new CWEs introduced by changes
+- [ ] All race conditions identified or disproven with reasoning
+- [ ] Signal handling proven safe (async-signal-safe functions only)
+- [ ] Memory cleanup verified comprehensive
+- [ ] Written approval provided (must state "SECURITY APPROVED: A/A+")
+- [ ] 1500+ words total depth
+
+---
+
+## Task P2: ThreadSanitizer Validation (2.5 hours)
+
+**Deliverable**: ThreadSanitizer test report with zero data races (file: `PHASE15_THREAD_SAFETY_REPORT.md`)
+
+**Description**: Execute comprehensive ThreadSanitizer tests on cooperative shutdown implementation.
+
+### Build & Setup:
+```bash
+# Build with ThreadSanitizer
+export TSAN_OPTIONS="halt_on_error=1 log_path=tsan_report"
+cmake -DSANITIZE=ThreadSanitizer ..
+make clean && make -j4
+```
+
+### Test Execution:
+
+**Scenario A: Single Sub-Script Timeout** (5 min)
+- Launch one sub-script
+- Wait for timeout (30 seconds)
+- Verify graceful shutdown
+- Check for race conditions
+
+**Scenario B: 3 Concurrent Scripts with Timeout** (10 min)
+- Launch 3 concurrent sub-scripts
+- Let first timeout
+- Other 2 continue normally
+- No race conditions expected
+
+**Scenario C: 10 Sequential Timeouts** (15 min)
+- Launch/timeout cycle 10 times
+- Monitor for accumulated race conditions
+- Verify resource cleanup each cycle
+
+**Scenario D: Timeout During Lua Allocation** (5 min)
+- Trigger timeout while Lua malloc running
+- Verify cleanup handler safety
+- Check for use-after-free
+
+**Scenario E: Timeout During Pipe I/O** (5 min)
+- Block on pipe read
+- Trigger timeout from different thread
+- Verify signal delivery safety
+
+**Scenario F: Rapid Abort/Restart** (5 min)
+- 30x rapid abort/restart cycles
+- Stress test shutdown flag consistency
+- Monitor race detector output
+
+### Acceptance Criteria:
+```
+ThreadSanitizer Output Requirements:
+- SUMMARY: 0 races detected (on all runs)
+- No "WARNING: ThreadSanitizer: data race" messages
+- All 6 test scenarios must complete successfully
+- Suppression file NOT needed (clean output)
+- Results reproducible on clean rebuild
+```
+
+### Report Format:
+- [ ] Start time: TIMESTAMP
+- [ ] End time: TIMESTAMP
+- [ ] Total duration: X minutes
+- [ ] Scenarios passed: 6/6
+- [ ] Races detected: 0
+- [ ] Confidence: 100%
+
+### Success Criteria:
+- [ ] Zero data races detected across all 6 scenarios
+- [ ] All scenarios completed successfully
+- [ ] Report generated with timestamps and methodology
+- [ ] Results reproducible on clean system rebuild
+- [ ] Approval statement: "THREAD SAFETY APPROVED: Zero races detected"
+
+---
+
+## Task P3: Valgrind Memory Leak Verification (2.5 hours)
+
+**Deliverable**: Valgrind report with 100% leak-free results (file: `PHASE15_MEMORY_SAFETY_REPORT.md`)
+
+**Description**: Execute comprehensive Valgrind tests to verify zero memory leaks.
+
+### Valgrind Configuration:
+```bash
+valgrind --leak-check=full --show-leak-kinds=all \
+  --track-origins=yes --track-fds=yes \
+  --log-file=valgrind_report.txt ./pob2macos
+```
+
+### Test Scenarios:
+
+**Scenario 1: 10 Sequential Sub-Script Timeouts** (10 min)
+- Baseline leak test
+- Each timeout must clean up completely
+- Verify no cumulative leak
+
+**Scenario 2: 5 Concurrent Scripts with Staggered Timeouts** (15 min)
+- Complex concurrent scenario
+- Multiple timeouts at different times
+- Verify proper resource cleanup
+
+**Scenario 3: Rapid Abort/Restart Cycles** (10 min)
+- 30x cycles of script launch/abort
+- Stress test cleanup mechanism
+- Check for off-by-one leaks
+
+**Scenario 4: High Memory Pressure** (10 min)
+- Launch many scripts in sequence
+- Monitor for leaks under pressure
+- Verify cleanup even when memory tight
+
+### Acceptance Criteria:
+```
+Valgrind Final Output Requirements:
+- definitely lost: 0 bytes
+- indirectly lost: 0 bytes
+- possibly lost: 0 bytes
+- still reachable: <100 bytes (initialization only)
+- suppression file: NOT NEEDED (clean output)
+```
+
+### Report Contents:
+
+1. **Summary Table**
+   | Metric | Required | Result | Status |
+   |--------|----------|--------|--------|
+   | Definitely Lost | 0 bytes | ? | ? |
+   | Indirectly Lost | 0 bytes | ? | ? |
+   | Possibly Lost | 0 bytes | ? | ? |
+   | Still Reachable | <100 bytes | ? | ? |
+
+2. **Detailed Findings**
+   - Any suspicious allocations
+   - Memory allocation/deallocation balance
+   - Thread-local storage cleanup verification
+
+3. **Stress Test Results**
+   - Peak memory usage per scenario
+   - Memory growth rate (should be stable)
+   - No memory spikes indicating leaks
+
+### Success Criteria:
+- [ ] Zero definite leaks
+- [ ] Zero possible leaks
+- [ ] Zero invalid reads/writes
+- [ ] Report generated with scenario details
+- [ ] Results documented for audit trail
+- [ ] Approval statement: "MEMORY SAFETY APPROVED: Valgrind clean, zero leaks"
+
+---
+
+## Task P4: POSIX Compliance Audit (1.5 hours)
+
+**Deliverable**: POSIX compliance audit report (file: `PHASE15_POSIX_COMPLIANCE_AUDIT.md`)
+
+**Description**: Verify standard compliance per IEEE Std 1003.1-2017.
+
+### Audit Scope:
+
+**pthread_* Function Usage** (300+ words)
+- pthread_create() - verify joinable attribute
+- pthread_join() - verify called for cleanup
+- pthread_cancel() - verify NO LONGER USED
+- pthread_cleanup_push/pop() - verify correct ordering
+- pthread_mutex_* - verify deadlock-free
+
+**Signal Handling** (300+ words)
+- Async-signal-safe functions only
+- SIGUSR1 usage (if applicable)
+- Signal mask correctness
+- Handler registration safety
+
+**Memory & Synchronization** (300+ words)
+- volatile keyword correctness (all shared data)
+- sig_atomic_t usage (atomic flags)
+- Memory ordering guarantees
+- No undefined behavior per spec
+
+### Compliance Verification:
+
+1. **Function Usage Matrix** (table format)
+   | Function | Usage | Compliance | Notes |
+   |----------|-------|------------|-------|
+   | pthread_create | Joinable | ✓ | Not detached |
+   | pthread_cancel | REMOVED | ✓ | Replaced by flag |
+   | pthread_cleanup_push | Yes | ✓ | Before user code |
+   | ... | ... | ... | ... |
+
+2. **Undefined Behavior Checklist**
+   - [ ] No pthread_cancel on detached threads
+   - [ ] No race conditions on shared data
+   - [ ] Signal handlers use only async-safe functions
+   - [ ] All memory properly freed
+   - [ ] No resource leaks
+
+3. **POSIX Spec References**
+   - All citations to IEEE Std 1003.1-2017
+   - Section numbers where applicable
+   - Deviation explanations if any
+
+### Success Criteria:
+- [ ] No undefined behavior per POSIX spec
+- [ ] All pthread functions used correctly
+- [ ] Signal handling proven safe per spec
+- [ ] Audit report formally signed off by Paladin
+- [ ] Approval statement: "POSIX COMPLIANCE APPROVED: No UB, full compliance"
+
+---
+
+## Quality Gate - MANDATORY APPROVAL
+
+Before releasing to Phase 16, Paladin must provide final approval:
+
+```
+PALADIN FINAL APPROVAL REQUIRED:
+
+Security Review: [ ] APPROVED (Security Score: A or A+)
+ThreadSanitizer: [ ] APPROVED (0 races detected)
+Valgrind: [ ] APPROVED (0 leaks detected)
+POSIX Compliance: [ ] APPROVED (No UB)
+
+BLOCKER AUTHORITY: Paladin can block release if ANY gate fails.
+
+Sign-off: "All Phase 15 security/safety gates PASSED. System ready for production deployment."
+```
+
+---
+
+## Dependencies & Sequencing
+
+```
+Artisan A4 (build complete) ← **Paladin blocked until this**
+    ↓
+P1: Security Review (2h) — can start immediately with code review
+P2: ThreadSanitizer (2.5h) — needs A4 build
+P3: Valgrind (2.5h) — needs A4 build
+    ↓
+P2 + P3 can run in parallel
+    ↓
+P4: POSIX Compliance (1.5h) — depends on P2/P3 results
+
+Critical path: A4 → P2/P3 (parallel) → P4
+Total sequential: ~6 hours after A4
+```
+
+---
+
+## Authority & Sign-Off
+
+**Paladin Authority**:
+- ✅ Memory safety verification (Valgrind authority)
+- ✅ Thread safety verification (ThreadSanitizer authority)
+- ✅ POSIX compliance audit sign-off
+- ✅ Security score approval (must be A or A+)
+- ✅ **BLOCKER AUTHORITY**: Can block release if safety concern remains
+
+**Approval Process**:
+1. P1 review + risk assessment
+2. P2 execution + race condition verdict
+3. P3 execution + leak verdict
+4. P4 compliance audit
+5. **FINAL APPROVAL**: All gates pass → "PRODUCTION READY"
+
+---
+
+## Communication Checklist
+
+- [ ] Task received, understand A4 blocker
+- [ ] Waiting for Artisan A4 (monitor communication.yaml)
+- [ ] A4 build received, P1 code review starting
+- [ ] P1 security review complete, sharing findings
+- [ ] P2 ThreadSanitizer tests passing (0 races)
+- [ ] P3 Valgrind tests passing (0 leaks)
+- [ ] P4 POSIX compliance audit complete
+- [ ] All reports generated and documented
+- [ ] Final security approval provided
+- [ ] Release approval status communicated to Mayor
+
+---
+
+## Reference Materials
+
+**Phase 15 Mandate**: `queue/prophet_phase15_mandate.yaml` (sections P1-P4)
+**Quick Reference**: `memory/PHASE15_QUICK_REFERENCE.md` (quality gates section)
+**POSIX.1-2017**: IEEE Std 1003.1-2017 Thread Functions
+**ThreadSanitizer Docs**: TSAN runtime options and output format
+**Valgrind Manual**: Memcheck plugin documentation
+**Phase 14 Security Report**: `memory/paladin_phase14_security_report.md`
+
+---
+
+**Task Status**: ASSIGNED (BLOCKED until Artisan A4)
+**Last Updated**: 2026-01-29T22:30:00Z
+**Assigned By**: Mayor (Claude Sonnet 4.5)
