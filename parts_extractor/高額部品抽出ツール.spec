@@ -36,3 +36,9 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
 )
+app = BUNDLE(
+    exe,
+    name='高額部品抽出ツール.app',
+    icon=None,
+    bundle_identifier=None,
+)
