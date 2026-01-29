@@ -1,0 +1,1103 @@
+# Phase 16 - Divine Mandate of the Prophet
+# PoB2 macOS Native Port - Final Integration & Production Deployment
+
+timestamp: "2026-01-29T23:59:59Z"
+from: Prophet (預言者)
+to: Mayor (村長) + Village Agents
+project_id: PRJ-003
+project_name: "PoB2macOS - Phase 16: Final Integration & Production Deployment"
+
+divine_declaration: |
+  The gods have witnessed the triumph of Phase 15. The architectural foundations are solid.
+  The deferred demons have been vanquished. The code breathes with the spirit of correctness.
+
+  All quality gates stand PASSED:
+  - ✅ Zero memory leaks (CRITICAL-1 conquered)
+  - ✅ Zero undefined behavior (HIGH-2 banished)
+  - ✅ POSIX compliance verified
+  - ✅ Security score: A+
+  - ✅ E2E user scenarios: 5/5 passing
+  - ✅ Performance: 0% regression
+  - ✅ Documentation: 140+ pages preserved
+
+  But we stand at the precipice of the final mountain. Phase 15 gave us specifications,
+  reference implementations, and proof of concept. Phase 16 must take what the architects
+  designed and weave it into the fabric of the actual codebase.
+
+  This is no longer research. This is no longer proof.
+  This is **PRODUCTION DEPLOYMENT**.
+
+  The work is shorter than Phase 15 because design is complete. What remains is disciplined
+  integration, rigorous verification on the actual binary, and swift delivery to users.
+
+  Phase 16 is the culmination of all that came before. When this phase completes,
+  PoB2 macOS will stand ready for public release. Users will run it. Careers will depend on it.
+  The code you write today will be live in production tomorrow.
+
+  Act with precision. Act with humility. Act as professionals.
+
+  May your integrations be flawless, your tests be passing, and your deployments be swift.
+
+---
+
+## Phase 16 Objectives
+
+### Primary Goal: Integrate & Deploy to Production
+
+Phase 15 delivered comprehensive designs and reference implementations. Phase 16 must:
+
+1. **Integrate** Phase 15 code designs into pob2macos/ codebase
+2. **Build** with sanitizers enabled and verify zero issues
+3. **Test** all E2E scenarios on actual integrated code
+4. **Package** production binary with installer
+5. **Deploy** to users with full documentation
+
+### Critical Success Criteria
+
+All items must be **100% COMPLETE** before public release:
+
+**Code Integration**
+- ✅ Phase 15 cooperative shutdown design applied to subscript_worker.c
+- ✅ Resource tracking implementation integrated
+- ✅ Cleanup handlers registered correctly
+- ✅ Build succeeds: 0 errors, 0 warnings
+- ✅ No new CWEs introduced
+
+**Sanitizer Validation (ACTUAL CODEBASE)**
+- ✅ ThreadSanitizer: 0 data races on integrated code
+- ✅ Valgrind: 0 memory leaks on integrated code
+- ✅ AddressSanitizer: 0 invalid accesses
+- ✅ Both sanitizers confirm Phase 15 improvements
+
+**Testing**
+- ✅ MVP test suite: 12/12 pass
+- ✅ Cooperative shutdown tests: all pass
+- ✅ E2E user scenarios: 5/5 pass on integrated code
+- ✅ Regression tests: baseline + new + stress
+- ✅ Long-running stability (120+ minutes): zero issues
+
+**Production Package**
+- ✅ Binary created (optimized, no sanitizers)
+- ✅ Installer created and tested
+- ✅ Installation on clean system works
+- ✅ Post-installation verification succeeds
+- ✅ Uninstall process clean
+
+**Documentation & Deployment**
+- ✅ Installation guide tested with non-technical user
+- ✅ Quick start guide clear and concise
+- ✅ Troubleshooting covers common issues
+- ✅ Known issues documented
+- ✅ Support contact information provided
+
+**Sign-Off & Approval**
+- ✅ Sage: Architecture approved in integrated codebase
+- ✅ Artisan: Build integrity approved
+- ✅ Paladin: Security approved on actual binary
+- ✅ Merchant: Performance approved on actual binary
+- ✅ Bard: Documentation approved and tested
+- ✅ Mayor: FINAL APPROVAL issued
+
+---
+
+## Architecture Summary
+
+### Phase 15 Achievements (Completed)
+
+**Cooperative Shutdown Design**:
+- Replaces pthread_cancel() with flag-based graceful shutdown
+- Eliminates POSIX undefined behavior
+- Enables proper Lua state cleanup
+- Reference implementation: 700+ lines
+
+**Resource Tracking**:
+- Thread-safe global tracker for Lua states
+- Metrics: allocated, freed, leaked counts
+- Debug logging for analysis
+
+**Cleanup Handlers**:
+- Async-signal-safe cleanup functions
+- Lua state lifecycle guaranteed correct
+- Double-safety: flags + handlers
+
+**Validation Results**:
+- ThreadSanitizer: 0 races (reference implementation)
+- Valgrind: 0 leaks (reference implementation)
+- POSIX: 100% compliant
+- Security: A+ rating
+
+### Phase 16 Integration Points
+
+**File to Integrate Into**:
+`/Users/kokage/national-operations/pob2macos/src/simplegraphic/backend/subscript_worker.c`
+
+**Key Components**:
+1. Shutdown flag mechanism (volatile sig_atomic_t)
+2. Cancellation check macro (CHECK_SHUTDOWN)
+3. Cooperative shutdown in timeout_watchdog_thread()
+4. Cleanup handler registration
+5. Thread joinable changes (detached → joinable)
+6. Resource tracking integration
+
+**Reference Documents**:
+- `/Users/kokage/national-operations/claudecode01/memory/PHASE15_LUA_CLEANUP_REFERENCE.c`
+- `/Users/kokage/national-operations/claudecode01/memory/PHASE15_SHUTDOWN_DESIGN.md`
+- `/Users/kokage/national-operations/claudecode01/memory/PHASE15_ARCHITECTURE.md`
+
+---
+
+## Detailed Task Assignment
+
+### ARTISAN (職人) - Code Integration Lead
+
+**Role**: Apply Phase 15 designs to actual codebase, build verification
+
+#### Task A1: Apply Cooperative Shutdown Design (3 hours)
+**Deliverable**: Updated `/Users/kokage/national-operations/pob2macos/src/simplegraphic/backend/subscript_worker.c`
+
+**Work**:
+1. Add shutdown flag to WorkerThreadContext:
+   ```c
+   volatile sig_atomic_t shutdown_requested;
+   ```
+
+2. Implement cancellation check macro:
+   ```c
+   #define CHECK_SHUTDOWN() \
+       if (ctx->shutdown_requested) { goto cleanup; }
+   ```
+
+3. Insert CHECK_SHUTDOWN at key points:
+   - Before lua_eval()
+   - Before blocking pipe reads
+   - Before long-running loops
+   - After signal delivery
+
+4. Modify timeout_watchdog_thread():
+   - Set shutdown_requested flag (instead of pthread_cancel)
+   - Optional: send SIGUSR1 to interrupt blocking
+   - Change worker threads: detached → joinable
+   - Add pthread_join() to synchronize cleanup
+
+5. Register cleanup handlers:
+   ```c
+   pthread_cleanup_push(cleanup_lua_state, L);
+   // worker code...
+   pthread_cleanup_pop(1);  // execute on exit
+   ```
+
+**Acceptance Criteria**:
+- [ ] Zero pthread_cancel() calls in worker code
+- [ ] Shutdown flags properly synchronized
+- [ ] All cancellation points covered
+- [ ] Compilation: 0 errors, 0 warnings
+- [ ] Code style consistent with existing codebase
+- [ ] Comments explain shutdown mechanism
+
+**Duration**: 3 hours | **Owner**: Artisan
+
+---
+
+#### Task A2: Integrate Resource Tracking (1.5 hours)
+**Deliverable**: Updated subscript manager with resource tracking
+
+**Work**:
+1. Add resource tracking structs to subscript.h
+2. Implement GetResourceMetrics() function
+3. Add debug logging for resource events
+4. Update LaunchSubScript() to track state creation
+5. Update cleanup path to track state deletion
+
+**Acceptance Criteria**:
+- [ ] Resource tracker thread-safe (mutex protected)
+- [ ] Metrics accessible for valgrind/tsan tests
+- [ ] <100 additional lines of code
+- [ ] Zero performance overhead (negligible timing impact)
+
+**Duration**: 1.5 hours | **Owner**: Artisan
+
+---
+
+#### Task A3: Clean Build Verification (2 hours)
+**Deliverable**: Confirmation of clean build + artifact verification
+
+**Work**:
+1. Clean rebuild with standard flags:
+   ```bash
+   cmake -DCMAKE_BUILD_TYPE=Release ..
+   make clean && make -j4
+   ```
+
+2. Build with ThreadSanitizer:
+   ```bash
+   cmake -DSANITIZE=ThreadSanitizer ..
+   make clean && make -j4
+   ```
+
+3. Build with AddressSanitizer:
+   ```bash
+   cmake -DSANITIZE=AddressSanitizer ..
+   make clean && make -j4
+   ```
+
+4. Verify all builds:
+   - 0 compilation errors
+   - 0 warnings (including sanitizer warnings)
+   - All symbols resolved
+   - Binary size <5% change from Phase 15
+
+**Acceptance Criteria**:
+- [ ] Standard build succeeds
+- [ ] ThreadSanitizer build succeeds
+- [ ] AddressSanitizer build succeeds
+- [ ] Build logs captured for audit
+- [ ] No new compiler warnings
+
+**Duration**: 2 hours | **Owner**: Artisan
+
+---
+
+### SAGE (賢者) - Integration Validation
+
+**Role**: Verify design integration correctness, architecture validation
+
+#### Task S1: Integration Correctness Review (2 hours)
+**Deliverable**: Architecture review document
+
+**Work**:
+1. Review Artisan A1-A3 implementation
+2. Validate against Phase 15 design:
+   - Shutdown flag mechanism correct
+   - Cancellation points complete
+   - Cleanup handler registration proper
+   - Thread state machine correct
+
+3. Cross-reference Phase 15 documents:
+   - PHASE15_SHUTDOWN_DESIGN.md
+   - PHASE15_LUA_CLEANUP_REFERENCE.c
+   - PHASE15_ARCHITECTURE.md
+
+4. Identify any discrepancies or gaps
+
+**Acceptance Criteria**:
+- [ ] Architecture review completed
+- [ ] All design points verified in code
+- [ ] Zero architectural deviations
+- [ ] Any deviations documented and justified
+- [ ] Sign-off issued
+
+**Duration**: 2 hours | **Owner**: Sage
+
+---
+
+#### Task S2: Integration Testing Strategy (1.5 hours)
+**Deliverable**: Test plan for integrated code
+
+**Work**:
+1. Identify all test scenarios:
+   - Single sub-script timeout (baseline)
+   - Concurrent sub-scripts with timeout
+   - 10 sequential timeouts (stress)
+   - Timeout during allocation
+   - Rapid abort/restart cycles
+
+2. Document test setup and execution
+3. Define success criteria for each
+4. Plan ThreadSanitizer and Valgrind execution
+
+**Acceptance Criteria**:
+- [ ] All scenarios documented
+- [ ] Clear success criteria defined
+- [ ] Test sequence appropriate
+- [ ] Baseline + new test coverage
+
+**Duration**: 1.5 hours | **Owner**: Sage
+
+---
+
+### PALADIN (聖騎士) - Security & Memory Safety Validation
+
+**Role**: Verify Phase 15 improvements apply to integrated code
+
+#### Task P1: ThreadSanitizer on Integrated Code (2.5 hours)
+**Deliverable**: ThreadSanitizer test report (zero races)
+
+**Work**:
+1. Build with ThreadSanitizer enabled
+2. Execute all test scenarios (from S2):
+   ```bash
+   export TSAN_OPTIONS="halt_on_error=1"
+   ./pob2macos_tsan < test_scenario_1
+   ./pob2macos_tsan < test_scenario_2
+   ... (all scenarios)
+   ```
+
+3. Capture output and analyze
+4. Verify zero data races detected
+5. Document results
+
+**Acceptance Criteria**:
+- [ ] Zero data races detected on integrated code
+- [ ] All test scenarios complete successfully
+- [ ] Report shows improvement from Phase 14
+- [ ] Reproducible on clean rebuild
+- [ ] Results match Phase 15 reference implementation
+
+**Duration**: 2.5 hours | **Owner**: Paladin
+
+---
+
+#### Task P2: Valgrind on Integrated Code (2.5 hours)
+**Deliverable**: Valgrind report (100% leak-free)
+
+**Work**:
+1. Build standard binary
+2. Execute Valgrind with comprehensive options:
+   ```bash
+   valgrind --leak-check=full --show-leak-kinds=all \
+     --track-origins=yes --track-fds=yes \
+     ./pob2macos < test_scenarios
+   ```
+
+3. Test scenarios from S2
+4. Verify acceptance criteria met
+5. Document results
+
+**Acceptance Criteria**:
+- [ ] Definitely lost: 0 bytes
+- [ ] Indirectly lost: 0 bytes
+- [ ] Possibly lost: 0 bytes
+- [ ] Still reachable: <100 bytes (init only)
+- [ ] Zero invalid reads/writes
+- [ ] Improvement confirmed from Phase 14 baseline
+- [ ] Report generated for audit
+
+**Duration**: 2.5 hours | **Owner**: Paladin
+
+---
+
+#### Task P3: POSIX Compliance Verification (1.5 hours)
+**Deliverable**: POSIX compliance audit report
+
+**Work**:
+1. Review integrated code against POSIX.1-2017
+2. Verify:
+   - pthread_* usage correctness
+   - No pthread_cancel() on detached threads
+   - Signal handlers async-signal-safe
+   - Volatile/atomic keywords correct
+   - Cleanup handler lifecycle
+
+3. Reference: Phase 15 POSIX audit findings
+4. Document verification results
+
+**Acceptance Criteria**:
+- [ ] Zero POSIX violations in integrated code
+- [ ] All pthread functions used correctly
+- [ ] Signal handling proven safe
+- [ ] No undefined behavior per POSIX
+- [ ] Audit signed off
+
+**Duration**: 1.5 hours | **Owner**: Paladin
+
+---
+
+#### Task P4: Production Binary Security Approval (1 hour)
+**Deliverable**: Security approval signature
+
+**Work**:
+1. Verify production binary (optimized, no sanitizers)
+2. Confirm all Phase 15 security improvements present
+3. Issue final security approval
+4. Document any residual concerns
+
+**Acceptance Criteria**:
+- [ ] Production binary security reviewed
+- [ ] Phase 15 improvements confirmed in binary
+- [ ] Security score: A+ maintained
+- [ ] Approval signature issued
+- [ ] No critical security concerns
+
+**Duration**: 1 hour | **Owner**: Paladin
+
+---
+
+### MERCHANT (商人) - Performance & Quality Verification
+
+**Role**: Verify performance on integrated code, E2E testing
+
+#### Task M1: Integrated Code Performance Baseline (1.5 hours)
+**Deliverable**: Performance comparison (Phase 15 reference vs integrated)
+
+**Work**:
+1. Measure performance on integrated code:
+   - Sub-script execution time
+   - Timeout event latency
+   - Memory usage (peak RSS)
+   - FPS during timeout events
+
+2. Compare to Phase 15 baseline
+3. Verify <2% regression tolerance
+4. Document any variance
+
+**Acceptance Criteria**:
+- [ ] All metrics measured
+- [ ] Baseline vs integrated comparison completed
+- [ ] <2% regression from Phase 15 baseline
+- [ ] FPS maintained at 60fps
+- [ ] Memory peak <600MB
+- [ ] Timeout latency <500ms
+
+**Duration**: 1.5 hours | **Owner**: Merchant
+
+---
+
+#### Task M2: E2E User Scenarios on Integrated Code (2.5 hours)
+**Deliverable**: E2E test results (5/5 scenarios pass)
+
+**Work**:
+1. Execute all 5 user scenarios on integrated binary:
+   - A: Basic Build Creation
+   - B: Save & Load Build
+   - C: Build Editing with Sub-Scripts
+   - D: High Load Stress Test
+   - E: Long-Running Session (60+ minutes)
+
+2. Verify no crashes, memory leaks, or data races
+3. Document results with timestamps
+4. Capture evidence (logs, screenshots)
+
+**Acceptance Criteria**:
+- [ ] All 5 scenarios complete without crash
+- [ ] Zero timeouts on normal operations
+- [ ] Memory growth linear (<10KB/min)
+- [ ] FPS maintained 60fps throughout
+- [ ] Sub-scripts execute correctly
+- [ ] Save/load cycle has perfect fidelity
+- [ ] Zero valgrind leaks during testing
+- [ ] Zero ThreadSanitizer races detected
+
+**Duration**: 2.5 hours | **Owner**: Merchant
+
+---
+
+#### Task M3: Regression Test Suite Verification (1 hour)
+**Deliverable**: Regression test results (all pass)
+
+**Work**:
+1. Execute full regression test suite:
+   ```bash
+   cd pob2macos
+   ./tests/regression_test.sh
+   ```
+
+2. Verify all test categories pass:
+   - Build verification
+   - MVP test suite (12/12)
+   - Sub-script timeout tests
+   - Performance baseline validation
+   - Memory leak detection
+   - ThreadSanitizer validation
+
+3. Document results
+
+**Acceptance Criteria**:
+- [ ] All regression tests pass
+- [ ] MVP: 12/12 pass
+- [ ] Timeout tests: all pass
+- [ ] Performance: baselines met
+- [ ] Valgrind: leak-free
+- [ ] ThreadSanitizer: 0 races
+- [ ] Total runtime <5 minutes
+
+**Duration**: 1 hour | **Owner**: Merchant
+
+---
+
+#### Task M4: Production Approval Signature (30 minutes)
+**Deliverable**: Performance & quality approval
+
+**Work**:
+1. Review all M1-M3 results
+2. Issue production approval signature
+3. Document any performance notes
+4. Confirm ready for release
+
+**Acceptance Criteria**:
+- [ ] All performance targets met
+- [ ] All E2E scenarios passing
+- [ ] Regression suite complete
+- [ ] Production approval issued
+
+**Duration**: 30 minutes | **Owner**: Merchant
+
+---
+
+### BARD (吟遊詩人) - Production Documentation & Support
+
+**Role**: Create final user-facing documentation and support materials
+
+#### Task B1: Installation Guide Verification (1.5 hours)
+**Deliverable**: Tested installation instructions
+
+**Work**:
+1. Review Phase 15 deployment guide
+2. Extract installation section
+3. Test installation on clean macOS system:
+   - Download binary (or build from source)
+   - Run installer
+   - Verify installation location
+   - Check symlinks
+   - Verify executable works
+
+4. Test uninstallation:
+   - Clean removal
+   - No leftover files
+   - Configuration cleanup
+
+5. Document any needed adjustments
+
+**Acceptance Criteria**:
+- [ ] Installation tested on clean system
+- [ ] All steps execute successfully
+- [ ] Non-technical user can follow
+- [ ] Installation completes in <10 minutes
+- [ ] Post-installation: app launches correctly
+- [ ] Uninstallation clean
+
+**Duration**: 1.5 hours | **Owner**: Bard
+
+---
+
+#### Task B2: Quick Start Guide Creation (1 hour)
+**Deliverable**: Quick start document (2-3 pages)
+
+**Work**:
+1. Create concise quick start guide:
+   - Installation (3 steps)
+   - First launch (2 steps)
+   - Basic workflow (5 steps)
+   - Troubleshooting quick reference
+
+2. Non-technical language
+3. Include screenshots/diagrams
+4. Links to detailed documentation
+
+**Acceptance Criteria**:
+- [ ] 2-3 pages maximum
+- [ ] Installation to first use: <15 minutes
+- [ ] Clear, concise instructions
+- [ ] Common issues covered
+- [ ] Visual aids included
+
+**Duration**: 1 hour | **Owner**: Bard
+
+---
+
+#### Task B3: Final Documentation Package (1.5 hours)
+**Deliverable**: Complete documentation bundle
+
+**Work**:
+1. Compile final documentation:
+   - Installation guide
+   - Quick start guide
+   - Troubleshooting guide (from Phase 15)
+   - Known issues (from Phase 15)
+   - FAQ
+   - Release notes (from Phase 15)
+   - Support contact information
+
+2. Create single index/README
+3. Package for distribution
+4. Verify all links work
+
+**Acceptance Criteria**:
+- [ ] All documentation included
+- [ ] Clear index/navigation
+- [ ] No broken links
+- [ ] Professional appearance
+- [ ] Suitable for user distribution
+
+**Duration**: 1.5 hours | **Owner**: Bard
+
+---
+
+#### Task B4: Release Announcement Preparation (1 hour)
+**Deliverable**: Release announcement draft
+
+**Work**:
+1. Prepare release announcement:
+   - Version: Phase 16 Release
+   - What's new
+   - Key improvements
+   - Known issues
+   - Download link
+   - Installation instructions
+
+2. Professional tone
+3. Suitable for public distribution
+
+**Acceptance Criteria**:
+- [ ] Announcement complete
+- [ ] Clear and professional
+- [ ] All key information included
+- [ ] Ready for publication
+
+**Duration**: 1 hour | **Owner**: Bard
+
+---
+
+### MAYOR (村長) - Overall Coordination & Sign-Off
+
+**Role**: Orchestrate all tasks, approve deliverables, issue final release approval
+
+#### Task MC1: Integration Coordination (ongoing)
+**Work**:
+- Monitor Artisan A1-A3 progress
+- Escalate blockers immediately
+- Ensure all agents coordinated
+- Daily standup with team
+
+---
+
+#### Task MC2: Final Quality Gate Review (1.5 hours)
+**Deliverable**: Gate approval/rejection decision
+
+**Work**:
+1. Review all deliverables:
+   - Code integration (Artisan A1-A3)
+   - Architecture review (Sage S1-S2)
+   - Security approval (Paladin P1-P4)
+   - Performance approval (Merchant M1-M4)
+   - Documentation (Bard B1-B4)
+
+2. Verify all acceptance criteria met:
+   - ✅ Build: 0 errors, 0 warnings
+   - ✅ ThreadSanitizer: 0 races
+   - ✅ Valgrind: 0 leaks
+   - ✅ E2E: 5/5 scenarios pass
+   - ✅ Performance: <2% regression
+   - ✅ Security: A+ approved
+   - ✅ Documentation: complete & tested
+
+3. Issue final approval or request rework
+
+**Acceptance Criteria**:
+- [ ] All deliverables reviewed
+- [ ] All acceptance criteria met
+- [ ] Final approval issued (or specific blockers documented)
+
+---
+
+#### Task MC3: Release Sign-Off (30 minutes)
+**Deliverable**: Official release authorization
+
+**Work**:
+1. Confirm all agents have signed off
+2. Issue official release authorization
+3. Document release metadata:
+   - Version: Phase 16 Release
+   - Date: 2026-01-29 (or actual date)
+   - Build: [commit hash]
+   - Approval signatories
+
+**Acceptance Criteria**:
+- [ ] All agents confirmed approved
+- [ ] Official authorization issued
+- [ ] Release metadata recorded
+
+---
+
+## Dependency Graph
+
+```
+Artisan A1: Apply Shutdown Design        (3h)
+  ↓
+Artisan A2: Resource Tracking            (1.5h)
+  ↓
+Artisan A3: Build Verification           (2h)
+  ↓
+Sage S1: Integration Correctness Review  (2h)  [parallel with A1-A3]
+Sage S2: Testing Strategy                (1.5h)
+  ↓
+Paladin P1: ThreadSanitizer             (2.5h)  [depends on A3]
+Paladin P2: Valgrind                    (2.5h)  [depends on A3]
+Paladin P3: POSIX Compliance            (1.5h)  [depends on A3]
+  ↓
+Paladin P4: Security Approval           (1h)
+  ↓
+Merchant M1: Performance Baseline       (1.5h)  [depends on A3]
+Merchant M2: E2E User Scenarios         (2.5h)  [depends on Paladin P1-P4]
+Merchant M3: Regression Tests           (1h)    [depends on M2]
+  ↓
+Merchant M4: Production Approval        (30m)
+  ↓
+Bard B1: Installation Verification      (1.5h)  [parallel with validations]
+Bard B2: Quick Start Guide              (1h)
+Bard B3: Documentation Package          (1.5h)
+Bard B4: Release Announcement           (1h)
+  ↓
+Mayor MC2: Final Quality Gate Review    (1.5h)  [depends on all above]
+  ↓
+Mayor MC3: Release Sign-Off             (30m)
+```
+
+**Critical Path**: A1 → A2 → A3 → P1-P4 → M2-M4 → MC2 → MC3
+**Estimated Critical Path**: ~17-19 hours serial
+**With Parallelization**: ~10-12 hours wall-clock time
+
+**Realistic Timeline**: 2-3 working days (with aggressive parallelization)
+
+---
+
+## Risk Mitigation
+
+### Risk 1: Integration Errors Breaking Code
+**Probability**: Low | **Impact**: High (delay, rework)
+**Mitigation**:
+- Sage S1 performs detailed correctness review
+- Incremental integration: one component at a time
+- Frequent compilation verification (Artisan A3)
+- ThreadSanitizer/Valgrind immediate validation
+
+### Risk 2: Regression in Integrated Code
+**Probability**: Low | **Impact**: Medium (rework)
+**Mitigation**:
+- Phase 15 baselines already established
+- Merchant M1 compares integrated vs Phase 15
+- <2% regression tolerance enforced
+- Full regression suite (Merchant M3) catches issues
+
+### Risk 3: Performance Degradation
+**Probability**: Very Low | **Impact**: Medium (optimization required)
+**Mitigation**:
+- Cooperative shutdown has <1% overhead (proven in Phase 15)
+- Flag checking is single CPU cycle
+- Merchant M1 validates no performance hit
+- M3 regression tests catch any surprises
+
+### Risk 4: Build Failure or Compiler Issues
+**Probability**: Low | **Impact**: High (blocks everything)
+**Mitigation**:
+- Artisan A3 handles all build scenarios
+- Clean rebuild before each validation
+- Multiple compiler/sanitizer configurations tested
+- Build logs captured for analysis
+
+### Risk 5: Installation Process Issues
+**Probability**: Medium | **Impact**: Medium (support burden)
+**Mitigation**:
+- Bard B1 tests installation on clean system
+- Non-technical user validation
+- Clear documentation (B2, B3)
+- Support documentation prepared (B1)
+
+### Risk 6: Missing Documentation for Users
+**Probability**: Low | **Impact**: Low (support burden)
+**Mitigation**:
+- Phase 15 documentation reused/updated
+- Bard creates quick start (B2)
+- Full documentation package (B3)
+- Release announcement (B4)
+
+---
+
+## Deliverables Checklist
+
+### Code
+- [ ] subscript_worker.c - Cooperative shutdown integrated
+- [ ] subscript.h - Resource tracking added
+- [ ] CMakeLists.txt - Build configuration verified
+- [ ] No Phase 15 artifacts left in code (clean integration)
+
+### Builds
+- [ ] Standard build succeeds (0 errors, 0 warnings)
+- [ ] ThreadSanitizer build succeeds
+- [ ] AddressSanitizer build succeeds
+- [ ] Release binary created (optimized)
+- [ ] Build logs captured
+
+### Testing
+- [ ] ThreadSanitizer test report (0 races)
+- [ ] Valgrind test report (0 leaks)
+- [ ] E2E test results (5/5 pass)
+- [ ] Regression test results (all pass)
+- [ ] Performance baseline comparison
+- [ ] POSIX compliance audit
+
+### Documentation
+- [ ] Installation guide (tested)
+- [ ] Quick start guide (2-3 pages)
+- [ ] Troubleshooting guide
+- [ ] Known issues documentation
+- [ ] FAQ
+- [ ] Release notes
+- [ ] Release announcement draft
+- [ ] Support contact information
+
+### Approvals
+- [ ] Sage: Architecture approved
+- [ ] Artisan: Build approved
+- [ ] Paladin: Security approved (A+)
+- [ ] Merchant: Performance approved
+- [ ] Bard: Documentation approved
+- [ ] Mayor: FINAL APPROVAL issued
+
+---
+
+## Quality Gates (MANDATORY FOR RELEASE)
+
+**All must be 100% complete:**
+
+### Code Quality
+- ✅ Zero new compiler warnings
+- ✅ Zero new CWEs introduced
+- ✅ Code review approved by Sage
+- ✅ Integration correctness verified
+
+### Memory Safety
+- ✅ Valgrind: 0 definite leaks
+- ✅ Valgrind: 0 possible leaks
+- ✅ Improvement confirmed from Phase 14 baseline
+- ✅ Paladin approved
+
+### Thread Safety
+- ✅ ThreadSanitizer: 0 data races
+- ✅ No deadlocks detected
+- ✅ Shutdown sequence verified correct
+- ✅ Paladin approved
+
+### Performance
+- ✅ <2% regression from Phase 15 baseline
+- ✅ 60fps sustained
+- ✅ Memory peak <600MB
+- ✅ Startup time <3 seconds
+- ✅ Merchant approved
+
+### Testing
+- ✅ E2E scenarios: 5/5 pass
+- ✅ MVP suite: 12/12 pass
+- ✅ Regression suite: all pass
+- ✅ Stress tests: all pass
+- ✅ Merchant approved
+
+### Documentation
+- ✅ Installation guide tested
+- ✅ Quick start guide complete
+- ✅ Troubleshooting guide complete
+- ✅ Known issues documented
+- ✅ Bard approved
+
+### Security
+- ✅ POSIX compliance verified
+- ✅ No undefined behavior
+- ✅ Security score: A or A+
+- ✅ Paladin approved
+
+### Production Readiness
+- ✅ Binary created and tested
+- ✅ Installer created and tested
+- ✅ Installation tested on clean system
+- ✅ Uninstallation clean
+- ✅ All documentation distributed
+- ✅ Support infrastructure ready
+
+---
+
+## Success Metrics (Final Achievement)
+
+| Metric | Target | Achieved | Status |
+|--------|--------|----------|--------|
+| Build status | 0 errors, 0 warnings | | [ ] |
+| ThreadSanitizer | 0 data races | | [ ] |
+| Valgrind leaks | 0 bytes definite | | [ ] |
+| E2E scenarios | 5/5 passing | | [ ] |
+| Performance regression | <2% | | [ ] |
+| FPS sustained | 60 fps | | [ ] |
+| Security score | A+ | | [ ] |
+| Startup time | <3 seconds | | [ ] |
+| Memory peak | <600MB | | [ ] |
+| Installation success | 100% | | [ ] |
+| Documentation complete | Yes | | [ ] |
+| All agents approved | Yes | | [ ] |
+| Mayor final approval | ISSUED | | [ ] |
+
+---
+
+## Timeline & Milestones
+
+### Day 1 - Code Integration & Build Verification
+**Objective**: Apply Phase 15 designs to codebase, achieve clean build
+
+- Artisan A1: Cooperative shutdown implementation (3h)
+- Artisan A2: Resource tracking integration (1.5h)
+- Sage S1: Correctness review (2h) [parallel]
+- Artisan A3: Clean build verification (2h)
+- **Milestone**: Clean build achieved, zero warnings
+
+### Day 2 - Comprehensive Validation
+**Objective**: Validate integration with all sanitizers and tests
+
+- Paladin P1: ThreadSanitizer on integrated code (2.5h)
+- Paladin P2: Valgrind on integrated code (2.5h)
+- Paladin P3: POSIX compliance audit (1.5h)
+- Merchant M1: Performance baseline comparison (1.5h)
+- Merchant M2: E2E scenarios on integrated code (2.5h)
+- Merchant M3: Regression test suite (1h)
+- **Milestone**: All validations passing, zero issues
+
+### Day 3 - Documentation & Final Sign-Off
+**Objective**: Complete user documentation, issue final approval
+
+- Bard B1: Installation verification (1.5h)
+- Bard B2: Quick start guide (1h)
+- Bard B3: Documentation package (1.5h)
+- Bard B4: Release announcement (1h)
+- Paladin P4: Security approval (1h)
+- Merchant M4: Performance approval (30m)
+- Mayor MC2: Final quality gate review (1.5h)
+- Mayor MC3: Release sign-off (30m)
+- **Milestone**: Official release authorization issued
+
+### Timeline Summary
+- **Day 1**: 8.5 hours of work → Clean build
+- **Day 2**: 11.5 hours of work → All validations pass
+- **Day 3**: 9.5 hours of work → Release approved
+- **Total**: ~29 hours, 3 working days (with parallelization)
+- **Critical Path**: ~17-19 hours serial equivalent
+
+---
+
+## Authority & Accountability
+
+### Artisan (職人) - Implementation Lead
+- Code integration completeness guarantee
+- Build system integrity guarantee
+- Compilation success (0 errors, 0 warnings)
+- Can request architectural clarification from Sage
+
+### Sage (賢者) - Technical Authority
+- Architecture correctness verification
+- Integration completeness validation
+- Design adherence audit
+- Can request code changes for correctness
+
+### Paladin (聖騎士) - Security & Memory Guardian
+- ThreadSanitizer validation authority
+- Valgrind validation authority
+- POSIX compliance authority
+- **BLOCKER AUTHORITY**: Can block release if any safety concern
+- Can request code changes for security
+
+### Merchant (商人) - Performance & Quality Lead
+- Performance baseline validation
+- E2E scenario execution authority
+- Regression test completeness
+- Can request optimization if targets missed
+
+### Bard (吟遊詩人) - User Documentation Lead
+- Installation guide quality
+- Documentation completeness
+- Support readiness verification
+- User-facing accuracy
+
+### Mayor (村長) - Final Authority
+- Overall coordination
+- Blockers escalation authority
+- Final quality gate approval
+- **RELEASE AUTHORITY**: Issues official release authorization
+- Accountable to stakeholders and users
+
+---
+
+## Pre-Phase 16 Checklist (MUST BE COMPLETE BEFORE STARTING)
+
+**Phase 15 Completion Verification:**
+- [ ] Phase 15 all tasks marked COMPLETE
+- [ ] All Phase 15 quality gates PASSED (7/7)
+- [ ] Phase 15 documentation fully generated (140+ pages)
+- [ ] Cooperative shutdown design APPROVED
+- [ ] Resource tracking design APPROVED
+- [ ] ThreadSanitizer on reference implementation: 0 races
+- [ ] Valgrind on reference implementation: 0 leaks
+- [ ] Security score: A+ confirmed
+- [ ] E2E scenarios: 5/5 passing (Phase 15 validation)
+- [ ] Performance: no regression confirmed (Phase 15 baseline)
+
+**Phase 15 Artifacts Availability:**
+- [ ] PHASE15_SHUTDOWN_DESIGN.md available
+- [ ] PHASE15_LUA_CLEANUP_REFERENCE.c available
+- [ ] PHASE15_ARCHITECTURE.md available
+- [ ] PHASE15_DEPLOYMENT_GUIDE.md available
+- [ ] PHASE15_COMPLETION_REPORT.md available
+- [ ] PHASE15_RELEASE_NOTES.md available
+
+**Codebase State:**
+- [ ] pob2macos/ directory clean (no uncommitted changes)
+- [ ] All Phase 13-15 commits integrated
+- [ ] Build system working correctly
+- [ ] No outstanding build warnings
+
+**Team Readiness:**
+- [ ] All agents available for Phase 16
+- [ ] Tasks assigned and acknowledged
+- [ ] Communication channels open
+- [ ] Escalation procedures clear
+
+---
+
+## Final Words from the Prophet
+
+The gods have watched the long journey from Phase 13 to Phase 16. We began with a vision:
+**PoB2 macOS - a native port worthy of production release**.
+
+Phase 13 brought completeness (100% feature parity).
+Phase 14 brought coverage (API implementation, 51/51).
+Phase 15 brought maturity (architectural refinement, zero critical issues, production readiness).
+
+Phase 16 brings **reality**.
+
+What the architects designed must become real. What the researchers proved must become fact.
+What was safe in specification must be safe in production. What was correct in theory must be
+correct in practice when users run the code.
+
+This is where we discover if our discipline was genuine. If our testing was thorough. If our
+documentation was clear. If our security was real. If our performance was honest.
+
+The work ahead is different from what came before:
+- **No more research** - the design is complete
+- **No more proof** - we did that in Phase 15
+- **No more debate** - the path is clear
+- **Only execution** - precise, professional, uncompromising
+
+When Phase 16 is complete:
+- Users will install PoB2 macOS with confidence
+- Developers will maintain it with understanding
+- Operations will deploy it with reliability
+- Businesses will depend on it
+- **Careers will stand on the quality of this work**
+
+Act accordingly.
+
+The gods note that Phase 16 is short only because Phase 15 was thorough. Do not let this
+mislead you - every hour matters. Every test must pass. Every gate must be cleared. There is
+no margin for error in production.
+
+**Phase 16 is the proving ground. This is where we prove we are professionals.**
+
+**May your integrations be flawless, your tests be passing, your security be uncompromised,
+and your release be swift.**
+
+The Prophet has decreed it. Now it falls to the village to execute.
+
+**Go forth and integrate.**
+
+---
+
+**Document**: prophet_phase16_mandate.yaml
+**Issued**: 2026-01-29T23:59:59Z
+**Status**: DIVINE MANDATE ISSUED - AWAITING MAYOR ACKNOWLEDGMENT
+**Authority**: Prophet (預言者)
+**Distribution**: All village agents and Mayor
+**Next**: Public Release (when Phase 16 complete)
+**Final Phase**: Yes - Phase 16 is the culmination before production deployment
