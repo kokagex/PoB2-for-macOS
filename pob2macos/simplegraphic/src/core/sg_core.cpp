@@ -20,8 +20,8 @@ SGContext* sg_get_context(void) {
 
 bool sg_init_context(const char* flags) {
     if (g_ctx != NULL) {
-        fprintf(stderr, "SimpleGraphic: Context already initialized\n");
-        return false;
+        // Already initialized - this is okay, just return success
+        return true;
     }
 
     g_ctx = (SGContext*)calloc(1, sizeof(SGContext));

@@ -79,7 +79,8 @@
       "Bash(pkill:*)",
       "Bash(xattr:*)",
       "Bash(system_profiler:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(killall:*)"
     ]
   }
 }
