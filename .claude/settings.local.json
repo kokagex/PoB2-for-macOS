@@ -66,7 +66,20 @@
       "Bash(TZ=\"Asia/Tokyo\" date:*)",
       "Bash(timeout 60 ./test_cleanup_handler:*)",
       "Bash(./test_cleanup_handler:*)",
-      "Bash(ln:*)"
+      "Bash(ln:*)",
+      "Bash(./test_resource_tracker:*)",
+      "Bash(./test_checkpoint_shutdown:*)",
+      "Bash(file:*)",
+      "Bash(c++:*)",
+      "Bash(DYLD_LIBRARY_PATH=. ./test_mvp:*)",
+      "Bash(xcode-select:*)",
+      "Bash(xcrun:*)",
+      "Bash(lua:*)",
+      "Bash(/Users/kokage/national-operations/pob2macos/PathOfBuilding.app/Contents/MacOS/PathOfBuilding)",
+      "Bash(pkill:*)",
+      "Bash(xattr:*)",
+      "Bash(system_profiler:*)",
+      "Bash(git checkout:*)"
     ]
   }
 }

@@ -279,9 +279,20 @@ Path of Building 2 の macOS ネイティブ移植プロジェクト
 
 ## Next Action
 
-**Phase 16: Final Integration & Production Deployment — LIVE PHASE**
+**Phase 17: EXECUTION PHASE — ACTUAL DEPLOYMENT**
 
-Phase 15 (Deferred Issues解決 + 本番準備) 完了。Phase 16 は最終統合フェーズ。Phase 15設計を実コードベースに統合し、本番環境にデプロイ。
+Prophet has issued Phase 17 Divine Mandate. This is NOT planning or specs - this is ACTUAL hands-on work:
+- A1-A2: Integrate reference code into production files, update build config
+- B1-B3: Build actual binaries (Builder's responsibility)
+- C1-C4: Test actual binaries (Merchant's responsibility)
+- D1-D3: Package actual installer (Bard's responsibility)
+- P1-P4: Security validation on real binary (Paladin's responsibility)
+
+Phase 17 Task Files Created (2026-01-30):
+✅ queue/tasks/artisan_phase17.yaml - A1-A2 Code Integration (95 min)
+✅ queue/tasks/merchant_phase17.yaml - C1-C4 Testing (150 min)
+✅ queue/tasks/paladin_phase17.yaml - P1-P4 Security (parallel with builds)
+✅ queue/tasks/bard_phase17.yaml - D1-D3 Packaging (70 min)
 
 ### Phase 14 完了成果（2026-01-29 20:51）
 - ✅ API完全実装: 51/51 (100%) 達成

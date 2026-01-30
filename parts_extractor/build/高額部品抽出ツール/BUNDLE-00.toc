@@ -1,3 +1,0 @@
-([('高額部品抽出ツール',
-   '/Users/kokage/national-operations/claudecode01/parts_extractor/dist/高額部品抽出ツール',
-   'EXECUTABLE')],)

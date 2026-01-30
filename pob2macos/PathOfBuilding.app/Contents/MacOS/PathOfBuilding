@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# Path of Building - macOS Launcher Script
+# SimpleGraphic.dylibをロードしてウィンドウを表示するデモアプリケーション
+
+# アプリケーションバンドルのパスを取得
+APP_PATH="$(cd "$(dirname "$0")/../.." && pwd)"
+CONTENTS_PATH="$APP_PATH/Contents"
+RESOURCES_PATH="$CONTENTS_PATH/Resources"
+
+# 作業ディレクトリをResourcesに設定
+cd "$RESOURCES_PATH"
+
+# LuaJITでデモスクリプトを実行
+exec /usr/local/bin/luajit "$RESOURCES_PATH/demo.lua"
