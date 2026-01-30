@@ -43,5 +43,16 @@ src/Data/TimelessJewelData/*.bin
 # Simplegraphic Debugging
 runtime/imgui.ini
 
+# macOS system files
+.DS_Store
+**/.DS_Store
+
+# Build artifacts
+simplegraphic/build/
+*.o
+*.dylib.dSYM/
+
+# Claude local settings
+../.claude/settings.local.json
 
 src/poe_api_response.json
