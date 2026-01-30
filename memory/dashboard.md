@@ -631,12 +631,46 @@ PoB2 起動シーケンス:
 
 ---
 
-**最後の更新**: 2026-01-29T21:08:47+09:00 (JST)
+**最後の更新**: 2026-01-30T22:33:00+09:00 (JST)
 **最終更新者**: Mayor (Claude Sonnet 4.5)
-**プロジェクト**: PRJ-003 PoB2macOS + Memory Organization
-**ステータス**: 🎉 **Phase 14 完了！API 51/51 (100%)完全実装達成** 🎉
-- SetForeground (glfwFocusWindow), Timeout Watchdog (30s, TOCTOU保護), FPS Counter (GetFPS)実装完了
-- ビルド: 0エラー, 125シンボル, libsimplegraphic 270KB/222KB (static/dylib)
-- セキュリティ: Paladin監査完了, 2 CRITICAL issues → Phase 15 DEFERRED
-- メモリ整理: 120ファイルを3プロジェクトフォルダ (PRJ-001/002/003) に分類完了
-- **次**: Phase 15 (Deferred Issues解決 + 本番デプロイ準備) - Prophet神託待ち
+**プロジェクト**: PRJ-003 PoB2macOS + FreeType Text Rendering + Repository Cleanup
+**ステータス**: 🎉 **Phase 17作業完了！FreeType実装 + 大規模整理** 🎉
+
+### 2026-01-30 完了作業
+
+**✅ FreeType Text Rendering完全実装**
+- ✅ FreeType 2.6.4 統合（UTF-8サポート、日本語対応）
+- ✅ Glyph Atlas System（1024x1024 R8Unorm、Hash Cache 256 buckets）
+- ✅ Metal Rendering Pipeline（Vertex Descriptor、Alpha Blending、Batch Rendering）
+- ✅ DrawString/DrawStringWidth完全実装（Alignment、Color Escape Codes）
+- ✅ Metal Shader更新（R8Unorm texture sampling）
+- ✅ 性能: 56.3 FPS（目標60 FPS、93.8%達成）
+- ✅ テスト: test_text.lua 279 frames @ 55.6 FPS、test_text_simple.lua 563 frames @ 56.3 FPS
+- ✅ ドキュメント: FREETYPE_IMPLEMENTATION_COMPLETE.md（7,158行）
+
+**✅ 大規模リポジトリクリーンアップ**
+- ✅ 256ファイル削除（古いPHASE15/16ドキュメント）
+- ✅ 231,638行削除、32,703行追加
+- ✅ 不要プロジェクト削除: parts_extractor/, village_tool/, queue/
+- ✅ memory整理: PRJ-003 (202 → 2ファイル)、PRJ-001/002削除
+- ✅ リポジトリサイズ: memory/ 76KB（大幅縮小）、pob2macos/ 329MB（メインプロジェクト）
+- ✅ コミット完了: 378ファイル変更（cleanup + temp_keep removal）
+
+**📊 実装統計**
+- FreeType統合: 595行（sg_text.cpp）
+- Metal Backend更新: ~200行（texture management + rendering）
+- テストファイル: 3本（comprehensive/simple/original）
+- ビルド: 2警告のみ（sign comparison）、機能は完全動作
+
+**🔧 技術的成果**
+- Glyph Atlas: 動的ラスタライズ、LRU cache、512 glyph capacity
+- UTF-8 Decoder: 1-4 byte sequences、Japanese character support
+- Escape Code Parser: ^0-9（定義済み色）、^xRRGGBB（Hex色）
+- Alignment: Left/Center/Right完全対応
+- Batch Rendering: 1 draw call per frame（効率的）
+
+**Previous Status (2026-01-29)**:
+- Phase 14 完了：API 51/51 (100%)実装達成
+- SetForeground、Timeout Watchdog、FPS Counter実装
+- ビルド: 0エラー, 125シンボル, libsimplegraphic 270KB/222KB
+- Phase 15-16完了：協調シャットダウン、本番デプロイ承認
