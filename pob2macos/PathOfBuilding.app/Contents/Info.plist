@@ -2,10 +2,14 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <key>CFBundleAllowMixedLocalizations</key>
+    <true/>
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
     <key>CFBundleExecutable</key>
     <string>PathOfBuilding</string>
+    <key>CFBundleIconFile</key>
+    <string>applet</string>
     <key>CFBundleIdentifier</key>
     <string>com.pathofbuilding.poe2.macos</string>
     <key>CFBundleInfoDictionaryVersion</key>
@@ -16,12 +20,18 @@
     <string>Path of Building (PoE2)</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
+    <key>CFBundleSignature</key>
+    <string>aplt</string>
     <key>CFBundleShortVersionString</key>
     <string>2.45.2</string>
     <key>CFBundleVersion</key>
     <string>1.0.0</string>
     <key>LSMinimumSystemVersion</key>
     <string>10.15</string>
+    <key>LSUIElement</key>
+    <false/>
+    <key>NSAppleScriptEnabled</key>
+    <true/>
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>NSSupportsAutomaticGraphicsSwitching</key>
@@ -30,5 +40,7 @@
     <string>public.app-category.games</string>
     <key>NSHumanReadableCopyright</key>
     <string>Copyright © 2024 Path of Building Community. All rights reserved.</string>
+    <key>OSAAppletShowStartupScreen</key>
+    <false/>
 </dict>
 </plist>
