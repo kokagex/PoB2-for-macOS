@@ -418,6 +418,25 @@ void DrawString(int left, int top, int align, int height,
                 const char* font, const char* text) {
     if (!g_ctx || !text) return;
 
+    // Debug: Log first few DrawString calls with full text
+    static int call_count = 0;
+    if (call_count < 3) {
+        printf("DEBUG: DrawString #%d - pos(%d,%d) align=%d height=%d font='%s'\n",
+               ++call_count, left, top, align, height, font ? font : "null");
+        if (text) {
+            // Print first 500 chars of text
+            size_t len = strlen(text);
+            if (len > 500) {
+                char preview[501];
+                strncpy(preview, text, 500);
+                preview[500] = '\0';
+                printf("       Text (first 500 chars): '%s'...\n", preview);
+            } else {
+                printf("       Full text: '%s'\n", text);
+            }
+        }
+    }
+
     // Increment frame number
     g_ctx->frame_number++;
 

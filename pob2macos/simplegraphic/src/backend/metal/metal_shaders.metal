@@ -32,9 +32,16 @@ fragment float4 fragment_main(VertexOut in [[stage_in]],
                               texture2d<float> tex [[texture(0)]],
                               sampler sam [[sampler(0)]]) {
     if (tex.get_width() > 0) {
-        // For R8Unorm textures (glyph atlas), sample red channel for alpha
-        float alpha = tex.sample(sam, in.texCoord).r;
-        return float4(in.color.rgb, alpha * in.color.a);
+        float4 texColor = tex.sample(sam, in.texCoord);
+
+        // For R8Unorm textures (glyph atlas), red channel is alpha
+        if (texColor.r > 0.0 && texColor.g == 0.0 && texColor.b == 0.0) {
+            float alpha = texColor.r;
+            return float4(in.color.rgb, alpha * in.color.a);
+        }
+
+        // For RGBA textures (images) or dummy white texture, multiply by vertex color
+        return texColor * in.color;
     }
     return in.color;
 }

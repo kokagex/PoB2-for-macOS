@@ -142,7 +142,26 @@ void RenderInit(const char* flags) {
 
 void ProcessEvents(void) {
     if (!g_ctx || !g_ctx->window) return;
+
+    static int frame_count = 0;
+    bool log_this_frame = (frame_count % 60 == 0);  // Log every 60 frames
+
+    // End the previous frame (present to screen)
+    if (g_ctx->renderer && g_ctx->renderer->end_frame) {
+        if (log_this_frame) printf("DEBUG: Calling end_frame (frame %d)\n", frame_count);
+        g_ctx->renderer->end_frame(g_ctx);
+    }
+
+    // Poll window events
     sg_window_poll_events(g_ctx);
+
+    // Begin a new frame
+    if (g_ctx->renderer && g_ctx->renderer->begin_frame) {
+        if (log_this_frame) printf("DEBUG: Calling begin_frame (frame %d)\n", frame_count);
+        g_ctx->renderer->begin_frame(g_ctx);
+    }
+
+    frame_count++;
 }
 
 int IsUserTerminated(void) {

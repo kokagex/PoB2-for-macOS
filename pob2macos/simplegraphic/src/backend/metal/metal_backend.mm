@@ -38,11 +38,11 @@ typedef struct MetalContext {
     id<MTLRenderCommandEncoder> renderEncoder;
     id<CAMetalDrawable> currentDrawable;
 
-    // Text rendering
+    // Unified batch rendering
     id<MTLBuffer> textVertexBuffer;
     NSUInteger textVertexBufferSize;
     NSUInteger textVertexCount;
-    id<MTLTexture> currentAtlasTexture;
+    id<MTLTexture> currentTexture;  // Unified texture state for both atlas and images
 
     // Dummy white texture for solid color rendering
     id<MTLTexture> dummyWhiteTexture;
@@ -318,9 +318,9 @@ static void metal_begin_frame(SGContext* ctx) {
     MetalContext* metal = (MetalContext*)ctx->renderer->backend_data;
     if (!metal) return;
 
-    // Reset text vertex count
+    // Reset unified batch state
     metal->textVertexCount = 0;
-    metal->currentAtlasTexture = nil;
+    metal->currentTexture = nil;
 
     // Get next drawable
     metal->currentDrawable = [metal->metalLayer nextDrawable];
@@ -351,11 +351,11 @@ static void metal_end_frame(SGContext* ctx) {
     MetalContext* metal = (MetalContext*)ctx->renderer->backend_data;
     if (!metal || !metal->renderEncoder) return;
 
-    // Flush any remaining text rendering
-    if (metal->textVertexCount > 0 && metal->currentAtlasTexture) {
+    // Flush any remaining unified batch rendering (both text and images)
+    if (metal->textVertexCount > 0 && metal->currentTexture) {
         [metal->renderEncoder setRenderPipelineState:metal->pipelineState];
         [metal->renderEncoder setVertexBuffer:metal->textVertexBuffer offset:0 atIndex:0];
-        [metal->renderEncoder setFragmentTexture:metal->currentAtlasTexture atIndex:0];
+        [metal->renderEncoder setFragmentTexture:metal->currentTexture atIndex:0];
         [metal->renderEncoder setFragmentSamplerState:metal->samplerState atIndex:0];
         [metal->renderEncoder drawPrimitives:MTLPrimitiveTypeTriangle
                                   vertexStart:0
@@ -486,25 +486,25 @@ static void metal_draw_glyph(void* texture, int x, int y, int width, int height,
     id<MTLTexture> atlasTexture = (__bridge id<MTLTexture>)texture;
 
     // Flush batch if texture changed or buffer is full
-    bool needFlush = (metal->currentAtlasTexture && metal->currentAtlasTexture != atlasTexture);
+    bool needFlush = (metal->currentTexture && metal->currentTexture != atlasTexture);
     bool bufferFull = (metal->textVertexCount + 6) * sizeof(TextVertex) > metal->textVertexBufferSize;
 
     if (needFlush || bufferFull) {
-        if (metal->textVertexCount > 0 && metal->currentAtlasTexture) {
+        if (metal->textVertexCount > 0 && metal->currentTexture) {
             [metal->renderEncoder setRenderPipelineState:metal->pipelineState];
             [metal->renderEncoder setVertexBuffer:metal->textVertexBuffer offset:0 atIndex:0];
-            [metal->renderEncoder setFragmentTexture:metal->currentAtlasTexture atIndex:0];
+            [metal->renderEncoder setFragmentTexture:metal->currentTexture atIndex:0];
             [metal->renderEncoder setFragmentSamplerState:metal->samplerState atIndex:0];
             [metal->renderEncoder drawPrimitives:MTLPrimitiveTypeTriangle
                                       vertexStart:0
                                       vertexCount:metal->textVertexCount];
         }
         metal->textVertexCount = 0;
-        metal->currentAtlasTexture = atlasTexture;
+        metal->currentTexture = atlasTexture;
     }
 
-    if (!metal->currentAtlasTexture) {
-        metal->currentAtlasTexture = atlasTexture;
+    if (!metal->currentTexture) {
+        metal->currentTexture = atlasTexture;
     }
 
     // Convert screen coordinates to NDC (normalized device coordinates)
@@ -608,17 +608,24 @@ static void metal_draw_image(struct ImageHandle_s* handle, float left, float top
 
     // Debug output moved after texture coordinate fix
 
-    // Flush existing batch if needed
-    if (metal->textVertexCount > 0 && metal->currentAtlasTexture) {
+    // Flush existing batch if texture changed or buffer is full
+    bool needFlush = (metal->currentTexture && metal->currentTexture != texture);
+    bool bufferFull = (metal->textVertexCount + 6) * sizeof(TextVertex) > metal->textVertexBufferSize;
+
+    if ((needFlush || bufferFull) && metal->textVertexCount > 0 && metal->currentTexture) {
         [metal->renderEncoder setRenderPipelineState:metal->pipelineState];
         [metal->renderEncoder setVertexBuffer:metal->textVertexBuffer offset:0 atIndex:0];
-        [metal->renderEncoder setFragmentTexture:metal->currentAtlasTexture atIndex:0];
+        [metal->renderEncoder setFragmentTexture:metal->currentTexture atIndex:0];
         [metal->renderEncoder setFragmentSamplerState:metal->samplerState atIndex:0];
         [metal->renderEncoder drawPrimitives:MTLPrimitiveTypeTriangle
                                   vertexStart:0
                                   vertexCount:metal->textVertexCount];
         metal->textVertexCount = 0;
-        metal->currentAtlasTexture = nil;
+    }
+
+    // Update current texture for unified batching
+    if (!metal->currentTexture) {
+        metal->currentTexture = texture;
     }
 
     // Convert screen coordinates to NDC
@@ -758,17 +765,24 @@ static void metal_draw_quad(struct ImageHandle_s* handle,
         texture = (__bridge id<MTLTexture>)handle->texture;
     }
 
-    // Flush existing batch if needed
-    if (metal->textVertexCount > 0 && metal->currentAtlasTexture) {
+    // Flush existing batch if texture changed or buffer is full
+    bool needFlush = (metal->currentTexture && metal->currentTexture != texture);
+    bool bufferFull = (metal->textVertexCount + 6) * sizeof(TextVertex) > metal->textVertexBufferSize;
+
+    if ((needFlush || bufferFull) && metal->textVertexCount > 0 && metal->currentTexture) {
         [metal->renderEncoder setRenderPipelineState:metal->pipelineState];
         [metal->renderEncoder setVertexBuffer:metal->textVertexBuffer offset:0 atIndex:0];
-        [metal->renderEncoder setFragmentTexture:metal->currentAtlasTexture atIndex:0];
+        [metal->renderEncoder setFragmentTexture:metal->currentTexture atIndex:0];
         [metal->renderEncoder setFragmentSamplerState:metal->samplerState atIndex:0];
         [metal->renderEncoder drawPrimitives:MTLPrimitiveTypeTriangle
                                   vertexStart:0
                                   vertexCount:metal->textVertexCount];
         metal->textVertexCount = 0;
-        metal->currentAtlasTexture = nil;
+    }
+
+    // Update current texture for unified batching
+    if (!metal->currentTexture) {
+        metal->currentTexture = texture;
     }
 
     // Convert screen coordinates to NDC
