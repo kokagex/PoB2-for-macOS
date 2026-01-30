@@ -342,7 +342,7 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 			local other = nodeMap[otherId]
 
 			if not other then
-				ConPrintf("missing node "..otherId)
+				-- Silently skip missing nodes (common in tree data due to version mismatches)
 				goto endConnection
 			end
 

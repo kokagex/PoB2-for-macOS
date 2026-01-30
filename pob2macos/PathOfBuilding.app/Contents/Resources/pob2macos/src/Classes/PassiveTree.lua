@@ -38,6 +38,13 @@ end
 local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 	self.treeVersion = treeVersion
 	self.scaleImage = 1 -- 0.3835
+
+	-- Validate treeVersion to prevent nil indexing
+	if not treeVersion or not treeVersions[treeVersion] then
+		ConPrintf("ERROR: Invalid tree version '%s' specified", tostring(treeVersion))
+		error(string.format("Invalid tree version: %s", tostring(treeVersion)))
+	end
+
 	local versionNum = treeVersions[treeVersion].num
 
 	self.legion = LoadModule("Data/TimelessJewelData/LegionPassives")
@@ -76,6 +83,13 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 		self[k] = v
 	end
 
+	-- Validate essential tree coordinate bounds
+	if not self.max_x or not self.min_x or not self.max_y or not self.min_y then
+		ConPrintf("ERROR: Invalid tree bounds data (max_x=%s, min_x=%s, max_y=%s, min_y=%s)",
+			tostring(self.max_x), tostring(self.min_x), tostring(self.max_y), tostring(self.min_y))
+		error("Tree data missing coordinate bounds")
+	end
+
 	self.size = m_min(self.max_x - self.min_x, self.max_y - self.min_y) * self.scaleImage * 1.1
 	
 	for i = 0, 6 do
@@ -91,17 +105,42 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 	self.classNotables = { }
 
 	for classId, class in pairs(self.classes) do
-		class.classes = class.ascendancies
+		if not class then
+			ConPrintf("WARNING: Nil class at ID %s", tostring(classId))
+			goto nextClass
+		end
+
+		class.classes = class.ascendancies or {}
 		class.classes[0] = { name = "None" }
-		self.classNameMap[class.name] = classId
-		self.classIntegerIdMap[class.integerId] = classId
+
+		if class.name then
+			self.classNameMap[class.name] = classId
+		else
+			ConPrintf("WARNING: Class at ID %s has no name", tostring(classId))
+		end
+
+		if class.integerId then
+			self.classIntegerIdMap[class.integerId] = classId
+		else
+			ConPrintf("WARNING: Class %s has no integerId", tostring(class.name or classId))
+		end
+
 		for ascendClassId, ascendClass in pairs(class.classes) do
-			self.ascendNameMap[ascendClass.id or ascendClass.name] = {
-				classId = classId,
-				class = class,
-				ascendClassId = ascendClassId,
-				ascendClass = ascendClass
-			}
+			if not ascendClass then
+				ConPrintf("WARNING: Nil ascendClass at ID %s for class %s", tostring(ascendClassId), tostring(class.name or classId))
+				goto nextAscend
+			end
+
+			if ascendClass.name then
+				self.ascendNameMap[ascendClass.id or ascendClass.name] = {
+					classId = classId,
+					class = class,
+					ascendClassId = ascendClassId,
+					ascendClass = ascendClass
+				}
+			else
+				ConPrintf("WARNING: Ascendancy class at ID %s has no name", tostring(ascendClassId))
+			end
 
 			if ascendClass.internalId then
 				self.internalAscendNameMap[ascendClass.internalId] = {
@@ -111,7 +150,23 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 					ascendClass = ascendClass
 				}
 			end
+			::nextAscend::
 		end
+		::nextClass::
+	end
+
+	-- Validate essential tree constants
+	if not self.constants then
+		ConPrintf("ERROR: Tree constants data is missing")
+		error("Tree data missing constants object")
+	end
+
+	if not self.constants.skillsPerOrbit or not self.constants.orbitRadii or not self.constants.orbitAnglesByOrbit then
+		ConPrintf("ERROR: Invalid tree constants data (skillsPerOrbit=%s, orbitRadii=%s, orbitAnglesByOrbit=%s)",
+			tostring(self.constants.skillsPerOrbit ~= nil),
+			tostring(self.constants.orbitRadii ~= nil),
+			tostring(self.constants.orbitAnglesByOrbit ~= nil))
+		error("Tree data missing essential constants")
 	end
 
 	self.skillsPerOrbit = self.constants.skillsPerOrbit
@@ -189,13 +244,22 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 			end
 		elseif node.isAscendancyStart then
 			node.type = "AscendClassStart"
-			local ascendClass = self.ascendNameMap[node.ascendancyName].ascendClass
-			ascendClass.startNodeId = node.id
-			if node.isSwitchable then
-				for ascName, _ in pairs(node.options) do
-					local option = self.ascendNameMap[ascName].ascendClass
-					option.startNodeId = node.id
+			local ascendInfo = self.ascendNameMap[node.ascendancyName]
+			if ascendInfo and ascendInfo.ascendClass then
+				local ascendClass = ascendInfo.ascendClass
+				ascendClass.startNodeId = node.id
+				if node.isSwitchable then
+					for ascName, _ in pairs(node.options) do
+						local ascendOption = self.ascendNameMap[ascName]
+						if ascendOption and ascendOption.ascendClass then
+							local option = ascendOption.ascendClass
+							option.startNodeId = node.id
+						end
+					end
 				end
+			else
+				ConPrintf("WARNING: Missing ascendancy info for node %s (ascendancyName: %s)",
+					tostring(node.id), tostring(node.ascendancyName))
 			end
 		elseif node.isOnlyImage then
 			node.type = "OnlyImage"
@@ -222,11 +286,18 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 					self.sockets[node.id] = node
 				end
 				self.ascendancyMap[node.dn:lower()] = node
-				if not self.classNotables[self.ascendNameMap[node.ascendancyName].class.name] then
-					self.classNotables[self.ascendNameMap[node.ascendancyName].class.name] = { }
-				end
-				if self.ascendNameMap[node.ascendancyName].class.name ~= "Scion" then
-					t_insert(self.classNotables[self.ascendNameMap[node.ascendancyName].class.name], node.dn)
+				local ascendInfo = self.ascendNameMap[node.ascendancyName]
+				if ascendInfo and ascendInfo.class and ascendInfo.class.name then
+					local className = ascendInfo.class.name
+					if not self.classNotables[className] then
+						self.classNotables[className] = { }
+					end
+					if className ~= "Scion" then
+						t_insert(self.classNotables[className], node.dn)
+					end
+				else
+					ConPrintf("WARNING: Missing ascendancy info for notable node %s (ascendancyName: %s)",
+						tostring(node.dn), tostring(node.ascendancyName))
 				end
 			end
 		else
@@ -234,10 +305,17 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 			if node.ascendancyName == "Ascendant" and not node.dn:find("Dexterity") and not node.dn:find("Intelligence") and
 				not node.dn:find("Strength") and not node.dn:find("Passive") then
 				self.ascendancyMap[node.dn:lower()] = node
-				if not self.classNotables[self.ascendNameMap[node.ascendancyName].class.name] then
-					self.classNotables[self.ascendNameMap[node.ascendancyName].class.name] = { }
+				local ascendInfo = self.ascendNameMap[node.ascendancyName]
+				if ascendInfo and ascendInfo.class and ascendInfo.class.name then
+					local className = ascendInfo.class.name
+					if not self.classNotables[className] then
+						self.classNotables[className] = { }
+					end
+					t_insert(self.classNotables[className], node.dn)
+				else
+					ConPrintf("WARNING: Missing ascendancy info for Ascendant node %s",
+						tostring(node.dn))
 				end
-				t_insert(self.classNotables[self.ascendNameMap[node.ascendancyName].class.name], node.dn)
 			end
 		end
 
@@ -264,7 +342,7 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 			local other = nodeMap[otherId]
 
 			if not other then
-				ConPrintf("missing node "..otherId)
+				-- Silently skip missing nodes (common in tree data due to version mismatches)
 				goto endConnection
 			end
 
@@ -360,13 +438,30 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 	end
 
 	for classId, class in pairs(self.classes) do
+		if not class.startNodeId then
+			ConPrintf("WARNING: Class %s has no startNodeId", tostring(class.name or classId))
+			goto nextClass
+		end
+
 		local startNode = nodeMap[class.startNodeId]
+		if not startNode then
+			ConPrintf("WARNING: Start node %s not found for class %s",
+				tostring(class.startNodeId), tostring(class.name or classId))
+			goto nextClass
+		end
+
+		if not startNode.linkedId then
+			ConPrintf("WARNING: Start node has no linkedId for class %s", tostring(class.name or classId))
+			goto nextClass
+		end
+
 		for _, nodeId in ipairs(startNode.linkedId) do
 			local node = nodeMap[nodeId]
-			if node.type == "Normal" then
+			if node and node.type == "Normal" and node.modList then
 				node.modList:NewMod("Condition:ConnectedTo"..class.name.."Start", "FLAG", true, "Tree:"..nodeId)
 			end
 		end
+		::nextClass::
 	end
 	
 	-- Build ModList for legion jewels
