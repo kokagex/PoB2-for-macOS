@@ -29,6 +29,23 @@ static void glfw_cursor_pos_callback(GLFWwindow* window, double xpos, double ypo
     ctx->mouse_y = ypos;
 }
 
+static void glfw_mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
+    (void)mods;
+
+    SGContext* ctx = (SGContext*)glfwGetWindowUserPointer(window);
+    if (!ctx) return;
+
+    // Map mouse buttons to pseudo-key indices (starting after keyboard keys)
+    // GLFW_MOUSE_BUTTON_LEFT = 0, GLFW_MOUSE_BUTTON_RIGHT = 1, GLFW_MOUSE_BUTTON_MIDDLE = 2
+    // We'll map them to indices 400, 401, 402 to avoid conflicts with keyboard keys
+    if (button >= 0 && button < 8) {
+        int key_index = 400 + button;
+        if (key_index < 512) {
+            ctx->keys[key_index] = (action != GLFW_RELEASE);
+        }
+    }
+}
+
 /* ===== Key Name Mapping ===== */
 
 int sg_map_key_name(const char* key_name) {
@@ -74,6 +91,11 @@ int sg_map_key_name(const char* key_name) {
     if (strcmp(lower_name, "end") == 0) return GLFW_KEY_END;
     if (strcmp(lower_name, "insert") == 0) return GLFW_KEY_INSERT;
 
+    // Mouse buttons (mapped to indices 400+)
+    if (strcmp(lower_name, "leftbutton") == 0) return 400;   // GLFW_MOUSE_BUTTON_LEFT
+    if (strcmp(lower_name, "rightbutton") == 0) return 401;  // GLFW_MOUSE_BUTTON_RIGHT
+    if (strcmp(lower_name, "middlebutton") == 0) return 402; // GLFW_MOUSE_BUTTON_MIDDLE
+
     // Function keys
     if (lower_name[0] == 'f' && lower_name[1] >= '1' && lower_name[1] <= '9') {
         if (lower_name[2] == '\0') {
@@ -109,6 +131,7 @@ void sg_input_init(SGContext* ctx) {
     // Set callbacks
     glfwSetKeyCallback(window, glfw_key_callback);
     glfwSetCursorPosCallback(window, glfw_cursor_pos_callback);
+    glfwSetMouseButtonCallback(window, glfw_mouse_button_callback);
 
     // Initialize state
     memset(ctx->keys, 0, sizeof(ctx->keys));
@@ -124,6 +147,7 @@ void sg_input_shutdown(SGContext* ctx) {
     GLFWwindow* window = (GLFWwindow*)ctx->window;
     glfwSetKeyCallback(window, NULL);
     glfwSetCursorPosCallback(window, NULL);
+    glfwSetMouseButtonCallback(window, NULL);
 }
 
 /* ===== Public API ===== */
