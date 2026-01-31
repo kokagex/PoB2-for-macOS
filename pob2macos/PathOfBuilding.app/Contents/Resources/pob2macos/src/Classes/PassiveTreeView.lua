@@ -94,34 +94,12 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 	local spec = build.spec
 	local tree = spec.tree
 
-	-- Debug logging for passive tree rendering diagnosis
-	local nodeCount = 0
-	if spec then
-		if spec.nodes then
-			for _ in pairs(spec.nodes) do
-				nodeCount = nodeCount + 1
-			end
-		else
-			ConPrintf("DEBUG [PassiveTreeView]: WARNING - spec.nodes is NIL! spec=%s", type(spec))
-		end
-	else
-		ConPrintf("DEBUG [PassiveTreeView]: WARNING - spec is NIL! build=%s", type(build))
+	-- PRJ-003 Fix: Guard against missing spec.nodes
+	-- If spec is not ready yet, skip rendering this frame
+	if not spec or not spec.nodes then
+		-- Tree data not loaded yet, skip rendering
+		return
 	end
-
-	-- Debug: Check viewPort AGAIN after node counting (first 5 frames)
-	if self.viewPortParamLogCount and self.viewPortParamLogCount <= 5 then
-		ConPrintf("PassiveTreeView:Draw - viewPort AFTER node count: x=%s(%s) y=%s(%s) width=%s(%s) height=%s(%s)",
-			tostring(viewPort.x), type(viewPort.x),
-			tostring(viewPort.y), type(viewPort.y),
-			tostring(viewPort.width), type(viewPort.width),
-			tostring(viewPort.height), type(viewPort.height))
-	end
-
-	ConPrintf("PassiveTreeView:Draw called - viewport: x=%s y=%s w=%s h=%s",
-		tostring(viewPort.x), tostring(viewPort.y),
-		tostring(viewPort.width), tostring(viewPort.height))
-	ConPrintf("Tree nodes count: %d, Zoom: level=%d zoom=%.2f zoomX=%d zoomY=%d",
-		nodeCount, self.zoomLevel or 0, self.zoom or 0, self.zoomX or 0, self.zoomY or 0)
 
 	local cursorX, cursorY = GetCursorPos()
 	local mOver = cursorX >= viewPort.x and cursorX < viewPort.x + viewPort.width and cursorY >= viewPort.y and cursorY < viewPort.y + viewPort.height
