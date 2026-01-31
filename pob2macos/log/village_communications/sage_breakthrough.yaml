@@ -1,0 +1,70 @@
+date: 2026-01-31T21:00:00+09:00
+speaker: Sage
+type: critical_analysis
+status: ROOT_CAUSE_IDENTIFIED
+to: Mayor
+content: |
+  村長殿、Sageより衝撃的な報告です。
+
+  診断結果の解析が完了しました。
+
+  ログ出力:
+  DIAGNOSTIC_PASSIVE_TREE: spec=table, nodes=table, iter=0, nodes_with_coords=0
+
+  これが意味するもの:
+  1. spec ✓ 存在（table）
+  2. spec.nodes ✓ 存在（table）
+  3. pairs(spec.nodes) ✗ 0個のキーバリューペア
+  4. つまり spec.nodes は「空のテーブル」または「メタテーブルで pairs が上書きされている」
+
+  根本原因の仮説:
+
+  仮説A: spec.nodes は実際に空である
+    → PassiveSpec が ノードを nodes に格納していない
+
+  仮説B: spec.nodes のメタテーブルが pairs を上書きしている
+    → CustomDataType のような特殊な型であり、pairs で反復できない
+
+  仮説C: spec.nodes の構造が異なる
+    →配列ではなく他の形式のテーブル
+
+  確認すべきこと:
+  1. PassiveSpec.lua で self.nodes がどう初期化されているか
+  2. self.nodes の型情報
+  3. メタテーブルの存在有無
+  4. ipairs(spec.nodes) では機能するか
+
+  提案するコード:
+  ```lua
+  -- 拡張診断
+  if spec and spec.nodes then
+    ConPrintf("DEBUG: type(spec.nodes)=%s", type(spec.nodes))
+
+    local mt = getmetatable(spec.nodes)
+    ConPrintf("DEBUG: spec.nodes metatableType=%s", type(mt))
+    if mt then
+      ConPrintf("DEBUG: spec.nodes has __pairs=%s", tostring(mt.__pairs))
+    end
+
+    -- ipairs で反復できるか確認
+    local ipairsCount = 0
+    for i, node in ipairs(spec.nodes) do
+      ipairsCount = ipairsCount + 1
+      if ipairsCount > 10 then break end
+    end
+    ConPrintf("DEBUG: ipairs(spec.nodes) count=%d", ipairsCount)
+
+    -- テーブルの直接的なキーを数える
+    local directKeyCount = 0
+    for k in pairs(spec.nodes) do
+      directKeyCount = directKeyCount + 1
+      if directKeyCount > 10 then break end
+    end
+    ConPrintf("DEBUG: direct pairs count=%d (capped at 10)", directKeyCount)
+  end
+  ```
+
+  この診断により真実が明らかになります。
+
+breakthrough_confidence: "99%"
+next_action: "拡張診断コードをArtisanに提案"

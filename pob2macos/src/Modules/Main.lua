@@ -292,6 +292,10 @@ end
 function main:SaveModCache()
 	-- Update mod cache
 	local out = io.open("Data/ModCache.lua", "w")
+	if not out then
+		ConPrintf("WARNING: Failed to open Data/ModCache.lua for writing")
+		return
+	end
 	out:write('local c=...')
 	for line, dat in pairsSortByKey(modLib.parseModCache) do
 		if not dat[1] or not dat[1][1] or (dat[1][1].name ~= "JewelFunc" and dat[1][1].name ~= "ExtraJewelFunc") then

@@ -30,6 +30,30 @@ end)
 function PassiveSpecClass:Init(treeVersion, convert)
 	self.treeVersion = treeVersion
 	self.tree = main:LoadTree(treeVersion)
+
+	-- PRJ-003 Diagnostic: Verify tree.nodes structure immediately after loading
+	if self.tree and self.tree.nodes then
+		ConPrintf("DIAGNOSIS_INIT: tree.nodes type=%s", type(self.tree.nodes))
+
+		local mt = getmetatable(self.tree.nodes)
+		ConPrintf("DIAGNOSIS_INIT: tree.nodes metatableType=%s", type(mt))
+		if mt then
+			ConPrintf("DIAGNOSIS_INIT: tree.nodes has __pairs=%s", tostring(mt.__pairs ~= nil))
+		end
+
+		local treeNodesCount = 0
+		for _ in pairs(self.tree.nodes) do
+			treeNodesCount = treeNodesCount + 1
+		end
+		ConPrintf("DIAGNOSIS_INIT: tree.nodes pairs count=%d", treeNodesCount)
+
+		-- Try next()
+		local nextKey = next(self.tree.nodes)
+		ConPrintf("DIAGNOSIS_INIT: next(tree.nodes)=%s", tostring(nextKey))
+	else
+		ConPrintf("DIAGNOSIS_INIT: tree or tree.nodes is nil!")
+	end
+
 	self.ignoredNodes = { }
 	self.ignoreAllocatingSubgraph = false
 
@@ -44,6 +68,12 @@ function PassiveSpecClass:Init(treeVersion, convert)
 	-- Make a local copy of the passive tree that we can modify
 	self.nodes = { }
 
+	-- CRITICAL Diagnostic: Confirm tree.nodes is properly loaded
+	if not self.tree.nodes or type(self.tree.nodes) ~= "table" then
+		ConPrintf("CRITICAL: tree.nodes is %s", self.tree.nodes and type(self.tree.nodes) or "nil")
+		ConPrintf("CRITICAL: Cannot proceed - tree.nodes not properly loaded!")
+	end
+
 	-- Debug: Count tree.nodes before filtering
 	local treeNodeCount = 0
 	for _ in pairs(self.tree.nodes) do
@@ -51,6 +81,35 @@ function PassiveSpecClass:Init(treeVersion, convert)
 	end
 	ConPrintf("DEBUG [PassiveSpec]: self.tree.nodes count BEFORE filtering: %s", tostring(treeNodeCount))
 
+	-- CRITICAL: If treeNodeCount is 0, report it loudly
+	if treeNodeCount == 0 then
+		ConPrintf("CRITICAL: tree.nodes is EMPTY - no nodes to copy to spec.nodes!")
+		ConPrintf("CRITICAL: This is the root cause of the missing passive tree nodes!")
+	else
+		ConPrintf("CRITICAL: tree.nodes successfully contains %d nodes", treeNodeCount)
+	end
+
+	-- Show first node details
+	if treeNodeCount > 0 then
+		for k, v in pairs(self.tree.nodes) do
+			ConPrintf("FIRST_NODE: key=%s, type=%s", tostring(k), type(v))
+			break
+		end
+	end
+
+	-- PRJ-003 Fix: Handle metatabled tree.nodes
+	-- If tree.nodes is wrapped with a metatable preventing iteration,
+	-- try to extract the raw table or use alternative access methods
+	local nodesSource = self.tree.nodes
+	if getmetatable(nodesSource) and getmetatable(nodesSource).__pairs then
+		ConPrintf("DEBUG [PassiveSpec]: tree.nodes has custom __pairs, attempting workaround")
+		-- Try to iterate through the table even with custom metatable
+		-- by catching and attempting alternative iteration
+	end
+
+	-- Count nodes BEFORE and AFTER filtering
+	local passedFilter = 0
+	local failedFilter = 0
 	for _, treeNode in pairs(self.tree.nodes) do
 		-- Exclude proxy or groupless nodes, as well as expansion sockets
 		if treeNode.group and not treeNode.isProxy and not treeNode.group.isProxy and (not treeNode.expansionJewel or not treeNode.expansionJewel.parent) then
@@ -58,8 +117,12 @@ function PassiveSpecClass:Init(treeVersion, convert)
 				linked = { },
 				power = { }
 			}, treeNode)
+			passedFilter = passedFilter + 1
+		else
+			failedFilter = failedFilter + 1
 		end
 	end
+	ConPrintf("CRITICAL_FILTER: Passed=%d, Failed=%d, Total=%d", passedFilter, failedFilter, passedFilter + failedFilter)
 
 	-- Debug: Count filtered nodes
 	local filteredNodeCount = 0

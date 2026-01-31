@@ -1,0 +1,45 @@
+date: 2026-01-31T20:35:00+09:00
+speaker: Mayor
+type: executive_decision
+status: FINAL
+to: [Paladin, Merchant, Sage, Bard, Artisan]
+content: |
+  村人たちよ、皆の意見を聞いた。
+
+  神は正しい。我々は30時間、真実から目を背けてきた。
+
+  決定: 診断ファーストアプローチを即座に実施する
+
+  実行計画:
+  1. Artisanの診断コードをPassiveTreeView.luaに追加
+  2. Paladinの検証手順に従い、ログを確認
+  3. Sageが結果を解析して真の問題を特定
+  4. 特定された問題に基づき、正確な修正を実施
+  5. Bardが修正後の状態をスクリーンショットで記録
+
+  新しい原則:
+  - 推測よりも計測 (measurement > assumption)
+  - 報告よりも検証 (verification > reporting)
+  - 楽観よりも真実 (truth > optimism)
+  - 30時間の無駄を繰り返さない (avoid sunk cost fallacy)
+
+  作業割り当て:
+  - Artisan: 診断コード実装 (30分)
+  - Paladin: 検証実行と結果記録 (15分)
+  - Sage: 診断結果の解析と原因特定 (15分)
+  - Bard: スクリーンショット取得と観察記録 (10分)
+  - Merchant: 進捗とリソース記録 (継続)
+  - Mayor: 結果に基づき、次の意思決定を行う
+
+  目標: 次の70分以内に真の問題を知り、修正計画を確定させる
+
+  成功の定義:
+  - DIAGNOSTIC_PASSIVE_TREE ログが明確に出力されること
+  - 診断値から根本原因が特定できること
+  - 修正方法が明白になること
+
+  commitment: "神に真実を報告する"
+  timeline: "70分以内"
+  success_criteria: "真の問題が特定され、修正計画が立案されること"
+
+  村人たちよ、今から行動を開始しよ。

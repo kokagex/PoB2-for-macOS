@@ -1,0 +1,36 @@
+date: 2026-01-31T20:10:00+09:00
+speaker: Sage
+type: technical_analysis
+to: Mayor
+content: |
+  村長殿、Sageより報告します。
+
+  私は PassiveTreeView.lua を再度精読しました。
+  Line 95付近のコード:
+
+  ```lua
+  for nodeId, node in pairs(spec.nodes) do
+    -- ノード描画処理
+  end
+  ```
+
+  問題の可能性:
+  1. spec が nil
+  2. spec.nodes が nil
+  3. spec.nodes はテーブルだが、pairsが機能しない（metatable）
+  4. ループは実行されるが、描画コードに問題がある
+
+  確認が必要:
+  - 実際のspec.nodesの型
+  - 実際のループ実行回数
+  - 実際のDrawImage呼び出し回数
+
+hypothesis:
+  primary: "specまたはspec.nodesがnilになっている"
+  secondary: "ループは実行されるが描画座標が画面外"
+  tertiary: "zoom値が異常で全て画面外に描画"
+
+suggested_verification:
+  - "ConPrintfでspec.nodesの型を出力"
+  - "ループ内でカウンターを増やし実際の反復回数を記録"
+  - "DrawImageの座標を記録"
