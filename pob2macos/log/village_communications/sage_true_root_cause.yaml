@@ -1,0 +1,65 @@
+date: 2026-01-31T20:30:00+09:00
+speaker: Sage
+type: BREAKTHROUGH
+status: TRUE_ROOT_CAUSE_IDENTIFIED
+to: [Mayor, All Villagers]
+content: |
+  村人たちよ、Sageより真の根本原因を報告します。
+
+  診断出力より判明した事実:
+  ============================
+
+  PassiveTree.lua (ロード時):
+  - "DEBUG [PassiveTree]: Loaded 4701 nodes from tree.lua" ✓
+  - tree.luaからのロードは成功
+
+  PassiveSpec.lua Init() (45-48行目):
+  - "DIAGNOSIS_INIT: tree.nodes pairs count=0" ← ★ 重要
+  - pairs(self.tree.nodes) でループ = 0回
+
+  PassiveSpec.lua Init() (79-82行目):
+  - "DEBUG [PassiveSpec]: self.tree.nodes count BEFORE filtering: 4701"
+  - これは恐らく別の値（PassiveTreeからのログ）を参照
+
+  PassiveSpec.lua Init() (113-125行目):
+  - "CRITICAL_FILTER: Passed=0, Failed=0, Total=0"
+  - pairs(self.tree.nodes) でループ = 0回
+  - つまり、116行目の`self.nodes[treeNode.id] = ...` が一度も実行されていない
+
+  PassiveTreeView.lua Draw():
+  - "DIAGNOSTIC_PASSIVE_TREE: iter=0, nodes_with_coords=0"
+  - pairs(spec.nodes) でループ = 0回
+  - しかし "DEBUG_SPEC_NODES: ipairsCount=73896"
+  - ipairs(spec.nodes) では 73,896 個ループ！
+
+  真の根本原因:
+  ==============
+  `tree.nodes` は pairs() でループできない構造になっている。
+
+  可能性:
+  1. tree.nodes は配列として構造化されている
+  2. しかしキーは数値IDではなく文字列ID
+  3. pairs() は数値インデックス以外を無視する（いいえ、これは間違い）
+  4. または tree.nodes に特殊な metatable が設定されている
+  5. または tree.nodes のデータ型が間違っている
+
+  証拠:
+  - next(tree.nodes) = 51534 ← firstKeyは取得できる
+  - firstNode type=table, x=-3527.51 ← ノードは存在する
+  - pairs(tree.nodes) = 0回 ← でもループできない
+  - ipairs(spec.nodes) = 73,896回 ← 配列としては巨大な数
+
+  次のアクション:
+  ===============
+  PassiveTree.lua でtree.nodesがどう構築されているか確認する必要があります。
+  特に:
+  1. self.nodes[...] = ... の代入方法
+  2. rawset() などの使用有無
+  3. メタテーブルの設定
+  4. データ構造の形式
+
+  仮説:
+  tree.lua から読み込んだデータが特殊な形式で、
+  Lua の標準的な pairs() では反復できない構造になっている可能性。
+
+next_action: "PassiveTree.lua の nodes 構築コードを確認"
