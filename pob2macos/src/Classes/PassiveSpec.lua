@@ -43,6 +43,14 @@ function PassiveSpecClass:Init(treeVersion, convert)
 
 	-- Make a local copy of the passive tree that we can modify
 	self.nodes = { }
+
+	-- Debug: Count tree.nodes before filtering
+	local treeNodeCount = 0
+	for _ in pairs(self.tree.nodes) do
+		treeNodeCount = treeNodeCount + 1
+	end
+	ConPrintf("DEBUG [PassiveSpec]: self.tree.nodes count BEFORE filtering: %s", tostring(treeNodeCount))
+
 	for _, treeNode in pairs(self.tree.nodes) do
 		-- Exclude proxy or groupless nodes, as well as expansion sockets
 		if treeNode.group and not treeNode.isProxy and not treeNode.group.isProxy and (not treeNode.expansionJewel or not treeNode.expansionJewel.parent) then
@@ -52,6 +60,13 @@ function PassiveSpecClass:Init(treeVersion, convert)
 			}, treeNode)
 		end
 	end
+
+	-- Debug: Count filtered nodes
+	local filteredNodeCount = 0
+	for _ in pairs(self.nodes) do
+		filteredNodeCount = filteredNodeCount + 1
+	end
+	ConPrintf("DEBUG [PassiveSpec]: self.nodes count AFTER filtering: %s", tostring(filteredNodeCount))
 	for id, node in pairs(self.nodes) do
 		-- init all nodes as normal allocationMode
 		node.allocMode = 0
@@ -990,7 +1005,9 @@ function PassiveSpecClass:BuildPathFromNode(root)
 			end
 
 			if not other.pathDist then
-				ConPrintTable(other, true)
+				-- PRJ-003 Fix: Initialize missing pathDist to prevent crash
+				other.pathDist = 1000  -- Default value (same as line 1669)
+				ConPrintf("WARNING: Node %s had no pathDist, initialized to 1000", tostring(other.id or "unknown"))
 			end
 			if node.type ~= "Mastery" and other.type ~= "ClassStart" and other.type ~= "AscendClassStart" and other.pathDist > curDist and (node.ascendancyName == other.ascendancyName or (curDist == 0 and not other.ascendancyName)) and canPath then
 				-- The shortest path to the other node is through the current node
@@ -1088,8 +1105,10 @@ function PassiveSpecClass:NodesInIntuitiveLeapLikeRadius(node)
 
 		if item.jewelData and item.jewelData.fromNothingKeystone then
 			for keyName, keyNode in pairs(item.jewelData.fromNothingKeystones) do
-				if self.tree.keystoneMap[keyName] and self.tree.keystoneMap[keyName].nodesInRadius then
-					for affectedNodeId in pairs(self.tree.keystoneMap[keyName].nodesInRadius[radiusIndex]) do
+				-- PRJ-003 Fix: Validate radiusIndex before array access
+				local keystoneData = self.tree.keystoneMap[keyName]
+				if keystoneData and keystoneData.nodesInRadius and keystoneData.nodesInRadius[radiusIndex] then
+					for affectedNodeId in pairs(keystoneData.nodesInRadius[radiusIndex]) do
 						if self.nodes[affectedNodeId].alloc then
 							t_insert(result, self.nodes[affectedNodeId])
 						end
@@ -1167,7 +1186,8 @@ function PassiveSpecClass:BuildAllDependsAndPaths()
 
 					if item.jewelData and item.jewelData.fromNothingKeystone then
 						for keyName, keyNode in pairs(self.tree.keystoneMap) do
-							if item.jewelData.fromNothingKeystones[keyName] and keyNode.nodesInRadius then
+							-- PRJ-003 Fix: Validate radiusIndex before array access
+							if item.jewelData.fromNothingKeystones[keyName] and keyNode.nodesInRadius and keyNode.nodesInRadius[radiusIndex] then
 								if keyNode.nodesInRadius[radiusIndex][node.id] then
 									t_insert(node.intuitiveLeapLikesAffecting, self.nodes[nodeId])
 								end
@@ -1187,7 +1207,8 @@ function PassiveSpecClass:BuildAllDependsAndPaths()
 				if allocatable then
 					if intuitiveLeapMap.from == "Keystone" then
 						for keyName, keyNode in pairs(self.tree.keystoneMap) do
-							if self.allocNodes[keyNode.id] and keyNode.nodesInRadius and keyNode.nodesInRadius[intuitiveLeapMap.radiusIndex][id] then
+							-- PRJ-003 Fix: Validate radiusIndex before array access
+							if self.allocNodes[keyNode.id] and keyNode.nodesInRadius and keyNode.nodesInRadius[intuitiveLeapMap.radiusIndex] and keyNode.nodesInRadius[intuitiveLeapMap.radiusIndex][id] then
 								t_insert(node.intuitiveLeapLikesAffecting, self.nodes[keyNode.id])
 							end
 						end
@@ -1570,17 +1591,22 @@ function PassiveSpecClass:BuildAllDependsAndPaths()
 				local prune = true
 				for nodeId, itemId in pairs(self.jewels) do
 					if self.allocNodes[nodeId] then
-						if itemId ~= 0 and (
-							 self.build.itemsTab.items[itemId] and (
-								self.build.itemsTab.items[itemId].jewelData
-									and self.build.itemsTab.items[itemId].jewelData.intuitiveLeapLike
-									and self.build.itemsTab.items[itemId].jewelRadiusIndex
-									and self.nodes[nodeId].nodesInRadius
-									and self.nodes[nodeId].nodesInRadius[self.build.itemsTab.items[itemId].jewelRadiusIndex][depNode.id]
+						-- PRJ-003 Fix: Safe navigation for deep chained access
+						local item = itemId ~= 0 and self.build.itemsTab.items[itemId]
+						local socketNode = self.nodes[nodeId]
+
+						if item and (
+							 (item.jewelData
+								and item.jewelData.intuitiveLeapLike
+								and item.jewelRadiusIndex
+								and socketNode
+								and socketNode.nodesInRadius
+								and socketNode.nodesInRadius[item.jewelRadiusIndex]
+								and socketNode.nodesInRadius[item.jewelRadiusIndex][depNode.id]
 							) or (
-								self.build.itemsTab.items[itemId].jewelData
-									and self.build.itemsTab.items[itemId].jewelData.fromNothingKeystones
-									and self:NodeInKeystoneRadius(self.build.itemsTab.items[itemId].jewelData.fromNothingKeystones, depNode.id, self.build.itemsTab.items[itemId].jewelRadiusIndex)
+								item.jewelData
+									and item.jewelData.fromNothingKeystones
+									and self:NodeInKeystoneRadius(item.jewelData.fromNothingKeystones, depNode.id, item.jewelRadiusIndex)
 							)
 						) then
 							-- Hold off on the pruning; this node could be supported by Intuitive Leap-like jewel
@@ -2342,7 +2368,8 @@ end
 function PassiveSpecClass:NodeInKeystoneRadius(keystoneNames, nodeId, radiusIndex)
 	for _, node in pairs(self.nodes) do
 		if node.name and node.type == "Keystone" and keystoneNames[node.name:lower()] then
-			if (node.nodesInRadius[radiusIndex][nodeId]) then
+			-- PRJ-003 Fix: Validate radiusIndex before array access
+			if node.nodesInRadius and node.nodesInRadius[radiusIndex] and node.nodesInRadius[radiusIndex][nodeId] then
 				return true
 			end
 		end

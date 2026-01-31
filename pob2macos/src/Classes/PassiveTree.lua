@@ -52,12 +52,50 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 	MakeDir("TreeData")
 
 	ConPrintf("Loading passive tree data for version '%s'...", treeVersions[treeVersion].display)
+
+	-- Debug: Check working directory and file existence
+	local handle = io.popen("pwd")
+	local cwd = handle:read("*a"):gsub("%s+$", "")
+	handle:close()
+	ConPrintf("DEBUG [PassiveTree]: Current working directory: %s", cwd)
+
 	local treeText
-	local treeFile = io.open("TreeData/"..treeVersion.."/tree.lua", "r")
+	local treeFilePath = "TreeData/"..treeVersion.."/tree.lua"
+	ConPrintf("DEBUG [PassiveTree]: Attempting to load tree file: %s", treeFilePath)
+
+	-- Debug: Check if file exists using io.popen
+	local checkHandle = io.popen("ls -lh " .. treeFilePath)
+	local fileInfo = checkHandle:read("*a")
+	checkHandle:close()
+	ConPrintf("DEBUG [PassiveTree]: File info: %s", fileInfo:gsub("%s+$", ""))
+
+	-- Try to read tree.lua using io.open
+	ConPrintf("DEBUG [PassiveTree]: Opening file: %s", treeFilePath)
+	local treeFile = io.open(treeFilePath, "r")
 	if treeFile then
+		ConPrintf("DEBUG [PassiveTree]: File opened successfully, reading...")
 		treeText = treeFile:read("*a")
+		local readSize = treeText and #treeText or 0
+		ConPrintf("DEBUG [PassiveTree]: Read completed, size: %s bytes, treeText type: %s", tostring(readSize), type(treeText))
 		treeFile:close()
+		if not treeText or readSize == 0 then
+			ConPrintf("DEBUG [PassiveTree]: WARNING - treeText is empty or nil, trying chunk read")
+			-- Try reading in chunks
+			treeFile = io.open(treeFilePath, "r")
+			local chunks = {}
+			local chunkCount = 0
+			while true do
+				local chunk = treeFile:read(8192)
+				if not chunk then break end
+				table.insert(chunks, chunk)
+				chunkCount = chunkCount + 1
+			end
+			treeFile:close()
+			treeText = table.concat(chunks)
+			ConPrintf("DEBUG [PassiveTree]: Chunk read result: %s chunks, %s total bytes", tostring(chunkCount), tostring(#(treeText or "")))
+		end
 	else
+		ConPrintf("DEBUG [PassiveTree]: Failed to open tree.lua with io.open, trying alternative methods")
 		local page
 		local pageFile = io.open("TreeData/"..treeVersion.."/data.json", "r")
 		if pageFile then
@@ -79,8 +117,66 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 		treeFile:write(treeText)
 		treeFile:close()
 	end
-	for k, v in pairs(assert(loadstring(treeText))()) do
+	-- Debug: Check what loadstring returns
+	ConPrintf("DEBUG [PassiveTree]: Executing loadstring(treeText)...")
+	local treeFunc, loadErr = loadstring(treeText)
+	if not treeFunc then
+		ConPrintf("DEBUG [PassiveTree]: loadstring FAILED: %s", tostring(loadErr))
+		error("Failed to parse tree.lua: " .. tostring(loadErr))
+	end
+	ConPrintf("DEBUG [PassiveTree]: loadstring succeeded, executing function...")
+	local treeData = treeFunc()
+	ConPrintf("DEBUG [PassiveTree]: Execution complete, result type: %s", type(treeData))
+
+	local treeKeyCount = 0
+	local hasNodes = false
+	if type(treeData) == "table" then
+		for k, v in pairs(treeData) do
+			treeKeyCount = treeKeyCount + 1
+			if k == "nodes" then
+				hasNodes = true
+				local nodesInTreeData = 0
+				if type(v) == "table" then
+					for _ in pairs(v) do
+						nodesInTreeData = nodesInTreeData + 1
+					end
+				end
+				ConPrintf("DEBUG [PassiveTree]: tree.lua has 'nodes' key with %s entries", tostring(nodesInTreeData))
+			end
+		end
+	else
+		ConPrintf("DEBUG [PassiveTree]: ERROR - treeData is not a table, it's %s", type(treeData))
+	end
+	ConPrintf("DEBUG [PassiveTree]: tree.lua returned %s top-level keys, hasNodes=%s", tostring(treeKeyCount), tostring(hasNodes))
+
+	ConPrintf("DEBUG [PassiveTree]: Copying treeData to self...")
+	for k, v in pairs(treeData) do
+		if k == "nodes" then
+			local nodeCount = 0
+			if type(v) == "table" then
+				for _ in pairs(v) do
+					nodeCount = nodeCount + 1
+				end
+			end
+			ConPrintf("DEBUG [PassiveTree]: Copying 'nodes' key with %s entries", tostring(nodeCount))
+		end
 		self[k] = v
+	end
+	ConPrintf("DEBUG [PassiveTree]: Copy complete")
+
+	-- Debug: Check if nodes was loaded from tree.lua
+	local loadedNodeCount = 0
+	if self.nodes then
+		if type(self.nodes) == "table" then
+			for _ in pairs(self.nodes) do
+				loadedNodeCount = loadedNodeCount + 1
+			end
+		else
+			ConPrintf("DEBUG [PassiveTree]: ERROR - self.nodes is not a table, it's %s", type(self.nodes))
+		end
+		ConPrintf("DEBUG [PassiveTree]: Loaded %s nodes from tree.lua", tostring(loadedNodeCount))
+	else
+		ConPrintf("DEBUG [PassiveTree]: self.nodes is NIL after loading tree.lua!")
 	end
 
 	-- Validate essential tree coordinate bounds
@@ -173,10 +269,30 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 	self.orbitRadii = self.constants.orbitRadii
 	self.orbitAnglesByOrbit = self.constants.orbitAnglesByOrbit
 
+	-- Debug: Check node count before loading assets
+	local nodeCountBeforeAssets = 0
+	if self.nodes and type(self.nodes) == "table" then
+		for _ in pairs(self.nodes) do
+			nodeCountBeforeAssets = nodeCountBeforeAssets + 1
+		end
+	end
+	ConPrintf("DEBUG [PassiveTree]: Node count BEFORE loading assets: %s", tostring(nodeCountBeforeAssets))
+
 	ConPrintf("Loading passive tree assets...")
 	for name, data in pairs(self.assets) do
 		self:LoadImage(data[1], data, "MIPMAP")
 	end
+
+	-- Debug: Check node count after loading assets
+	local nodeCountAfterAssets = 0
+	if self.nodes and type(self.nodes) == "table" then
+		for _ in pairs(self.nodes) do
+			nodeCountAfterAssets = nodeCountAfterAssets + 1
+		end
+	else
+		ConPrintf("DEBUG [PassiveTree]: ERROR - self.nodes is %s after loading assets!", self.nodes and type(self.nodes) or "nil")
+	end
+	ConPrintf("DEBUG [PassiveTree]: Node count AFTER loading assets: %s", tostring(nodeCountAfterAssets))
 
 	self.ddsMap = { }
 	self.ddsCoords = self.ddsCoords or { }
@@ -194,6 +310,17 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 		end
 	end
 
+	-- Debug: Check node count after ddsMap processing
+	local nodeCountAfterDDS = 0
+	if self.nodes and type(self.nodes) == "table" then
+		for _ in pairs(self.nodes) do
+			nodeCountAfterDDS = nodeCountAfterDDS + 1
+		end
+	else
+		ConPrintf("DEBUG [PassiveTree]: ERROR - self.nodes is %s after ddsMap!", self.nodes and type(self.nodes) or "nil")
+	end
+	ConPrintf("DEBUG [PassiveTree]: Node count AFTER ddsMap: %s", tostring(nodeCountAfterDDS))
+
 	for type, data in pairs(self.nodeOverlay) do
 		local asset = self:GetAssetByName(data.alloc)
 		local artWidth = asset.width * self.scaleImage
@@ -201,7 +328,18 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 		data.size = artWidth
 		data.rsq = data.size * data.size
 	end
-	
+
+	-- Debug: Check node count after nodeOverlay processing
+	local nodeCountAfterOverlay = 0
+	if self.nodes and type(self.nodes) == "table" then
+		for _ in pairs(self.nodes) do
+			nodeCountAfterOverlay = nodeCountAfterOverlay + 1
+		end
+	else
+		ConPrintf("DEBUG [PassiveTree]: ERROR - self.nodes is %s after nodeOverlay!", self.nodes and type(self.nodes) or "nil")
+	end
+	ConPrintf("DEBUG [PassiveTree]: Node count AFTER nodeOverlay: %s", tostring(nodeCountAfterOverlay))
+
 	for _, group in pairs(self.groups) do
 		group.n = group.nodes
 		group.oo = { }
@@ -210,10 +348,40 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 		end
 	end
 
+	-- Debug: Check node count after groups processing
+	local nodeCountAfterGroups = 0
+	if self.nodes and type(self.nodes) == "table" then
+		for _ in pairs(self.nodes) do
+			nodeCountAfterGroups = nodeCountAfterGroups + 1
+		end
+	else
+		ConPrintf("DEBUG [PassiveTree]: ERROR - self.nodes is %s after groups!", self.nodes and type(self.nodes) or "nil")
+	end
+	ConPrintf("DEBUG [PassiveTree]: Node count AFTER groups: %s", tostring(nodeCountAfterGroups))
+
 		-- Go away
 		self.nodes.root = nil
 
+	-- Debug: Check node count after removing root
+	local nodeCountAfterRoot = 0
+	if self.nodes and type(self.nodes) == "table" then
+		for _ in pairs(self.nodes) do
+			nodeCountAfterRoot = nodeCountAfterRoot + 1
+		end
+	else
+		ConPrintf("DEBUG [PassiveTree]: ERROR - self.nodes is %s after removing root!", self.nodes and type(self.nodes) or "nil")
+	end
+	ConPrintf("DEBUG [PassiveTree]: Node count AFTER removing root: %s", tostring(nodeCountAfterRoot))
+
 	ConPrintf("Processing tree...")
+
+	-- Debug: Count nodes before processing
+	local nodeCount = 0
+	for _ in pairs(self.nodes) do
+		nodeCount = nodeCount + 1
+	end
+	ConPrintf("DEBUG [PassiveTree]: self.nodes count BEFORE processing: %s", tostring(nodeCount))
+
 	self.ascendancyMap = { }
 	self.keystoneMap = { }
 	self.notableMap = { }

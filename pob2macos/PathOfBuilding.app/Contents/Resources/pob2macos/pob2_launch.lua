@@ -104,9 +104,21 @@ _G.SetViewport = function(x, y, width, height)
         sg.SetViewport(x, y, width, height)
     end
 end
--- SetDrawColor: Wrapper to handle optional alpha argument
+-- SetDrawColor: Wrapper to handle type conversion and optional alpha argument
 _G.SetDrawColor = function(r, g, b, a)
-    sg.SetDrawColor(r or 0, g or 0, b or 0, a or 1.0)
+    -- Force conversion to number with explicit tonumber() and fallback to 0
+    local r_num = tonumber(r) or 0.0
+    local g_num = tonumber(g) or 0.0
+    local b_num = tonumber(b) or 0.0
+    local a_num = tonumber(a) or 1.0
+
+    -- Ensure values are in valid range [0, 1]
+    r_num = math.max(0.0, math.min(1.0, r_num))
+    g_num = math.max(0.0, math.min(1.0, g_num))
+    b_num = math.max(0.0, math.min(1.0, b_num))
+    a_num = math.max(0.0, math.min(1.0, a_num))
+
+    sg.SetDrawColor(r_num, g_num, b_num, a_num)
 end
 -- SetDrawLayer: Wrapper to handle optional subLayer argument
 _G.SetDrawLayer = function(layer, subLayer)
@@ -132,6 +144,10 @@ _G.DrawImage = function(imageHandle, left, top, width, height, tcLeft, tcTop, tc
     -- If it's a wrapped ImageHandle object, extract the raw C handle
     if type(imageHandle) == "table" and imageHandle._handle then
         handle = imageHandle._handle
+        -- Debug: Log if handle is nil after extraction
+        if not handle then
+            print(string.format("WARNING: DrawImage called with table but _handle is nil at pos(%.0f,%.0f)", left or 0, top or 0))
+        end
     end
     -- Provide default texture coordinates if not specified (full texture 0,0 to 1,1)
     if tcLeft == nil then tcLeft = 0.0 end
@@ -158,6 +174,17 @@ _G.DrawImageQuad = function(imageHandle, x1, y1, x2, y2, x3, y3, x4, y4, s1, t1,
     s4 = s4 or 0.0
     t4 = t4 or 1.0
     sg.DrawImageQuad(handle, x1, y1, x2, y2, x3, y3, x4, y4, s1, t1, s2, t2, s3, t3, s4, t4)
+end
+
+-- Load DrawImage parameter test module (enabled for debugging)
+local ENABLE_DRAW_PARAM_TEST = true  -- Always enabled for now
+if ENABLE_DRAW_PARAM_TEST then
+    local test_module = loadfile("test_draw_params.lua")
+    if test_module then
+        _G.draw_param_test = test_module()
+        _G.draw_param_test.intercept()
+        print("✓ DrawImage parameter testing enabled")
+    end
 end
 
 -- Image handle wrapper class to match PassiveTree.lua expectations
@@ -317,6 +344,30 @@ end
 print("✓ Lua package paths configured")
 print("")
 
+-- Set working directory to script path (pob2macos directory)
+-- Use Lua's arg[0] to get actual script path instead of GetScriptPath() which returns luajit binary path
+local script_file = arg[0]
+local script_path
+if script_file then
+    -- Extract directory from script file path
+    script_path = script_file:match("(.*/)")
+    if not script_path then
+        -- If no directory separator found, use current directory
+        script_path = "."
+    end
+    -- Remove trailing slash if present
+    script_path = script_path:gsub("/$", "")
+    print("Script file: " .. script_file)
+else
+    -- Fallback to GetScriptPath() if arg[0] is not available
+    script_path = GetScriptPath()
+    print("Using GetScriptPath() fallback")
+end
+print("Script path: " .. script_path)
+SetWorkDir(script_path)
+print("Working directory set to: " .. script_path)
+print("")
+
 -- Don't call RenderInit here - let Launch.lua do it
 -- This prevents double initialization
 print("Skipping early RenderInit - Launch.lua will initialize")
@@ -408,6 +459,25 @@ while IsUserTerminated() == 0 do
     end
 
     ffi.C.usleep(16666)  -- ~60 FPS
+
+    -- Output test results after first 3 seconds
+    if ENABLE_DRAW_PARAM_TEST and frame_count == 180 then
+        print("")
+        print("=====================================")
+        _G.draw_param_test.analyze()
+        print("=====================================")
+        print("")
+    end
+end
+
+-- Output final test results if enabled
+if ENABLE_DRAW_PARAM_TEST and _G.draw_param_test then
+    print("")
+    print("=====================================")
+    print("=== Final DrawImage Parameter Test ===")
+    _G.draw_param_test.analyze()
+    print("=====================================")
+    print("")
 end
 
 print("")
