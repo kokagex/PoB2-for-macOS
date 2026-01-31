@@ -9,6 +9,7 @@
 #include "simplegraphic.h"
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -110,6 +111,7 @@ typedef struct SGRenderer {
 
     // Image management
     void* (*create_texture)(int width, int height, const void* data);
+    void* (*create_compressed_texture)(int width, int height, uint32_t format, const void* data, size_t dataSize);
     void (*destroy_texture)(void* texture);
     void (*update_texture)(void* texture, const void* data);
 

@@ -40,6 +40,9 @@ endif()
 # zlib for compression
 find_package(ZLIB REQUIRED)
 
+# zstd for DDS.zst decompression
+pkg_check_modules(ZSTD REQUIRED libzstd)
+
 # Metal/Cocoa frameworks (macOS)
 if(SG_BACKEND STREQUAL "metal")
     find_library(METAL_FRAMEWORK Metal REQUIRED)
@@ -83,6 +86,7 @@ set(SG_UTILITIES_SOURCES
     src/utilities/sg_clipboard.cpp
     src/utilities/sg_console.cpp
     src/utilities/sg_module.cpp
+    src/utilities/dds_loader.c
 )
 
 set(SG_LUA_SOURCES
@@ -125,6 +129,7 @@ target_include_directories(simplegraphic
         ${GLFW_INCLUDE_DIRS}
         ${FREETYPE_INCLUDE_DIRS}
         ${LUA_INCLUDE_DIRS}
+        ${ZSTD_INCLUDE_DIRS}
 )
 
 # Compile definitions
@@ -153,6 +158,7 @@ target_link_libraries(simplegraphic
     ${FREETYPE_LIBRARIES}
     ${LUA_LIBRARIES}
     ZLIB::ZLIB
+    ${ZSTD_LIBRARIES}
 )
 
 if(SG_BACKEND STREQUAL "metal")

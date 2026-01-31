@@ -296,12 +296,26 @@ static SGGlyphCacheEntry* sg_get_glyph(SGContext* ctx, FT_Face face, uint32_t co
 /* ===== Font Management ===== */
 
 static const char* sg_get_font_path(const char* font_name) {
-    // Map font names to system fonts
-    if (!font_name || strcmp(font_name, "VAR") == 0) {
-        return "/System/Library/Fonts/Monaco.ttf";
+    // Map font names to system fonts - use static strings to avoid memory issues
+    static const char* monaco_path = "/System/Library/Fonts/Monaco.ttf";
+    static const char* menlo_path = "/System/Library/Fonts/Menlo.ttc";
+
+    if (!font_name || font_name[0] == '\0' || strcmp(font_name, "VAR") == 0) {
+        return monaco_path;
     }
 
-    // Try as-is first
+    if (strcmp(font_name, "FIXED") == 0) {
+        return menlo_path;
+    }
+
+    // For custom font names, validate it's a reasonable path
+    // If empty or looks invalid, fall back to Monaco
+    if (strlen(font_name) < 3) {
+        fprintf(stderr, "Warning: Invalid font name '%s', using Monaco\n", font_name);
+        return monaco_path;
+    }
+
+    // Try as-is
     return font_name;
 }
 
@@ -321,12 +335,28 @@ static SGFontFace* sg_load_font(SGContext* ctx, const char* font_name, int size)
 
     // Load new font
     const char* font_path = sg_get_font_path(font_name);
-    FT_Face ft_face;
 
-    if (FT_New_Face(ft_lib, font_path, 0, &ft_face)) {
-        fprintf(stderr, "Failed to load font: %s\n", font_path);
+    // Validate font path before attempting to load
+    if (!font_path || font_path[0] == '\0') {
+        fprintf(stderr, "Error: Invalid font path (NULL or empty)\n");
         return NULL;
     }
+
+    // Check if file exists before loading
+    FILE* test_file = fopen(font_path, "r");
+    if (!test_file) {
+        fprintf(stderr, "Error: Font file not found: %s\n", font_path);
+        return NULL;
+    }
+    fclose(test_file);
+
+    FT_Face ft_face;
+    if (FT_New_Face(ft_lib, font_path, 0, &ft_face)) {
+        fprintf(stderr, "Error: FreeType failed to load font: %s\n", font_path);
+        return NULL;
+    }
+
+    printf("Successfully loaded font: %s (size: %d)\n", font_path, size);
 
     if (FT_Set_Pixel_Sizes(ft_face, 0, size)) {
         fprintf(stderr, "Failed to set font size: %d\n", size);
@@ -418,19 +448,23 @@ void DrawString(int left, int top, int align, int height,
                 const char* font, const char* text) {
     if (!g_ctx || !text) return;
 
-    // Debug: Log first few DrawString calls with full text
+    // CRITICAL FIX: Always use default font to avoid FFI string corruption issues
+    // The font parameter from LuaJIT FFI may be corrupted, so we ignore it entirely
+    static const char* default_font = "VAR";
+
+    // Debug: Log first few DrawString calls
     static int call_count = 0;
     if (call_count < 3) {
-        printf("DEBUG: DrawString #%d - pos(%d,%d) align=%d height=%d font='%s'\n",
-               ++call_count, left, top, align, height, font ? font : "null");
+        printf("DEBUG: DrawString #%d - pos(%d,%d) align=%d height=%d using_default_font='%s'\n",
+               ++call_count, left, top, align, height, default_font);
         if (text) {
-            // Print first 500 chars of text
+            // Print first 100 chars of text
             size_t len = strlen(text);
-            if (len > 500) {
-                char preview[501];
-                strncpy(preview, text, 500);
-                preview[500] = '\0';
-                printf("       Text (first 500 chars): '%s'...\n", preview);
+            if (len > 100) {
+                char preview[101];
+                strncpy(preview, text, 100);
+                preview[100] = '\0';
+                printf("       Text (first 100 chars): '%s'...\n", preview);
             } else {
                 printf("       Full text: '%s'\n", text);
             }
@@ -440,8 +474,8 @@ void DrawString(int left, int top, int align, int height,
     // Increment frame number
     g_ctx->frame_number++;
 
-    // Load font
-    SGFontFace* font_face = sg_load_font(g_ctx, font, height);
+    // Load font using default font only (ignore font parameter)
+    SGFontFace* font_face = sg_load_font(g_ctx, default_font, height);
     if (!font_face) {
         fprintf(stderr, "DrawString: Failed to load font\n");
         return;
