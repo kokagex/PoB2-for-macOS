@@ -340,10 +340,22 @@ end
 
 function main:OnFrame()
 	self.screenW, self.screenH = GetScreenSize()
+
+	-- Debug: Log GetScreenSize results
+	if not self.screenSizeLogCount then self.screenSizeLogCount = 0 end
+	if self.screenSizeLogCount < 5 then
+		self.screenSizeLogCount = self.screenSizeLogCount + 1
+		ConPrintf("Main:OnFrame GetScreenSize() returned: w=%s h=%s", tostring(self.screenW), tostring(self.screenH))
+	end
+
 	self.screenScale = GetScreenScale and GetScreenScale() or 1
 	if self.screenScale ~= 1.0 then
 		self.screenW = math.floor(self.screenW / self.screenScale)
 		self.screenH = math.floor(self.screenH / self.screenScale)
+
+		if self.screenSizeLogCount <= 5 then
+			ConPrintf("Main:OnFrame After scaling: w=%d h=%d (scale=%.2f)", self.screenW, self.screenH, self.screenScale)
+		end
 	end
 
 	if self.screenH > self.screenW then
@@ -1132,7 +1144,7 @@ function main:OpenOptionsPopup()
 	local initialNotSupportedModTooltips = self.notSupportedModTooltips
 	local initialInvertSliderScrollDirection = self.invertSliderScrollDirection
 	local initialDisableDevAutoSave = self.disableDevAutoSave
-	--local initialShowPublicBuilds = self.showPublicBuilds
+	local initialShowPublicBuilds = self.showPublicBuilds
 	local initialShowFlavourText = self.showFlavourText
 	local initialShowAnimations = self.showAnimations
 	local initialShowAllItemAffixes = self.showAllItemAffixes

@@ -203,11 +203,18 @@ function launch:OnSubCall(func, ...)
 end
 
 function launch:OnSubError(id, errMsg)
-	if self.subScripts[id].type == "UPDATE" then
+	-- PRJ-003 Fix: Safe navigation for subscript access
+	local subscript = self.subScripts[id]
+	if not subscript then
+		ConPrintf("WARNING: Missing subscript for id: %s in OnSubError", tostring(id))
+		return
+	end
+
+	if subscript.type == "UPDATE" then
 		self:ShowErrMsg("In update thread: %s", errMsg)
 		self.updateCheckRunning = false
-	elseif self.subScripts[id].type == "DOWNLOAD" then
-		local errMsg = PCall(self.subScripts[id].callback, nil, errMsg)
+	elseif subscript.type == "DOWNLOAD" then
+		local errMsg = PCall(subscript.callback, nil, errMsg)
 		if errMsg then
 			self:ShowErrMsg("In download callback: %s", errMsg)
 		end
@@ -216,20 +223,27 @@ function launch:OnSubError(id, errMsg)
 end
 
 function launch:OnSubFinished(id, ...)
-	if self.subScripts[id].type == "UPDATE" then
+	-- PRJ-003 Fix: Safe navigation for subscript access
+	local subscript = self.subScripts[id]
+	if not subscript then
+		ConPrintf("WARNING: Missing subscript for id: %s in OnSubFinished", tostring(id))
+		return
+	end
+
+	if subscript.type == "UPDATE" then
 		self.updateAvailable, self.updateErrMsg = ...
 		self.updateCheckRunning = false
 		if self.updateCheckBackground and self.updateAvailable == "none" then
 			self.updateAvailable = nil
 		end
-	elseif self.subScripts[id].type == "DOWNLOAD" then
-		local errMsg = PCall(self.subScripts[id].callback, ...)
+	elseif subscript.type == "DOWNLOAD" then
+		local errMsg = PCall(subscript.callback, ...)
 		if errMsg then
 			self:ShowErrMsg("In download callback: %s", errMsg)
 		end
-	elseif self.subScripts[id].type == "CUSTOM" then
-		if self.subScripts[id].callback then
-			local errMsg = PCall(self.subScripts[id].callback, ...)
+	elseif subscript.type == "CUSTOM" then
+		if subscript.callback then
+			local errMsg = PCall(subscript.callback, ...)
 			if errMsg then
 				self:ShowErrMsg("In subscript callback: %s", errMsg)
 			end

@@ -1169,11 +1169,19 @@ function buildMode:OnFrame(inputEvents)
 
 	-- Draw contents of current tab
 	local sideBarWidth = 312
+
+	-- Debug: Log screen dimensions (first 3 frames only)
+	if not self.screenLogCount then self.screenLogCount = 0 end
+	if self.screenLogCount < 3 then
+		self.screenLogCount = self.screenLogCount + 1
+		ConPrintf("Build viewport: screenW=%s screenH=%s", tostring(main.screenW), tostring(main.screenH))
+	end
+
 	local tabViewPort = {
 		x = sideBarWidth,
 		y = 32,
-		width = main.screenW - sideBarWidth,
-		height = main.screenH - 32
+		width = (main.screenW or 0) - sideBarWidth,
+		height = (main.screenH or 0) - 32
 	}
 	if self.viewMode == "IMPORT" then
 		self.importTab:Draw(tabViewPort, inputEvents)  
@@ -1184,6 +1192,7 @@ function buildMode:OnFrame(inputEvents)
 	elseif self.viewMode == "CONFIG" then
 		self.configTab:Draw(tabViewPort, inputEvents)
 	elseif self.viewMode == "TREE" then
+		ConPrintf("Build: Drawing TREE tab (viewMode=%s)", self.viewMode)
 		self.treeTab:Draw(tabViewPort, inputEvents)
 	elseif self.viewMode == "SKILLS" then
 		self.skillsTab:Draw(tabViewPort, inputEvents)
@@ -1191,6 +1200,8 @@ function buildMode:OnFrame(inputEvents)
 		self.itemsTab:Draw(tabViewPort, inputEvents)
 	elseif self.viewMode == "CALCS" then
 		self.calcsTab:Draw(tabViewPort, inputEvents)
+	else
+		ConPrintf("Build: Unknown viewMode=%s", tostring(self.viewMode))
 	end
 
 	self.unsaved = self.modFlag or self.notesTab.modFlag or self.partyTab.modFlag or self.configTab.modFlag or self.treeTab.modFlag or self.treeTab.searchFlag or self.spec.modFlag or self.skillsTab.modFlag or self.itemsTab.modFlag or self.calcsTab.modFlag

@@ -73,8 +73,44 @@ function PassiveTreeViewClass:Save(xml)
 end
 
 function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
+	-- Debug: Check viewPort parameter (first 5 frames)
+	if not self.viewPortParamLogCount then self.viewPortParamLogCount = 0 end
+	if self.viewPortParamLogCount < 5 then
+		self.viewPortParamLogCount = self.viewPortParamLogCount + 1
+		if viewPort == nil then
+			ConPrintf("PassiveTreeView:Draw - viewPort parameter is NIL!")
+		else
+			ConPrintf("PassiveTreeView:Draw - viewPort type=%s, x=%s y=%s width=%s height=%s",
+				type(viewPort), tostring(viewPort.x), tostring(viewPort.y),
+				tostring(viewPort.width), tostring(viewPort.height))
+		end
+	end
+
 	local spec = build.spec
 	local tree = spec.tree
+
+	-- Debug logging for passive tree rendering diagnosis
+	local nodeCount = 0
+	if spec and spec.nodes then
+		for _ in pairs(spec.nodes) do
+			nodeCount = nodeCount + 1
+		end
+	end
+
+	-- Debug: Check viewPort AGAIN after node counting (first 5 frames)
+	if self.viewPortParamLogCount and self.viewPortParamLogCount <= 5 then
+		ConPrintf("PassiveTreeView:Draw - viewPort AFTER node count: x=%s(%s) y=%s(%s) width=%s(%s) height=%s(%s)",
+			tostring(viewPort.x), type(viewPort.x),
+			tostring(viewPort.y), type(viewPort.y),
+			tostring(viewPort.width), type(viewPort.width),
+			tostring(viewPort.height), type(viewPort.height))
+	end
+
+	ConPrintf("PassiveTreeView:Draw called - viewport: x=%s y=%s w=%s h=%s",
+		tostring(viewPort.x), tostring(viewPort.y),
+		tostring(viewPort.width), tostring(viewPort.height))
+	ConPrintf("Tree nodes count: %d, Zoom: level=%d zoom=%.2f zoomX=%d zoomY=%d",
+		nodeCount, self.zoomLevel or 0, self.zoom or 0, self.zoomX or 0, self.zoomY or 0)
 
 	local cursorX, cursorY = GetCursorPos()
 	local mOver = cursorX >= viewPort.x and cursorX < viewPort.x + viewPort.width and cursorY >= viewPort.y and cursorY < viewPort.y + viewPort.height
@@ -901,7 +937,8 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 						if isThreadOfHope then
 							-- Jewel in socket is Thread of Hope or similar
 							for index, data in ipairs(build.data.jewelRadius) do
-								if hoverNode.nodesInRadius[index][node.id] then
+								-- PRJ-003 Fix: Validate array index before access
+								if hoverNode.nodesInRadius[index] and hoverNode.nodesInRadius[index][node.id] then
 									-- Draw Thread of Hope's annuli
 									if data.inner ~= 0 then
 										SetDrawColor(data.col)
@@ -912,7 +949,8 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 						else
 							-- Jewel in socket is not Thread of Hope or similar
 							for index, data in ipairs(build.data.jewelRadius) do
-								if hoverNode.nodesInRadius[index][node.id] then
+								-- PRJ-003 Fix: Validate array index before access
+								if hoverNode.nodesInRadius[index] and hoverNode.nodesInRadius[index][node.id] then
 									-- Draw normal jewel radii
 									if data.inner == 0 then
 										SetDrawColor(data.col)
@@ -1509,7 +1547,11 @@ function PassiveTreeViewClass:AddNodeTooltip(tooltip, node, build, incSmallPassi
 		local isInRadius = false
 		for id, socket in pairs(build.itemsTab.sockets) do
 			if build.itemsTab.activeSocketList and socket.inactive == false or socket.inactive == nil then
-				isInRadius = isInRadius or (build.spec.nodes[id] and build.spec.nodes[id].nodesInRadius and build.spec.nodes[id].nodesInRadius[4][node.id] ~= nil)
+				-- PRJ-003 Fix: Safe navigation for deep nodesInRadius chain
+				local specNode = build.spec.nodes[id]
+				if specNode and specNode.nodesInRadius and specNode.nodesInRadius[4] then
+					isInRadius = isInRadius or (specNode.nodesInRadius[4][node.id] ~= nil)
+				end
 				if isInRadius then break end
 			end
 		end

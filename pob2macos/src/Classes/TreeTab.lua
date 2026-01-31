@@ -297,6 +297,15 @@ local TreeTabClass = newClass("TreeTab", "ControlHost", function(self, build)
 end)
 
 function TreeTabClass:Draw(viewPort, inputEvents)
+	-- Debug: Log received viewport (first 5 frames)
+	if not self.viewPortLogCount then self.viewPortLogCount = 0 end
+	if self.viewPortLogCount < 5 then
+		self.viewPortLogCount = self.viewPortLogCount + 1
+		ConPrintf("TreeTab:Draw received viewport: x=%s y=%s w=%s h=%s",
+			tostring(viewPort.x), tostring(viewPort.y),
+			tostring(viewPort.width), tostring(viewPort.height))
+	end
+
 	self.anchorControls.x = viewPort.x + 4
 	self.anchorControls.y = viewPort.y + viewPort.height - 24
 
@@ -385,11 +394,32 @@ function TreeTabClass:Draw(viewPort, inputEvents)
 	self.controls.specSelect.y = -bottomDrawerHeight - linesHeight
 
 	local treeViewPort = { x = viewPort.x, y = viewPort.y, width = viewPort.width, height = viewPort.height - (self.showConvert and 64 + bottomDrawerHeight + linesHeight or 32 + bottomDrawerHeight + linesHeight)}
+
+	-- Debug: Log calculated treeViewPort (first 5 frames)
+	if not self.treeViewPortLogCount then self.treeViewPortLogCount = 0 end
+	if self.treeViewPortLogCount < 5 then
+		self.treeViewPortLogCount = self.treeViewPortLogCount + 1
+		ConPrintf("TreeTab: treeViewPort calculated: x=%s y=%s w=%s h=%s (showConvert=%s, bottomDrawerHeight=%s, linesHeight=%s)",
+			tostring(treeViewPort.x), tostring(treeViewPort.y),
+			tostring(treeViewPort.width), tostring(treeViewPort.height),
+			tostring(self.showConvert), tostring(bottomDrawerHeight), tostring(linesHeight))
+	end
+
 	if self.jumpToNode then
 		self.viewer:Focus(self.jumpToX, self.jumpToY, treeViewPort, self.build)
 		self.jumpToNode = false
 	end
 	self.viewer.compareSpec = self.isComparing and self.specList[self.activeCompareSpec] or nil
+
+	-- Debug: Log treeViewPort right before Draw call (first 5 frames)
+	if not self.beforeDrawLogCount then self.beforeDrawLogCount = 0 end
+	if self.beforeDrawLogCount < 5 then
+		self.beforeDrawLogCount = self.beforeDrawLogCount + 1
+		ConPrintf("TreeTab: treeViewPort BEFORE Draw: x=%s y=%s w=%s h=%s",
+			tostring(treeViewPort.x), tostring(treeViewPort.y),
+			tostring(treeViewPort.width), tostring(treeViewPort.height))
+	end
+
 	self.viewer:Draw(self.build, treeViewPort, inputEvents)
 
 	local newSpecList = self:GetSpecList()
@@ -1096,12 +1126,16 @@ function TreeTabClass:FindTimelessJewel()
 				keystone = "Templar/Witch"
 			else
 				local minDistance = math.huge
-				for _, nodeInRadius in pairs(treeData.nodes[socketId].nodesInRadius[3]) do
-					if nodeInRadius.isKeystone then
-						local distance = math.sqrt((nodeInRadius.x - socketData.x) ^ 2 + (nodeInRadius.y - socketData.y) ^ 2)
-						if distance < minDistance then
-							keystone = nodeInRadius.name
-							minDistance = distance
+				-- PRJ-003 Fix: Validate node and nodesInRadius[3] before access
+				local socketNode = treeData.nodes[socketId]
+				if socketNode and socketNode.nodesInRadius and socketNode.nodesInRadius[3] then
+					for _, nodeInRadius in pairs(socketNode.nodesInRadius[3]) do
+						if nodeInRadius.isKeystone then
+							local distance = math.sqrt((nodeInRadius.x - socketData.x) ^ 2 + (nodeInRadius.y - socketData.y) ^ 2)
+							if distance < minDistance then
+								keystone = nodeInRadius.name
+								minDistance = distance
+							end
 						end
 					end
 				end
@@ -1325,7 +1359,12 @@ function TreeTabClass:FindTimelessJewel()
 	self.allocatedNodesInRadiusCount = 0
 	local function setAllocatedNodes() -- find allocated nodes in radius for Militant Faith filtering / protected nodes dropdown
 		local nodeNames = { }
-		local radiusNodes = treeData.nodes[timelessData.jewelSocket.id].nodesInRadius[3] -- large radius around timelessData.jewelSocket.id
+		-- PRJ-003 Fix: Validate node and nodesInRadius[3] before access
+		local jewelSocketNode = treeData.nodes[timelessData.jewelSocket.id]
+		if not jewelSocketNode or not jewelSocketNode.nodesInRadius or not jewelSocketNode.nodesInRadius[3] then
+			return
+		end
+		local radiusNodes = jewelSocketNode.nodesInRadius[3] -- large radius around timelessData.jewelSocket.id
 		for nodeId in pairs(radiusNodes) do
 			if self.build.calcsTab.mainEnv.grantedPassives[nodeId] ~= nil or self.build.spec.allocNodes[nodeId] ~= nil then
 				allocatedNodes[nodeId] = true
@@ -2006,8 +2045,10 @@ function TreeTabClass:FindTimelessJewel()
 	local buttonX = -totalWidth / 2 + width / 2
 
 	controls.searchButton = new("ButtonControl", nil, {buttonX, 485, width, 20}, "Search", function()
-		if treeData.nodes[timelessData.jewelSocket.id] and treeData.nodes[timelessData.jewelSocket.id].isJewelSocket then
-			local radiusNodes = treeData.nodes[timelessData.jewelSocket.id].nodesInRadius[3] -- large radius around timelessData.jewelSocket.id
+		-- PRJ-003 Fix: Validate node and nodesInRadius[3] before access
+		local jewelSocketNode = treeData.nodes[timelessData.jewelSocket.id]
+		if jewelSocketNode and jewelSocketNode.isJewelSocket and jewelSocketNode.nodesInRadius and jewelSocketNode.nodesInRadius[3] then
+			local radiusNodes = jewelSocketNode.nodesInRadius[3] -- large radius around timelessData.jewelSocket.id
 			local allocatedNodes = { }
 			local unAllocatedNodesDistance = { }
 			local targetNodes = { }
