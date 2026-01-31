@@ -46,6 +46,11 @@ end)
 function PassiveTreeViewClass:Load(xml, fileName)
 	if xml.attrib.zoomLevel then
 		self.zoomLevel = tonumber(xml.attrib.zoomLevel)
+		-- PRJ-003 Fix: Clamp zoom level to valid range to prevent extreme zoom values
+		if self.zoomLevel > 20 or self.zoomLevel < 0 then
+			ConPrintf("WARNING [PassiveTreeView:Load]: zoomLevel %d is out of bounds, clamping to [0, 20]", self.zoomLevel)
+			self.zoomLevel = m_max(0, m_min(20, self.zoomLevel))
+		end
 		self.zoom = 1.2 ^ self.zoomLevel
 	end
 	if xml.attrib.zoomX and xml.attrib.zoomY then
@@ -203,8 +208,24 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 	self.zoomX = self.zoomX ~= nil and m_min(m_max(self.zoomX, -viewPort.width * clampFactor), viewPort.width * clampFactor) or 1
 	self.zoomY = self.zoomY ~= nil and m_min(m_max(self.zoomY, -viewPort.height * clampFactor), viewPort.height * clampFactor) or 1
 
+	-- PRJ-003 Fix: Validate tree.size before using in scale calculation
+	-- If tree.size is invalid, use viewport size as fallback
+	local treeSize = tree.size
+	if not treeSize or treeSize <= 0 then
+		ConPrintf("WARNING [PassiveTreeView]: tree.size is invalid (%s), using viewport size as fallback", tostring(treeSize))
+		treeSize = m_min(viewPort.width, viewPort.height)
+	end
+
 	-- Create functions that will convert coordinates between the screen and tree coordinate spaces
-	local scale = m_min(viewPort.width, viewPort.height) / tree.size * self.zoom
+	local scale = m_min(viewPort.width, viewPort.height) / treeSize * self.zoom
+
+	-- PRJ-003 Diagnostic: Log scale calculation on first frames
+	if not self.scaleLogCount then self.scaleLogCount = 0 end
+	if self.scaleLogCount < 5 then
+		self.scaleLogCount = self.scaleLogCount + 1
+		ConPrintf("DEBUG [PassiveTreeView:Draw] Scale calculation: viewport=%sx%s, treeSize=%s, zoom=%.4f, scale=%.4f",
+			tostring(viewPort.width), tostring(viewPort.height), tostring(treeSize), self.zoom, scale)
+	end
 
 	local offsetX = self.zoomX + viewPort.x + viewPort.width/2
 	local offsetY = self.zoomY + viewPort.y + viewPort.height/2
@@ -1219,8 +1240,14 @@ function PassiveTreeViewClass:Focus(x, y, viewPort, build)
 	self.zoom = 1.2 ^ self.zoomLevel
 
 	local tree = build.spec.tree
-	local scale = m_min(viewPort.width, viewPort.height) / tree.size * self.zoom
-	
+	-- PRJ-003 Fix: Validate tree.size before using in scale calculation
+	local treeSize = tree.size
+	if not treeSize or treeSize <= 0 then
+		ConPrintf("WARNING [PassiveTreeView:Focus]: tree.size is invalid (%s), using viewport size as fallback", tostring(treeSize))
+		treeSize = m_min(viewPort.width, viewPort.height)
+	end
+	local scale = m_min(viewPort.width, viewPort.height) / treeSize * self.zoom
+
 	self.zoomX = -x * scale
 	self.zoomY = -y * scale
 end
