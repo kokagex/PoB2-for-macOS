@@ -91,10 +91,16 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 
 	-- Debug logging for passive tree rendering diagnosis
 	local nodeCount = 0
-	if spec and spec.nodes then
-		for _ in pairs(spec.nodes) do
-			nodeCount = nodeCount + 1
+	if spec then
+		if spec.nodes then
+			for _ in pairs(spec.nodes) do
+				nodeCount = nodeCount + 1
+			end
+		else
+			ConPrintf("DEBUG [PassiveTreeView]: WARNING - spec.nodes is NIL! spec=%s", type(spec))
 		end
+	else
+		ConPrintf("DEBUG [PassiveTreeView]: WARNING - spec is NIL! build=%s", type(build))
 	end
 
 	-- Debug: Check viewPort AGAIN after node counting (first 5 frames)

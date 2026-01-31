@@ -461,7 +461,7 @@ while IsUserTerminated() == 0 do
     ffi.C.usleep(16666)  -- ~60 FPS
 
     -- Output test results after first 3 seconds
-    if ENABLE_DRAW_PARAM_TEST and frame_count == 180 then
+    if ENABLE_DRAW_PARAM_TEST and _G.draw_param_test and frame_count == 180 then
         print("")
         print("=====================================")
         _G.draw_param_test.analyze()
