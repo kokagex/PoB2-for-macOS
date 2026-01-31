@@ -187,6 +187,14 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 	end
 
 	self.size = m_min(self.max_x - self.min_x, self.max_y - self.min_y) * self.scaleImage * 1.1
+
+	-- PRJ-003 Diagnostic: Log tree.size calculation
+	ConPrintf("DEBUG [PassiveTree]: Tree size calculation: max_x=%s, min_x=%s, max_y=%s, min_y=%s",
+		tostring(self.max_x), tostring(self.min_x), tostring(self.max_y), tostring(self.min_y))
+	ConPrintf("DEBUG [PassiveTree]: X range: %s, Y range: %s, min=%s, scaleImage=%s",
+		tostring(self.max_x - self.min_x), tostring(self.max_y - self.min_y),
+		tostring(m_min(self.max_x - self.min_x, self.max_y - self.min_y)), tostring(self.scaleImage))
+	ConPrintf("DEBUG [PassiveTree]: Final tree.size = %s", tostring(self.size))
 	
 	for i = 0, 6 do
 		self.classes[i] = self.classes[i + 1]
