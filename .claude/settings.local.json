@@ -80,7 +80,32 @@
       "Bash(xattr:*)",
       "Bash(system_profiler:*)",
       "Bash(git checkout:*)",
-      "Bash(killall:*)"
+      "Bash(killall:*)",
+      "Bash(pgrep:*)",
+      "Bash(log show:*)",
+      "Bash(~/Library/Logs/PathOfBuilding.log)",
+      "Bash(tac:*)",
+      "Bash(screencapture:*)",
+      "Bash(ffmpeg:*)",
+      "Bash(/Users/kokage/national-operations/pob2macos/runtime/lua54:*)",
+      "Bash(if [ -f ~/.pob_launch.log ])",
+      "Bash(then tail -50 ~/.pob_launch.log)",
+      "Bash(else echo \"Log not found\")",
+      "Bash(fi:*)",
+      "Bash(md5:*)",
+      "Bash(otool -L:*)",
+      "Bash(./pob2macos/PathOfBuilding.app/Contents/MacOS/PathOfBuilding)",
+      "Bash(xargs:*)",
+      "Bash(busted:*)",
+      "Bash(POB_TEST_DRAW_PARAMS=1 open:*)",
+      "WebFetch(domain:www.lua.org)",
+      "Bash(else echo \"No ~/.pob_launch.log found\")",
+      "Bash(codesign:*)",
+      "Bash(fc-list:*)",
+      "Bash(./PathOfBuilding.app/Contents/MacOS/PathOfBuilding:*)",
+      "Bash(osascript:*)",
+      "Bash(lsof:*)",
+      "Bash(kill:*)"
     ]
   }
 }
