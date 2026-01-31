@@ -78,6 +78,20 @@ function PassiveTreeViewClass:Save(xml)
 end
 
 function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
+	-- PRJ-003 Diagnostic: Function entry confirmation - simple count
+	if not self.drawCallCount then
+		self.drawCallCount = 0
+		ConPrintf("=== PASSIVEVIEWTREE DRAW FIRST CALL ===")
+	end
+	self.drawCallCount = self.drawCallCount + 1
+
+	if self.drawCallCount == 1 or self.drawCallCount == 2 or self.drawCallCount == 3 then
+		ConPrintf("DRAW_CALL_%d: build=%s, spec=%s",
+			self.drawCallCount,
+			type(build) == "table" and "OK" or "BAD",
+			type(build) == "table" and type(build.spec) == "table" and "OK" or "BAD")
+	end
+
 	-- Debug: Check viewPort parameter (first 5 frames)
 	if not self.viewPortParamLogCount then self.viewPortParamLogCount = 0 end
 	if self.viewPortParamLogCount < 5 then
@@ -94,11 +108,26 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 	local spec = build.spec
 	local tree = spec.tree
 
-	-- PRJ-003 Fix: Guard against missing spec.nodes
-	-- If spec is not ready yet, skip rendering this frame
-	if not spec or not spec.nodes then
+	-- PRJ-003 Fix: Guard against missing tree.nodes
+	-- If tree data is not ready yet, skip rendering this frame
+	if not spec or not tree or not tree.nodes then
 		-- Tree data not loaded yet, skip rendering
 		return
+	end
+
+	-- PRJ-003 Diagnostic: Log tree.nodes count on first few frames
+	if not self.treeNodesLogCount then self.treeNodesLogCount = 0 end
+	if self.treeNodesLogCount < 5 then
+		self.treeNodesLogCount = self.treeNodesLogCount + 1
+		local treeNodesCount = 0
+		local filteredNodesCount = 0
+		for nodeId, node in pairs(tree.nodes) do
+			treeNodesCount = treeNodesCount + 1
+			if node.group and not node.isProxy then
+				filteredNodesCount = filteredNodesCount + 1
+			end
+		end
+		ConPrintf("HEROIC_SPIRIT_10: tree.nodes=%d, filtered=%d (group & !isProxy)", treeNodesCount, filteredNodesCount)
 	end
 
 	local cursorX, cursorY = GetCursorPos()
@@ -229,7 +258,8 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 	if mOver then
 		-- Cursor is over the tree, check if it is over a node
 		local curTreeX, curTreeY = screenToTree(cursorX, cursorY)
-		for nodeId, node in pairs(spec.nodes) do
+		-- PRJ-003: Use spec.tree.nodes directly instead of spec.nodes
+		for nodeId, node in pairs(tree.nodes) do
 			if node.rsq and node.group and not node.isProxy and not node.group.isProxy then
 				-- Node has a defined size (i.e. has artwork)
 				local vX = curTreeX - node.x
@@ -703,7 +733,8 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 		end
 		self.searchParams = prepSearch(self.searchStr)
 
-		for nodeId, node in pairs(spec.nodes) do
+		-- PRJ-003: Use spec.tree.nodes directly instead of spec.nodes
+		for nodeId, node in pairs(tree.nodes) do
 			self.searchStrResults[nodeId] = #self.searchParams > 0 and self:DoesNodeMatchSearchParams(node)
 		end
 	end
@@ -752,8 +783,101 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 		incSmallPassiveSkillEffect = incSmallPassiveSkillEffect + node.modList:Sum("INC", nil ,"SmallPassiveSkillEffect")
 	end
 
+	-- PRJ-003 Diagnostic: Deep analysis of spec.nodes and tree.nodes
+	if spec and spec.tree then
+		ConPrintf("DEBUG_TREE_NODES: type(spec.tree.nodes)=%s", type(spec.tree.nodes))
+
+		local treeMt = getmetatable(spec.tree.nodes)
+		ConPrintf("DEBUG_TREE_NODES: metatableType=%s", type(treeMt))
+
+		-- Count tree nodes
+		local treeNodesCount = 0
+		for _ in pairs(spec.tree.nodes) do
+			treeNodesCount = treeNodesCount + 1
+		end
+		ConPrintf("DEBUG_TREE_NODES: pairs count=%d", treeNodesCount)
+	end
+
+	if spec and spec.nodes then
+		ConPrintf("DEBUG_SPEC_NODES: type(spec.nodes)=%s", type(spec.nodes))
+
+		local mt = getmetatable(spec.nodes)
+		ConPrintf("DEBUG_SPEC_NODES: metatableType=%s", type(mt))
+		if mt then
+			ConPrintf("DEBUG_SPEC_NODES: has__pairs=%s", tostring(mt.__pairs ~= nil))
+		end
+
+		-- ipairs iteration test
+		local ipairsCount = 0
+		for i, node in ipairs(spec.nodes) do
+			ipairsCount = ipairsCount + 1
+			if ipairsCount > 5 then break end
+		end
+		ConPrintf("DEBUG_SPEC_NODES: ipairsCount=%d", ipairsCount)
+
+		-- pairs iteration test
+		local pairsCount = 0
+		for k, v in pairs(spec.nodes) do
+			pairsCount = pairsCount + 1
+			if pairsCount > 5 then break end
+		end
+		ConPrintf("DEBUG_SPEC_NODES: pairsCount=%d (first 5)", pairsCount)
+
+		-- Check table length
+		ConPrintf("DEBUG_SPEC_NODES: #spec.nodes(length operator)=%d", #spec.nodes)
+
+		-- Test with next()
+		local nextKey, nextVal = next(spec.nodes)
+		ConPrintf("DEBUG_SPEC_NODES: next(spec.nodes)=%s", tostring(nextKey))
+
+		-- Try to directly access first element (if it exists)
+		if nextKey then
+			local firstNode = spec.nodes[nextKey]
+			ConPrintf("DEBUG_SPEC_NODES: firstNode type=%s, x=%s, y=%s", type(firstNode), tostring(firstNode.x), tostring(firstNode.y))
+		end
+	end
+
+	-- Original diagnostic (for comparison)
+	local diagnostic = {
+		spec_type = type(spec),
+		spec_nodes_type = spec and type(spec.nodes) or "spec_is_nil",
+		iteration_count = 0,
+		draw_calls = 0,
+		nodes_checked = 0
+	}
+
+	if spec and spec.nodes then
+		for testNodeId, testNode in pairs(spec.nodes) do
+			diagnostic.iteration_count = diagnostic.iteration_count + 1
+			if testNode and testNode.x and testNode.y then
+				diagnostic.nodes_checked = diagnostic.nodes_checked + 1
+			end
+		end
+	end
+
+	ConPrintf("DIAGNOSTIC_PASSIVE_TREE: spec=%s, nodes=%s, iter=%d, nodes_with_coords=%d",
+		diagnostic.spec_type,
+		diagnostic.spec_nodes_type,
+		diagnostic.iteration_count,
+		diagnostic.nodes_checked)
+
 	-- Draw the nodes
+	-- ★ METATABLE FIX: Use spec.nodes (now plain tables without metatables)
+	-- spec.nodes has both tree data AND allocation state (alloc field)
+
+	-- Draw the nodes using standard pairs() iteration
+	local drawLoopTest = {}
 	for nodeId, node in pairs(spec.nodes) do
+		-- Filtering already done in PassiveSpec.lua
+		if not node or not node.group then
+			goto continue
+		end
+
+		-- Collect first 5 node IDs that pass the filter
+		if #drawLoopTest < 5 then
+			table.insert(drawLoopTest, tostring(nodeId))
+		end
+
 		-- Determine the base and overlay images for this node based on type and state
 		local compareNode = self.compareSpec and self.compareSpec.nodes[nodeId] or nil
 
@@ -1021,12 +1145,22 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 			self.tooltip.center = true
 			self.tooltip:Draw(m_floor(scrX - size), m_floor(scrY - size), size * 2, size * 2, viewPort)
 		end
+
+		::continue::
 	end
-	
+
+	-- Diagnostic: Report nodes that passed filter check
+	if #drawLoopTest > 0 then
+		ConPrintf("DRAW_LOOP: Processed %d nodes, first 5: %s", #drawLoopTest, table.concat(drawLoopTest, ", "))
+	else
+		ConPrintf("DRAW_LOOP: NO NODES passed the filter check!")
+	end
+
 	-- Draw ring overlays for jewel sockets
 	SetDrawLayer(nil, 25)
 	for nodeId in pairs(tree.sockets) do
-		local node = spec.nodes[nodeId]
+		-- PRJ-003: Use tree.nodes directly instead of spec.nodes
+		local node = tree.nodes[nodeId]
 		if node and node.name ~= "Charm Socket" and node.containJewelSocket ~= true and (not node.expansionJewel or node.expansionJewel.size == 2) then
 			local scrX, scrY = treeToScreen(node.x, node.y)
 			local socket, jewel = build.itemsTab:GetSocketAndJewelForNodeID(nodeId)

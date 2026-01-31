@@ -51,21 +51,20 @@ function PassiveSpecClass:Init(treeVersion, convert)
 	end
 	ConPrintf("DEBUG [PassiveSpec]: self.tree.nodes count BEFORE filtering: %s", tostring(treeNodeCount))
 
-	-- ★ HEROIC SPIRIT #8 FIX: Original filtering logic (MINIMAL - no diagnostics due to LuaJIT bug)
-	-- CRITICAL: LuaJIT has a severe bug where local variables in for loops don't increment!
-	-- Simply using the original code without any counters
+	-- ★ ULTIMATE FIX: Copy ALL fields to avoid metatable pairs() issues
 	for _, treeNode in pairs(self.tree.nodes) do
-		-- Apply original filtering condition (Line 56 from commit 1943f8d)
-		-- Exclude proxy or groupless nodes, as well as expansion sockets
 		if treeNode.group and not treeNode.isProxy and not treeNode.group.isProxy and (not treeNode.expansionJewel or not treeNode.expansionJewel.parent) then
-			self.nodes[treeNode.id] = setmetatable({
-				linked = { },
-				power = { }
-			}, treeNode)
+			local newNode = { linked = {}, power = {} }
+			-- Copy all fields from treeNode
+			for k, v in pairs(treeNode) do
+				if newNode[k] == nil then
+					newNode[k] = v
+				end
+			end
+			self.nodes[treeNode.id] = newNode
 		end
 	end
-
-	ConPrintf("★ HS8: Node filtering complete (original logic restored)")
+	ConPrintf("★ ULTIMATE: All treeNode fields copied")
 
 	-- Debug: Count filtered nodes
 	local filteredNodeCount = 0

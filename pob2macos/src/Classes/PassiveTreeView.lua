@@ -862,13 +862,20 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 		diagnostic.nodes_checked)
 
 	-- Draw the nodes
-	-- PRJ-003: Use spec.tree.nodes directly instead of spec.nodes
-	-- This bypasses the potentially incomplete spec.nodes copy
-	for nodeId, node in pairs(tree.nodes) do
-		-- Filter: Only draw nodes that have a group and are not proxies
-		if not node.group or node.isProxy then
-			-- Skip proxy nodes and nodes without groups
+	-- ★ METATABLE FIX: Use spec.nodes (now plain tables without metatables)
+	-- spec.nodes has both tree data AND allocation state (alloc field)
+
+	-- Draw the nodes using standard pairs() iteration
+	local drawLoopTest = {}
+	for nodeId, node in pairs(spec.nodes) do
+		-- Filtering already done in PassiveSpec.lua
+		if not node or not node.group then
 			goto continue
+		end
+
+		-- Collect first 5 node IDs that pass the filter
+		if #drawLoopTest < 5 then
+			table.insert(drawLoopTest, tostring(nodeId))
 		end
 
 		-- Determine the base and overlay images for this node based on type and state
@@ -1140,6 +1147,13 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 		end
 
 		::continue::
+	end
+
+	-- Diagnostic: Report nodes that passed filter check
+	if #drawLoopTest > 0 then
+		ConPrintf("DRAW_LOOP: Processed %d nodes, first 5: %s", #drawLoopTest, table.concat(drawLoopTest, ", "))
+	else
+		ConPrintf("DRAW_LOOP: NO NODES passed the filter check!")
 	end
 
 	-- Draw ring overlays for jewel sockets

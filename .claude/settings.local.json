@@ -105,7 +105,9 @@
       "Bash(./PathOfBuilding.app/Contents/MacOS/PathOfBuilding:*)",
       "Bash(osascript:*)",
       "Bash(lsof:*)",
-      "Bash(kill:*)"
+      "Bash(kill:*)",
+      "Bash(top:*)",
+      "Bash(./test_with_monitoring.sh:*)"
     ]
   }
 }
