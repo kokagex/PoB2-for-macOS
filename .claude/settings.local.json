@@ -137,7 +137,11 @@
       "Bash(python3:*)",
       "Bash(git log:*)",
       "Bash(git -C /Users/kokage/national-operations/pob2macos log --oneline -20)",
-      "Bash(git remote set-url:*)"
+      "Bash(git remote set-url:*)",
+      "WebFetch(domain:maxroll.gg)",
+      "Bash(if [ -f ~/pob_coord_fix_test.log ])",
+      "Bash(then grep -E \"\\(PassiveSpec|DIAGNOSTIC|ERROR|WARNING\\)\" ~/pob_coord_fix_test.log)",
+      "Bash(else echo \"Log file not found\")"
     ]
   }
 }
