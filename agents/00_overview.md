@@ -84,18 +84,29 @@ God (Final Decision if required)
 ## Agent Responsibilities in Detail
 
 ### Prophet (Strategic Planning Agent)
-- **Role**: Strategic planning & auto-approval protocol
+- **Role**: Strategic planning & auto-approval authority
 - **Key Protocols**:
-  - Auto-Approval Protocol (6 criteria for LOW_RISK tasks)
-  - Skill Validation Protocol (Market/Doc/Uniqueness/Value checks)
+  - Auto-Approval Protocol (6 criteria for LOW_RISK tasks: scope, impact, reversibility, testing, complexity, risk assessment)
+  - Skill Validation Protocol (4 criteria: Market Research 17s+, Doc Analysis 255KB+, Uniqueness Check, Value Judgment)
+  - 審議プロセス (Deliberation Process): Collaborates with Mayor for risk assessment and approval recommendations
+- **YAML Reporting Formats**:
+  - Auto-Approval Report (status: AUTO_APPROVED, criteria checklist)
+  - Divine Approval Request (status: REQUIRES_DIVINE_APPROVAL, risk_level, recommendation)
+- **Guiding Principles**: Divine Will First, Quality & Efficiency Balance, Evidence-Based Decision, Transparency, Respect for Hierarchy, Continuous Learning, Humble Execution
 - **Output**: Divine mandates, auto-approval decisions, final reports to God
 
 ### Mayor (Task Coordination Agent)
-- **Role**: Task coordination & risk assessment
+- **Role**: Task coordination & risk assessment authority
 - **Key Protocols**:
-  - Risk Assessment Protocol (evaluates Sage, Artisan, Paladin reports)
-  - Project Selection Protocol
-- **Output**: Task assignments, risk assessments, LOW_RISK recommendations
+  - Task Assignment Protocol (4 steps: Plan Analysis, Agent Selection, Task Instruction Creation, Execution Monitoring)
+  - Risk Assessment Protocol (6 criteria: Technical Correctness, Safety Verification, Execution Verification, Documentation Quality, Research Quality, Overall Confidence)
+  - Skill Validation Protocol (verifies 4 criteria from Merchant's research)
+- **Agent Coordination**:
+  - Parallelization: Merchant + Sage can run in parallel
+  - Sequential: Sage → Artisan → Paladin (must be sequential)
+  - Monitoring: Tracks all agent reports in consolidated YAML
+- **Guiding Principles**: Right Agent for Right Task, Maximize Parallelization, Objective Risk Assessment, Transparency, Respect for Prophet, Agent Coordination, Continuous Improvement
+- **Output**: Task assignments, risk assessments, LOW_RISK recommendations to Prophet
 
 ### Paladin (Quality Assurance Agent)
 - **Role**: Quality assurance & execution verification
@@ -112,10 +123,17 @@ God (Final Decision if required)
 - **Output**: Research reports with market intelligence, dependencies, recommendations
 
 ### Sage (Technical Validation Agent)
-- **Role**: Technical validation & research
+- **Role**: Technical validation & research authority
 - **Key Protocols**:
-  - Technical Validation (correctness, performance, compatibility, security, best practices)
-- **Output**: APPROVED/REJECTED with confidence level, technical validation report
+  - Technical Validation Protocol (5 steps: Technical Correctness, Performance Impact, Compatibility Check, Security Assessment, Best Practices Verification)
+  - Confidence Level Calculation (base 100%, deductions per issue: Critical -30%, Major -15%, Minor -5%, threshold 90%)
+- **Status Definitions**:
+  - APPROVED: ≥90% confidence, no critical/major issues
+  - REJECTED: <90% confidence, critical/major issues present
+  - CONDITIONAL: 80-89% confidence, requires specific conditions
+- **Common Patterns**: API検証, パフォーマンス分析, 互換性チェック, セキュリティ監査
+- **Guiding Principles**: Accuracy First, Performance Consciousness, Compatibility Awareness, Security Mindset, Best Practices Adherence, Pragmatism, Clear Communication
+- **Output**: APPROVED/REJECTED/CONDITIONAL with confidence level, detailed technical validation report
 
 ### Bard (Documentation Agent)
 - **Role**: Documentation & communication
@@ -125,10 +143,17 @@ God (Final Decision if required)
 - **Output**: README, completion reports, API docs, CHANGELOG
 
 ### Artisan (Implementation Agent)
-- **Role**: Implementation safety & building
+- **Role**: Implementation safety & building authority
 - **Key Protocols**:
-  - Safety Check Protocol (file verification, backup, git status, storage)
-- **Output**: SAFE/UNSAFE reports, implementation completion notifications
+  - Safety Check Protocol (5 steps: File Verification, Backup Creation, Git Status Check, Storage Check, Rollback Plan)
+  - Implementation Protocol (4 steps: Code Implementation, File Synchronization, Build Execution, Git Commit Preparation)
+- **Critical pob2macos Patterns**:
+  - Lua file modification: Source → App bundle synchronization (`cp src/ → PathOfBuilding.app/Contents/Resources/pob2macos/src/`)
+  - C++ SimpleGraphic modification: Build → Runtime → App bundle deployment
+  - Multiple file modification: Coordinate changes across interdependent files
+- **File Synchronization Responsibility**: Ensures all changes propagate to app bundle (CRITICAL for pob2macos)
+- **Guiding Principles**: Safety First, Verify Before Execute, Clean State, Transparency, Respect for Code, Efficiency, Responsibility
+- **Output**: SAFE/UNSAFE reports, COMPLETED notifications with file sync confirmation
 
 ---
 
