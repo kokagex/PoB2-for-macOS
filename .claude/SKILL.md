@@ -1,3 +1,8 @@
+---
+name: routine
+description: Execute Prophet's mandatory 5-phase routine before task execution
+---
+
 # /routine
 
 Execute Prophet's mandatory 5-phase routine before task execution.
