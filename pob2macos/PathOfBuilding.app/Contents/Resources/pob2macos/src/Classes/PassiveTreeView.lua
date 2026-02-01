@@ -869,99 +869,121 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 	local drawLoopTest = {}
 	for nodeId, node in pairs(spec.nodes) do
 		-- Filtering already done in PassiveSpec.lua
-		if not node or not node.group then
-			goto continue
-		end
-
-		-- Collect first 5 node IDs that pass the filter
-		if #drawLoopTest < 5 then
-			table.insert(drawLoopTest, tostring(nodeId))
-		end
-
-		-- Determine the base and overlay images for this node based on type and state
-		local compareNode = self.compareSpec and self.compareSpec.nodes[nodeId] or nil
-
-		local base, overlay, effect
-		local isAlloc = node.alloc or build.calcsTab.mainEnv.grantedPassives[nodeId] or (compareNode and compareNode.alloc)
-		SetDrawLayer(nil, 25)
-		if node.type == "ClassStart" then
-			overlay = nil
-		elseif node.type == "AscendClassStart" then
-			overlay = "AscendancyMiddle"
-			if node.ascendancyName and tree.secondaryAscendNameMap and tree.secondaryAscendNameMap[node.ascendancyName] then
-				overlay = "Azmeri"..overlay
+		if node and node.group then
+			-- Collect first 5 node IDs that pass the filter
+			if #drawLoopTest < 5 then
+				table.insert(drawLoopTest, tostring(nodeId))
 			end
-		else
-			local state
-			if self.showHeatMap or isAlloc or node == hoverNode or (self.traceMode and node == self.tracePath[#self.tracePath])then
-				-- Show node as allocated if it is being hovered over
-				-- Also if the heat map is turned on (makes the nodes more visible)
-				state = "alloc"
-			elseif hoverPath and hoverPath[node] then
-				state = "path"
+
+			-- Determine the base and overlay images for this node based on type and state
+			local compareNode = self.compareSpec and self.compareSpec.nodes[nodeId] or nil
+
+			local base, overlay, effect
+			local isAlloc = node.alloc or build.calcsTab.mainEnv.grantedPassives[nodeId] or (compareNode and compareNode.alloc)
+			SetDrawLayer(nil, 25)
+			if node.type == "ClassStart" then
+				overlay = nil
+			elseif node.type == "AscendClassStart" then
+				overlay = "AscendancyMiddle"
+				if node.ascendancyName and tree.secondaryAscendNameMap and tree.secondaryAscendNameMap[node.ascendancyName] then
+					overlay = "Azmeri"..overlay
+				end
 			else
-				state = "unalloc"
-			end
-			if node.type == "Socket" or node.containJewelSocket then
-				-- Node is a jewel socket, retrieve the socketed jewel (if present) so we can display the correct art
-				base = tree:GetAssetByName(node.overlay[state])
+				local state
+				if self.showHeatMap or isAlloc or node == hoverNode or (self.traceMode and node == self.tracePath[#self.tracePath])then
+					-- Show node as allocated if it is being hovered over
+					-- Also if the heat map is turned on (makes the nodes more visible)
+					state = "alloc"
+				elseif hoverPath and hoverPath[node] then
+					state = "path"
+				else
+					state = "unalloc"
+				end
+				if node.type == "Socket" or node.containJewelSocket then
+					-- Node is a jewel socket, retrieve the socketed jewel (if present) so we can display the correct art
+					base = tree:GetAssetByName(node.overlay[state])
 
-				local socket, jewel = build.itemsTab:GetSocketAndJewelForNodeID(nodeId)
-				if isAlloc and jewel then
-					if jewel.rarity == "UNIQUE" and jewel.title ~= "Grand Spectrum" then
-						overlay = jewel.title
-					else
-						overlay = jewel.baseName
+					local socket, jewel = build.itemsTab:GetSocketAndJewelForNodeID(nodeId)
+					if isAlloc and jewel then
+						if jewel.rarity == "UNIQUE" and jewel.title ~= "Grand Spectrum" then
+							overlay = jewel.title
+						else
+							overlay = jewel.baseName
+						end
 					end
+				elseif node.type == "OnlyImage" then
+					-- This is the icon that appears in the center of many groups
+					base = tree:GetAssetByName(node.activeEffectImage)
+
+					SetDrawLayer(nil, 15)
+				else
+					-- Normal node (includes keystones and notables)
+					if node.activeEffectImage then
+						effect = tree:GetAssetByName(node.activeEffectImage)
+					end
+
+					base = tree:GetAssetByName(node.icon)
+
+					overlay = node.overlay[state]
 				end
-			elseif node.type == "OnlyImage" then
-				-- This is the icon that appears in the center of many groups
-				base = tree:GetAssetByName(node.activeEffectImage)
-
-				SetDrawLayer(nil, 15)
-			else
-				-- Normal node (includes keystones and notables)
-				if node.activeEffectImage then
-					effect = tree:GetAssetByName(node.activeEffectImage)
-				end
-
-				base = tree:GetAssetByName(node.icon)
-
-				overlay = node.overlay[state]
 			end
-		end
 
-		-- Convert node position to screen-space
-		local scrX, scrY = treeToScreen(node.x, node.y)
-	
-		-- Determine color for the base artwork
-		if self.showHeatMap then
-			if not isAlloc and node.type ~= "ClassStart" and node.type ~= "AscendClassStart" then
-				if self.heatMapStat and self.heatMapStat.stat then
-					-- Calculate color based on a single stat
-					local stat = m_max(node.power.singleStat or 0, 0)
-					local statCol = (stat / build.calcsTab.powerMax.singleStat * 1.5) ^ 0.5
-					if main.nodePowerTheme == "RED/BLUE" then
-						SetDrawColor(statCol, 0, 0)
-					elseif main.nodePowerTheme == "RED/GREEN" then
-						SetDrawColor(0, statCol, 0)
-					elseif main.nodePowerTheme == "GREEN/BLUE" then
-						SetDrawColor(0, 0, statCol)
+			-- Convert node position to screen-space
+			local scrX, scrY = treeToScreen(node.x, node.y)
+
+			-- Determine color for the base artwork
+			if self.showHeatMap then
+				if not isAlloc and node.type ~= "ClassStart" and node.type ~= "AscendClassStart" then
+					if self.heatMapStat and self.heatMapStat.stat then
+						-- Calculate color based on a single stat
+						local stat = m_max(node.power.singleStat or 0, 0)
+						local statCol = (stat / build.calcsTab.powerMax.singleStat * 1.5) ^ 0.5
+						if main.nodePowerTheme == "RED/BLUE" then
+							SetDrawColor(statCol, 0, 0)
+						elseif main.nodePowerTheme == "RED/GREEN" then
+							SetDrawColor(0, statCol, 0)
+						elseif main.nodePowerTheme == "GREEN/BLUE" then
+							SetDrawColor(0, 0, statCol)
+						end
+					else
+						-- Calculate color based on DPS and defensive powers
+						local offence = m_max(node.power.offence or 0, 0)
+						local defence = m_max(node.power.defence or 0, 0)
+						local dpsCol = (offence / build.calcsTab.powerMax.offence * 1.5) ^ 0.5
+						local defCol = (defence / build.calcsTab.powerMax.defence * 1.5) ^ 0.5
+						local mixCol = (m_max(dpsCol - 0.5, 0) + m_max(defCol - 0.5, 0)) / 2
+						if main.nodePowerTheme == "RED/BLUE" then
+							SetDrawColor(dpsCol, mixCol, defCol)
+						elseif main.nodePowerTheme == "RED/GREEN" then
+							SetDrawColor(dpsCol, defCol, mixCol)
+						elseif main.nodePowerTheme == "GREEN/BLUE" then
+							SetDrawColor(mixCol, dpsCol, defCol)
+						end
 					end
 				else
-					-- Calculate color based on DPS and defensive powers
-					local offence = m_max(node.power.offence or 0, 0)
-					local defence = m_max(node.power.defence or 0, 0)
-					local dpsCol = (offence / build.calcsTab.powerMax.offence * 1.5) ^ 0.5
-					local defCol = (defence / build.calcsTab.powerMax.defence * 1.5) ^ 0.5
-					local mixCol = (m_max(dpsCol - 0.5, 0) + m_max(defCol - 0.5, 0)) / 2
-					if main.nodePowerTheme == "RED/BLUE" then
-						SetDrawColor(dpsCol, mixCol, defCol)
-					elseif main.nodePowerTheme == "RED/GREEN" then
-						SetDrawColor(dpsCol, defCol, mixCol)
-					elseif main.nodePowerTheme == "GREEN/BLUE" then
-						SetDrawColor(mixCol, dpsCol, defCol)
+					if compareNode then
+						if compareNode.alloc and not node.alloc then
+							-- Base has, current has not, color green (take these nodes to match)
+							SetDrawColor(0, 1, 0)
+						elseif not compareNode.alloc and node.alloc then
+							-- Base has not, current has, color red (Remove nodes to match)
+							SetDrawColor(1, 0, 0)
+						else
+							-- Both have or both have not, use white
+							SetDrawColor(1, 1, 1)
+						end
+					else
+						SetDrawColor(1, 1, 1)
 					end
+				end
+			elseif launch.devModeAlt then
+				-- Debug display
+				if node.extra then
+					SetDrawColor(1, 0, 0)
+				elseif node.unknown then
+					SetDrawColor(0, 1, 1)
+				else
+					SetDrawColor(0, 0, 0)
 				end
 			else
 				if compareNode then
@@ -979,174 +1001,148 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 					SetDrawColor(1, 1, 1)
 				end
 			end
-		elseif launch.devModeAlt then
-			-- Debug display
-			if node.extra then
-				SetDrawColor(1, 0, 0)
-			elseif node.unknown then
-				SetDrawColor(0, 1, 1)
-			else
-				SetDrawColor(0, 0, 0)
-			end
-		else
-			if compareNode then
-				if compareNode.alloc and not node.alloc then
-					-- Base has, current has not, color green (take these nodes to match)
-					SetDrawColor(0, 1, 0)
-				elseif not compareNode.alloc and node.alloc then
-					-- Base has not, current has, color red (Remove nodes to match)
-					SetDrawColor(1, 0, 0)
-				else
-					-- Both have or both have not, use white
+
+			-- Draw mastery effect artwork
+			if effect and not launch.devModeAlt and not self.showHeatMap then
+				if node.targetSize and node.targetSize["effect"] then
+					effect.width = node.targetSize["effect"].width
+					effect.height = node.targetSize["effect"].height
+				end
+				SetDrawLayer(nil, 15)
+				if isAlloc or (self.tracePath and isValueInArray(self.tracePath, node)) or (hoverNode and hoverNode.path and isValueInArray(hoverNode.path, node))  then
 					SetDrawColor(1, 1, 1)
+				else
+					SetDrawColor(1,1,1, 0.15)
 				end
-			else
+				self:DrawAsset(effect, scrX, scrY, scale)
 				SetDrawColor(1, 1, 1)
+				SetDrawLayer(nil, 25)
 			end
-		end
 
-		-- Draw mastery effect artwork
-		if effect and not launch.devModeAlt and not self.showHeatMap then
-			if node.targetSize and node.targetSize["effect"] then
-				effect.width = node.targetSize["effect"].width
-				effect.height = node.targetSize["effect"].height
-			end
-			SetDrawLayer(nil, 15)
-			if isAlloc or (self.tracePath and isValueInArray(self.tracePath, node)) or (hoverNode and hoverNode.path and isValueInArray(hoverNode.path, node))  then
-				SetDrawColor(1, 1, 1)
-			else
-				SetDrawColor(1,1,1, 0.15)
-			end
-			self:DrawAsset(effect, scrX, scrY, scale)
-			SetDrawColor(1, 1, 1)
-			SetDrawLayer(nil, 25)
-		end
-
-		-- Draw base artwork
-		if base then
-			-- apply target size to the base image
-			if node.targetSize then
-				base.width = node.targetSize.width
-				base.height = node.targetSize.height
-			end
-			if node.type == "Socket" and hoverDep and hoverDep[node] then
-				SetDrawColor(1, 0, 0);
-				self:DrawAsset(base, scrX, scrY, scale)
-				SetDrawColor(1, 1, 1);
-			elseif node.type == "Socket" then
-				self:DrawAsset(base, scrX, scrY, scale)
-			elseif node.type == "OnlyImage" then
-				SetDrawColor(1,1,1, 0.15)
-				self:DrawAsset(base, scrX, scrY, scale)
-			else
-
-				if not self.showHeatMap and not launch.devModeAlt and not node.alloc then
-					self:LessLuminance()
+			-- Draw base artwork
+			if base then
+				-- apply target size to the base image
+				if node.targetSize then
+					base.width = node.targetSize.width
+					base.height = node.targetSize.height
 				end
+				if node.type == "Socket" and hoverDep and hoverDep[node] then
+					SetDrawColor(1, 0, 0);
+					self:DrawAsset(base, scrX, scrY, scale)
+					SetDrawColor(1, 1, 1);
+				elseif node.type == "Socket" then
+					self:DrawAsset(base, scrX, scrY, scale)
+				elseif node.type == "OnlyImage" then
+					SetDrawColor(1,1,1, 0.15)
+					self:DrawAsset(base, scrX, scrY, scale)
+				else
 
-				self:DrawAsset(base, scrX, scrY, scale)
-				if not self.showHeatMap and not launch.devModeAlt and not node.alloc then
-					SetDrawColor(1, 1, 1, 1);
+					if not self.showHeatMap and not launch.devModeAlt and not node.alloc then
+						self:LessLuminance()
+					end
+
+					self:DrawAsset(base, scrX, scrY, scale)
+					if not self.showHeatMap and not launch.devModeAlt and not node.alloc then
+						SetDrawColor(1, 1, 1, 1);
+					end
 				end
 			end
-		end
 
-		if overlay then
-			-- Draw overlay
-			if node.type ~= "ClassStart" and node.type ~= "AscendClassStart" then
-				if hoverNode and hoverNode ~= node then
-					-- Mouse is hovering over a different node
-					if hoverDep and hoverDep[node] then
-						-- This node depends on the hover node, turn it red
-						SetDrawColor(1, 0, 0)
-					elseif hoverNode.type == "Socket" and hoverNode.nodesInRadius then
-						-- Hover node is a socket, check if this node falls within its radius and color it accordingly
-						local socket, jewel = build.itemsTab:GetSocketAndJewelForNodeID(hoverNode.id)
-						local isThreadOfHope = jewel and jewel.jewelRadiusLabel == "Variable"
-						if isThreadOfHope then
-							-- Jewel in socket is Thread of Hope or similar
-							for index, data in ipairs(build.data.jewelRadius) do
-								-- PRJ-003 Fix: Validate array index before access
-								if hoverNode.nodesInRadius[index] and hoverNode.nodesInRadius[index][node.id] then
-									-- Draw Thread of Hope's annuli
-									if data.inner ~= 0 then
-										SetDrawColor(data.col)
-										break
+			if overlay then
+				-- Draw overlay
+				if node.type ~= "ClassStart" and node.type ~= "AscendClassStart" then
+					if hoverNode and hoverNode ~= node then
+						-- Mouse is hovering over a different node
+						if hoverDep and hoverDep[node] then
+							-- This node depends on the hover node, turn it red
+							SetDrawColor(1, 0, 0)
+						elseif hoverNode.type == "Socket" and hoverNode.nodesInRadius then
+							-- Hover node is a socket, check if this node falls within its radius and color it accordingly
+							local socket, jewel = build.itemsTab:GetSocketAndJewelForNodeID(hoverNode.id)
+							local isThreadOfHope = jewel and jewel.jewelRadiusLabel == "Variable"
+							if isThreadOfHope then
+								-- Jewel in socket is Thread of Hope or similar
+								for index, data in ipairs(build.data.jewelRadius) do
+									-- PRJ-003 Fix: Validate array index before access
+									if hoverNode.nodesInRadius[index] and hoverNode.nodesInRadius[index][node.id] then
+										-- Draw Thread of Hope's annuli
+										if data.inner ~= 0 then
+											SetDrawColor(data.col)
+											break
+										end
 									end
 								end
-							end
-						else
-							-- Jewel in socket is not Thread of Hope or similar
-							for index, data in ipairs(build.data.jewelRadius) do
-								-- PRJ-003 Fix: Validate array index before access
-								if hoverNode.nodesInRadius[index] and hoverNode.nodesInRadius[index][node.id] then
-									-- Draw normal jewel radii
-									if data.inner == 0 then
-										SetDrawColor(data.col)
-										break
+							else
+								-- Jewel in socket is not Thread of Hope or similar
+								for index, data in ipairs(build.data.jewelRadius) do
+									-- PRJ-003 Fix: Validate array index before access
+									if hoverNode.nodesInRadius[index] and hoverNode.nodesInRadius[index][node.id] then
+										-- Draw normal jewel radii
+										if data.inner == 0 then
+											SetDrawColor(data.col)
+											break
+										end
 									end
 								end
 							end
 						end
 					end
 				end
-			end
 
-			local overlayImage = tree:GetAssetByName(overlay)
+				local overlayImage = tree:GetAssetByName(overlay)
 
-			-- apply target size to the base image
-			if overlayImage and node.targetSize and node.targetSize["overlay"] then
-				overlayImage.width = node.targetSize["overlay"].width
-				overlayImage.height = node.targetSize["overlay"].height
-			end
-
-			if not self.showHeatMap and not launch.devModeAlt and not node.alloc and (node.type == "AscendClassStart" or node.type == "ClassStart") then
-				self:LessLuminance()
-			end
-			self:DrawAsset(overlayImage, scrX, scrY, scale)
-			if not self.showHeatMap and not launch.devModeAlt and not node.alloc and (node.type == "AscendClassStart" or node.type == "ClassStart") then
-				SetDrawColor(1, 1, 1)
-			end
-		end
-		if self.searchStrResults[nodeId] then
-			-- Node matches the search string, show the highlight circle
-			SetDrawLayer(nil, 30)
-			local rgbColor = rgbColor or {1, 0, 0}
-			SetDrawColor(rgbColor[1], rgbColor[2], rgbColor[3])
-			local size = 140 * scale / self.zoom ^ 0.2
-
-			if main.edgeSearchHighlight then
-				-- Snap node matches to the edge of the viewPort
-				local peekaboo_ratio = 1.15
-				local scaled_down_ratio = 0.6667
-				local wide_cull = {viewPort.x - size / peekaboo_ratio, viewPort.x + viewPort.width - size * peekaboo_ratio}
-				local high_cull = {viewPort.y - size / peekaboo_ratio, viewPort.y + viewPort.height - size * peekaboo_ratio}
-				local newX = m_min(m_max(scrX - size, wide_cull[1]), wide_cull[2])
-				local newY = m_min(m_max(scrY - size, high_cull[1]), high_cull[2])
-
-				if newX ~= scrX - size or newY ~= scrY - size then
-				size = size * scaled_down_ratio
-				newX = newX + size / 2
-				newY = newY + size / 2
+				-- apply target size to the base image
+				if overlayImage and node.targetSize and node.targetSize["overlay"] then
+					overlayImage.width = node.targetSize["overlay"].width
+					overlayImage.height = node.targetSize["overlay"].height
 				end
-				DrawImage(self.highlightRing, newX, newY, size * 2, size * 2)
-			else
-				DrawImage(self.highlightRing, scrX - size, scrY - size, size * 2, size * 2)
-			end
 
-		end
-		if node == hoverNode and (node.type ~= "Socket" or not IsKeyDown("SHIFT")) and not IsKeyDown("CTRL") and not main.popups[1] then
-			-- Draw tooltip
-			SetDrawLayer(nil, 100)
-			local size = m_floor(node.size * scale)
-			if self.tooltip:CheckForUpdate(node, self.showStatDifferences, self.tracePath, launch.devModeAlt, build.outputRevision, build.spec.allocMode) then
-				self:AddNodeTooltip(self.tooltip, node, build, incSmallPassiveSkillEffect)
+				if not self.showHeatMap and not launch.devModeAlt and not node.alloc and (node.type == "AscendClassStart" or node.type == "ClassStart") then
+					self:LessLuminance()
+				end
+				self:DrawAsset(overlayImage, scrX, scrY, scale)
+				if not self.showHeatMap and not launch.devModeAlt and not node.alloc and (node.type == "AscendClassStart" or node.type == "ClassStart") then
+					SetDrawColor(1, 1, 1)
+				end
 			end
-			self.tooltip.center = true
-			self.tooltip:Draw(m_floor(scrX - size), m_floor(scrY - size), size * 2, size * 2, viewPort)
-		end
+			if self.searchStrResults[nodeId] then
+				-- Node matches the search string, show the highlight circle
+				SetDrawLayer(nil, 30)
+				local rgbColor = rgbColor or {1, 0, 0}
+				SetDrawColor(rgbColor[1], rgbColor[2], rgbColor[3])
+				local size = 140 * scale / self.zoom ^ 0.2
 
-		::continue::
+				if main.edgeSearchHighlight then
+					-- Snap node matches to the edge of the viewPort
+					local peekaboo_ratio = 1.15
+					local scaled_down_ratio = 0.6667
+					local wide_cull = {viewPort.x - size / peekaboo_ratio, viewPort.x + viewPort.width - size * peekaboo_ratio}
+					local high_cull = {viewPort.y - size / peekaboo_ratio, viewPort.y + viewPort.height - size * peekaboo_ratio}
+					local newX = m_min(m_max(scrX - size, wide_cull[1]), wide_cull[2])
+					local newY = m_min(m_max(scrY - size, high_cull[1]), high_cull[2])
+
+					if newX ~= scrX - size or newY ~= scrY - size then
+					size = size * scaled_down_ratio
+					newX = newX + size / 2
+					newY = newY + size / 2
+					end
+					DrawImage(self.highlightRing, newX, newY, size * 2, size * 2)
+				else
+					DrawImage(self.highlightRing, scrX - size, scrY - size, size * 2, size * 2)
+				end
+
+			end
+			if node == hoverNode and (node.type ~= "Socket" or not IsKeyDown("SHIFT")) and not IsKeyDown("CTRL") and not main.popups[1] then
+				-- Draw tooltip
+				SetDrawLayer(nil, 100)
+				local size = m_floor(node.size * scale)
+				if self.tooltip:CheckForUpdate(node, self.showStatDifferences, self.tracePath, launch.devModeAlt, build.outputRevision, build.spec.allocMode) then
+					self:AddNodeTooltip(self.tooltip, node, build, incSmallPassiveSkillEffect)
+				end
+				self.tooltip.center = true
+				self.tooltip:Draw(m_floor(scrX - size), m_floor(scrY - size), size * 2, size * 2, viewPort)
+			end
+		end
 	end
 
 	-- Diagnostic: Report nodes that passed filter check

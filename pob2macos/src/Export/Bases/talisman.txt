@@ -1,5 +1,0 @@
--- Item data (c) Grinding Gear Games
-local itemBases = ...
-
-#type Talisman
-#baseMatch BaseType Metadata/Items/Weapons/TwoHandWeapons/TwoHandTalismans/AbstractTalisman

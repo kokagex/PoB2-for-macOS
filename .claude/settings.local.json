@@ -141,7 +141,18 @@
       "WebFetch(domain:maxroll.gg)",
       "Bash(if [ -f ~/pob_coord_fix_test.log ])",
       "Bash(then grep -E \"\\(PassiveSpec|DIAGNOSTIC|ERROR|WARNING\\)\" ~/pob_coord_fix_test.log)",
-      "Bash(else echo \"Log file not found\")"
+      "Bash(else echo \"Log file not found\")",
+      "Bash(__NEW_LINE_d8bb7df49e319f72__ grep -n \"goto\\\\|::\" /Users/kokage/national-operations/pob2macos/PathOfBuilding.app/Contents/Resources/pob2macos/src/Classes/PassiveTree.lua)",
+      "Bash(__NEW_LINE_aa9203fc11737304__ grep -c \"goto\" /Users/kokage/national-operations/pob2macos/PathOfBuilding.app/Contents/Resources/pob2macos/src/Classes/PassiveTree.lua)",
+      "Bash(__NEW_LINE_159491759d0a574a__ ls -la /Users/kokage/national-operations/pob2macos/PathOfBuilding.app/Contents/MacOS/)",
+      "Bash(__NEW_LINE_22ddac2363d9a359__ ls -la \"/Users/kokage/national-operations/pob2macos/PathOfBuilding.app/Contents/\")",
+      "Bash(__NEW_LINE_2db674372a0eb486__ find /Users/kokage/national-operations/pob2macos/PathOfBuilding.app -type f -name \"*pob*\" -o -name \"*.lua\" -o -name \"*launch*\")",
+      "Bash(__NEW_LINE_1e60bf488261a77e__ ls -la /Users/kokage/national-operations/pob2macos/)",
+      "Bash(__NEW_LINE_d3327cdc0a61cb21__ find /Users/kokage/national-operations/pob2macos -maxdepth 2 -type f \\\\\\( -name \"*.sh\" -o -name \"run*\" -o -name \"*launch*\" \\\\\\))",
+      "Bash(__NEW_LINE_dfb4bdc7f20140a4__ find /Users/kokage/national-operations/pob2macos -name \"*pob2*launch*\" -o -name \"*launch*.lua\")",
+      "Bash(__NEW_LINE_be5db123341c0714__ ls -la \"/Users/kokage/national-operations/pob2macos/pob2_launch.lua\")",
+      "Bash(__NEW_LINE_835e24962c6258b3__ echo \"=== MAYOR DELEGATION EXECUTION COMPLETE ===\")",
+      "Bash(git ls-tree:*)"
     ]
   }
 }

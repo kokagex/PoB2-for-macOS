@@ -999,57 +999,62 @@ function PassiveSpecClass:BuildPathFromNode(root)
 		local node = queue[o]
 		o = o + 1
 
+		-- Check unlock constraints
+		local constraintsMet = true
 		if node.unlockConstraint then
 			for _, nodeId in ipairs(node.unlockConstraint.nodes) do
 				if not self.nodes[nodeId].alloc then
-					goto continue
+					constraintsMet = false
+					break
 				end
 			end
 		end
-		local curDist = node.pathDist
-		-- Iterate through all nodes that are connected to this one
-		for _, other in ipairs(node.linked) do
-			-- Paths must obey these rules:
-			-- 1. They must not pass through class or ascendancy class start nodes (but they can start from such nodes)
-			-- 2. They cannot pass between different ascendancy classes or between an ascendancy class and the main tree
-			--    The one exception to that rule is that a path may start from an ascendancy node and pass into the main tree
-			--    This permits pathing from the Ascendant 'Path of the X' nodes into the respective class start areas
-			-- 3. They must not pass away from mastery nodes
-			-- 4. Unlock constraints must be satisfied
 
-			-- validate if the other node have unlockConstraints met
-			local canPath = true
-			if other.unlockConstraint then
-				for _, nodeId in ipairs(other.unlockConstraint.nodes) do
-					if not self.nodes[nodeId].alloc then
-						canPath = false
-						break
+		if constraintsMet then
+			local curDist = node.pathDist
+			-- Iterate through all nodes that are connected to this one
+			for _, other in ipairs(node.linked) do
+				-- Paths must obey these rules:
+				-- 1. They must not pass through class or ascendancy class start nodes (but they can start from such nodes)
+				-- 2. They cannot pass between different ascendancy classes or between an ascendancy class and the main tree
+				--    The one exception to that rule is that a path may start from an ascendancy node and pass into the main tree
+				--    This permits pathing from the Ascendant 'Path of the X' nodes into the respective class start areas
+				-- 3. They must not pass away from mastery nodes
+				-- 4. Unlock constraints must be satisfied
+
+				-- validate if the other node have unlockConstraints met
+				local canPath = true
+				if other.unlockConstraint then
+					for _, nodeId in ipairs(other.unlockConstraint.nodes) do
+						if not self.nodes[nodeId].alloc then
+							canPath = false
+							break
+						end
 					end
 				end
-			end
 
-			if not other.pathDist then
-				-- PRJ-003 Fix: Initialize missing pathDist to prevent crash
-				other.pathDist = 1000  -- Default value (same as line 1669)
-				ConPrintf("WARNING: Node %s had no pathDist, initialized to 1000", tostring(other.id or "unknown"))
-			end
-			if node.type ~= "Mastery" and other.type ~= "ClassStart" and other.type ~= "AscendClassStart" and other.pathDist > curDist and (node.ascendancyName == other.ascendancyName or (curDist == 0 and not other.ascendancyName)) and canPath then
-				-- The shortest path to the other node is through the current node
-				other.pathDist = curDist
-				if not other.alloc then
-					other.pathDist = other.pathDist + 1
+				if not other.pathDist then
+					-- PRJ-003 Fix: Initialize missing pathDist to prevent crash
+					other.pathDist = 1000  -- Default value (same as line 1669)
+					ConPrintf("WARNING: Node %s had no pathDist, initialized to 1000", tostring(other.id or "unknown"))
 				end
-				other.path = wipeTable(other.path)
-				other.path[1] = other
-				for i, n in ipairs(node.path) do
-					other.path[i+1] = n
+				if node.type ~= "Mastery" and other.type ~= "ClassStart" and other.type ~= "AscendClassStart" and other.pathDist > curDist and (node.ascendancyName == other.ascendancyName or (curDist == 0 and not other.ascendancyName)) and canPath then
+					-- The shortest path to the other node is through the current node
+					other.pathDist = curDist
+					if not other.alloc then
+						other.pathDist = other.pathDist + 1
+					end
+					other.path = wipeTable(other.path)
+					other.path[1] = other
+					for i, n in ipairs(node.path) do
+						other.path[i+1] = n
+					end
+					-- Add the other node to the end of the queue
+					queue[i] = other
+					i = i + 1
 				end
-				-- Add the other node to the end of the queue
-				queue[i] = other
-				i = i + 1
 			end
 		end
-		::continue::
 	end
 end
 

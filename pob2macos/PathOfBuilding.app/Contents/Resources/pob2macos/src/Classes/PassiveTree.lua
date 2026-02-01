@@ -209,54 +209,50 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 	self.classNotables = { }
 
 	for classId, class in pairs(self.classes) do
-		if not class then
-			ConPrintf("WARNING: Nil class at ID %s", tostring(classId))
-			goto nextClass
-		end
+		if class then
+			class.classes = class.ascendancies or {}
+			class.classes[0] = { name = "None" }
 
-		class.classes = class.ascendancies or {}
-		class.classes[0] = { name = "None" }
-
-		if class.name then
-			self.classNameMap[class.name] = classId
-		else
-			ConPrintf("WARNING: Class at ID %s has no name", tostring(classId))
-		end
-
-		if class.integerId then
-			self.classIntegerIdMap[class.integerId] = classId
-		else
-			ConPrintf("WARNING: Class %s has no integerId", tostring(class.name or classId))
-		end
-
-		for ascendClassId, ascendClass in pairs(class.classes) do
-			if not ascendClass then
-				ConPrintf("WARNING: Nil ascendClass at ID %s for class %s", tostring(ascendClassId), tostring(class.name or classId))
-				goto nextAscend
-			end
-
-			if ascendClass.name then
-				self.ascendNameMap[ascendClass.id or ascendClass.name] = {
-					classId = classId,
-					class = class,
-					ascendClassId = ascendClassId,
-					ascendClass = ascendClass
-				}
+			if class.name then
+				self.classNameMap[class.name] = classId
 			else
-				ConPrintf("WARNING: Ascendancy class at ID %s has no name", tostring(ascendClassId))
+				ConPrintf("WARNING: Class at ID %s has no name", tostring(classId))
 			end
 
-			if ascendClass.internalId then
-				self.internalAscendNameMap[ascendClass.internalId] = {
-					classId = classId,
-					class = class,
-					ascendClassId = ascendClassId,
-					ascendClass = ascendClass
-				}
+			if class.integerId then
+				self.classIntegerIdMap[class.integerId] = classId
+			else
+				ConPrintf("WARNING: Class %s has no integerId", tostring(class.name or classId))
 			end
-			::nextAscend::
+
+			for ascendClassId, ascendClass in pairs(class.classes) do
+				if ascendClass then
+					if ascendClass.name then
+						self.ascendNameMap[ascendClass.id or ascendClass.name] = {
+							classId = classId,
+							class = class,
+							ascendClassId = ascendClassId,
+							ascendClass = ascendClass
+						}
+					else
+						ConPrintf("WARNING: Ascendancy class at ID %s has no name", tostring(ascendClassId))
+					end
+
+					if ascendClass.internalId then
+						self.internalAscendNameMap[ascendClass.internalId] = {
+							classId = classId,
+							class = class,
+							ascendClassId = ascendClassId,
+							ascendClass = ascendClass
+						}
+					end
+				else
+					ConPrintf("WARNING: Nil ascendClass at ID %s for class %s", tostring(ascendClassId), tostring(class.name or classId))
+				end
+			end
+		else
+			ConPrintf("WARNING: Nil class at ID %s", tostring(classId))
 		end
-		::nextClass::
 	end
 
 	-- Validate essential tree constants
@@ -514,40 +510,23 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 			local otherId = connection.id
 			local other = nodeMap[otherId]
 
-			if not other then
-				-- Silently skip missing nodes (common in tree data due to version mismatches)
-				goto endConnection
-			end
+			-- Process connection if all validation checks pass
+			if other and
+			   node.type ~= "OnlyImage" and other.type ~= "OnlyImage" and
+			   node.id ~= otherId and
+			   node.ascendancyName == other.ascendancyName and
+			   node.classesStart == nil and other.classesStart == nil then
+				local connectors = self:BuildConnector(node, other, connection)
 
-			if node.type == "OnlyImage" or other.type == "OnlyImage" then
-				goto endConnection
+				if connectors then
+					t_insert(other.linkedId, node.id)
+					t_insert(node.linkedId, otherId)
+					t_insert(self.connectors, connectors[1])
+					if connectors[2] then
+						t_insert(self.connectors, connectors[2])
+					end
+				end
 			end
-
-			if node.id == otherId then
-				goto endConnection
-			end
-
-			t_insert(other.linkedId, node.id)
-			t_insert(node.linkedId, otherId)
-			
-			if node.ascendancyName ~= other.ascendancyName then
-				goto endConnection
-			end
-
-			if node.classesStart ~= nil or other.classesStart ~= nil then
-				goto endConnection
-			end
-
-			local connectors = self:BuildConnector(node, other, connection)
-
-			if not connectors then
-				goto endConnection
-			end
-			t_insert(self.connectors, connectors[1])
-			if connectors[2] then
-				t_insert(self.connectors, connectors[2])
-			end
-			:: endConnection ::
 		end
 	end
 
@@ -611,30 +590,26 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 	end
 
 	for classId, class in pairs(self.classes) do
-		if not class.startNodeId then
-			ConPrintf("WARNING: Class %s has no startNodeId", tostring(class.name or classId))
-			goto nextClass
-		end
-
-		local startNode = nodeMap[class.startNodeId]
-		if not startNode then
-			ConPrintf("WARNING: Start node %s not found for class %s",
-				tostring(class.startNodeId), tostring(class.name or classId))
-			goto nextClass
-		end
-
-		if not startNode.linkedId then
-			ConPrintf("WARNING: Start node has no linkedId for class %s", tostring(class.name or classId))
-			goto nextClass
-		end
-
-		for _, nodeId in ipairs(startNode.linkedId) do
-			local node = nodeMap[nodeId]
-			if node and node.type == "Normal" and node.modList then
-				node.modList:NewMod("Condition:ConnectedTo"..class.name.."Start", "FLAG", true, "Tree:"..nodeId)
+		if class.startNodeId then
+			local startNode = nodeMap[class.startNodeId]
+			if startNode then
+				if startNode.linkedId then
+					for _, nodeId in ipairs(startNode.linkedId) do
+						local node = nodeMap[nodeId]
+						if node and node.type == "Normal" and node.modList then
+							node.modList:NewMod("Condition:ConnectedTo"..class.name.."Start", "FLAG", true, "Tree:"..nodeId)
+						end
+					end
+				else
+					ConPrintf("WARNING: Start node has no linkedId for class %s", tostring(class.name or classId))
+				end
+			else
+				ConPrintf("WARNING: Start node %s not found for class %s",
+					tostring(class.startNodeId), tostring(class.name or classId))
 			end
+		else
+			ConPrintf("WARNING: Class %s has no startNodeId", tostring(class.name or classId))
 		end
-		::nextClass::
 	end
 	
 	-- Build ModList for legion jewels
