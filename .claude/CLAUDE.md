@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 3. Document current task context in `./doc/learning/`
 
 ### Phase 2: Agentsフォルダ全読み込み
-1. Read ALL files in `./agents/` directory
+1. Read ALL files in `./doc/agents/` directory
 2. Confirm agent hierarchy and responsibilities (00_overview.md)
 3. Identify appropriate agents for current task
 
