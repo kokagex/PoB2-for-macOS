@@ -16,6 +16,41 @@
 // DDS texture loader
 #include "dds_loader.h"
 
+/* ===== DDS Array Cache ===== */
+
+struct DDSArrayCache {
+    char* filename;
+    uint8_t* decompressed_data;
+    size_t decompressed_size;
+    DDS_Texture dds_tex;
+    struct DDSArrayCache* next;
+};
+
+static struct DDSArrayCache* g_dds_cache = NULL;
+
+static struct DDSArrayCache* find_dds_cache(const char* filename) {
+    for (struct DDSArrayCache* cache = g_dds_cache; cache; cache = cache->next) {
+        if (strcmp(cache->filename, filename) == 0) {
+            return cache;
+        }
+    }
+    return NULL;
+}
+
+static struct DDSArrayCache* add_dds_cache(const char* filename, uint8_t* data, size_t size, const DDS_Texture* tex) {
+    struct DDSArrayCache* cache = (struct DDSArrayCache*)calloc(1, sizeof(struct DDSArrayCache));
+    if (!cache) return NULL;
+
+    cache->filename = strdup(filename);
+    cache->decompressed_data = data;
+    cache->decompressed_size = size;
+    cache->dds_tex = *tex;
+    cache->next = g_dds_cache;
+    g_dds_cache = cache;
+
+    return cache;
+}
+
 /* ===== Image Management ===== */
 
 struct ImageHandle_s* sg_image_create(void) {
@@ -126,28 +161,63 @@ bool sg_image_load_from_file(struct ImageHandle_s* img, const char* filename) {
         // Get texture dimensions
         int width = dds_tex.width;
         int height = dds_tex.height;
+        uint32_t arraySize = dds_tex.arraySize;
 
         // Use compressed format for BC1 and BC7
         bool use_compressed = (dds_tex.format == 0x47 || dds_tex.format == 0x62);  // BC1 or BC7
 
-        if (use_compressed && g_ctx && g_ctx->renderer && g_ctx->renderer->create_compressed_texture) {
-            // Use compressed texture directly (Metal supports BC1/BC7 natively)
+        if (use_compressed && g_ctx && g_ctx->renderer) {
+            // Destroy old texture if exists
             if (img->texture && g_ctx->renderer->destroy_texture) {
                 g_ctx->renderer->destroy_texture(img->texture);
                 img->texture = NULL;
             }
 
-            img->texture = g_ctx->renderer->create_compressed_texture(width, height,
-                                                                      dds_tex.format,
-                                                                      dds_tex.data,
-                                                                      dds_tex.dataSize);
-            if (!img->texture) {
-                fprintf(stderr, "Failed to create compressed Metal texture for %s\n", filename);
+            // Check if this is a texture array (arraySize > 1)
+            if (arraySize > 1 && g_ctx->renderer->create_compressed_texture_array) {
+                printf("DDS file has arraySize=%u, creating texture2d_array\n", arraySize);
+
+                img->texture = g_ctx->renderer->create_compressed_texture_array(
+                    width, height,
+                    dds_tex.format,
+                    (const void*)&dds_tex,
+                    (const void*)decompressed_data
+                );
+
+                if (!img->texture) {
+                    fprintf(stderr, "Failed to create compressed texture array for %s\n", filename);
+                    free(decompressed_data);
+                    return false;
+                }
+
+                printf("Created compressed Metal texture2d_array: %p (format 0x%X, %u layers)\n",
+                       img->texture, dds_tex.format, arraySize);
+
+                // Set array metadata
+                img->isArray = true;
+                img->arraySize = arraySize;
+            } else if (g_ctx->renderer->create_compressed_texture) {
+                // Regular 2D texture (arraySize == 0 or 1)
+                img->texture = g_ctx->renderer->create_compressed_texture(width, height,
+                                                                          dds_tex.format,
+                                                                          dds_tex.data,
+                                                                          dds_tex.dataSize);
+                if (!img->texture) {
+                    fprintf(stderr, "Failed to create compressed Metal texture for %s\n", filename);
+                    free(decompressed_data);
+                    return false;
+                }
+
+                printf("Created compressed Metal texture for DDS: %p (format 0x%X)\n", img->texture, dds_tex.format);
+
+                // Set array metadata (not an array)
+                img->isArray = false;
+                img->arraySize = 1;
+            } else {
+                fprintf(stderr, "No compressed texture creation function available\n");
                 free(decompressed_data);
                 return false;
             }
-
-            printf("Created compressed Metal texture for DDS: %p (format 0x%X)\n", img->texture, dds_tex.format);
         } else {
             // Decompress to RGBA (fallback for unsupported formats)
             uint8_t* pixel_data = (uint8_t*)malloc(width * height * 4);
@@ -260,6 +330,128 @@ int ImageHandle_Load(ImageHandle handle, const char* filename, int async) {
     }
 
     return sg_image_load_from_file(img, filename) ? 1 : 0;
+}
+
+int ImageHandle_LoadArrayLayer(ImageHandle handle, const char* filename, unsigned int layerIndex) {
+    if (!handle || !filename) return 0;
+
+    struct ImageHandle_s* img = (struct ImageHandle_s*)handle;
+
+    printf("Loading DDS array layer: %s [%u]\n", filename, layerIndex);
+
+    size_t len = strlen(filename);
+    bool is_dds_zst = (len > 8 && strcmp(filename + len - 8, ".dds.zst") == 0);
+
+    if (!is_dds_zst) {
+        fprintf(stderr, "ImageHandle_LoadArrayLayer: File must be .dds.zst: %s\n", filename);
+        return 0;
+    }
+
+    struct DDSArrayCache* cache = find_dds_cache(filename);
+    uint8_t* decompressed_data = NULL;
+    DDS_Texture dds_tex;
+
+    if (cache) {
+        printf("Using cached DDS data for %s\n", filename);
+        decompressed_data = cache->decompressed_data;
+        dds_tex = cache->dds_tex;
+    } else {
+        FILE* f = fopen(filename, "rb");
+        if (!f) {
+            fprintf(stderr, "Failed to open DDS.zst file: %s\n", filename);
+            return 0;
+        }
+
+        fseek(f, 0, SEEK_END);
+        size_t compressed_size = ftell(f);
+        fseek(f, 0, SEEK_SET);
+
+        uint8_t* compressed_data = (uint8_t*)malloc(compressed_size);
+        if (!compressed_data) {
+            fclose(f);
+            return 0;
+        }
+        fread(compressed_data, 1, compressed_size, f);
+        fclose(f);
+
+        size_t decompressed_size = ZSTD_getFrameContentSize(compressed_data, compressed_size);
+        if (decompressed_size == ZSTD_CONTENTSIZE_ERROR || decompressed_size == ZSTD_CONTENTSIZE_UNKNOWN) {
+            fprintf(stderr, "Failed to get DDS decompressed size for %s\n", filename);
+            free(compressed_data);
+            return 0;
+        }
+
+        decompressed_data = (uint8_t*)malloc(decompressed_size);
+        if (!decompressed_data) {
+            free(compressed_data);
+            return 0;
+        }
+
+        size_t result = ZSTD_decompress(decompressed_data, decompressed_size, compressed_data, compressed_size);
+        free(compressed_data);
+
+        if (ZSTD_isError(result)) {
+            fprintf(stderr, "ZSTD decompression failed for %s: %s\n", filename, ZSTD_getErrorName(result));
+            free(decompressed_data);
+            return 0;
+        }
+
+        printf("Decompressed DDS: %zu -> %zu bytes\n", compressed_size, result);
+
+        if (!dds_load_from_memory(decompressed_data, result, &dds_tex)) {
+            fprintf(stderr, "Failed to parse DDS data for %s\n", filename);
+            free(decompressed_data);
+            return 0;
+        }
+
+        add_dds_cache(filename, decompressed_data, result, &dds_tex);
+    }
+
+    if (layerIndex >= dds_tex.arraySize) {
+        fprintf(stderr, "Layer index %u out of range for %s (arraySize=%u)\n", layerIndex, filename, dds_tex.arraySize);
+        return 0;
+    }
+
+    const uint8_t* layer_data = dds_get_array_layer(&dds_tex, layerIndex);
+    if (!layer_data) {
+        fprintf(stderr, "Failed to extract layer %u from %s\n", layerIndex, filename);
+        return 0;
+    }
+
+    printf("Extracted layer %u: size=%zu bytes\n", layerIndex, dds_tex.layerDataSize);
+
+    int width = dds_tex.width;
+    int height = dds_tex.height;
+    bool use_compressed = (dds_tex.format == 0x47 || dds_tex.format == 0x62);
+
+    if (use_compressed && g_ctx && g_ctx->renderer && g_ctx->renderer->create_compressed_texture) {
+        if (img->texture && g_ctx->renderer->destroy_texture) {
+            g_ctx->renderer->destroy_texture(img->texture);
+            img->texture = NULL;
+        }
+
+        img->texture = g_ctx->renderer->create_compressed_texture(width, height, dds_tex.format, layer_data, dds_tex.layerDataSize);
+        if (!img->texture) {
+            fprintf(stderr, "Failed to create compressed Metal texture for layer %u of %s\n", layerIndex, filename);
+            return 0;
+        }
+
+        printf("Created compressed Metal texture for layer %u: %p (format 0x%X)\n", layerIndex, img->texture, dds_tex.format);
+    } else {
+        fprintf(stderr, "Layer loading requires compressed texture support\n");
+        return 0;
+    }
+
+    img->valid = true;
+    img->width = width;
+    img->height = height;
+    if (img->filename) free(img->filename);
+
+    char filename_with_layer[1024];
+    snprintf(filename_with_layer, sizeof(filename_with_layer), "%s[%u]", filename, layerIndex);
+    img->filename = strdup(filename_with_layer);
+
+    return 1;
 }
 
 void ImageHandle_Unload(ImageHandle handle) {

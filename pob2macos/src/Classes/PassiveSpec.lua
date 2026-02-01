@@ -51,20 +51,39 @@ function PassiveSpecClass:Init(treeVersion, convert)
 	end
 	ConPrintf("DEBUG [PassiveSpec]: self.tree.nodes count BEFORE filtering: %s", tostring(treeNodeCount))
 
-	-- ★ ULTIMATE FIX: Copy ALL fields to avoid metatable pairs() issues
-	for _, treeNode in pairs(self.tree.nodes) do
-		if treeNode.group and not treeNode.isProxy and not treeNode.group.isProxy and (not treeNode.expansionJewel or not treeNode.expansionJewel.parent) then
-			local newNode = { linked = {}, power = {} }
-			-- Copy all fields from treeNode
-			for k, v in pairs(treeNode) do
-				if newNode[k] == nil then
-					newNode[k] = v
-				end
+	-- ★ PHASE1: rawget/next method to bypass metatable pollution
+	local function copyNodeSafely(treeNode)
+		local newNode = { linked = {}, power = {} }
+		local key = next(treeNode)
+		while key do
+			-- Skip __index field (metatable pollution prevention)
+			if key ~= "__index" then
+				newNode[key] = rawget(treeNode, key)
 			end
-			self.nodes[treeNode.id] = newNode
+			key = next(treeNode, key)
+		end
+		return newNode
+	end
+
+	ConPrintf("★ Phase1: Starting safe node copy (rawget/next method)")
+	local copyCount = 0
+
+	for nodeId, treeNode in pairs(self.tree.nodes) do
+		if treeNode.group and not treeNode.isProxy and not treeNode.group.isProxy
+		   and (not treeNode.expansionJewel or not treeNode.expansionJewel.parent) then
+			self.nodes[nodeId] = copyNodeSafely(treeNode)
+			copyCount = copyCount + 1
 		end
 	end
-	ConPrintf("★ ULTIMATE: All treeNode fields copied")
+
+	ConPrintf("★ Phase1: Successfully copied %d nodes", copyCount)
+
+	-- Verification: Test pairs() iteration
+	local verifyCount = 0
+	for _ in pairs(self.nodes) do
+		verifyCount = verifyCount + 1
+	end
+	ConPrintf("★ Phase1: Verification - pairs() iterates %d times", verifyCount)
 
 	-- Debug: Count filtered nodes
 	local filteredNodeCount = 0

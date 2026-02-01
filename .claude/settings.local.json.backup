@@ -1,22 +1,6 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git status:*)",
-      "Bash(git diff:*)",
-      "Bash(git branch:*)",
-      "Bash(git show:*)",
-      "Bash(date:*)",
-      "Bash(pwd:*)",
-      "Bash(which:*)",
-      "Bash(hostname:*)",
-      "Bash(uname:*)",
-      "Bash(whoami:*)",
-      "Bash(head:*)",
-      "Bash(tail:*)",
-      "Bash(diff:*)",
-      "Bash(stat:*)",
-      "Bash(ps:*)",
-      "Bash(df:*)",
       "Bash(dir:*)",
       "Bash(ls -la \"C:\\\\Users\\\\kouei\\\\Desktop\\\\福岡_作業フォルダ\\\\ClaudeCode\\\\village_tool\"\" 2>&1 || echo \"ディレクトリが未作成 \")",
       "Bash(wc:*)",
@@ -135,9 +119,7 @@
       "Bash(./run_pob2.sh)",
       "Bash(git stash:*)",
       "Bash(python3:*)",
-      "Bash(git log:*)",
-      "Bash(git -C /Users/kokage/national-operations/pob2macos log --oneline -20)",
-      "Bash(git remote set-url:*)"
+      "Bash(git log:*)"
     ]
   }
 }

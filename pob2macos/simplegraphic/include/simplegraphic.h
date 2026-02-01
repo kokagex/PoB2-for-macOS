@@ -124,6 +124,13 @@ ImageHandle NewImageHandle(void);
 int ImageHandle_Load(ImageHandle handle, const char* filename, int async);
 
 /**
+ * Load specific layer from DDS texture array
+ * For DDS files with arraySize > 1, loads a single layer
+ * @param layerIndex 0-based layer index (0 to arraySize-1)
+ */
+int ImageHandle_LoadArrayLayer(ImageHandle handle, const char* filename, unsigned int layerIndex);
+
+/**
  * Unload image and free memory
  */
 void ImageHandle_Unload(ImageHandle handle);

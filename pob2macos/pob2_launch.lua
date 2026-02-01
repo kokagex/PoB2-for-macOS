@@ -42,6 +42,7 @@ ffi.cdef[[
     // Image management
     void* NewImageHandle(void);
     int ImageHandle_Load(void* handle, const char* filename, int async);
+    int ImageHandle_LoadArrayLayer(void* handle, const char* filename, unsigned int layerIndex);
     void ImageHandle_Unload(void* handle);
     int ImageHandle_IsValid(void* handle);
     void ImageHandle_ImageSize(void* handle, int* width, int* height);
@@ -198,6 +199,14 @@ function imageHandleMT:Load(fileName, ...)
         async = 1
     end
     return sg.ImageHandle_Load(self._handle, fileName, async)
+end
+
+function imageHandleMT:LoadArrayLayer(fileName, layerIndex)
+    if fileName == nil then
+        print("ERROR: ImageHandle:LoadArrayLayer - fileName is nil")
+        return 0
+    end
+    return sg.ImageHandle_LoadArrayLayer(self._handle, fileName, layerIndex)
 end
 
 function imageHandleMT:ImageSize()

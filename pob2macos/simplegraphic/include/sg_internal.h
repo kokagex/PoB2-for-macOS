@@ -40,6 +40,8 @@ struct ImageHandle_s {
     int loading_priority;
     void* texture;          // Backend-specific texture data
     char* filename;
+    bool isArray;           // True if texture is a texture2d_array
+    uint32_t arraySize;     // Number of layers in array (1 for non-arrays)
     struct ImageHandle_s* next;
 };
 
@@ -112,6 +114,7 @@ typedef struct SGRenderer {
     // Image management
     void* (*create_texture)(int width, int height, const void* data);
     void* (*create_compressed_texture)(int width, int height, uint32_t format, const void* data, size_t dataSize);
+    void* (*create_compressed_texture_array)(int width, int height, uint32_t format, const void* dds_tex, const void* decompressed_data);
     void (*destroy_texture)(void* texture);
     void (*update_texture)(void* texture, const void* data);
 

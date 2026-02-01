@@ -78,8 +78,10 @@ typedef struct {
     int mipMapCount;
     bool isCompressed;
     uint32_t format;           // FOURCC or DXGI format
-    const uint8_t* data;       // Pointer to texture data
-    size_t dataSize;
+    uint32_t arraySize;        // Number of textures in array (1 for single texture)
+    const uint8_t* data;       // Pointer to texture data (all layers)
+    size_t dataSize;           // Total size of all layers
+    size_t layerDataSize;      // Size of single layer
 } DDS_Texture;
 
 #pragma pack(pop)
@@ -93,6 +95,11 @@ bool dds_load_from_memory(const uint8_t* buffer, size_t size, DDS_Texture* tex);
 
 // Get bytes per block for compressed formats
 int dds_get_block_size(uint32_t format);
+
+// Extract a specific layer from texture array
+// Returns pointer to layer data within original buffer
+// layerIndex: 0-based index (0 to arraySize-1)
+const uint8_t* dds_get_array_layer(const DDS_Texture* tex, uint32_t layerIndex);
 
 // Decompress BC1/BC7 to RGBA8 (if needed)
 bool dds_decompress_to_rgba(const DDS_Texture* tex, uint8_t* rgba_out);

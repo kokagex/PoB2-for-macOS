@@ -277,57 +277,54 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 	self.orbitRadii = self.constants.orbitRadii
 	self.orbitAnglesByOrbit = self.constants.orbitAnglesByOrbit
 
-	-- Debug: Check node count before loading assets
-	local nodeCountBeforeAssets = 0
-	if self.nodes and type(self.nodes) == "table" then
-		for _ in pairs(self.nodes) do
-			nodeCountBeforeAssets = nodeCountBeforeAssets + 1
-		end
-	end
-	ConPrintf("DEBUG [PassiveTree]: Node count BEFORE loading assets: %s", tostring(nodeCountBeforeAssets))
-
-	ConPrintf("Loading passive tree assets...")
+	-- Load PNG assets (orbits, lines, etc.)
+	ConPrintf("Loading passive tree PNG assets...")
+	local assetsLoaded = 0
 	for name, data in pairs(self.assets) do
 		self:LoadImage(data[1], data, "MIPMAP")
+		assetsLoaded = assetsLoaded + 1
 	end
+	ConPrintf("Loaded %d PNG assets", assetsLoaded)
 
-	-- Debug: Check node count after loading assets
-	local nodeCountAfterAssets = 0
-	if self.nodes and type(self.nodes) == "table" then
-		for _ in pairs(self.nodes) do
-			nodeCountAfterAssets = nodeCountAfterAssets + 1
-		end
-	else
-		ConPrintf("DEBUG [PassiveTree]: ERROR - self.nodes is %s after loading assets!", self.nodes and type(self.nodes) or "nil")
-	end
-	ConPrintf("DEBUG [PassiveTree]: Node count AFTER loading assets: %s", tostring(nodeCountAfterAssets))
-
+	-- Load DDS texture arrays (node icons)
+	ConPrintf("Loading DDS texture arrays...")
 	self.ddsMap = { }
 	self.ddsCoords = self.ddsCoords or { }
+
+	local iconCount = 0
+	local filesLoaded = 0
+
 	for file, fileInfo in pairs(self.ddsCoords) do
 		local data = { }
 		self:LoadImage(file, data, "CLAMP")
-		for name, position in pairs(fileInfo) do
-			self.ddsMap[name] = {
-				found = data.width > 0,
-				handle = data.handle,
-				width = data.width,
-				height = data.height,
-				[1] = position
-			}
-		end
-	end
 
-	-- Debug: Check node count after ddsMap processing
-	local nodeCountAfterDDS = 0
-	if self.nodes and type(self.nodes) == "table" then
-		for _ in pairs(self.nodes) do
-			nodeCountAfterDDS = nodeCountAfterDDS + 1
+		if data.width and data.width > 0 then
+			filesLoaded = filesLoaded + 1
+			-- Map all icons in this texture array to the shared handle
+			for name, position in pairs(fileInfo) do
+				self.ddsMap[name] = {
+					found = true,
+					handle = data.handle,
+					width = data.width,
+					height = data.height,
+					[1] = position  -- Layer index for texture array
+				}
+				iconCount = iconCount + 1
+			end
+		else
+			-- Map failed icons as not found
+			for name, position in pairs(fileInfo) do
+				self.ddsMap[name] = {
+					found = false,
+					handle = nil,
+					width = 0,
+					height = 0,
+					[1] = position
+				}
+			end
 		end
-	else
-		ConPrintf("DEBUG [PassiveTree]: ERROR - self.nodes is %s after ddsMap!", self.nodes and type(self.nodes) or "nil")
 	end
-	ConPrintf("DEBUG [PassiveTree]: Node count AFTER ddsMap: %s", tostring(nodeCountAfterDDS))
+	ConPrintf("Loaded %d DDS texture arrays with %d icons", filesLoaded, iconCount)
 
 	for type, data in pairs(self.nodeOverlay) do
 		local asset = self:GetAssetByName(data.alloc)

@@ -30,6 +30,7 @@ bool dds_load_from_memory(const uint8_t* buffer, size_t size, DDS_Texture* tex) 
     tex->width = header->width;
     tex->height = header->height;
     tex->mipMapCount = (header->flags & 0x20000) ? header->mipMapCount : 1;
+    tex->arraySize = 1;  // Default: single texture
 
     // Check if compressed
     if (header->ddspf.flags & DDPF_FOURCC) {
@@ -44,6 +45,7 @@ bool dds_load_from_memory(const uint8_t* buffer, size_t size, DDS_Texture* tex) 
             }
             const DDS_Header_DXT10* dx10 = (const DDS_Header_DXT10*)(buffer + sizeof(DDS_Header));
             tex->format = dx10->dxgiFormat;
+            tex->arraySize = dx10->arraySize;  // Read array size from DX10 header
         }
 
         // Calculate data offset and size
@@ -55,8 +57,18 @@ bool dds_load_from_memory(const uint8_t* buffer, size_t size, DDS_Texture* tex) 
         tex->data = buffer + dataOffset;
         tex->dataSize = size - dataOffset;
 
-        printf("DDS: Loaded compressed texture %dx%d, format=0x%X, dataSize=%zu\n",
-               tex->width, tex->height, tex->format, tex->dataSize);
+        // Calculate size per layer for texture arrays
+        int blockSize = dds_get_block_size(tex->format);
+        if (blockSize > 0) {
+            int blocksX = (tex->width + 3) / 4;
+            int blocksY = (tex->height + 3) / 4;
+            tex->layerDataSize = blocksX * blocksY * blockSize;
+        } else {
+            tex->layerDataSize = tex->dataSize;
+        }
+
+        printf("DDS: Loaded compressed texture %dx%d, format=0x%X, arraySize=%u, dataSize=%zu, layerSize=%zu\n",
+               tex->width, tex->height, tex->format, tex->arraySize, tex->dataSize, tex->layerDataSize);
         return true;
     }
 
@@ -76,6 +88,35 @@ int dds_get_block_size(uint32_t format) {
         default:
             return 0;
     }
+}
+
+const uint8_t* dds_get_array_layer(const DDS_Texture* tex, uint32_t layerIndex) {
+    if (!tex || !tex->data) {
+        fprintf(stderr, "DDS: Invalid texture for layer extraction\n");
+        return NULL;
+    }
+
+    if (layerIndex >= tex->arraySize) {
+        fprintf(stderr, "DDS: Layer index %u out of range (arraySize=%u)\n",
+                layerIndex, tex->arraySize);
+        return NULL;
+    }
+
+    // For single texture, return original data
+    if (tex->arraySize == 1) {
+        return tex->data;
+    }
+
+    // Calculate offset for this layer
+    size_t layerOffset = layerIndex * tex->layerDataSize;
+
+    if (layerOffset + tex->layerDataSize > tex->dataSize) {
+        fprintf(stderr, "DDS: Layer %u data exceeds file bounds (offset=%zu, layerSize=%zu, totalSize=%zu)\n",
+                layerIndex, layerOffset, tex->layerDataSize, tex->dataSize);
+        return NULL;
+    }
+
+    return tex->data + layerOffset;
 }
 
 // Simplified BC1 decompression (4x4 block)
