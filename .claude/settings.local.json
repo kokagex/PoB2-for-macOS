@@ -156,7 +156,8 @@
       "Bash(./pob2_launch.lua)",
       "Bash(for f in *.png)",
       "Bash(do file \"$f\")",
-      "Bash(sort:*)"
+      "Bash(sort:*)",
+      "Bash(shasum:*)"
     ]
   }
 }
