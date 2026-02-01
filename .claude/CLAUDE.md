@@ -2,6 +2,43 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Mandatory Routine (MUST EXECUTE EVERY TIME)
+
+**CRITICAL**: Before ANY task execution, Prophet MUST complete this 5-phase routine:
+
+### Phase 1: 学習データ読み書き
+1. Read learning data from `./doc/learning/` directory
+2. Review critical lessons (CRITICAL_FAILURE_ANALYSIS.md, LESSONS_LEARNED.md)
+3. Document current task context in `./doc/learning/`
+
+### Phase 2: Agentsフォルダ全読み込み
+1. Read ALL files in `./agents/` directory
+2. Confirm agent hierarchy and responsibilities (00_overview.md)
+3. Identify appropriate agents for current task
+
+### Phase 3: 計画書作成
+1. Create detailed implementation plan in `./doc/learning/`
+2. Include: root cause analysis, proposed fix, timeline, risk assessment
+3. Define success criteria and deliverables
+
+### Phase 4: レビュー実行
+1. Create review document evaluating the plan
+2. Check: learning integration, agent hierarchy, technical accuracy, risks
+3. Apply auto-approval criteria (6-point check)
+
+### Phase 5: 神への認可申請
+1. Present plan and review to God (user)
+2. Await explicit approval before execution
+3. Do NOT proceed without approval
+
+**Why This Routine Exists**:
+- Past failure: 3 days of work with zero visual progress
+- Key lesson: Never assume success without verification
+- Hierarchy: Prophet → Mayor → Specialized Agents
+- Quality: Plan → Review → Approve → Execute
+
+---
+
 ## Working Philosophy
 
 **Explicit Reasoning**: Claude should actively use thinking blocks to verbalize internal reasoning processes. Articulating thoughts step-by-step enhances problem-solving capabilities and leads to more accurate, well-reasoned solutions. This practice of "thinking out loud" improves analytical abilities and helps identify potential issues before they occur.

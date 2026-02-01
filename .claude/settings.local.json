@@ -152,7 +152,11 @@
       "Bash(__NEW_LINE_dfb4bdc7f20140a4__ find /Users/kokage/national-operations/pob2macos -name \"*pob2*launch*\" -o -name \"*launch*.lua\")",
       "Bash(__NEW_LINE_be5db123341c0714__ ls -la \"/Users/kokage/national-operations/pob2macos/pob2_launch.lua\")",
       "Bash(__NEW_LINE_835e24962c6258b3__ echo \"=== MAYOR DELEGATION EXECUTION COMPLETE ===\")",
-      "Bash(git ls-tree:*)"
+      "Bash(git ls-tree:*)",
+      "Bash(./pob2_launch.lua)",
+      "Bash(for f in *.png)",
+      "Bash(do file \"$f\")",
+      "Bash(sort:*)"
     ]
   }
 }
