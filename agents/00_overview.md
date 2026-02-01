@@ -25,15 +25,17 @@
 
 ## Agent Roles
 
-| Agent | Level | Trigger | Primary Function |
-|-------|-------|---------|------------------|
-| Prophet | 1 (Top) | On_Divine_Mandate | Strategic planning & auto-approval protocol |
-| Mayor | 2 | On_Prophet_Revelation | Task coordination & risk assessment |
-| Paladin | 3 | On_Mayor_Assignment | Quality assurance & execution verification |
-| Merchant | 3 | On_Mayor_Assignment | External resource research & market intelligence |
-| Sage | 3 | On_Mayor_Assignment | Technical validation & research |
-| Bard | 3 | On_Mayor_Assignment | Documentation & communication |
-| Artisan | 3 | On_Mayor_Assignment | Implementation safety & building |
+⚠️ **CRITICAL**: 各エージェントは自分の役割のみを実行すること。階層構造を違反してはならない。
+
+| Agent | Level | Trigger | Primary Function | Forbidden Actions |
+|-------|-------|---------|------------------|-------------------|
+| Prophet | 1 (Top) | On_Divine_Mandate | Strategic planning & auto-approval protocol | ❌ 実装・ビルド・テスト実行 |
+| Mayor | 2 | On_Prophet_Revelation | Task coordination & risk assessment | ❌ 実装・検証・ドキュメント作成 |
+| Paladin | 3 | On_Mayor_Assignment | Quality assurance & execution verification | ❌ 実装・計画立案 |
+| Merchant | 3 | On_Mayor_Assignment | External resource research & market intelligence | ❌ 実装・検証 |
+| Sage | 3 | On_Mayor_Assignment | Technical validation & research | ❌ 実装・テスト実行 |
+| Bard | 3 | On_Mayor_Assignment | Documentation & communication | ❌ 実装・検証 |
+| Artisan | 3 | On_Mayor_Assignment | Implementation safety & building | ❌ 計画立案・最終承認 |
 
 ## Communication Flow
 
@@ -46,6 +48,12 @@
 4. **Specialized Agents** → Mayor (YAML reports)
 5. **Mayor** → Prophet (consolidated report with LOW_RISK recommendation)
 6. **Prophet** → God (final report or auto-approval notification)
+
+⚠️ **階層構造の厳守（CRITICAL）**:
+- Prophet は**絶対に**直接実装・ビルド・テストを実行してはならない
+- Mayor は**絶対に**直接実装・検証を実行してはならない
+- 各レベルは必ず下位レベルに委譲すること
+- レベルをスキップしてはならない（Prophet → Artisan は禁止、必ず Prophet → Mayor → Artisan）
 
 ### Detailed Workflow
 
@@ -221,6 +229,11 @@ summaryの「次のステップ」を見てすぐ作業してはならぬ。
 - ❌ いきなり作業を開始すること
 - ❌ agentsフォルダを読まずに進めること
 - ❌ プロジェクト管理ルールを無視すること
+- ❌ **階層構造を違反すること**（CRITICAL）
+  - Prophet が直接実装・ビルド・テストを実行してはならない
+  - Mayor が直接コード実装を行ってはならない
+  - 各エージェントは自分の役割のみを実行すること
+  - 必ず Prophet → Mayor → 専門エージェントの流れを守ること
 
 ## What（これは何か）
 ## Why（なぜやるのか）
