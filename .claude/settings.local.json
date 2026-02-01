@@ -157,7 +157,8 @@
       "Bash(for f in *.png)",
       "Bash(do file \"$f\")",
       "Bash(sort:*)",
-      "Bash(shasum:*)"
+      "Bash(shasum:*)",
+      "Bash(./visual_test_20sec.lua)"
     ]
   }
 }

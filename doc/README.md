@@ -15,10 +15,7 @@ doc/
 │   ├── 04_merchant.md          # Merchant agent (External research)
 │   ├── 05_sage.md              # Sage agent (Technical validation)
 │   ├── 06_bard.md              # Bard agent (Documentation)
-│   ├── 07_artisan.md           # Artisan agent (Implementation)
-│   ├── 08_explorer.md          # Explorer agent (Root cause investigation) [Heroic]
-│   ├── 09_metalspecialist.md   # MetalSpecialist agent (Metal API expert) [Heroic]
-│   └── 10_nilguardian.md       # NilGuardian agent (Nil safety verification) [Grand Heroic]
+│   └── 07_artisan.md           # Artisan agent (Implementation)
 └── learning/           # Learning data and historical context
     ├── CRITICAL_FAILURE_ANALYSIS.md  # Past failure lessons
     ├── LESSONS_LEARNED.md            # Accumulated knowledge
@@ -34,8 +31,6 @@ Contains the multi-agent system definitions shared across all projects.
 
 **Agent Hierarchy**:
 - **Standard Tier**: Prophet, Mayor, Paladin, Merchant, Sage, Bard, Artisan
-- **Heroic Tier**: Explorer, MetalSpecialist
-- **Grand Heroic Tier**: NilGuardian
 
 ### `learning/`
 Contains learning data, failure analyses, and implementation plans. This serves as institutional memory across projects.
@@ -48,6 +43,7 @@ Before any task execution, the Prophet agent MUST:
 3. Create implementation plan in `../doc/learning/`
 4. Perform review
 5. Seek God's approval
+6. Execute plan in parallel (multiple agents work simultaneously). If only one assignee, another agent MUST assist
 
 ## Location
 
