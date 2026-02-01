@@ -4,7 +4,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Mandatory Routine (MUST EXECUTE EVERY TIME)
 
-**CRITICAL**: Before ANY task execution, Prophet MUST complete this 5-phase routine:
+**CRITICAL**: Before ANY task execution, Prophet MUST execute the `/routine` skill.
+
+**Quick Reference**:
+- **Skill Command**: `/routine`
+- **Definition**: See `.claude/SKILL.md`
+- **Purpose**: Load learning data, agent hierarchy, create plan, review, request approval
+- **Context Savings**: ~80-90% reduction vs. manual execution
+
+**Why This Routine Exists**:
+- Past failure: 3 days of work with zero visual progress
+- Key lesson: Never assume success without verification
+- Hierarchy: Prophet → Mayor → Specialized Agents
+- Quality: Plan → Review → Approve → Execute
+
+<!--
+MASKED: Original routine definition (2026-02-02)
+Reason: Moved to /routine skill in .claude/SKILL.md for context reduction
+
+Original 5-phase routine:
 
 ### Phase 1: 学習データ読み書き
 1. Read learning data from `./doc/learning/` directory
@@ -31,11 +49,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 2. Await explicit approval before execution
 3. Do NOT proceed without approval
 
-**Why This Routine Exists**:
-- Past failure: 3 days of work with zero visual progress
-- Key lesson: Never assume success without verification
-- Hierarchy: Prophet → Mayor → Specialized Agents
-- Quality: Plan → Review → Approve → Execute
+To restore: Uncomment this section and remove the /routine skill reference above.
+-->
 
 ---
 
