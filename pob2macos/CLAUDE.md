@@ -559,3 +559,135 @@ paladin_verification:
 ```
 
 **重要**: 常にアプリバンドルファイルを直接確認して、変更が反映されたことを検証してください。
+
+---
+
+## 学習記録（Learning Protocol）
+
+**PRJ-003固有の学習を行うたびに、このセクションと関連ファイルを更新してください。**
+
+### 学習記録の責任
+
+このプロジェクトで新しい知識や重要な発見をした際、以下の責任を負います：
+
+1. **技術的発見（Sage）**: このCLAUDE.mdの該当セクションを即座に更新
+2. **トラブルシューティング（Paladin）**: 「よくある問題」セクションに追加
+3. **プロジェクトパターン（Mayor）**: `memory/PRJ-003_pob2macos/LESSONS_LEARNED.md`に記録
+4. **外部リソース（Merchant）**: `memory/PRJ-003_pob2macos/RESOURCES.md`に追加
+
+詳細は `/Users/kokage/national-operations/agents/00_overview.md` の「Learning Protocol」セクションを参照。
+
+### プロジェクト固有の学習記録ファイル
+
+**場所**: `/Users/kokage/national-operations/memory/PRJ-003_pob2macos/`
+
+必要に応じて以下のファイルを作成・更新：
+
+- **LESSONS_LEARNED.md**: 成功パターン、失敗パターン、繰り返し問題
+- **RESOURCES.md**: 有用な外部リソース（公式ドキュメント、記事、ツール）
+- **TROUBLESHOOTING.md**: 詳細なトラブルシューティングガイド
+- **learning_records/**: 学習記録のYAMLアーカイブ
+
+### 技術的発見の記録手順
+
+**例: Metal APIの新しいパターンを発見した場合**
+
+1. **このCLAUDE.mdを更新**: 該当する技術セクションに発見内容を追加
+2. **LESSONS_LEARNED.mdに記録**: プロジェクト全体のパターンライブラリに追加
+3. **YAML記録を保存**: `learning_records/2026-02-01_sage_metal_pattern.yaml`
+
+```yaml
+learning_record:
+  date: "2026-02-01"
+  agent: "Sage"
+  learning_type: "技術的発見"
+  importance: "HIGH"
+
+  discovery:
+    title: "Metal texture2d_array の正しい使用方法"
+    description: "texture2d_arrayはtexture2dの配列ではなく、レイヤー化されたテクスチャ"
+    solution: "sample()の第3引数でレイヤーインデックスを指定"
+
+  files_updated:
+    - "pob2macos/CLAUDE.md § Metal バックエンド"
+    - "memory/PRJ-003_pob2macos/LESSONS_LEARNED.md § Metal API"
+```
+
+### よくある問題（継続的に更新）
+
+このセクションは**Paladin**が問題解決時に更新する責任を負います。
+
+#### ファイル同期関連
+
+**「修正が反映されない」**:
+- **原因**: アプリバンドルへのファイル同期忘れ
+- **確認**: `diff src/file.lua PathOfBuilding.app/Contents/Resources/pob2macos/src/file.lua`
+- **修正**: `cp src/file.lua PathOfBuilding.app/Contents/Resources/pob2macos/src/`
+- **予防**: Artisan実装後に必ず同期検証を実行
+- **記録日**: 2026-01-15, Paladin
+
+**「ビルド後に古いライブラリが使われる」**:
+- **原因**: runtime/ と app bundle の両方への同期が必要
+- **確認**: `ls -lh runtime/SimpleGraphic.dylib PathOfBuilding.app/Contents/Resources/pob2macos/runtime/SimpleGraphic.dylib`
+- **修正**: 両方の場所にコピー
+- **予防**: ビルド後のデプロイチェックリスト使用
+- **記録日**: 2026-01-20, Artisan
+
+#### Metal バックエンド関連
+
+**「renderEncoder is NULL」警告**:
+- **原因**: `ProcessEvents()`の前に`DrawImage()`や`DrawString()`を呼び出した
+- **確認**: ゲームループで`ProcessEvents()`が最初に来ているか確認
+- **修正**: `ProcessEvents()` → `Draw*()` の順序に変更
+- **詳細**: pob2_launch.lua 414-434行のパターンを参照
+- **記録日**: 2025-12-10, Sage
+
+**「texture2d_array アクセスエラー」**:
+- **原因**: Metal Shading Language での texture2d_array の誤用
+- **確認**: sample() 関数の引数を確認
+- **修正**: `sample(sampler, coords, layer_index)` の形式を使用
+- **詳細**: Metal Shading Language Specification 2.4参照
+- **記録日**: 2026-01-25, Sage
+
+#### Lua コード関連
+
+**「attempt to index nil value」エラー**:
+- **原因**: nil安全チェックの欠如
+- **確認**: スタックトレースで該当行を特定
+- **修正**: アクセス前に`if obj and obj.field then`でチェック
+- **パターン**: Nil安全パターンセクション参照
+- **記録日**: 2025-12-05, Sage
+
+**「luajit permission denied」**:
+- **原因**: macOSセキュリティ制限
+- **確認**: luajit経由でテストスクリプトを実行した際に発生
+- **修正**: アプリバンドルを直接起動してテスト
+- **代替**: `open PathOfBuilding.app`
+- **記録日**: 2025-11-20, Paladin
+
+#### パッシブツリー表示関連
+
+**「パッシブツリーが表示されない」**:
+- **原因**: 複数の可能性（Asset欠如、描画コード欠如、ProcessEvents順序）
+- **確認手順**:
+  1. `Assets/` にアセットファイルが存在するか
+  2. `TreeTab.lua` の `OnFrame()` に描画呼び出しがあるか
+  3. `ProcessEvents()` が描画コマンド前に呼ばれているか
+- **診断**: `/Users/kokage/national-operations/memory/PRJ-003_pob2macos/PASSIVE_TREE_DIAGNOSTIC.md`
+- **記録日**: 2025-12-15, Paladin
+
+### 学習記録更新のトリガー
+
+**即座に記録すべき状況**:
+- ✅ 2時間以上かかった問題を解決した
+- ✅ 公式ドキュメントにない方法を発見した
+- ✅ 同じ問題が2回目に発生した
+- ✅ エラーメッセージが直感的でない問題を解決した
+- ✅ ワークフローの改善を発見した
+
+**記録不要な状況**:
+- ❌ 単純なタイポ修正
+- ❌ 既にドキュメント化済みの問題
+- ❌ プロジェクト固有でない一般的な知識
+
+---

@@ -681,3 +681,4 @@ Merchant は以下の原則に従って調査を実行：
 私の名はMerchant、知識の交易商である。」
 
 ---
+claude --model sonnet 

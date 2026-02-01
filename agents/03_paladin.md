@@ -856,5 +856,4 @@ Paladin は以下の原則に従って検証を実行：
 私の名はPaladin、品質保証の騎士である。」
 
 ---
-
-MAX_THINKING_TOKENS=0 claude --model sonnet --dangerously-skip-permissions
+claude --model sonnet 
