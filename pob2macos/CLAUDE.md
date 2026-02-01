@@ -1,8 +1,80 @@
 # CLAUDE.md
 
-このファイルは、このリポジトリで作業する際にClaude Code (claude.ai/code)へのガイダンスを提供します。
+このファイルは、pob2macosプロジェクトで作業する際にClaude Code (claude.ai/code)へのガイダンスを提供します。
+
+---
+
+## 🚨 セッション開始時の必須事項
+
+**PRJ-003 pob2macosプロジェクトで作業する前に、必ず以下を実行してください：**
+
+### 1. マルチエージェントシステムの確認
+
+このプロジェクトはマルチエージェントシステム（Prophet、Mayor、Paladin、Merchant、Sage、Bard、Artisan）で管理されています。
+
+**必ず最初に読むこと**:
+```bash
+# リポジトリルートから
+/Users/kokage/national-operations/agents/00_overview.md
+```
+
+**00_overview.mdには以下が記載されています**:
+- エージェントシステムの全体構造
+- 各エージェントの役割と責任
+- コミュニケーションフロー（Prophet → Mayor → 専門エージェント → Mayor → Prophet → God）
+- タスク実行時の使用方法
+- Memory Management（記憶管理の天啓）
+
+### 2. セッション開始時チェックリスト
+
+- ✅ `/Users/kokage/national-operations/agents/00_overview.md` を読んだ
+- ✅ 自分の役割（Prophet/Mayor/専門エージェント）を理解した
+- ✅ PRJ-003プロジェクトフォルダ（`/Users/kokage/national-operations/memory/PRJ-003_pob2macos/`）を確認した
+- ✅ このCLAUDE.md（技術ドキュメント）を読んだ
+
+### 3. プロジェクト構造
+
+```
+/Users/kokage/national-operations/
+├── agents/                          # マルチエージェントシステム定義
+│   ├── 00_overview.md              # 【必読】システム全体構造
+│   ├── 01_prophet.md               # 戦略計画・自動承認権限
+│   ├── 02_mayor.md                 # タスク調整・リスク評価
+│   ├── 03_paladin.md               # 品質保証・実行検証
+│   ├── 04_merchant.md              # 外部リサーチ・市場情報
+│   ├── 05_sage.md                  # 技術検証・研究
+│   ├── 06_bard.md                  # ドキュメント・コミュニケーション
+│   └── 07_artisan.md               # 実装安全性・ビルド
+├── memory/PRJ-003_pob2macos/       # プロジェクト固有のメモリ
+│   ├── PHASE*.md                   # フェーズドキュメント
+│   ├── *_REPORT.md                 # 各種レポート
+│   └── ...
+└── pob2macos/                      # このプロジェクト
+    ├── CLAUDE.md                   # このファイル（技術ガイド）
+    ├── src/                        # Luaソースコード
+    ├── simplegraphic/              # C++ Metalバックエンド
+    └── PathOfBuilding.app/         # macOSアプリバンドル
+```
+
+### 4. エージェントシステムとの統合
+
+**作業フロー**:
+1. **Prophet**: タスクを計画し、自動承認プロトコルを適用
+2. **Mayor**: タスクを分解し、適切なエージェントに割り当て
+3. **Sage**: 技術的正確性を検証（このCLAUDE.mdの技術情報を活用）
+4. **Artisan**: 実装とファイル同期を実行（ファイル同期セクション参照）
+5. **Paladin**: 実行検証と証拠収集（テストセクション活用）
+6. **Merchant**: 外部リサーチ（依存関係、ライブラリ調査）
+7. **Bard**: ドキュメント作成（ドキュメントセクション参照）
+
+---
 
 ## プロジェクト概要
+
+**プロジェクトID**: PRJ-003
+**プロジェクト名**: pob2macos
+**ステータス**: 進行中
+**管理方法**: マルチエージェントシステム（Prophet, Mayor, Paladin, Merchant, Sage, Bard, Artisan）
 
 **pob2macos**は、Path of Exile 2のビルドプランニングツールであるPath of Building 2のネイティブmacOSポートです。Lua + C++/Objective-Cのハイブリッドアプリケーションで、カスタムグラフィックバックエンドを使用しています。
 
@@ -14,6 +86,8 @@
 - **ウィンドウ管理**: GLFW3
 - **テキストレンダリング**: FreeType2
 - **ビルドシステム**: CMake 3.16+
+
+**プロジェクトメモリ**: `/Users/kokage/national-operations/memory/PRJ-003_pob2macos/`
 
 ---
 
@@ -69,9 +143,11 @@ open PathOfBuilding.app
 
 ---
 
-## テスト
+## テスト（Paladinの検証責任）
 
-### テストフレームワーク
+**責任者**: Paladinエージェントは実装後に品質保証と実行検証を実行する責任を負います（agents/03_paladin.md参照）。
+
+### ユニットテスト
 
 **Busted**でLuaユニットテスト（`.busted`に設定）：
 ```bash
@@ -105,7 +181,15 @@ luajit test_pob_launch.lua
 ./tests/regression_test.sh
 ```
 
-**重要**: macOSのセキュリティ制限により、一部のテストスクリプトはluajit経由で実行すると「permission denied」で失敗する場合があります。その場合は、アプリバンドルを直接起動してテストしてください。
+### テスト実行時の注意
+
+**macOSセキュリティ制限**: 一部のテストスクリプトはluajit経由で実行すると「permission denied」で失敗する場合があります。その場合は、アプリバンドルを直接起動してテストしてください。
+
+**Paladinの検証パターン**:
+- ログパターン検証: `grep`でエラーパターンを確認
+- ビジュアル検証: アプリ起動後にスクリーンショット撮影
+- 回帰テスト: 既存機能が壊れていないか確認
+- 証拠収集: ログ、メトリクス、システム状態を記録
 
 ---
 
@@ -279,22 +363,41 @@ ProcessEvents()  -- 遅すぎる！
 
 ---
 
-## ファイル同期
+## ファイル同期（Artisanの重要責任）
 
-**重要**: アプリバンドルはソースコードと自動的に同期されません。
+**🔴 CRITICAL**: アプリバンドルはソースコードと自動的に同期されません。
 
-以下のファイルを変更した後：
-- `src/**/*.lua` → `PathOfBuilding.app/Contents/Resources/pob2macos/src/`にコピー
-- `pob2_launch.lua` → `PathOfBuilding.app/Contents/Resources/pob2macos/`にコピー
-- `runtime/SimpleGraphic.dylib` → `PathOfBuilding.app/Contents/Resources/pob2macos/runtime/`にコピー
+**責任者**: Artisanエージェントは実装後に必ずファイル同期を実行する責任を負います（agents/07_artisan.md参照）。
 
-**同期コマンド**:
+### 同期が必要なファイル
+
+以下のファイルを変更した後、**必ず**アプリバンドルにコピー：
+
+1. **Luaソースコード**: `src/**/*.lua` → `PathOfBuilding.app/Contents/Resources/pob2macos/src/`
+2. **起動スクリプト**: `pob2_launch.lua` → `PathOfBuilding.app/Contents/Resources/pob2macos/`
+3. **ランタイムライブラリ**: `runtime/SimpleGraphic.dylib` → `PathOfBuilding.app/Contents/Resources/pob2macos/runtime/`
+
+### 同期コマンド
+
 ```bash
-# Luaファイルをアプリバンドルに同期（例）
+# Luaファイルを個別に同期（例）
 cp src/Classes/PassiveSpec.lua PathOfBuilding.app/Contents/Resources/pob2macos/src/Classes/
 
 # srcディレクトリ全体を同期
 cp -r src/ PathOfBuilding.app/Contents/Resources/pob2macos/src/
+
+# 起動スクリプトを同期
+cp pob2_launch.lua PathOfBuilding.app/Contents/Resources/pob2macos/
+
+# ランタイムライブラリを同期
+cp runtime/SimpleGraphic.dylib PathOfBuilding.app/Contents/Resources/pob2macos/runtime/
+```
+
+### 同期検証
+
+**必ず実行**: ファイル同期後、差分がないことを確認
+```bash
+diff src/Classes/PassiveSpec.lua PathOfBuilding.app/Contents/Resources/pob2macos/src/Classes/PassiveSpec.lua
 ```
 
 ---
@@ -347,39 +450,112 @@ tail -f ~/Library/Logs/PathOfBuilding.log
 
 ---
 
-## ドキュメント
+## ドキュメント（Bardの責任領域）
 
-**リポジトリドキュメント**:
+**責任者**: Bardエージェントはドキュメント作成とコミュニケーションを担当します（agents/06_bard.md参照）。
+
+### リポジトリ内ドキュメント（技術仕様）
+
 - `docs/rundown.md` - コードベース概要、モジュール説明
 - `docs/addingSkills.md` - 新しいスキルの追加
 - `docs/addingMods.md` - 修飾子の追加
 - `docs/calcOffence.md` - 攻撃計算
 - `docs/modSyntax.md` - 修飾子構文
 
-**PRJ-003ドキュメント**（`/Users/kokage/national-operations/memory/PRJ-003_pob2macos/`内）:
+### PRJ-003プロジェクトドキュメント
+
+**場所**: `/Users/kokage/national-operations/memory/PRJ-003_pob2macos/`
+
+**技術レポート**:
 - `LUA_QUALITY_CHECK_REPORT.md` - Luaコード品質評価
-- `CRITICAL_FIXES_REPORT.md` - 重要なnil安全修正
+- `CRITICAL_FIXES_REPORT.md` - 重要なnil安全修正（13件）
 - `PASSIVE_TREE_DIAGNOSTIC.md` - パッシブツリー表示トラブルシューティング
 - `INSTALLATION_GUIDE.md` - セットアップ手順
 
-**重要なコンテキスト**:
-- 5つのファイルに13の重要なnil安全修正を適用（Main.lua、PassiveSpec.lua、PassiveTreeView.lua、Launch.lua、TreeTab.lua）
-- MetalバックエンドレンダーパイプラインはProcessEvents()の厳密な順序を要求
-- アプリバンドルのデプロイは手動（自動同期なし）
+**フェーズドキュメント**:
+- `PHASE*.md` - 各フェーズの計画、実装、完了報告
+
+**村の通信ログ**:
+- `village_communications/*.yaml` - エージェント間の通信記録
+
+### エージェントシステムドキュメント
+
+**場所**: `/Users/kokage/national-operations/agents/`
+
+- `00_overview.md` - **【必読】** マルチエージェントシステム全体構造
+- `01-07_*.md` - 各エージェントの詳細定義
+
+### 重要なコンテキスト（必読）
+
+1. **Nil安全修正**: 5つのファイルに13の重要なnil安全修正を適用
+   - Main.lua、PassiveSpec.lua、PassiveTreeView.lua、Launch.lua、TreeTab.lua
+
+2. **Metal レンダーパイプライン**: ProcessEvents()の厳密な順序を要求
+   - 必ず `ProcessEvents()` → `Draw*()` → `ProcessEvents()` の順序
+
+3. **ファイル同期**: アプリバンドルのデプロイは手動（自動同期なし）
+   - src/ → PathOfBuilding.app/Contents/Resources/pob2macos/src/
+   - runtime/ → PathOfBuilding.app/Contents/Resources/pob2macos/runtime/
 
 ---
 
-## 開発ワークフロー
+## 開発ワークフロー（エージェント統合版）
 
-1. **C++コードを修正**: `simplegraphic/src/`内
-2. **ライブラリを再ビルド**: `cd simplegraphic && make -C build`
-3. **runtimeにコピー**: `cp simplegraphic/build/libSimpleGraphic.dylib runtime/`
-4. **アプリにデプロイ**: `cp runtime/SimpleGraphic.dylib PathOfBuilding.app/Contents/Resources/pob2macos/runtime/`
-5. **テスト**: `./run_pob2.sh`または`open PathOfBuilding.app`
+### マルチエージェントワークフロー
 
-Lua変更の場合：
-1. **Luaコードを修正**: `src/`内
-2. **アプリバンドルに同期**: `cp src/path/to/file.lua PathOfBuilding.app/Contents/Resources/pob2macos/src/path/to/`
-3. **テスト**: `./run_pob2.sh`
+```
+Prophet (計画立案)
+  ↓
+Mayor (タスク割り振り)
+  ↓
+Merchant (外部リサーチ) + Sage (技術検証) [並列実行可能]
+  ↓
+Artisan (実装・ファイル同期) [以下のワークフローを実行]
+  ↓
+Paladin (品質保証・実行検証) [テスト実行]
+  ↓
+Mayor (リスク評価・承認推奨)
+  ↓
+Prophet (最終承認・神への報告)
+```
 
-常にアプリバンドルファイルを直接確認して、変更が反映されたことを検証してください。
+### C++変更ワークフロー（Artisan実行）
+
+1. **技術検証（Sage）**: Metal API使用方法、パフォーマンス影響を確認
+2. **C++コードを修正**: `simplegraphic/src/`内
+3. **ライブラリを再ビルド**: `cd simplegraphic && make -C build`
+4. **runtimeにコピー**: `cp simplegraphic/build/libSimpleGraphic.dylib runtime/`
+5. **アプリにデプロイ**: `cp runtime/SimpleGraphic.dylib PathOfBuilding.app/Contents/Resources/pob2macos/runtime/`
+6. **ファイル同期検証**: `diff`で差分がないことを確認
+7. **実行検証（Paladin）**: `./run_pob2.sh`または`open PathOfBuilding.app`でテスト
+
+### Lua変更ワークフロー（Artisan実行）
+
+1. **技術検証（Sage）**: Nil安全性、LuaJIT 5.1互換性を確認
+2. **Luaコードを修正**: `src/`内
+3. **アプリバンドルに同期**: `cp src/path/to/file.lua PathOfBuilding.app/Contents/Resources/pob2macos/src/path/to/`
+4. **ファイル同期検証**: `diff`で差分がないことを確認
+5. **実行検証（Paladin）**: `./run_pob2.sh`でテスト、ログ収集、証拠記録
+
+### ワークフロー完了時
+
+**Artisan報告（YAML）**:
+```yaml
+artisan_implementation:
+  status: COMPLETED
+  files_modified: ["src/Classes/PassiveSpec.lua"]
+  files_synced: ✅
+  build_executed: ✅
+  ready_for_verification: true
+```
+
+**Paladin検証（YAML）**:
+```yaml
+paladin_verification:
+  status: APPROVED
+  test_results: ["test_5sec.lua: PASS", "logs: no errors"]
+  evidence_gathered: ["~/pob_debug.log", "screenshot.png"]
+  acceptance_judgment: "実装は正常に動作、本番投入可"
+```
+
+**重要**: 常にアプリバンドルファイルを直接確認して、変更が反映されたことを検証してください。
