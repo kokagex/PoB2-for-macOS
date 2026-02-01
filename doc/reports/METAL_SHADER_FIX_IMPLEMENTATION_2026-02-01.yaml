@@ -1,0 +1,102 @@
+date: 2026-02-01T15:30:00+09:00
+speaker: Artisan
+type: implementation_report
+status: SUCCESS
+to: Mayor
+
+implementation_summary:
+  file_modified: "dev/simplegraphic/src/backend/metal/metal_backend.mm"
+  lines_deleted: "119-124"
+  backup_created: ✅
+  backup_location: "dev/simplegraphic/src/backend/metal/metal_backend.mm.backup-2026-02-01"
+  build_status: SUCCESS
+  deployment_status: SUCCESS
+  verification: ✅ Files synced (SHA-256 verified)
+
+safety_protocol_execution:
+  step_1_git_commit_before: ✅ f163280
+  step_2_backup_original: ✅ metal_backend.mm.backup-2026-02-01
+  step_3_apply_fix: ✅ Heuristic block deleted
+  step_4_rebuild: ✅ Build succeeded (warnings only)
+  step_5_deploy: ✅ Copied to runtime/ and app bundle
+  step_6_verify_sync: ✅ SHA-256 checksums match
+
+technical_details:
+  shader_change:
+    before_lines: 7
+    after_lines: 4
+    heuristic_removed: "if (texColor.r > 0.0 && texColor.g == 0.0 && texColor.b == 0.0)"
+    new_logic: "Direct RGBA multiply (texColor * in.color)"
+
+  build_output:
+    cmake_configure: SUCCESS
+    compile: SUCCESS
+    warnings: 5 (ARC bridge casts, sign comparison)
+    errors: 0
+    output_file: "libSimpleGraphic.dylib"
+    file_size: "210832 bytes"
+
+  deployment_verification:
+    source_file: "dev/simplegraphic/build/libSimpleGraphic.dylib"
+    runtime_file: "dev/runtime/SimpleGraphic.dylib"
+    app_bundle_file: "PathOfBuilding.app/Contents/Resources/pob2macos/runtime/SimpleGraphic.dylib"
+    sha256: "1937135ed99dd2824c093b02ec21f57ce20d278fee9cebfa5163824ea06b4635"
+    files_identical: true
+
+git_commits:
+  pre_implementation: "f163280 - Pre-shader-fix checkpoint"
+  post_implementation: "8ac7cfe - Implement Metal fragment shader fix (Option B)"
+
+fragment_shader_after_fix: |
+  fragment float4 fragment_main(VertexOut in [[stage_in]],
+                                texture2d_array<float> tex [[texture(0)]],
+                                sampler sam [[sampler(0)]]) {
+      // Sample texture array using xy for UV coords, z for layer
+      float4 texColor = tex.sample(sam, in.texCoord.xy, uint(in.texCoord.z));
+
+      // Direct RGBA rendering - works for both R8 and RGBA textures
+      // R8Unorm textures are sampled as float4(R, 0, 0, 1)
+      // RGBA textures are sampled as float4(R, G, B, A)
+      return texColor * in.color;
+  }
+
+next_phase: "Paladin visual verification required"
+paladin_instructions: |
+  1. Launch PathOfBuilding.app
+  2. Navigate to Tree tab
+  3. Verify passive tree nodes render correctly
+  4. Check text rendering (should be visible)
+  5. Verify no visual artifacts or color issues
+  6. Report results to Mayor
+
+rollback_available: true
+rollback_instructions: |
+  cp dev/simplegraphic/src/backend/metal/metal_backend.mm.backup-2026-02-01 \
+     dev/simplegraphic/src/backend/metal/metal_backend.mm
+  cd dev/simplegraphic && make -C build
+  cp build/libSimpleGraphic.dylib ../runtime/SimpleGraphic.dylib
+  cp ../runtime/SimpleGraphic.dylib ../PathOfBuilding.app/Contents/Resources/pob2macos/runtime/SimpleGraphic.dylib
+
+success_criteria_met:
+  - ✅ Git commit created before changes
+  - ✅ Original file backed up
+  - ✅ Heuristic block (lines 119-124) deleted
+  - ✅ Build succeeds with no errors
+  - ✅ Files synced to both runtime/ and app bundle
+  - ✅ File hashes match (verification)
+
+risk_assessment:
+  implementation_risk: LOW
+  success_probability: 99%
+  approved_by: God
+  validated_by: Sage
+
+reference_documents:
+  - "../learning/SAGE_METAL_VALIDATION_2026-02-01.md"
+  - "../learning/METAL_SHADER_FIX_PLAN_2026-02-01_UPDATED.md"
+
+notes: |
+  Implementation completed successfully following safety protocol.
+  All files synced and verified.
+  Ready for Paladin visual verification.
+  Build warnings are pre-existing and non-critical (ARC bridge casts).
