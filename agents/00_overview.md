@@ -27,19 +27,110 @@
 
 | Agent | Level | Trigger | Primary Function |
 |-------|-------|---------|------------------|
-| Prophet | 1 (Top) | On_Divine_Mandate | Strategic vision & high-level directives |
-| Mayor | 2 | On_Prophet_Revelation | Task coordination & resource allocation |
-| Paladin | 3 | On_Mayor_Assignment | Security & protection tasks |
-| Merchant | 3 | On_Mayor_Assignment | Commerce & transaction handling |
-| Sage | 3 | On_Mayor_Assignment | Research & knowledge synthesis |
-| Bard | 3 | On_Mayor_Assignment | Communication & documentation |
-| Artisan | 3 | On_Mayor_Assignment | Building & implementation |
+| Prophet | 1 (Top) | On_Divine_Mandate | Strategic planning & auto-approval protocol |
+| Mayor | 2 | On_Prophet_Revelation | Task coordination & risk assessment |
+| Paladin | 3 | On_Mayor_Assignment | Quality assurance & execution verification |
+| Merchant | 3 | On_Mayor_Assignment | External resource research & market intelligence |
+| Sage | 3 | On_Mayor_Assignment | Technical validation & research |
+| Bard | 3 | On_Mayor_Assignment | Documentation & communication |
+| Artisan | 3 | On_Mayor_Assignment | Implementation safety & building |
 
 ## Communication Flow
 
-1. **Top-Down**: Prophet -> Mayor -> Specialized Agents
-2. **Bottom-Up**: Results bubble up through the hierarchy
-3. **Peer-to-Peer**: Level 3 agents can collaborate on shared tasks
+### Top-Down Flow
+1. **Prophet** → Plans and auto-approval decisions
+2. **Mayor** → Task assignment and risk assessment
+3. **Specialized Agents** → Parallel or sequential execution
+
+### Bottom-Up Flow
+4. **Specialized Agents** → Mayor (YAML reports)
+5. **Mayor** → Prophet (consolidated report with LOW_RISK recommendation)
+6. **Prophet** → God (final report or auto-approval notification)
+
+### Detailed Workflow
+
+```
+Prophet (Strategic Planning)
+  ↓
+Mayor (Task Assignment & Risk Assessment)
+  ↓
+┌─────────────────────────────────────────────┐
+│ Parallel/Sequential Execution Phase          │
+├─────────────────────────────────────────────┤
+│ Merchant (External Research) → Bard (Docs)  │
+│ Sage (Technical Validation)                 │
+│           ↓                                  │
+│      Artisan (Implementation)                │
+│           ↓                                  │
+│      Paladin (Execution Verification)        │
+└─────────────────────────────────────────────┘
+  ↓
+Mayor (Approval Recommendation: LOW_RISK or REQUIRES_DIVINE_APPROVAL)
+  ↓
+Prophet (Auto-Approval or Request Divine Judgment)
+  ↓
+God (Final Decision if required)
+```
+
+### Agent Collaboration Patterns
+
+- **Merchant → Bard**: External research results → Documentation
+- **Merchant → Sage**: Market intelligence → Technical validation
+- **Sage → Artisan**: Technical validation → Safe implementation
+- **Artisan → Paladin**: Implementation complete → Execution verification
+- **Paladin → Mayor**: Verification results → Risk assessment
+- **All Agents → Mayor**: YAML reports → Consolidated report to Prophet
+
+## Agent Responsibilities in Detail
+
+### Prophet (Strategic Planning Agent)
+- **Role**: Strategic planning & auto-approval protocol
+- **Key Protocols**:
+  - Auto-Approval Protocol (6 criteria for LOW_RISK tasks)
+  - Skill Validation Protocol (Market/Doc/Uniqueness/Value checks)
+- **Output**: Divine mandates, auto-approval decisions, final reports to God
+
+### Mayor (Task Coordination Agent)
+- **Role**: Task coordination & risk assessment
+- **Key Protocols**:
+  - Risk Assessment Protocol (evaluates Sage, Artisan, Paladin reports)
+  - Project Selection Protocol
+- **Output**: Task assignments, risk assessments, LOW_RISK recommendations
+
+### Paladin (Quality Assurance Agent)
+- **Role**: Quality assurance & execution verification
+- **Key Protocols**:
+  - Verification Protocol (4 steps: pre-checks, execution, analysis, regression)
+  - Evidence Gathering (quantitative, qualitative, comparative)
+- **Output**: APPROVED/REJECTED/NEEDS_RETRY with evidence-based reports
+
+### Merchant (External Research Agent)
+- **Role**: External resource research & market intelligence
+- **Key Protocols**:
+  - Research Protocol (market research 17s+, doc analysis 255KB+)
+  - Skill Validation criteria (market/doc/uniqueness/value)
+- **Output**: Research reports with market intelligence, dependencies, recommendations
+
+### Sage (Technical Validation Agent)
+- **Role**: Technical validation & research
+- **Key Protocols**:
+  - Technical Validation (correctness, performance, compatibility, security, best practices)
+- **Output**: APPROVED/REJECTED with confidence level, technical validation report
+
+### Bard (Documentation Agent)
+- **Role**: Documentation & communication
+- **Key Protocols**:
+  - Documentation Protocol (content gathering, structure design, creation, review)
+  - Quality standards (clarity, accuracy, completeness, practicality)
+- **Output**: README, completion reports, API docs, CHANGELOG
+
+### Artisan (Implementation Agent)
+- **Role**: Implementation safety & building
+- **Key Protocols**:
+  - Safety Check Protocol (file verification, backup, git status, storage)
+- **Output**: SAFE/UNSAFE reports, implementation completion notifications
+
+---
 
 ## Usage
 
@@ -47,6 +138,16 @@ Each agent can be invoked via the Task tool:
 ```
 subagent_type: "Prophet" | "Mayor" | "Paladin" | "Merchant" | "Sage" | "Bard" | "Artisan"
 ```
+
+### When to Use Each Agent
+
+- **Prophet**: Strategic planning, final approvals, skill validation oversight
+- **Mayor**: Task coordination, risk assessment, agent assignment
+- **Merchant**: External resource research, dependency investigation, market analysis
+- **Sage**: Technical validation, correctness verification, performance assessment
+- **Artisan**: Code implementation, file modifications, safe execution
+- **Paladin**: Quality assurance, execution testing, regression verification
+- **Bard**: Documentation creation, report writing, knowledge organization
 
 ## コンパクション復帰時（全エージェント必須）
 
