@@ -642,6 +642,17 @@ end
 
 -- Change the current class, preserving currently allocated nodes if they connect to the new class's starting node
 function PassiveSpecClass:SelectClass(classId)
+	if _G.MINIMAL_PASSIVE_TEST then
+		self.curClassId = classId
+		local class = self.tree.classes[classId] or { name = "Unknown", classes = { [0] = { name = "None" } } }
+		self.curClass = class
+		self.curClassName = class.name or "Unknown"
+		self.curAscendClassId = 0
+		self.curAscendClass = (class.classes and class.classes[0]) or { name = "None" }
+		self.curAscendClassName = self.curAscendClass.name or "None"
+		self.curAscendClassBaseName = self.curAscendClass.id
+		return
+	end
 	if self.curClassId then
 		-- Deallocate the current class's starting node
 		local oldStartNodeId = self.curClass.startNodeId
@@ -667,6 +678,9 @@ function PassiveSpecClass:SelectClass(classId)
 end
 
 function PassiveSpecClass:ResetAscendClass()
+	if _G.MINIMAL_PASSIVE_TEST then
+		return
+	end
 	if self.curAscendClassId then
 		-- Deallocate the current ascendancy class's start node
 		local ascendClass = self.curClass.classes[self.curAscendClassId] or self.curClass.classes[0]
@@ -679,6 +693,14 @@ function PassiveSpecClass:ResetAscendClass()
 end
 
 function PassiveSpecClass:SelectAscendClass(ascendClassId)
+	if _G.MINIMAL_PASSIVE_TEST then
+		self.curAscendClassId = ascendClassId
+		local ascendClass = (self.curClass and self.curClass.classes and self.curClass.classes[ascendClassId]) or (self.curClass and self.curClass.classes and self.curClass.classes[0]) or { name = "None" }
+		self.curAscendClass = ascendClass
+		self.curAscendClassName = ascendClass.name or "None"
+		self.curAscendClassBaseName = ascendClass.id
+		return
+	end
 	self:ResetAscendClass()
 
 	self.curAscendClassId = ascendClassId

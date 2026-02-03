@@ -78,56 +78,19 @@ function PassiveTreeViewClass:Save(xml)
 end
 
 function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
-	-- PRJ-003 Diagnostic: Function entry confirmation - simple count
-	if not self.drawCallCount then
-		self.drawCallCount = 0
-		ConPrintf("=== PASSIVEVIEWTREE DRAW FIRST CALL ===")
-	end
-	self.drawCallCount = self.drawCallCount + 1
-
-	if self.drawCallCount == 1 or self.drawCallCount == 2 or self.drawCallCount == 3 then
-		ConPrintf("DRAW_CALL_%d: build=%s, spec=%s",
-			self.drawCallCount,
-			type(build) == "table" and "OK" or "BAD",
-			type(build) == "table" and type(build.spec) == "table" and "OK" or "BAD")
-	end
-
-	-- Debug: Check viewPort parameter (first 5 frames)
-	if not self.viewPortParamLogCount then self.viewPortParamLogCount = 0 end
-	if self.viewPortParamLogCount < 5 then
-		self.viewPortParamLogCount = self.viewPortParamLogCount + 1
-		if viewPort == nil then
-			ConPrintf("PassiveTreeView:Draw - viewPort parameter is NIL!")
-		else
-			ConPrintf("PassiveTreeView:Draw - viewPort type=%s, x=%s y=%s width=%s height=%s",
-				type(viewPort), tostring(viewPort.x), tostring(viewPort.y),
-				tostring(viewPort.width), tostring(viewPort.height))
-		end
-	end
+	-- Normal rendering.
 
 	local spec = build.spec
 	local tree = spec.tree
+	if self.showNodeCenter == nil then
+		self.showNodeCenter = true
+	end
 
 	-- PRJ-003 Fix: Guard against missing tree.nodes
 	-- If tree data is not ready yet, skip rendering this frame
 	if not spec or not tree or not tree.nodes then
 		-- Tree data not loaded yet, skip rendering
 		return
-	end
-
-	-- PRJ-003 Diagnostic: Log tree.nodes count on first few frames
-	if not self.treeNodesLogCount then self.treeNodesLogCount = 0 end
-	if self.treeNodesLogCount < 5 then
-		self.treeNodesLogCount = self.treeNodesLogCount + 1
-		local treeNodesCount = 0
-		local filteredNodesCount = 0
-		for nodeId, node in pairs(tree.nodes) do
-			treeNodesCount = treeNodesCount + 1
-			if node.group and not node.isProxy then
-				filteredNodesCount = filteredNodesCount + 1
-			end
-		end
-		ConPrintf("HEROIC_SPIRIT_10: tree.nodes=%d, filtered=%d (group & !isProxy)", treeNodesCount, filteredNodesCount)
 	end
 
 	local cursorX, cursorY = GetCursorPos()
@@ -137,7 +100,11 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 	local treeClick
 	for id, event in ipairs(inputEvents) do
 		if event.type == "KeyDown" then
+			if event.key == "F2" or event.key == "d" or event.key == "D" then
+				self.showNodeCenter = not self.showNodeCenter
+			end
 			if event.key == "LEFTBUTTON" then
+				self.dragHeld = true
 				if mOver then
 					-- Record starting coords of mouse drag
 					-- Dragging won't actually commence unless the cursor moves far enough
@@ -172,24 +139,24 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 					-- Mouse button went down, but didn't move far enough to trigger drag, so register a normal click
 					treeClick = "LEFT"
 				end
+				self.dragHeld = false
+				self.dragging = false
+				self.dragX, self.dragY = nil, nil
 			elseif mOver then
 				if event.key == "RIGHTBUTTON" then
 					treeClick = "RIGHT"
-				elseif event.key == "WHEELUP" and not IsKeyDown("ALT") then
-					self:Zoom(IsKeyDown("SHIFT") and 3 or 1, viewPort)
-				elseif event.key == "WHEELDOWN" and not IsKeyDown("ALT") then
-					self:Zoom(IsKeyDown("SHIFT") and -3 or -1, viewPort)
+				elseif event.key == "WHEELUP" then
+					local step = IsKeyDown("SHIFT") and 0.3 or 0.1
+					self:Zoom(step, viewPort)
+				elseif event.key == "WHEELDOWN" then
+					local step = IsKeyDown("SHIFT") and -0.3 or -0.1
+					self:Zoom(step, viewPort)
 				end	
 			end
 		end
 	end
 
-	if not IsKeyDown("LEFTBUTTON") then
-		-- Left mouse button isn't down, stop dragging if dragging was in progress
-		self.dragging = false
-		self.dragX, self.dragY = nil, nil
-	end
-	if self.dragX then
+	if self.dragHeld and self.dragX then
 		-- Left mouse is down
 		if not self.dragging then
 			-- Check if mouse has moved more than a few pixels, and if so, initiate dragging
@@ -226,14 +193,6 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 	-- Create functions that will convert coordinates between the screen and tree coordinate spaces
 	local scale = m_min(viewPort.width, viewPort.height) / treeSize * self.zoom
 
-	-- PRJ-003 Diagnostic: Log scale calculation on first frames
-	if not self.scaleLogCount then self.scaleLogCount = 0 end
-	if self.scaleLogCount < 5 then
-		self.scaleLogCount = self.scaleLogCount + 1
-		ConPrintf("DEBUG [PassiveTreeView:Draw] Scale calculation: viewport=%sx%s, treeSize=%s, zoom=%.4f, scale=%.4f",
-			tostring(viewPort.width), tostring(viewPort.height), tostring(treeSize), self.zoom, scale)
-	end
-
 	local offsetX = self.zoomX + viewPort.x + viewPort.width/2
 	local offsetY = self.zoomY + viewPort.y + viewPort.height/2
 	local function treeToScreen(x, y)
@@ -245,6 +204,10 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 			(y - offsetY) / scale
 	end
 
+	-- Debug overlays removed (normal rendering).
+
+	-- Debug-only early return now occurs above (before tree rendering).
+
 	if IsKeyDown("SHIFT") then
 		-- Enable path tracing mode
 		self.traceMode = true
@@ -255,19 +218,52 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 	end
 
 	local hoverNode
+	local nearestNode, nearestDistSq
+	local nearestNodePx, nearestDistPxSq
 	if mOver then
 		-- Cursor is over the tree, check if it is over a node
 		local curTreeX, curTreeY = screenToTree(cursorX, cursorY)
-		-- PRJ-003: Use spec.tree.nodes directly instead of spec.nodes
-		for nodeId, node in pairs(tree.nodes) do
+		-- Use spec.nodes so hover matches rendered nodes/allocation state
+		for nodeId, node in pairs(spec.nodes) do
 			if node.rsq and node.group and not node.isProxy and not node.group.isProxy then
 				-- Node has a defined size (i.e. has artwork)
 				local vX = curTreeX - node.x
 				local vY = curTreeY - node.y
-				if vX * vX + vY * vY <= node.rsq then
+				local distSq = vX * vX + vY * vY
+				if distSq <= node.rsq then
 					hoverNode = node
 					break
 				end
+			end
+		end
+		for nodeId, node in pairs(spec.nodes) do
+			if node and node.group and node.x and node.y then
+				local vX = curTreeX - node.x
+				local vY = curTreeY - node.y
+				local distSq = vX * vX + vY * vY
+				if not nearestDistSq or distSq < nearestDistSq then
+					nearestDistSq = distSq
+					nearestNode = node
+				end
+				local sx, sy = treeToScreen(node.x, node.y)
+				local dx = cursorX - sx
+				local dy = cursorY - sy
+				local distPxSq = dx * dx + dy * dy
+				if not nearestDistPxSq or distPxSq < nearestDistPxSq then
+					nearestDistPxSq = distPxSq
+					nearestNodePx = node
+				end
+			end
+		end
+		-- Fallback: if rsq is missing or too small, allow nearest node within a dynamic screen radius to count as hover.
+		if not hoverNode and nearestNodePx and nearestDistPxSq then
+			local radiusPx = 70
+			if nearestNodePx.size then
+				radiusPx = nearestNodePx.size * scale * 0.6
+			end
+			radiusPx = m_min(160, m_max(40, radiusPx))
+			if nearestDistPxSq <= (radiusPx * radiusPx) then
+				hoverNode = nearestNodePx
 			end
 		end
 	end
@@ -278,13 +274,15 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 	if self.traceMode then
 		-- Path tracing mode is enabled
 		if hoverNode then
-			if not hoverNode.path then
-				-- Don't highlight the node if it can't be pathed to
+			if not hoverNode.path and not _G.MINIMAL_PASSIVE_TEST then
+				-- Don't highlight the node if it can't be pathed to (except in minimal test mode)
 				hoverNode = nil
 			elseif not self.tracePath[1] then
 				-- Initialise the trace path using this node's path
-				for _, pathNode in ipairs(hoverNode.path) do
-					t_insert(self.tracePath, 1, pathNode)
+				if hoverNode.path then
+					for _, pathNode in ipairs(hoverNode.path) do
+						t_insert(self.tracePath, 1, pathNode)
+					end
 				end
 			else
 				local lastPathNode = self.tracePath[#self.tracePath]
@@ -783,102 +781,19 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 		incSmallPassiveSkillEffect = incSmallPassiveSkillEffect + node.modList:Sum("INC", nil ,"SmallPassiveSkillEffect")
 	end
 
-	-- PRJ-003 Diagnostic: Deep analysis of spec.nodes and tree.nodes
-	if spec and spec.tree then
-		ConPrintf("DEBUG_TREE_NODES: type(spec.tree.nodes)=%s", type(spec.tree.nodes))
-
-		local treeMt = getmetatable(spec.tree.nodes)
-		ConPrintf("DEBUG_TREE_NODES: metatableType=%s", type(treeMt))
-
-		-- Count tree nodes
-		local treeNodesCount = 0
-		for _ in pairs(spec.tree.nodes) do
-			treeNodesCount = treeNodesCount + 1
-		end
-		ConPrintf("DEBUG_TREE_NODES: pairs count=%d", treeNodesCount)
-	end
-
-	if spec and spec.nodes then
-		ConPrintf("DEBUG_SPEC_NODES: type(spec.nodes)=%s", type(spec.nodes))
-
-		local mt = getmetatable(spec.nodes)
-		ConPrintf("DEBUG_SPEC_NODES: metatableType=%s", type(mt))
-		if mt then
-			ConPrintf("DEBUG_SPEC_NODES: has__pairs=%s", tostring(mt.__pairs ~= nil))
-		end
-
-		-- ipairs iteration test
-		local ipairsCount = 0
-		for i, node in ipairs(spec.nodes) do
-			ipairsCount = ipairsCount + 1
-			if ipairsCount > 5 then break end
-		end
-		ConPrintf("DEBUG_SPEC_NODES: ipairsCount=%d", ipairsCount)
-
-		-- pairs iteration test
-		local pairsCount = 0
-		for k, v in pairs(spec.nodes) do
-			pairsCount = pairsCount + 1
-			if pairsCount > 5 then break end
-		end
-		ConPrintf("DEBUG_SPEC_NODES: pairsCount=%d (first 5)", pairsCount)
-
-		-- Check table length
-		ConPrintf("DEBUG_SPEC_NODES: #spec.nodes(length operator)=%d", #spec.nodes)
-
-		-- Test with next()
-		local nextKey, nextVal = next(spec.nodes)
-		ConPrintf("DEBUG_SPEC_NODES: next(spec.nodes)=%s", tostring(nextKey))
-
-		-- Try to directly access first element (if it exists)
-		if nextKey then
-			local firstNode = spec.nodes[nextKey]
-			ConPrintf("DEBUG_SPEC_NODES: firstNode type=%s, x=%s, y=%s", type(firstNode), tostring(firstNode.x), tostring(firstNode.y))
-		end
-	end
-
-	-- Original diagnostic (for comparison)
-	local diagnostic = {
-		spec_type = type(spec),
-		spec_nodes_type = spec and type(spec.nodes) or "spec_is_nil",
-		iteration_count = 0,
-		draw_calls = 0,
-		nodes_checked = 0
-	}
-
-	if spec and spec.nodes then
-		for testNodeId, testNode in pairs(spec.nodes) do
-			diagnostic.iteration_count = diagnostic.iteration_count + 1
-			if testNode and testNode.x and testNode.y then
-				diagnostic.nodes_checked = diagnostic.nodes_checked + 1
-			end
-		end
-	end
-
-	ConPrintf("DIAGNOSTIC_PASSIVE_TREE: spec=%s, nodes=%s, iter=%d, nodes_with_coords=%d",
-		diagnostic.spec_type,
-		diagnostic.spec_nodes_type,
-		diagnostic.iteration_count,
-		diagnostic.nodes_checked)
-
 	-- Draw the nodes
 	-- ★ METATABLE FIX: Use spec.nodes (now plain tables without metatables)
 	-- spec.nodes has both tree data AND allocation state (alloc field)
 
 	-- Draw the nodes using standard pairs() iteration
-	local drawLoopTest = {}
 	for nodeId, node in pairs(spec.nodes) do
 		-- Filtering already done in PassiveSpec.lua
 		if node and node.group then
-			-- Collect first 5 node IDs that pass the filter
-			if #drawLoopTest < 5 then
-				table.insert(drawLoopTest, tostring(nodeId))
-			end
-
 			-- Determine the base and overlay images for this node based on type and state
 			local compareNode = self.compareSpec and self.compareSpec.nodes[nodeId] or nil
 
 			local base, overlay, effect
+			local overlayImage
 			local isAlloc = node.alloc or build.calcsTab.mainEnv.grantedPassives[nodeId] or (compareNode and compareNode.alloc)
 			SetDrawLayer(nil, 25)
 			if node.type == "ClassStart" then
@@ -1089,7 +1004,7 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 					end
 				end
 
-				local overlayImage = tree:GetAssetByName(overlay)
+				overlayImage = tree:GetAssetByName(overlay)
 
 				-- apply target size to the base image
 				if overlayImage and node.targetSize and node.targetSize["overlay"] then
@@ -1104,6 +1019,39 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 				if not self.showHeatMap and not launch.devModeAlt and not node.alloc and (node.type == "AscendClassStart" or node.type == "ClassStart") then
 					SetDrawColor(1, 1, 1)
 				end
+			end
+			if self.showNodeCenter and nearestNode and node == nearestNode then
+				local function drawBox(x, y, w, h, r, g, b)
+					SetDrawColor(r, g, b, 1)
+					DrawImage(nil, x - w, y - h, w * 2, 2)
+					DrawImage(nil, x - w, y + h - 2, w * 2, 2)
+					DrawImage(nil, x - w, y - h, 2, h * 2)
+					DrawImage(nil, x + w - 2, y - h, 2, h * 2)
+				end
+				SetDrawLayer(nil, 200)
+				local cx, cy = scrX, scrY
+				-- Node center cross (red)
+				SetDrawColor(1, 0, 0, 1)
+				DrawImage(nil, cx - 20, cy - 1, 40, 2)
+				DrawImage(nil, cx - 1, cy - 20, 2, 40)
+				DrawImage(nil, cx - 3, cy - 3, 6, 6)
+				-- Base icon box (magenta) + top-left marker (cyan)
+				if base and base.width and base.height then
+					local bw = base.width * scale
+					local bh = base.height * scale
+					drawBox(cx, cy, bw, bh, 1, 0, 1)
+					SetDrawColor(0, 1, 1, 1)
+					DrawImage(nil, cx - bw - 3, cy - bh - 3, 6, 6)
+				end
+				-- Overlay box (green)
+				if overlayImage and overlayImage.width and overlayImage.height then
+					local ow = overlayImage.width * scale
+					local oh = overlayImage.height * scale
+					drawBox(cx, cy, ow, oh, 0, 1, 0)
+				end
+				SetDrawColor(1, 1, 1, 1)
+				DrawString(viewPort.x + 10, viewPort.y + 10, "LEFT", 18, "FIXED",
+					string.format("nearest id=%s icon=%s", tostring(nodeId), tostring(node.icon)))
 			end
 			if self.searchStrResults[nodeId] then
 				-- Node matches the search string, show the highlight circle
@@ -1144,13 +1092,23 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 			end
 		end
 	end
+	if self.showNodeCenter and nearestNode and nearestNode.x and nearestNode.y then
+		local cx, cy = treeToScreen(nearestNode.x, nearestNode.y)
+		SetDrawColor(1, 0, 0, 1)
+		DrawImage(nil, cx - 20, cy - 1, 40, 2)
+		DrawImage(nil, cx - 1, cy - 20, 2, 40)
+		DrawImage(nil, cx - 3, cy - 3, 6, 6)
+		SetDrawColor(1, 1, 1, 1)
+		local debugTextSize = 48
+		DrawString(viewPort.x + 10, viewPort.y + 110, "LEFT", debugTextSize, "FIXED",
+			string.format("hover=%s nearest=%s dist_px=%.1f",
+				tostring(hoverNode and hoverNode.id or "none"),
+				tostring(nearestNodePx and nearestNodePx.id or "none"),
+				nearestDistPxSq and math.sqrt(nearestDistPxSq) or -1))
+	end
 
 	-- Diagnostic: Report nodes that passed filter check
-	if #drawLoopTest > 0 then
-		ConPrintf("DRAW_LOOP: Processed %d nodes, first 5: %s", #drawLoopTest, table.concat(drawLoopTest, ", "))
-	else
-		ConPrintf("DRAW_LOOP: NO NODES passed the filter check!")
-	end
+	-- End node draw loop
 
 	-- Draw ring overlays for jewel sockets
 	SetDrawLayer(nil, 25)
@@ -1249,7 +1207,7 @@ end
 
 -- Draws the given asset at the given position
 function PassiveTreeViewClass:DrawAsset(data, x, y, scale, isHalf)
-	if not data or not data.found then
+	if not data then
 		return
 	end
 	if data.width == 0 then
@@ -1264,7 +1222,13 @@ function PassiveTreeViewClass:DrawAsset(data, x, y, scale, isHalf)
 		DrawImage(data.handle, x - width, y - height * 2, width * 2, height * 2)
 		DrawImage(data.handle, x - width, y, width * 2, height * 2, 0, 1, 1, 0)
 	else
-		DrawImage(data.handle, x - width, y - height, width * 2, height * 2, unpack(data))
+		if type(data[1]) == "number" then
+			-- DDS array layer or explicit UVs
+			DrawImage(data.handle, x - width, y - height, width * 2, height * 2, unpack(data))
+		else
+			-- No UVs provided (png assets store filename in data[1])
+			DrawImage(data.handle, x - width, y - height, width * 2, height * 2)
+		end
 	end
 end
 
