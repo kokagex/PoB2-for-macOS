@@ -1,0 +1,19 @@
+# Claude Code 自律タスクキュー
+# このファイルはタスクの永続的なキューを管理します
+
+metadata:
+  version: "1.0"
+  last_updated: "2026-02-04"
+  next_task_id: 1
+tasks: []
+# タスクの例:
+# - id: 1
+#   description: "pob2macosのビルドステータスを確認"
+#   status: pending  # pending, in_progress, done, blocked
+#   dependencies: []  # このタスクが依存する他のタスクのID
+#   retry_count: 0
+#   last_error: null
+#   created_at: "2026-02-04T10:00:00"
+#   updated_at: "2026-02-04T10:00:00"
+#   blocked_at: null
+#   completed_at: null

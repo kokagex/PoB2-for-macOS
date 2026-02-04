@@ -16,6 +16,22 @@ local b_rshift = bit.rshift
 local band = AND64 -- bit.band
 local bor = OR64 -- bit.bor
 
+local function getMinimalModList()
+	if _G.MINIMAL_MODLIST_STUB then
+		return _G.MINIMAL_MODLIST_STUB
+	end
+	_G.MINIMAL_MODLIST_STUB = {
+		HasMod = function() return false end,
+		List = function() return {} end,
+		Sum = function() return 0 end,
+		More = function() return 1 end,
+		NewMod = function() end,
+		AddMod = function() end,
+		AddList = function() end,
+	}
+	return _G.MINIMAL_MODLIST_STUB
+end
+
 local PassiveSpecClass = newClass("PassiveSpec", "UndoHandler", function(self, build, treeVersion, convert)
 	self.UndoHandler()
 
@@ -643,6 +659,21 @@ end
 -- Change the current class, preserving currently allocated nodes if they connect to the new class's starting node
 function PassiveSpecClass:SelectClass(classId)
 	if _G.MINIMAL_PASSIVE_TEST then
+		if self.curClassId then
+			local oldStartNodeId = self.curClass and self.curClass.startNodeId
+			if oldStartNodeId and self.nodes[oldStartNodeId] then
+				self.nodes[oldStartNodeId].alloc = false
+				self.allocNodes[oldStartNodeId] = nil
+			end
+			if self.curAscendClassId and self.curAscendClassId ~= 0 then
+				local oldAscendClass = self.curClass and self.curClass.classes and (self.curClass.classes[self.curAscendClassId] or self.curClass.classes[0])
+				local oldAscendStart = oldAscendClass and oldAscendClass.startNodeId
+				if oldAscendStart and self.nodes[oldAscendStart] then
+					self.nodes[oldAscendStart].alloc = false
+					self.allocNodes[oldAscendStart] = nil
+				end
+			end
+		end
 		self.curClassId = classId
 		local class = self.tree.classes[classId] or { name = "Unknown", classes = { [0] = { name = "None" } } }
 		self.curClass = class
@@ -651,6 +682,13 @@ function PassiveSpecClass:SelectClass(classId)
 		self.curAscendClass = (class.classes and class.classes[0]) or { name = "None" }
 		self.curAscendClassName = self.curAscendClass.name or "None"
 		self.curAscendClassBaseName = self.curAscendClass.id
+		if class.startNodeId and self.nodes[class.startNodeId] then
+			local startNode = self.nodes[class.startNodeId]
+			startNode.alloc = true
+			startNode.modList = startNode.modList or getMinimalModList()
+			self.allocNodes[startNode.id] = startNode
+		end
+		self:BuildAllDependsAndPaths()
 		return
 	end
 	if self.curClassId then
@@ -679,6 +717,14 @@ end
 
 function PassiveSpecClass:ResetAscendClass()
 	if _G.MINIMAL_PASSIVE_TEST then
+		if self.curAscendClassId then
+			local ascendClass = self.curClass and self.curClass.classes and (self.curClass.classes[self.curAscendClassId] or self.curClass.classes[0])
+			local oldStartNodeId = ascendClass and ascendClass.startNodeId
+			if oldStartNodeId and self.nodes[oldStartNodeId] then
+				self.nodes[oldStartNodeId].alloc = false
+				self.allocNodes[oldStartNodeId] = nil
+			end
+		end
 		return
 	end
 	if self.curAscendClassId then
@@ -694,11 +740,19 @@ end
 
 function PassiveSpecClass:SelectAscendClass(ascendClassId)
 	if _G.MINIMAL_PASSIVE_TEST then
+		self:ResetAscendClass()
 		self.curAscendClassId = ascendClassId
 		local ascendClass = (self.curClass and self.curClass.classes and self.curClass.classes[ascendClassId]) or (self.curClass and self.curClass.classes and self.curClass.classes[0]) or { name = "None" }
 		self.curAscendClass = ascendClass
 		self.curAscendClassName = ascendClass.name or "None"
 		self.curAscendClassBaseName = ascendClass.id
+		if ascendClass.startNodeId and self.nodes[ascendClass.startNodeId] then
+			local startNode = self.nodes[ascendClass.startNodeId]
+			startNode.alloc = true
+			startNode.modList = startNode.modList or getMinimalModList()
+			self.allocNodes[startNode.id] = startNode
+		end
+		self:BuildAllDependsAndPaths()
 		return
 	end
 	self:ResetAscendClass()
@@ -1770,8 +1824,12 @@ function PassiveSpecClass:ReplaceNode(old, newNode)
 	old.sd = newNode.sd
 	old.mods = newNode.mods
 	old.modKey = newNode.modKey
-	old.modList = new("ModList")
-	old.modList:AddList(newNode.modList)
+	if _G.MINIMAL_PASSIVE_TEST then
+		old.modList = old.modList or newNode.modList or getMinimalModList()
+	else
+		old.modList = new("ModList")
+		old.modList:AddList(newNode.modList)
+	end
 	old.keystoneMod = newNode.keystoneMod
 	old.activeEffectImage = newNode.activeEffectImage
 	old.reminderText = newNode.reminderText or { }
