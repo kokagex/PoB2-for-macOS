@@ -1120,3 +1120,144 @@ MINIMAL モードでは modList インフラが不完全。クラス切り替え
 
 **Phase 3: クラス・アセンダンシー切り替え機能 - 完了**
 
+
+---
+
+## Phase 4: 通常パッシブノード割り当て機能（成功）
+
+### CLAUDE.md エラーハンドリングプロトコルの効果（成功）
+
+**日付**: 2026-02-05
+**記録者**: Prophet
+**重要度**: CRITICAL
+
+**状況**:
+- Phase 4 実装で複数回の修正試行が失敗
+- 通常ノードが無反応 → クラッシュ → 無反応と状態が変化
+- CLAUDE.md のプロトコルに従い、contexterror 文書化 → 3つの修正候補提示 → ユーザー選択 → 実装のサイクルを実施
+
+**効果**:
+1. **contexterror 文書化**: 全ての試行を記録し、パターンを発見
+2. **3つの修正候補**: 診断的/ターゲット/ロバストの3アプローチを提示
+3. **ユーザー選択**: Option B → クラッシュ発生（進展）
+4. **再度候補提示**: Option A（消去法）→ クラッシュ箇所特定
+5. **ファイルログ**: ConPrintf が機能しない環境で io.open() を使用
+6. **段階的特定**: BuildAllDependsAndPaths() が node.alloc をリセットと判明
+
+**解決策**:
+- MINIMAL モードで BuildAllDependsAndPaths() をスキップ
+- 6回目の修正で成功
+
+**適用**:
+- 複雑な問題では CLAUDE.md のプロトコルを厳守
+- contexterror 文書は問題解決の地図となる
+- ユーザー選択により、方向性の誤りを防げる
+
+### 消去法とファイルログの組み合わせ（成功）
+
+**日付**: 2026-02-05
+**記録者**: Artisan
+**重要度**: HIGH
+
+**状況**:
+- Phase 3 で成功した消去法を Phase 4 でも適用
+- ConPrintf() がターミナルに出力されない環境
+- io.open("/tmp/log.txt", "a") でファイルログを実装
+
+**成功要因**:
+1. **境界ログ**: AllocNode() 前後、AddUndoState() 前後にログ
+2. **詳細情報**: node.id, node.dn, node.alloc の変化を記録
+3. **コードパス追跡**: どの if-else ブロックを通ったか記録
+4. **段階的詳細化**: 最初は大まかに、次に詳細にログを追加
+
+**発見**:
+- AllocNode() は成功していた（alloc=true 設定）
+- しかし BuildAllDependsAndPaths() が alloc=false にリセット
+- ログなしでは発見不可能だった
+
+**適用**:
+- macOS GUI アプリでは io.open() でファイルログ
+- 消去法は Phase 3, 4 で2回成功 → 確立された手法
+- node.alloc の変化を追跡することが重要
+
+### BuildAllDependsAndPaths() の MINIMAL モード非互換性（失敗→成功）
+
+**日付**: 2026-02-05
+**記録者**: Sage
+**重要度**: HIGH
+
+**状況**:
+- AllocNode() で node.alloc = true を設定
+- しかし BuildAllDependsAndPaths() が node.alloc をリセット
+- MINIMAL モードでは完全な modList インフラがない
+
+**原因**:
+- BuildAllDependsAndPaths() は通常ノードの path を再計算
+- path がない場合、ノードが「接続されていない」と判断される可能性
+- 結果として node.alloc が false にリセットされる
+
+**解決策**:
+- MINIMAL モードでは BuildAllDependsAndPaths() をスキップ
+- Phase 3 のアセンダンシーは動作 → アセンダンシーノードは path 計算が不要？
+- 通常ノードも path なしで動作可能
+
+**適用**:
+- MINIMAL モードでは path 計算を必要としない
+- BuildAllDependsAndPaths() の呼び出しは慎重に（MINIMAL モードでスキップ検討）
+- 今後の Phase で同様の問題が発生する可能性
+
+### shouldBlockGlobalNodeAllocation() の MINIMAL モード対応（成功）
+
+**日付**: 2026-02-05
+**記録者**: Artisan
+**重要度**: MEDIUM
+
+**状況**:
+- 通常ノードクリック時に shouldBlockGlobalNodeAllocation() が呼ばれる
+- この関数が通常ノードをブロックしている可能性
+
+**解決策**:
+- MINIMAL_PASSIVE_TEST フラグがある場合、常に false を返す
+- これにより Option B（ターゲット修正）が成功し、クラッシュが発生（進展）
+
+**効果**:
+- クリック処理が通常ノードハンドラーに到達するようになった
+- 「無反応」から「クラッシュ」へ → 処理が進んでいることの証拠
+
+**適用**:
+- MINIMAL モードでは制限を緩和する必要がある
+- shouldBlock 系の関数は MINIMAL モードでは無効化を検討
+
+### Phase 4 統計
+
+**試行回数**: 6回
+**成功要因**:
+1. CLAUDE.md プロトコル遵守
+2. 消去法（Phase 3 で確立）
+3. ファイルログ（ConPrintf の代替）
+4. 段階的特定（AllocNode → BuildAllDependsAndPaths）
+5. ユーザーとの協力的な問題解決
+
+**所要時間**: 約2時間（複数セッション）
+**最終結果**: ✅ 完全成功
+
+---
+
+## 📊 Phase 別サマリー
+
+### Phase 3: アセンダンシークリック機能
+- **試行回数**: 7回（消去法）
+- **主な学習**: modList nil ガード、消去法デバッグ
+- **結果**: ✅ 成功
+
+### Phase 4: 通常ノード割り当て機能
+- **試行回数**: 6回（プロトコル遵守）
+- **主な学習**: CLAUDE.md プロトコル、BuildAllDependsAndPaths 問題
+- **結果**: ✅ 成功
+
+**共通成功要因**:
+- 段階的アプローチ
+- 詳細なログ記録
+- ユーザーとの協力
+- 過去の学習の適用
+

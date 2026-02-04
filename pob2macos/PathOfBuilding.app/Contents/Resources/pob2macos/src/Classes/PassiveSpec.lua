@@ -926,18 +926,47 @@ end
 -- An alternate path to the node may be provided, otherwise the default path will be used
 -- The path must always contain the given node, as will be the case for the default path
 function PassiveSpecClass:AllocNode(node, altPath)
-	if not node.path then
+	-- MINIMAL mode: Allow allocation without path (direct node allocation only)
+	if not node.path and not _G.MINIMAL_PASSIVE_TEST then
 		-- Node cannot be connected to the tree as there is no possible path
 		return
 	end
 
 	-- Allocate all nodes along the path
+	local logFile = io.open("/tmp/pob_alloc_debug.txt", "a")
+	if logFile then
+		logFile:write(string.format("[%s] AllocNode: node.id=%s, intuitiveLeapLikes=%d, path=%s, MINIMAL=%s\n",
+			os.date("%H:%M:%S"), tostring(node.id), node.intuitiveLeapLikesAffecting and #node.intuitiveLeapLikesAffecting or -1,
+			tostring(node.path ~= nil), tostring(_G.MINIMAL_PASSIVE_TEST)))
+		logFile:close()
+	end
 	if #node.intuitiveLeapLikesAffecting > 0 then
+		logFile = io.open("/tmp/pob_alloc_debug.txt", "a")
+		if logFile then
+			logFile:write("[DEBUG] Taking intuitiveLeap path\n")
+			logFile:close()
+		end
 		node.alloc = true
 		node.allocMode = (node.ascendancyName or node.type == "Keystone" or node.type == "Socket" or node.containJewelSocket) and 0 or self.allocMode
 		self.allocNodes[node.id] = node
 	else
-		for _, pathNode in ipairs(altPath or node.path) do
+		-- MINIMAL mode: If no path, allocate only the clicked node
+		if not node.path and _G.MINIMAL_PASSIVE_TEST then
+			logFile = io.open("/tmp/pob_alloc_debug.txt", "a")
+			if logFile then
+				logFile:write("[DEBUG] Taking MINIMAL mode path (no path)\n")
+				logFile:close()
+			end
+			node.alloc = true
+			node.allocMode = (node.ascendancyName or node.type == "Keystone" or node.type == "Socket" or node.containJewelSocket) and 0 or self.allocMode
+			self.allocNodes[node.id] = node
+		else
+			logFile = io.open("/tmp/pob_alloc_debug.txt", "a")
+			if logFile then
+				logFile:write(string.format("[DEBUG] Taking path iteration (altPath or path)\n"))
+				logFile:close()
+			end
+			for _, pathNode in ipairs(altPath or node.path) do
 			pathNode.alloc = true
 			pathNode.allocMode = (node.ascendancyName or pathNode.type == "Keystone" or pathNode.type == "Socket" or pathNode.containJewelSocket) and 0 or self.allocMode
 			-- set path attribute nodes to latest chosen attribute or default to Strength if allocating before choosing an attribute
@@ -946,6 +975,7 @@ function PassiveSpecClass:AllocNode(node, altPath)
 			end
 			self.allocNodes[pathNode.id] = pathNode
 		end
+		end -- Close path existence check for MINIMAL mode
 	end
 
 	if node.isMultipleChoiceOption then
@@ -966,7 +996,16 @@ function PassiveSpecClass:AllocNode(node, altPath)
 	end
 
 	-- Rebuild all dependencies and paths for all allocated nodes
-	self:BuildAllDependsAndPaths()
+	-- MINIMAL mode: Skip BuildAllDependsAndPaths to test if it's resetting node.alloc
+	if not _G.MINIMAL_PASSIVE_TEST then
+		self:BuildAllDependsAndPaths()
+	else
+		local logFile = io.open("/tmp/pob_alloc_debug.txt", "a")
+		if logFile then
+			logFile:write("[DEBUG] Skipping BuildAllDependsAndPaths in MINIMAL mode\n")
+			logFile:close()
+		end
+	end
 end
 
 function PassiveSpecClass:DeallocSingleNode(node)
@@ -1132,6 +1171,15 @@ function PassiveSpecClass:BuildPathFromNode(root)
 			end
 		end
 	end
+	-- DEBUG: Count nodes with paths
+	local pathCount = 0
+	for id, node in pairs(self.nodes) do
+		if node.path then
+			pathCount = pathCount + 1
+		end
+	end
+	ConPrintf("DEBUG: BuildPathFromNode complete - %d nodes now have paths (root was id=%s, dn=%s)",
+		pathCount, tostring(root.id), tostring(root.dn))
 end
 
 -- Determine this node's distance from the class' start
@@ -1271,9 +1319,11 @@ function PassiveSpecClass:BuildAllDependsAndPaths()
 		end
 
 		if node.type ~= "ClassStart" and node.type ~= "Socket" and not node.ascendancyName then
-			for nodeId, itemId in pairs(self.jewels) do
-				local item = self.build.itemsTab.items[itemId]
-				if item and item.jewelRadiusIndex and self.allocNodes[nodeId] and item.jewelData and not item.jewelData.limitDisabled then
+			-- MINIMAL mode: Skip jewel processing (requires itemsTab)
+			if self.build.itemsTab then
+				for nodeId, itemId in pairs(self.jewels) do
+					local item = self.build.itemsTab.items[itemId]
+					if item and item.jewelRadiusIndex and self.allocNodes[nodeId] and item.jewelData and not item.jewelData.limitDisabled then
 					local radiusIndex = item.jewelRadiusIndex
 					if self.nodes[nodeId].nodesInRadius and self.nodes[nodeId].nodesInRadius[radiusIndex][node.id] then
 						if itemId ~= 0 then
@@ -1302,6 +1352,7 @@ function PassiveSpecClass:BuildAllDependsAndPaths()
 					end
 				end
 			end
+			end -- Close build.itemsTab guard
 			for _, intuitiveLeapMap in ipairs(intuitiveLeapLikeNodes) do
 				local allocatable = false
 				for _, allocatableNodeType in ipairs(intuitiveLeapMap.to) do
@@ -1804,14 +1855,23 @@ function PassiveSpecClass:BuildAllDependsAndPaths()
 			node.distanceToClassStart = 0
 		end
 	end
+	ConPrintf("DEBUG: BuildAllDependsAndPaths - allocNodes count=%d", self.allocNodes and #self.allocNodes or 0)
+	local pathBuildCount = 0
 	for id, node in pairs(self.allocNodes) do
+		ConPrintf("DEBUG: allocNode id=%s, dn=%s, type=%s, intuitiveLeapLikesAffecting=%d",
+			tostring(id), tostring(node.dn), tostring(node.type), node.intuitiveLeapLikesAffecting and #node.intuitiveLeapLikesAffecting or -1)
 		if #node.intuitiveLeapLikesAffecting == 0 or node.connectedToStart then
+			ConPrintf("DEBUG: Building path from node id=%s", tostring(id))
 			self:BuildPathFromNode(node)
+			pathBuildCount = pathBuildCount + 1
 			if node.isJewelSocket or node.expansionJewel then
 				self:SetNodeDistanceToClassStart(node)
 			end
+		else
+			ConPrintf("DEBUG: Skipping path build for node id=%s (intuitiveLeap or not connectedToStart)", tostring(id))
 		end
 	end
+	ConPrintf("DEBUG: BuildAllDependsAndPaths complete - built paths from %d nodes", pathBuildCount)
 end
 
 function PassiveSpecClass:ReplaceNode(old, newNode)

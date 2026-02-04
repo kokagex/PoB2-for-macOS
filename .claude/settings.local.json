@@ -164,7 +164,10 @@
       "Bash(./.claude/show_queue.sh:*)",
       "Bash(yq eval:*)",
       "Bash(./codex/run_passive_tree_test.command)",
-      "Bash(/opt/homebrew/bin/luajit:*)"
+      "Bash(/opt/homebrew/bin/luajit:*)",
+      "Bash(if [ -f /tmp/pob_crash_log.txt ])",
+      "Bash(then)",
+      "Bash(else)"
     ]
   }
 }

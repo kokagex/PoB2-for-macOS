@@ -357,6 +357,11 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 
 	-- Helper function to determine if global node allocation should be blocked
 	local function shouldBlockGlobalNodeAllocation(node)
+		-- MINIMAL mode: Never block node allocation (for testing)
+		if _G.MINIMAL_PASSIVE_TEST then
+			return false
+		end
+
 		local isGlobalNode = node.type == "Keystone" or node.type == "Socket" or node.containJewelSocket
 
 		if not isGlobalNode or node.alloc or not node.path then
@@ -553,33 +558,73 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 						end
 					end
 				end
-				if hoverNode.path and not shouldBlockGlobalNodeAllocation(hoverNode) then
+				-- MINIMAL mode: Allow allocation without path (AllocNode will handle it)
+				if (hoverNode.path or _G.MINIMAL_PASSIVE_TEST) and not shouldBlockGlobalNodeAllocation(hoverNode) then
 					-- Handle allocation of unallocated nodes
+					ConPrintf("DEBUG: Normal node allocation - node=%s, type=%s, alloc=%s",
+						hoverNode.dn or "unknown", hoverNode.type or "unknown", tostring(hoverNode.alloc))
+
 					if hoverNode.isAttribute and not hotkeyPressed then
-						build.treeTab:ModifyAttributePopup(hoverNode)
+						-- MINIMAL mode: Skip treeTab popup (not available)
+						if build.treeTab then
+							build.treeTab:ModifyAttributePopup(hoverNode)
+						else
+							ConPrintf("DEBUG: Skipping ModifyAttributePopup (MINIMAL mode)")
+						end
 					else
 						-- the odd conditional here is so the popup only calls AllocNode inside and to avoid duplicating some code
 						-- same flow for hotkey attribute and non attribute nodes
 						if hotkeyPressed then
 							processAttributeHotkeys(hoverNode.isAttribute)
 						end
+						-- Elimination method: File logging
+						local logFile = io.open("/tmp/pob_crash_log.txt", "a")
+						if logFile then
+						logFile:write(string.format("[%s] 1. Before AllocNode - id=%s, dn=%s, alloc=%s\n", os.date("%H:%M:%S"), tostring(hoverNode.id), tostring(hoverNode.dn), tostring(hoverNode.alloc)))
+							logFile:close()
+						end
+						ConPrintf("DEBUG: About to call AllocNode")
 						spec:AllocNode(hoverNode, self.tracePath and hoverNode == self.tracePath[#self.tracePath] and self.tracePath)
+						logFile = io.open("/tmp/pob_crash_log.txt", "a")
+						if logFile then
+						logFile:write(string.format("[%s] 2. After AllocNode - alloc=%s\n", os.date("%H:%M:%S"), tostring(hoverNode.alloc)))
+							logFile:close()
+						end
+						ConPrintf("DEBUG: AllocNode completed")
 						spec:AddUndoState()
+						logFile = io.open("/tmp/pob_crash_log.txt", "a")
+						if logFile then
+							logFile:write(string.format("[%s] 3. Before AddUndoState\n", os.date("%H:%M:%S")))
+							logFile:close()
+						end
 						build.buildFlag = true
 					end
+						logFile = io.open("/tmp/pob_crash_log.txt", "a")
+						if logFile then
+							logFile:write(string.format("[%s] 4. After AddUndoState\n", os.date("%H:%M:%S")))
+							logFile:close()
+						end
 				end
 			end
 		end
 	elseif treeClick == "RIGHT" then
 		-- User right-clicked on a node
 		if hoverNode then
+			ConPrintf("DEBUG: RIGHT-click on node=%s, type=%s, alloc=%s",
+				hoverNode.dn or "unknown", hoverNode.type or "unknown", tostring(hoverNode.alloc))
+
 			if hoverNode.alloc and (hoverNode.type == "Socket" or hoverNode.containJewelSocket) then
-				local slot = build.itemsTab.sockets[hoverNode.id]
-				if slot:IsEnabled() then
-					-- User right-clicked a jewel socket, jump to the item page and focus the corresponding item slot control
-					slot.dropped = true
-					build.itemsTab:SelectControl(slot)
-					build.viewMode = "ITEMS"
+				-- MINIMAL mode: Skip jewel socket handling (requires itemsTab)
+				if build.itemsTab then
+					local slot = build.itemsTab.sockets[hoverNode.id]
+					if slot:IsEnabled() then
+						-- User right-clicked a jewel socket, jump to the item page and focus the corresponding item slot control
+						slot.dropped = true
+						build.itemsTab:SelectControl(slot)
+						build.viewMode = "ITEMS"
+					end
+				else
+					ConPrintf("DEBUG: Skipping jewel socket handling (MINIMAL mode)")
 				end
 			else
 				-- a way for us to bypass the popup when allocating attribute nodes, last used hotkey + RMB
@@ -598,7 +643,9 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 					end
 					spec:SwitchAttributeNode(hoverNode.id, spec.attributeIndex or 1)
 				end
+				ConPrintf("DEBUG: About to call AllocNode (RIGHT-click)")
 				spec:AllocNode(hoverNode, self.tracePath and hoverNode == self.tracePath[#self.tracePath] and self.tracePath)
+				ConPrintf("DEBUG: AllocNode completed (RIGHT-click)")
 				spec:AddUndoState()
 				build.buildFlag = true
 			end
