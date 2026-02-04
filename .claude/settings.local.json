@@ -162,7 +162,9 @@
       "Bash(./.claude/add_task.sh \"サンプルタスク1: pob2macosのビルドステータスを確認\")",
       "Bash(./.claude/add_task.sh:*)",
       "Bash(./.claude/show_queue.sh:*)",
-      "Bash(yq eval:*)"
+      "Bash(yq eval:*)",
+      "Bash(./codex/run_passive_tree_test.command)",
+      "Bash(/opt/homebrew/bin/luajit:*)"
     ]
   }
 }

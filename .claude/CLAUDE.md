@@ -54,6 +54,89 @@ To restore: Uncomment this section and remove the /routine skill reference above
 
 ---
 
+## Error Handling and Fix Procedure (MANDATORY)
+
+**CRITICAL**: When encountering errors during task execution, follow this protocol:
+
+### 1. Context Error Documentation
+When bash errors, crashes, or repeated failures occur:
+1. **Create `contexterror_<task>_<phase>.md`** in `./doc/learning/` directory
+2. **Document**:
+   - Full error context (logs, error messages, stack traces)
+   - Previous fix attempts and their results
+   - Current hypothesis about root cause
+   - Work history analysis (what worked, what didn't)
+
+**Example**: `contexterror_ascendancy_crash_phase3.md`
+
+### 2. Fix Prediction Process (BEFORE IMPLEMENTATION)
+Before implementing any fix:
+1. **Analyze work history**: Review all previous fix attempts from contexterror files
+2. **Identify patterns**: What types of fixes succeeded? What failed?
+3. **Predict 3 fix candidates**:
+   - Option A: Diagnostic approach (add logging, narrow down issue)
+   - Option B: Targeted fix (address suspected root cause)
+   - Option C: Robust/fallback approach (ensure stability)
+
+### 3. User Consultation (REQUIRED)
+**NEVER implement fixes without user approval**:
+1. Use `AskUserQuestion` tool to present 3 fix candidates
+2. Provide clear descriptions of each option's pros/cons
+3. Wait for user selection
+4. Implement ONLY the selected option
+
+### 4. Iterative Fix Protocol
+**Fix thoroughly until stable operation**:
+1. Implement selected fix
+2. Test immediately
+3. Document results in contexterror file
+4. If crash continues:
+   - Update contexterror file with new findings
+   - Predict 3 NEW fix candidates based on updated context
+   - Present to user for selection
+5. **Repeat until stable operation achieved**
+
+**Elimination Method (消去法)**:
+When multiple potential crash locations exist, use systematic elimination:
+1. Add DEBUG logging at boundaries between suspected sections
+2. Test to identify which section crashes
+3. Add more granular logging within that section
+4. Repeat until exact crash line identified
+5. Apply targeted fix to confirmed crash location
+
+**Example**:
+```
+Section A → Section B → Section C
+Add log: "A complete", "B complete", "C complete"
+Test shows: "A complete" logged, "B complete" NOT logged
+→ Crash is in Section B
+Add log: "B step 1", "B step 2", "B step 3"
+Test shows: "B step 2" logged, "B step 3" NOT logged
+→ Crash is between step 2 and step 3
+```
+
+### 5. Success Documentation
+When fix succeeds:
+1. Document final solution in `LESSONS_LEARNED.md`
+2. Update relevant analysis files with "RESOLVED" status
+3. Note key insights for future similar issues
+
+**Example Flow**:
+```
+Error occurs → Create contexterror.md → Analyze history →
+Predict 3 fixes → Ask user → Implement selected fix →
+Test → Still fails? → Update contexterror.md → Predict 3 NEW fixes →
+Ask user → Repeat until stable
+```
+
+**Why This Protocol Exists**:
+- Prevents wasted effort on wrong approaches
+- Learns from previous failures
+- Ensures user stays in control of fix direction
+- Documents debugging journey for future reference
+
+---
+
 ## Working Philosophy
 
 **Explicit Reasoning**: Claude should actively use thinking blocks to verbalize internal reasoning processes. Articulating thoughts step-by-step enhances problem-solving capabilities and leads to more accurate, well-reasoned solutions. This practice of "thinking out loud" improves analytical abilities and helps identify potential issues before they occur.

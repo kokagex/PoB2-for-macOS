@@ -39,7 +39,7 @@ local PassiveTreeViewClass = newClass("PassiveTreeView", function(self)
 	self.searchStrSaved = ""
 	self.searchStrCached = ""
 	self.searchStrResults = {}
-	self.showStatDifferences = true
+	self.showStatDifferences = false  -- MINIMAL mode: Disable stat differences (requires calcsTab)
 	self.hoverNode = nil
 end)
 
@@ -79,6 +79,7 @@ end
 
 function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 	-- Normal rendering.
+	ConPrintf("DEBUG: PassiveTreeView:Draw() called, inputEvents=%d", #inputEvents)
 
 	local spec = build.spec
 	local tree = spec.tree
@@ -90,12 +91,14 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 	-- If tree data is not ready yet, skip rendering this frame
 	if not spec or not tree or not tree.nodes then
 		-- Tree data not loaded yet, skip rendering
+		ConPrintf("DEBUG: Skipping draw - spec/tree/nodes not ready")
 		return
 	end
 
+	ConPrintf("DEBUG: Draw validation passed, processing input")
 	local cursorX, cursorY = GetCursorPos()
 	local mOver = cursorX >= viewPort.x and cursorX < viewPort.x + viewPort.width and cursorY >= viewPort.y and cursorY < viewPort.y + viewPort.height
-	
+
 	-- Process input events
 	local treeClick
 	for id, event in ipairs(inputEvents) do
@@ -110,7 +113,7 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 					-- Dragging won't actually commence unless the cursor moves far enough
 					self.dragX, self.dragY = cursorX, cursorY
 				end
-			elseif IsKeyDown("ALT") and mOver then
+			elseif IsKeyDown("ALT") == 1 and mOver then
 				if event.key == "WHEELDOWN" then
 					spec.allocMode = math.max(0, spec.allocMode - 1)
 				elseif event.key == "WHEELUP" then
@@ -118,18 +121,18 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 				end
 			elseif event.key == "p" then
 				self.showHeatMap = not self.showHeatMap
-			elseif event.key == "d" and IsKeyDown("CTRL") then
+			elseif event.key == "d" and IsKeyDown("CTRL") == 1 then
 				self.showStatDifferences = not self.showStatDifferences
-			elseif event.key == "c" and IsKeyDown("CTRL") and self.hoverNode and self.hoverNode.type ~= "Socket" then
+			elseif event.key == "c" and IsKeyDown("CTRL") == 1 and self.hoverNode and self.hoverNode.type ~= "Socket" then
 				local result = "# ".. self.hoverNode.dn .. "\n"
 				for _, line in ipairs(self.hoverNode.sd) do
 					result = result .. line .. "\n"
 				end
 				Copy(result)
 			elseif event.key == "PAGEUP" then
-				self:Zoom(IsKeyDown("SHIFT") and 3 or 1, viewPort)
+				self:Zoom(IsKeyDown("SHIFT") == 1 and 3 or 1, viewPort)
 			elseif event.key == "PAGEDOWN" then
-				self:Zoom(IsKeyDown("SHIFT") and -3 or -1, viewPort)
+				self:Zoom(IsKeyDown("SHIFT") == 1 and -3 or -1, viewPort)
 			elseif itemLib.wiki.matchesKey(event.key) and self.hoverNode then
 				itemLib.wiki.open(self.hoverNode.name or self.hoverNode.dn)
 			end
@@ -138,6 +141,7 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 				if self.dragX and not self.dragging then
 					-- Mouse button went down, but didn't move far enough to trigger drag, so register a normal click
 					treeClick = "LEFT"
+					ConPrintf("DEBUG: LEFT click detected")
 				end
 				self.dragHeld = false
 				self.dragging = false
@@ -145,11 +149,12 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 			elseif mOver then
 				if event.key == "RIGHTBUTTON" then
 					treeClick = "RIGHT"
+					ConPrintf("DEBUG: RIGHT click detected")
 				elseif event.key == "WHEELUP" then
-					local step = IsKeyDown("SHIFT") and 0.3 or 0.1
+					local step = IsKeyDown("SHIFT") == 1 and 1.5 or 0.5
 					self:Zoom(step, viewPort)
 				elseif event.key == "WHEELDOWN" then
-					local step = IsKeyDown("SHIFT") and -0.3 or -0.1
+					local step = IsKeyDown("SHIFT") == 1 and -1.5 or -0.5
 					self:Zoom(step, viewPort)
 				end	
 			end
@@ -172,15 +177,22 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 	end
 
 	-- Ctrl-click to zoom
-	if treeClick and IsKeyDown("CTRL") then
-		self:Zoom(treeClick == "RIGHT" and -2 or 2, viewPort)
-		treeClick = nil
+	if treeClick then
+		local ctrlPressed = IsKeyDown("CTRL") == 1
+		ConPrintf("DEBUG: treeClick=%s, CTRL=%s", tostring(treeClick), tostring(ctrlPressed))
+		if ctrlPressed then
+			ConPrintf("DEBUG: Executing Ctrl+Click zoom")
+			self:Zoom(treeClick == "RIGHT" and -2 or 2, viewPort)
+			treeClick = nil
+		end
 	end
 
 	-- Clamp zoom offset
 	local clampFactor = self.zoom * 2 / 3
 	self.zoomX = self.zoomX ~= nil and m_min(m_max(self.zoomX, -viewPort.width * clampFactor), viewPort.width * clampFactor) or 1
 	self.zoomY = self.zoomY ~= nil and m_min(m_max(self.zoomY, -viewPort.height * clampFactor), viewPort.height * clampFactor) or 1
+
+	ConPrintf("DEBUG: Input processing complete, preparing tree rendering")
 
 	-- PRJ-003 Fix: Validate tree.size before using in scale calculation
 	-- If tree.size is invalid, use viewport size as fallback
@@ -208,7 +220,7 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 
 	-- Debug-only early return now occurs above (before tree rendering).
 
-	if IsKeyDown("SHIFT") then
+	if IsKeyDown("SHIFT") == 1 then
 		-- Enable path tracing mode
 		self.traceMode = true
 		self.tracePath = self.tracePath or { }
@@ -220,10 +232,12 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 	local hoverNode
 	local nearestNode, nearestDistSq
 	local nearestNodePx, nearestDistPxSq
+	ConPrintf("DEBUG: Starting hover detection, mOver=%s", tostring(mOver))
 	if mOver then
 		-- Cursor is over the tree, check if it is over a node
 		local curTreeX, curTreeY = screenToTree(cursorX, cursorY)
 		-- Use spec.nodes so hover matches rendered nodes/allocation state
+		ConPrintf("DEBUG: Iterating spec.nodes for hover detection")
 		for nodeId, node in pairs(spec.nodes) do
 			if node.rsq and node.group and not node.isProxy and not node.group.isProxy then
 				-- Node has a defined size (i.e. has artwork)
@@ -267,6 +281,7 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 			end
 		end
 	end
+	ConPrintf("DEBUG: Hover detection complete, hoverNode=%s", hoverNode and hoverNode.dn or "nil")
 
 	self.hoverNode = hoverNode
 	-- If hovering over a node, find the path to it (if unallocated) or the list of dependent nodes (if allocated)
@@ -326,19 +341,19 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 	-- switchAttribute false -> allocating a non-attribute node, possibly with attribute in path
 	-- we always want to keep track of last used attribute
 	local function processAttributeHotkeys(switchAttribute)
-		if IsKeyDown("2") or IsKeyDown("S") then
+		if IsKeyDown("2") == 1 or IsKeyDown("S") == 1 then
 			spec.attributeIndex = 1
 			if switchAttribute then spec:SwitchAttributeNode(hoverNode.id, 1) end
-		elseif IsKeyDown("3") or IsKeyDown("D") then
+		elseif IsKeyDown("3") == 1 or IsKeyDown("D") == 1 then
 			spec.attributeIndex = 2
 			if switchAttribute then spec:SwitchAttributeNode(hoverNode.id, 2) end
-		elseif IsKeyDown("1") or IsKeyDown("I") then
+		elseif IsKeyDown("1") == 1 or IsKeyDown("I") == 1 then
 			spec.attributeIndex = 3
 			if switchAttribute then spec:SwitchAttributeNode(hoverNode.id, 3) end
 		end
 	end
 	
-	local hotkeyPressed = IsKeyDown("1") or IsKeyDown("I") or IsKeyDown("2") or IsKeyDown("S") or IsKeyDown("3") or IsKeyDown("D")
+	local hotkeyPressed = IsKeyDown("1") == 1 or IsKeyDown("I") == 1 or IsKeyDown("2") == 1 or IsKeyDown("S") == 1 or IsKeyDown("3") == 1 or IsKeyDown("D") == 1
 
 	-- Helper function to determine if global node allocation should be blocked
 	local function shouldBlockGlobalNodeAllocation(node)
@@ -373,7 +388,10 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 	end
 
 	if treeClick == "LEFT" then
+		ConPrintf("DEBUG: Processing LEFT click, hoverNode=%s", hoverNode and hoverNode.dn or "nil")
 		if hoverNode then
+			ConPrintf("DEBUG: Node type=%s, alloc=%s, ascendancyName=%s",
+				tostring(hoverNode.type), tostring(hoverNode.alloc), tostring(hoverNode.ascendancyName))
 			-- User left-clicked on a node
 			if hoverNode.alloc and not shouldBlockGlobalNodeDeallocation(hoverNode) then
 				-- Handle deallocation of allocated nodes
@@ -395,49 +413,62 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 			else
 				-- Check if the node belongs to a different ascendancy
 				if hoverNode.ascendancyName then
+					ConPrintf("DEBUG: Ascendancy node clicked: %s", tostring(hoverNode.ascendancyName))
 					local isDifferentAscendancy = false
 					local targetAscendClassId = nil
 					local targetBaseClassId = nil
 					local targetBaseClass = nil
-					
+
 					-- Check if it's different from current primary or secondary ascendancy
+					ConPrintf("DEBUG: Current ascend: %s, base: %s", tostring(spec.curAscendClassId), tostring(spec.curAscendClassBaseName))
 					if spec.curAscendClassId == 0 or hoverNode.ascendancyName ~= spec.curAscendClassBaseName then
 						if not (spec.curSecondaryAscendClass and hoverNode.ascendancyName == spec.curSecondaryAscendClass.id) then
 							isDifferentAscendancy = true
+							ConPrintf("DEBUG: Different ascendancy detected")
 						end
 					end
 
 					if isDifferentAscendancy then
 						-- First, check if it's in the current class (same-class switching)
-						for ascendClassId, ascendClass in pairs(spec.curClass.classes) do
-							if ascendClass.id == hoverNode.ascendancyName then
-								targetAscendClassId = ascendClassId
-								break
+						if spec.curClass and spec.curClass.classes then
+							for ascendClassId, ascendClass in pairs(spec.curClass.classes) do
+								if ascendClass.id == hoverNode.ascendancyName then
+									targetAscendClassId = ascendClassId
+									break
+								end
 							end
 						end
 
 						if targetAscendClassId then
 							-- Same-class switching - always allowed
+							ConPrintf("DEBUG: Same-class switch to ascendClassId=%s", tostring(targetAscendClassId))
 							spec:SelectAscendClass(targetAscendClassId)
+							ConPrintf("DEBUG: SelectAscendClass completed")
 							spec:AddUndoState()
 							spec:SetWindowTitleWithBuildClass()
 							build.buildFlag = true
 						else
 							-- Cross-class switching - search all classes
-							for classId, classData in pairs(spec.tree.classes) do
-								for ascendClassId, ascendClass in pairs(classData.classes) do
-									if ascendClass.id == hoverNode.ascendancyName then
-										targetBaseClassId = classId
-										targetBaseClass = classData
-										targetAscendClassId = ascendClassId
-										break
+							if spec.tree and spec.tree.classes then
+								for classId, classData in pairs(spec.tree.classes) do
+									if classData and classData.classes then
+										for ascendClassId, ascendClass in pairs(classData.classes) do
+											if ascendClass and ascendClass.id == hoverNode.ascendancyName then
+												targetBaseClassId = classId
+												targetBaseClass = classData
+												targetAscendClassId = ascendClassId
+												break
+											end
+										end
 									end
+									if targetBaseClassId then break end
 								end
-								if targetBaseClassId then break end
 							end
 
 							if targetBaseClassId then
+								ConPrintf("DEBUG: Cross-class switch to classId=%s, ascendId=%s", tostring(targetBaseClassId), tostring(targetAscendClassId))
 								local used = spec:CountAllocNodes()
+								ConPrintf("DEBUG: Allocated nodes count: %d", used)
 								local clickedAscendNodeId = hoverNode and hoverNode.id
 								local function allocateClickedAscendancy()
 									if not clickedAscendNodeId then
@@ -451,12 +482,50 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 
 								-- Allow cross-class switching if: no regular points allocated OR tree is connected to target class
 								if used == 0 or spec:IsClassConnected(targetBaseClassId) then
+									ConPrintf("DEBUG: Allowed - calling SelectClass")
 									spec:SelectClass(targetBaseClassId)
-									spec:SelectAscendClass(targetAscendClassId)
-									allocateClickedAscendancy()
-									spec:AddUndoState()
-									spec:SetWindowTitleWithBuildClass()
+									ConPrintf("DEBUG: SelectClass completed")
+
+									-- === OPTION A: pcall error handling to identify crash location ===
+									local success, err = pcall(function()
+										spec:SelectAscendClass(targetAscendClassId)
+									end)
+									if not success then
+										ConPrintf("ERROR: SelectAscendClass failed: %s", tostring(err))
+										return
+									end
+									ConPrintf("DEBUG: SelectAscendClass completed")
+
+									success, err = pcall(function()
+										allocateClickedAscendancy()
+									end)
+									if not success then
+										ConPrintf("ERROR: allocateClickedAscendancy failed: %s", tostring(err))
+										return
+									end
+									ConPrintf("DEBUG: allocateClickedAscendancy completed")
+
+									success, err = pcall(function()
+										spec:AddUndoState()
+									end)
+									if not success then
+										ConPrintf("ERROR: AddUndoState failed: %s", tostring(err))
+										-- Non-critical, continue
+									end
+									ConPrintf("DEBUG: AddUndoState completed")
+
+									success, err = pcall(function()
+										spec:SetWindowTitleWithBuildClass()
+									end)
+									if not success then
+										ConPrintf("ERROR: SetWindowTitleWithBuildClass failed: %s", tostring(err))
+										-- Non-critical, continue
+									end
+									ConPrintf("DEBUG: SetWindowTitleWithBuildClass completed")
+
 									build.buildFlag = true
+									ConPrintf("DEBUG: Cross-class switch fully completed")
+									ConPrintf("DEBUG: Exiting cross-class switch if-block")
 								else
 									-- Tree has points but isn't connected to target class
 									main:OpenConfirmPopup("Class Change", "Changing class to "..targetBaseClass.name.." will reset your passive tree.\nThis can be avoided by connecting one of the "..targetBaseClass.name.." starting nodes to your tree.", "Continue", function()
@@ -476,8 +545,10 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 											build.buildFlag = true
 										end
 									end)
+									ConPrintf("DEBUG: OpenConfirmPopup called, returning early")
 									return
 								end
+								ConPrintf("DEBUG: Exited cross-class switch if-else structure")
 							end
 						end
 					end
@@ -533,8 +604,10 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 			end
 		end
 	end
+	ConPrintf("DEBUG: Completed treeClick processing (LEFT/RIGHT)")
 
 	-- Draw the background artwork
+	ConPrintf("DEBUG: Starting background artwork rendering")
 	local bg = tree:GetAssetByName("Background2")
 	if bg.width == 0 then
 		bg.width, bg.height = bg.handle:ImageSize()
@@ -543,11 +616,13 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 		SetDrawColor(1, 1, 1, 1)
 		DrawImage(bg.handle, viewPort.x, viewPort.y, viewPort.width, viewPort.height, 0, 0, viewPort.width / 100, viewPort.height / 100)
 	end
+	ConPrintf("DEBUG: Background artwork drawn")
 
 	-- draw allocMode text
 	self:DrawAllocMode(spec.allocMode, viewPort)
 
 	-- TODO: More dynamic
+	ConPrintf("DEBUG: Drawing class-specific background for classId=%s", tostring(spec.curClassId))
 	local treeCenter = tree:GetAssetByName("BGTree")
 	local treeCenterActive = tree:GetAssetByName("BGTreeActive")
 	-- draw background artwork base on current class
@@ -577,6 +652,7 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 		treeCenter.height = class.background['bg'].height
 		self:DrawAsset(treeCenter, scrX, scrY, scale)
 	end
+	ConPrintf("DEBUG: Class background drawing completed")
 
 	-- draw ascendancies
 	for name, data in pairs(tree.ascendNameMap) do
@@ -601,24 +677,40 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 			self:DrawAsset(bg, scrX, scrY, scale)
 		end
 	end
+	ConPrintf("DEBUG: Ascendancy backgrounds drawn")
 
 	local function renderGroup(group)
-		if group.background then
-			local scrX, scrY = treeToScreen(group.x * tree.scaleImage, group.y * tree.scaleImage)
-			local bgAsset = tree:GetAssetByName(group.background.image)
-			if group.background.offsetX and group.background.offsetY then
-				scrX, scrY = treeToScreen(group.x + group.background.offsetX, group.y + group.background.offsetY)
-			end
-			self:DrawAsset(bgAsset, scrX, scrY, scale * tree.scaleImage, group.background.isHalfImage ~= nil)
+		-- MINIMAL mode fix: Comprehensive guards for group rendering after class switch
+		if not group or not group.background then
+			return
 		end
+		-- Check required fields
+		if not group.background.image or not group.x or not group.y then
+			return
+		end
+
+		local scrX, scrY = treeToScreen(group.x * tree.scaleImage, group.y * tree.scaleImage)
+		local bgAsset = tree:GetAssetByName(group.background.image)
+
+		-- Check if asset was successfully retrieved
+		if not bgAsset or not bgAsset.handle then
+			return  -- Skip if asset not found
+		end
+
+		if group.background.offsetX and group.background.offsetY then
+			scrX, scrY = treeToScreen(group.x + group.background.offsetX, group.y + group.background.offsetY)
+		end
+		self:DrawAsset(bgAsset, scrX, scrY, scale * tree.scaleImage, group.background.isHalfImage ~= nil)
 	end
 
 	-- Draw the group backgrounds
+	ConPrintf("DEBUG: About to draw group backgrounds")
 	for _, group in pairs(tree.groups) do
 		if not group.isProxy then
 			renderGroup(group)
 		end
 	end
+	ConPrintf("DEBUG: Group backgrounds drawn successfully")
 
 	local connectorColor = { 1, 1, 1 }
 	local function setConnectorColor(r, g, b)
@@ -638,6 +730,10 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 	end
 	local function renderConnector(connector)
 		local node1, node2 = spec.nodes[connector.nodeId1], spec.nodes[connector.nodeId2]
+		-- MINIMAL mode fix: Skip connector if nodes don't exist (after class switch)
+		if not node1 or not node2 then
+			return  -- Skip this connector
+		end
 		setConnectorColor(1, 1, 1)
 		local state = getState(node1, node2)
 		local baseState = state
@@ -693,24 +789,34 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 	end
 
 	-- Draw the connecting lines between nodes
+	ConPrintf("DEBUG: About to call SetDrawLayer for connectors")
 	SetDrawLayer(nil, 20)
+	ConPrintf("DEBUG: SetDrawLayer completed, about to draw tree.connectors")
 	for _, connector in pairs(tree.connectors) do
 		renderConnector(connector)
 	end
+	ConPrintf("DEBUG: tree.connectors drawn, about to draw subGraph connectors")
 	for _, subGraph in pairs(spec.subGraphs) do
 		for _, connector in pairs(subGraph.connectors) do
 			renderConnector(connector)
 		end
 	end
+	ConPrintf("DEBUG: All connectors drawn successfully")
 
+	ConPrintf("DEBUG: Checking showHeatMap, value=%s", tostring(self.showHeatMap))
 	if self.showHeatMap then
+		ConPrintf("DEBUG: Building heat map power")
 		-- Build the power numbers if needed
 		build.calcsTab:BuildPower()
 		self.heatMapStat = build.calcsTab.powerStat
+		ConPrintf("DEBUG: Heat map power built")
 	end
 
+	ConPrintf("DEBUG: Checking cached node data update, searchStrCached=%s searchStr=%s",
+		tostring(self.searchStrCached), tostring(self.searchStr))
 	-- Update cached node data
 	if self.searchStrCached ~= self.searchStr or self.searchNeedsForceUpdate == true then
+		ConPrintf("DEBUG: Updating cached node data")
 		self.searchStrCached = self.searchStr
 		self.searchNeedsForceUpdate = false
 
@@ -735,9 +841,14 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 		for nodeId, node in pairs(tree.nodes) do
 			self.searchStrResults[nodeId] = #self.searchParams > 0 and self:DoesNodeMatchSearchParams(node)
 		end
+		ConPrintf("DEBUG: Cached node data updated")
 	end
+	ConPrintf("DEBUG: Cached node data section complete")
 
+	ConPrintf("DEBUG: Checking devModeAlt, value=%s hoverNode=%s",
+		tostring(launch.devModeAlt), hoverNode and hoverNode.dn or "nil")
 	if launch.devModeAlt and hoverNode then
+		ConPrintf("DEBUG: Drawing dev mode orbits")
 		-- Draw orbits of the group node
 		local groupNode = hoverNode.group
 		SetDrawLayer(nil, 80)
@@ -774,19 +885,32 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 			end
 		end
 	end
+	ConPrintf("DEBUG: devMode section complete")
 
 	-- calculate inc from SmallPassiveSkillEffect
+	ConPrintf("DEBUG: Calculating SmallPassiveSkillEffect, allocNodes count=%d",
+		spec.allocNodes and #spec.allocNodes or 0)
 	local incSmallPassiveSkillEffect = 0
 	for _, node in pairs(spec.allocNodes) do
-		incSmallPassiveSkillEffect = incSmallPassiveSkillEffect + node.modList:Sum("INC", nil ,"SmallPassiveSkillEffect")
+		-- MINIMAL mode fix: Guard against missing modList after class switch (same pattern as Phase 2)
+		if node.modList then
+			incSmallPassiveSkillEffect = incSmallPassiveSkillEffect + node.modList:Sum("INC", nil ,"SmallPassiveSkillEffect")
+		end
 	end
+	ConPrintf("DEBUG: SmallPassiveSkillEffect calculated, value=%d", incSmallPassiveSkillEffect)
 
 	-- Draw the nodes
 	-- ★ METATABLE FIX: Use spec.nodes (now plain tables without metatables)
 	-- spec.nodes has both tree data AND allocation state (alloc field)
 
+	ConPrintf("DEBUG: Starting main node rendering loop")
 	-- Draw the nodes using standard pairs() iteration
+	local nodeRenderCount = 0
 	for nodeId, node in pairs(spec.nodes) do
+		nodeRenderCount = nodeRenderCount + 1
+		if nodeRenderCount == 1 or nodeRenderCount % 1000 == 0 then
+			ConPrintf("DEBUG: Rendering node %d...", nodeRenderCount)
+		end
 		-- Filtering already done in PassiveSpec.lua
 		if node and node.group then
 			-- Determine the base and overlay images for this node based on type and state
@@ -1080,7 +1204,9 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 				end
 
 			end
-			if node == hoverNode and (node.type ~= "Socket" or not IsKeyDown("SHIFT")) and not IsKeyDown("CTRL") and not main.popups[1] then
+			-- MINIMAL mode: Tooltip disabled to prevent crashes
+			-- TODO: Re-enable after fixing all tooltip dependencies
+			if false and node == hoverNode and (node.type ~= "Socket" or not (IsKeyDown("SHIFT") == 1)) and not (IsKeyDown("CTRL") == 1) and not main.popups[1] then
 				-- Draw tooltip
 				SetDrawLayer(nil, 100)
 				local size = m_floor(node.size * scale)
@@ -1092,6 +1218,7 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 			end
 		end
 	end
+	ConPrintf("DEBUG: Main node rendering loop complete, rendered %d nodes", nodeRenderCount)
 	if self.showNodeCenter and nearestNode and nearestNode.x and nearestNode.y then
 		local cx, cy = treeToScreen(nearestNode.x, nearestNode.y)
 		SetDrawColor(1, 0, 0, 1)
@@ -1203,6 +1330,7 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 			end
 		end
 	end
+	ConPrintf("DEBUG: PassiveTreeView:Draw() completed successfully")
 end
 
 -- Draws the given asset at the given position

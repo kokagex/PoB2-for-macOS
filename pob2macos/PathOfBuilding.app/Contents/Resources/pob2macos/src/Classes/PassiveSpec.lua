@@ -1239,7 +1239,8 @@ function PassiveSpecClass:BuildAllDependsAndPaths()
 	for id, node in pairs(self.allocNodes) do
 		if node.ascendancyName then -- avoid processing potentially replaceable nodes
 			self.tree:ProcessStats(node)
-			if node.modList:HasMod("LIST", nil, "AllocateFromNodeRadius") then
+			-- MINIMAL mode fix: Guard against missing modList after ProcessStats
+			if node.modList and node.modList:HasMod("LIST", nil, "AllocateFromNodeRadius") then
 				for _, radius in ipairs(node.modList:List(nil, "AllocateFromNodeRadius")) do
 					t_insert(intuitiveLeapLikeNodes, radius)
 				end
@@ -1841,7 +1842,10 @@ function PassiveSpecClass:ReconnectNodeToClassStart(node)
 	for _, linkedNodeId in ipairs(node.linkedId) do
 		for classId, class in pairs(self.tree.classes) do
 			if linkedNodeId == class.startNodeId and node.type == "Normal" then
-				node.modList:NewMod("Condition:ConnectedTo"..class.name.."Start", "FLAG", true, "Tree:"..linkedNodeId)
+				-- MINIMAL mode fix: Guard against missing modList
+				if node.modList then
+					node.modList:NewMod("Condition:ConnectedTo"..class.name.."Start", "FLAG", true, "Tree:"..linkedNodeId)
+				end
 			end
 		end
 	end
