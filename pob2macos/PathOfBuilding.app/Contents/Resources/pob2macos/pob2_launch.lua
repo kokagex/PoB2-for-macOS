@@ -134,11 +134,92 @@ _G.GetVirtualScreenSize = function()
     return _G.GetScreenSize()
 end
 
--- Stage 4: NewFileSearch stub - returns nil (no files found)
-_G.NewFileSearch = function(path, ext)
-    -- Stub implementation - returns nil to indicate no files found
-    -- This prevents BuildList from trying to iterate over non-existent builds
-    return nil
+-- NewFileSearch: File search implementation using shell commands
+_G.NewFileSearch = function(pattern, foldersOnly)
+    -- Parse the pattern to extract directory and file pattern
+    -- Pattern format: "/path/to/dir/*.xml" or "/path/to/dir/*" (for folders)
+    local dir = pattern:match("^(.*)/[^/]*$") or "."
+    local filePattern = pattern:match("/([^/]*)$") or pattern
+
+    -- Convert wildcard pattern to shell glob
+    -- Replace Lua pattern with shell pattern
+    filePattern = filePattern:gsub("%*", ".*")
+
+    -- Build find command
+    local cmd
+    if foldersOnly then
+        -- Search for directories only
+        cmd = string.format('find "%s" -maxdepth 1 -type d -not -path "%s" 2>/dev/null', dir, dir)
+    else
+        -- Search for files matching pattern
+        cmd = string.format('find "%s" -maxdepth 1 -type f 2>/dev/null', dir)
+    end
+
+    -- Execute command and collect results
+    local handle = io.popen(cmd)
+    if not handle then
+        return nil
+    end
+
+    local files = {}
+    for line in handle:lines() do
+        local fileName = line:match("([^/]+)$")
+        if fileName then
+            -- Apply file pattern filter for files (not folders)
+            if foldersOnly or fileName:match(filePattern) then
+                table.insert(files, {
+                    fullPath = line,
+                    fileName = fileName
+                })
+            end
+        end
+    end
+    handle:close()
+
+    -- Return nil if no files found
+    if #files == 0 then
+        return nil
+    end
+
+    -- Create file search handle object
+    local fileSearchHandle = {
+        files = files,
+        index = 1,
+        currentFile = files[1]
+    }
+
+    function fileSearchHandle:GetFileName()
+        return self.currentFile and self.currentFile.fileName or nil
+    end
+
+    function fileSearchHandle:GetFileModifiedTime()
+        if not self.currentFile then
+            return 0
+        end
+
+        -- Get file modification time using stat
+        local cmd = string.format('stat -f "%%m" "%s" 2>/dev/null', self.currentFile.fullPath)
+        local handle = io.popen(cmd)
+        if handle then
+            local result = handle:read("*l")
+            handle:close()
+            return tonumber(result) or 0
+        end
+        return 0
+    end
+
+    function fileSearchHandle:NextFile()
+        self.index = self.index + 1
+        if self.index <= #self.files then
+            self.currentFile = self.files[self.index]
+            return true
+        else
+            self.currentFile = nil
+            return false
+        end
+    end
+
+    return fileSearchHandle
 end
 
 _G.SetClearColor = sg.SetClearColor
