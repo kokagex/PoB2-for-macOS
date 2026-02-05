@@ -167,7 +167,8 @@
       "Bash(/opt/homebrew/bin/luajit:*)",
       "Bash(if [ -f /tmp/pob_crash_log.txt ])",
       "Bash(then)",
-      "Bash(else)"
+      "Bash(else)",
+      "Bash(for file in /Users/kokage/national-operations/pob2macos/PathOfBuilding.app/Contents/Resources/pob2macos/src/Data/Skills/*.lua)"
     ]
   }
 }
