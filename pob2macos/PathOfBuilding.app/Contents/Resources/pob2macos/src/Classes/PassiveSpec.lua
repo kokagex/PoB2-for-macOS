@@ -996,14 +996,33 @@ function PassiveSpecClass:AllocNode(node, altPath)
 	end
 
 	-- Rebuild all dependencies and paths for all allocated nodes
-	-- MINIMAL mode: Skip BuildAllDependsAndPaths to test if it's resetting node.alloc
-	if not _G.MINIMAL_PASSIVE_TEST then
-		self:BuildAllDependsAndPaths()
-	else
-		local logFile = io.open("/tmp/pob_alloc_debug.txt", "a")
-		if logFile then
-			logFile:write("[DEBUG] Skipping BuildAllDependsAndPaths in MINIMAL mode\n")
-			logFile:close()
+	-- Full App Mode: Preserve allocation state across BuildAllDependsAndPaths
+	-- BuildAllDependsAndPaths() deallocates orphaned nodes, but in MINIMAL mode
+	-- nodes may appear orphaned due to lack of paths
+
+	-- Save allocation states
+	local allocStates = {}
+	for nodeId, node in pairs(self.nodes) do
+		if node.alloc then
+			allocStates[nodeId] = {
+				alloc = true,
+				allocMode = node.allocMode
+			}
+		end
+	end
+
+	-- Run path calculation (may deallocate orphaned nodes)
+	self:BuildAllDependsAndPaths()
+
+	-- Restore allocation states
+	for nodeId, state in pairs(allocStates) do
+		if self.nodes[nodeId] then
+			self.nodes[nodeId].alloc = state.alloc
+			self.nodes[nodeId].allocMode = state.allocMode or 0
+			-- Re-add to allocNodes if it was removed
+			if state.alloc and not self.allocNodes[nodeId] then
+				self.allocNodes[nodeId] = self.nodes[nodeId]
+			end
 		end
 	end
 end

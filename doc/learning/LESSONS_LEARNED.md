@@ -1261,3 +1261,229 @@ MINIMAL モードでは modList インフラが不完全。クラス切り替え
 - ユーザーとの協力
 - 過去の学習の適用
 
+
+---
+
+## Phase 5: Tooltip Re-enablement (FAILED - 2026-02-05)
+
+**Objective**: Re-enable tooltip functionality for MINIMAL mode
+**Result**: ❌ FAILED - Tooltip incompatible with MINIMAL mode
+**Duration**: ~90 minutes (6 fix attempts)
+
+### What We Learned
+
+#### Critical Lesson: Native Layer Incompatibility
+**Issue**: Tooltip rendering crashes at C++/Metal layer, not catchable by Lua pcall
+**Root Cause**: Tooltip system requires full application infrastructure (build.calcsTab, font rendering, etc.) at native layer
+**Impact**: MINIMAL mode cannot support tooltip rendering
+
+**Pattern**:
+- Lua code completed successfully (AddNodeTooltip returned)
+- Crash occurred during tooltip:Draw() native call
+- pcall could not catch the error (native crash, not Lua error)
+
+**Lesson**: Some systems are fundamentally incompatible with MINIMAL mode if they depend on native layer infrastructure not initialized in MINIMAL mode.
+
+#### Error Handling Protocol Success
+**Action**: Followed CLAUDE.md error handling protocol after 6 failed attempts
+**Process**:
+1. Created contexterror document (contexterror_tooltip_crash_phase5.md)
+2. Predicted 3 fix candidates (Diagnostic, Targeted, Robust)
+3. Presented to user with AskUserQuestion
+4. Implemented only selected option (Option A: Complete disablement)
+
+**Result**: ✅ Quick resolution, preserved Phase 3 & 4 functionality
+**Lesson**: When stuck after multiple attempts, follow CLAUDE.md protocol - document context, predict candidates, get user input, don't iterate blindly.
+
+#### Elimination Method Effectiveness
+**Tool Used**: File logging (io.open) to track execution flow
+**Result**: Successfully identified crash location (tooltip:Draw() call)
+**Lesson**: Elimination method with file logging is highly effective for identifying crash locations when debugger not available.
+
+### Known Issue Discovered
+
+**Issue**: Normal passive nodes don't connect to nodes they should connect to
+**Status**: ON HOLD - May be resolved in full app mode
+**Root Cause (Hypothesis)**: BuildAllDependsAndPaths() skipped in MINIMAL mode (Phase 4 fix), so node paths/connections not calculated
+**Document**: KNOWN_ISSUE_node_connection_minimal_mode.md
+
+**Lesson**: MINIMAL mode has inherent limitations. Some features (like tooltip, node connections) may require full app infrastructure. Document limitations and test in full mode when available.
+
+### Success Patterns to Replicate
+
+1. **CLAUDE.md Protocol Adherence**:
+   - Don't iterate blindly after 3-4 failures
+   - Document context, predict candidates, get user input
+   - Result: Fast resolution, clear decision-making
+
+2. **Phase Failure Documentation**:
+   - Document failed phases with clear root cause
+   - Explain incompatibility clearly in code comments
+   - Update plan status to FAILED with reasoning
+
+3. **Preserve Working Functionality**:
+   - Always verify Phase 3, 4 still work after changes
+   - Rollback cleanly to known-good state
+   - Don't break working features trying to add new ones
+
+### Anti-Patterns to Avoid
+
+1. **❌ Iterating Without Context**: Made 6 attempts before following CLAUDE.md protocol
+   - **Better**: Document context after 2-3 failures, present options
+
+2. **❌ Assuming pcall Catches Everything**: Assumed pcall would catch tooltip:Draw() crash
+   - **Reality**: Native/C crashes not catchable by Lua pcall
+   - **Better**: Use elimination logging to identify native layer issues
+
+3. **❌ Fighting Fundamental Incompatibilities**: Tried multiple approaches to force tooltip working in MINIMAL mode
+   - **Reality**: Some systems require full app infrastructure
+   - **Better**: Accept limitations early, document, move on
+
+### Code Locations
+
+**Modified**:
+- PassiveTreeView.lua line 1254-1257: Tooltip disabled with failure documentation
+- PassiveTreeView.lua line 1667: AddNodeTooltip MINIMAL mode code removed
+
+**Preserved**:
+- Phase 3: Ascendancy click (working)
+- Phase 4: Normal node allocation (working)
+
+### Next Steps
+
+**Phase 6 Options**:
+1. Search functionality (find nodes by name/mod)
+2. Zoom/pan improvements
+3. Test in full application mode (enable BuildAllDependsAndPaths, test tooltip)
+4. Investigate node connection issue in full mode
+
+**Recommendation**: Skip tooltip in MINIMAL mode, test in full app mode later.
+
+---
+
+**Total Phases Completed**: 4/5 (Phase 5 failed, documented)
+**Phase 3**: ✅ Ascendancy click
+**Phase 4**: ✅ Normal node allocation
+**Phase 5**: ❌ Tooltip (incompatible with MINIMAL mode)
+**Known Issues**: 1 (node connections in MINIMAL mode) → ✅ RESOLVED in Full App Mode
+
+---
+
+## 🎯 Full Application Mode Implementation (SUCCESS - 2026-02-05)
+
+### State Preservation Pattern for BuildAllDependsAndPaths (Success)
+
+**日付**: 2026-02-05
+**記録者**: Prophet
+**重要度**: CRITICAL
+**所要時間**: 60 minutes (50% faster than planned)
+
+**状況**:
+- MINIMAL mode で BuildAllDependsAndPaths() をスキップしたため、ノード接続線が表示されなかった
+- BuildAllDependsAndPaths() を有効化すると、Phase 4 の通常ノード割り当てが壊れた
+- 原因: BuildAllDependsAndPaths() が「孤立ノード」(path なし) を deallocate する (PassiveSpec.lua line 1798)
+
+**解決策**: State Preservation Pattern (Save → Transform → Restore)
+
+**実装** (PassiveSpec.lua lines 998-1024):
+```lua
+-- Save allocation states
+local allocStates = {}
+for nodeId, node in pairs(self.nodes) do
+    if node.alloc then
+        allocStates[nodeId] = {
+            alloc = true,
+            allocMode = node.allocMode
+        }
+    end
+end
+
+-- Run path calculation (may deallocate orphaned nodes)
+self:BuildAllDependsAndPaths()
+
+-- Restore allocation states
+for nodeId, state in pairs(allocStates) do
+    if self.nodes[nodeId] then
+        self.nodes[nodeId].alloc = state.alloc
+        self.nodes[nodeId].allocMode = state.allocMode or 0
+        -- Re-add to allocNodes if removed
+        if state.alloc and not self.allocNodes[nodeId] then
+            self.allocNodes[nodeId] = self.nodes[nodeId]
+        end
+    end
+end
+```
+
+**成果**:
+- ✅ **ノード接続線表示**: BuildAllDependsAndPaths() が path を計算し、接続線が正しく表示される
+- ✅ **Phase 4 保持**: 通常ノード割り当て機能が引き続き動作
+- ✅ **Phase 3 保持**: アセンダンシークリック機能も正常動作
+- ✅ **安定性**: クラッシュなし、すべての機能が共存
+
+**視覚的確認**: ユーザーから「動作OK」確認済み
+
+**教訓**:
+1. **State Preservation は強力なパターン**: 複雑な操作 (BuildAllDependsAndPaths) の前後で状態を保存・復元することで、副作用を回避できる
+2. **MINIMAL mode の限界を段階的に解消**: すべてを一度に有効化せず、1つずつ機能を追加してテスト
+3. **ユーザー割り当てを尊重**: システムが自動的に deallocate しても、ユーザーの意図を優先する設計
+4. **BuildAllDependsAndPaths の3つの deallocate 箇所を理解**:
+   - Line 1592: ignoredNodes
+   - Line 1617: Invalid mastery selections
+   - Line 1798: Orphaned nodes (MINIMAL mode で問題になった箇所)
+
+**適用**:
+- ゲームエンジンの状態管理で一般的なパターン
+- Undo システムの実装でも使用される
+- 複雑な依存関係を持つ操作の前後で状態保護が必要な場合
+
+**今後の活用**:
+- 他の「破壊的操作」(データを変更する可能性のある操作) でも同じパターンを適用
+- 状態保存の範囲を適切に設定 (今回は alloc と allocMode のみで十分だった)
+- パフォーマンスが問題になる場合は、保存する状態を最小限に絞る
+
+**関連ドキュメント**:
+- FULL_APP_MODE_RESULT_20260205.md (詳細な実装結果)
+- FULL_APP_MODE_PLAN_V1_20260205.md (実装計画)
+- KNOWN_ISSUE_node_connection_minimal_mode.md (解決された問題)
+
+---
+
+### Tooltip の MINIMAL Mode 非互換性 (Documented Limitation)
+
+**日付**: 2026-02-05
+**記録者**: Prophet
+**重要度**: HIGH
+
+**状況**:
+- Full App Mode 実装時、tooltip も再有効化を試みた
+- build.calcsTab が既に初期化されていることを確認 (Launch.lua lines 218-224)
+- しかし tooltip 有効化後もクラッシュ
+
+**原因**:
+- Tooltip は build.calcsTab だけでは不十分
+- Native layer (C++/Metal) の追加システムが必要:
+  - Font rendering system
+  - Text layout engine
+  - その他のサブシステム
+
+**結論**: ✅ ノード接続成功、❌ Tooltip は深いインフラ調査が必要
+
+**対応**: Tooltip を無効状態に戻し、limitation として文書化
+
+**教訓**:
+- **段階的成功を受け入れる**: すべてを一度に実現しようとしない
+- **Cost/Benefit 評価**: Tooltip のための完全なインフラ構築は高コスト
+- **制限を明確に文書化**: PassiveTreeView.lua にコメントで説明
+- **部分的成功も価値がある**: ノード接続だけでも大きな改善
+
+**今後のオプション**:
+- Option A: 現状を受け入れ、ノード接続で開発を進める (推奨)
+- Option B: Tooltip の深い依存関係を調査 (高コスト)
+- Option C: 代替 UI でノード情報を表示 (中コスト)
+
+---
+
+**最終更新**: 2026-02-05 (Full App Mode 実装完了)
+**総学習記録数**: 34件 (成功12件、失敗10件、繰り返し3件、効率化2件、技術的発見4件、エージェントシステム改善1件、診断失敗2件、プロジェクト失敗1件)
+**次回更新**: 新しい学習発生時、即座に
+

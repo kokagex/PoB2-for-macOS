@@ -1251,17 +1251,35 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 				end
 
 			end
-			-- MINIMAL mode: Tooltip disabled to prevent crashes
-			-- TODO: Re-enable after fixing all tooltip dependencies
+			-- Tooltip DISABLED: Still requires deeper infrastructure
+			-- Confirmed: build.calcsTab exists but tooltip still crashes at native layer
+			-- Conclusion: Tooltip needs more than just build.calcsTab
 			if false and node == hoverNode and (node.type ~= "Socket" or not (IsKeyDown("SHIFT") == 1)) and not (IsKeyDown("CTRL") == 1) and not main.popups[1] then
 				-- Draw tooltip
 				SetDrawLayer(nil, 100)
 				local size = m_floor(node.size * scale)
-				if self.tooltip:CheckForUpdate(node, self.showStatDifferences, self.tracePath, launch.devModeAlt, build.outputRevision, build.spec.allocMode) then
+				-- MINIMAL mode: Use safe defaults for CheckForUpdate parameters
+				local outputRev = build and build.outputRevision or 0
+				local allocMode = build and build.spec and build.spec.allocMode or 0
+				if self.tooltip:CheckForUpdate(node, self.showStatDifferences, self.tracePath, launch.devModeAlt, outputRev, allocMode) then
 					self:AddNodeTooltip(self.tooltip, node, build, incSmallPassiveSkillEffect)
 				end
 				self.tooltip.center = true
-				self.tooltip:Draw(m_floor(scrX - size), m_floor(scrY - size), size * 2, size * 2, viewPort)
+
+				-- MINIMAL mode: Wrap Draw in pcall to catch errors
+				local success, err = pcall(function()
+					self.tooltip:Draw(m_floor(scrX - size), m_floor(scrY - size), size * 2, size * 2, viewPort)
+				end)
+
+				if not success then
+					local logFile = io.open("/tmp/pob_tooltip_error.txt", "w")
+					if logFile then
+						logFile:write("TOOLTIP DRAW ERROR:\n")
+						logFile:write(tostring(err) .. "\n")
+						logFile:close()
+					end
+					ConPrintf("ERROR: Tooltip Draw failed: %s", tostring(err))
+				end
 			end
 		end
 	end
