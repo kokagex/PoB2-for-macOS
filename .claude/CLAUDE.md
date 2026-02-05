@@ -4,18 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Mandatory Routine (MUST EXECUTE EVERY TIME)
 
-**CRITICAL**: Before ANY task execution, Prophet MUST execute the `/routine` skill.
+**CRITICAL**: Before ANY task execution, MUST execute the `/routine` skill.
 
 **Quick Reference**:
 - **Skill Command**: `/routine`
 - **Definition**: See `.claude/SKILL.md`
-- **Purpose**: Load learning data, agent hierarchy, create plan, review, request approval
+- **Purpose**: Load learning data, create plan, review, request approval
 - **Context Savings**: ~80-90% reduction vs. manual execution
 
 **Why This Routine Exists**:
 - Past failure: 3 days of work with zero visual progress
 - Key lesson: Never assume success without verification
-- Hierarchy: Prophet → Mayor → Specialized Agents
 - Quality: Plan → Review → Approve → Execute
 
 <!--
@@ -29,10 +28,10 @@ Original 5-phase routine:
 2. Review critical lessons (CRITICAL_FAILURE_ANALYSIS.md, LESSONS_LEARNED.md)
 3. Document current task context in `./doc/learning/`
 
-### Phase 2: Agentsフォルダ全読み込み
-1. Read ALL files in `./doc/agents/` directory
-2. Confirm agent hierarchy and responsibilities (00_overview.md)
-3. Identify appropriate agents for current task
+### Phase 2: プロジェクト構造確認
+1. Review project constraints and requirements
+2. Confirm technical constraints (LuaJIT 5.1, Metal pipeline, etc.)
+3. Identify task type and affected areas
 
 ### Phase 3: 計画書作成
 1. Create detailed implementation plan in `./doc/learning/`
@@ -41,7 +40,7 @@ Original 5-phase routine:
 
 ### Phase 4: レビュー実行
 1. Create review document evaluating the plan
-2. Check: learning integration, agent hierarchy, technical accuracy, risks
+2. Check: learning integration, role clarity, technical accuracy, risks
 3. Apply auto-approval criteria (6-point check)
 
 ### Phase 5: 神への認可申請
