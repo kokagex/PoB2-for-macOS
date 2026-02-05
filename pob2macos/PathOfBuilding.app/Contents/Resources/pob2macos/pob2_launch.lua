@@ -20,19 +20,27 @@ ffi.cdef[[
     void Shutdown(void);
     int IsUserTerminated(void);
     void ProcessEvents(void);
+    double GetTime(void);
+    void Exit(void);
+    void Restart(void);
 
     // Window management
     void SetWindowTitle(const char* title);
     void GetScreenSize(int* width, int* height);
+    double GetScreenScale(void);
+    int GetDPIScaleOverridePercent(void);
+    void SetDPIScaleOverridePercent(int percent);
     void SetClearColor(float r, float g, float b, float a);
     void SetViewport(int x, int y, int width, int height);
 
     // Drawing
     void SetDrawColor(float r, float g, float b, float a);
+    void GetDrawColor(float* r, float* g, float* b, float* a);
     void SetDrawLayer(int layer, int subLayer);
     void DrawString(int left, int top, int align, int height, const char* font, const char* text);
     int DrawStringWidth(int height, const char* font, const char* text);
     int DrawStringCursorIndex(int height, const char* font, const char* text, int cursorX, int cursorY);
+    const char* StripEscapes(const char* text);
     void DrawImage(void* imageHandle, float left, float top, float width, float height,
                    float tcLeft, float tcTop, float tcRight, float tcBottom);
     void DrawImageQuad(void* imageHandle, float x1, float y1, float x2, float y2,
@@ -54,27 +62,51 @@ ffi.cdef[[
     int IsKeyDown(const char* key);
     void GetCursorPos(int* x, int* y);
     int GetMouseWheelDelta(void);
+    void SetCursorPos(int x, int y);
+    void ShowCursor(int show);
 
-    // Utility
-    double GetTime(void);
-    void* LoadModule(const char* fileName, void* luaState);
-    void* PLoadModule(const char* fileName, void* luaState);
-    void SetMainObject(void* obj);
+    // Clipboard
+    void Copy(const char* text);
+    const char* Paste(void);
+    void SetClipboard(const char* text);
 
-    // Console
-    void ConExecute(const char* cmd);
-    void ConPrintf(const char* fmt, ...);
-    void ConClear(void);
+    // System Integration
+    void OpenURL(const char* url);
+    int SpawnProcess(const char* command);
+    void TakeScreenshot(const char* filename);
 
-    // File system (return const char*)
+    // File System
     const char* GetScriptPath(void);
     const char* GetRuntimePath(void);
     const char* GetUserPath(void);
+    const char* GetWorkDir(void);
     void SetWorkDir(const char* path);
     int MakeDir(const char* path);
     int RemoveDir(const char* path);
 
-    // sleep
+    // Console
+    void ConPrintf(const char* fmt, ...);
+    void ConPrintTable(void* luaState, int index);
+    void ConExecute(const char* cmd);
+    void ConClear(void);
+
+    // Lua Integration
+    void SetMainObject(void* luaState);
+    int PCall(void* luaState, int nargs, int nresults);
+    int LoadModule(const char* moduleName, void* luaState);
+    int PLoadModule(const char* moduleName, void* luaState);
+    int LaunchSubScript(const char* scriptName, void* luaState);
+    void AbortSubScript(int handle);
+    int IsSubScriptRunning(int handle);
+
+    // Compression
+    const char* Inflate(const char* data, int dataLen, int* outLen);
+    const char* Deflate(const char* data, int dataLen, int* outLen);
+
+    // Profiling
+    void SetProfiling(int enabled);
+
+    // sleep (POSIX)
     int usleep(unsigned int usec);
 ]]
 
@@ -363,9 +395,140 @@ end
 _G.GetUserPath = function()
     return ffi.string(sg.GetUserPath())
 end
+_G.GetWorkDir = function()
+    return ffi.string(sg.GetWorkDir())
+end
 _G.SetWorkDir = sg.SetWorkDir
 _G.MakeDir = sg.MakeDir
 _G.RemoveDir = sg.RemoveDir
+
+-- System lifecycle
+_G.Exit = sg.Exit
+_G.Restart = sg.Restart
+
+-- Window & DPI management
+_G.GetScreenScale = sg.GetScreenScale
+_G.GetDPIScaleOverridePercent = sg.GetDPIScaleOverridePercent
+_G.SetDPIScaleOverridePercent = sg.SetDPIScaleOverridePercent
+
+-- Drawing state queries
+_G.GetDrawColor = function()
+    local r = ffi.new("float[1]")
+    local g = ffi.new("float[1]")
+    local b = ffi.new("float[1]")
+    local a = ffi.new("float[1]")
+    sg.GetDrawColor(r, g, b, a)
+    return r[0], g[0], b[0], a[0]
+end
+
+-- Text rendering
+-- Note: StripEscapes already implemented as Lua function above
+
+-- Input management
+_G.SetCursorPos = sg.SetCursorPos
+_G.ShowCursor = sg.ShowCursor
+
+-- Clipboard operations
+_G.Copy = sg.Copy
+_G.Paste = function()
+    local result = sg.Paste()
+    return result ~= nil and ffi.string(result) or ""
+end
+_G.SetClipboard = sg.SetClipboard
+
+-- System integration
+_G.OpenURL = sg.OpenURL
+_G.SpawnProcess = sg.SpawnProcess
+_G.TakeScreenshot = sg.TakeScreenshot
+
+-- Console
+_G.ConPrintTable = function(tbl, indent)
+    -- Lua implementation since ConPrintTable needs Lua state access
+    indent = indent or 0
+    local prefix = string.rep("  ", indent)
+    if type(tbl) ~= "table" then
+        ConPrintf("%s%s", prefix, tostring(tbl))
+        return
+    end
+    for k, v in pairs(tbl) do
+        if type(v) == "table" then
+            ConPrintf("%s%s:", prefix, tostring(k))
+            _G.ConPrintTable(v, indent + 1)
+        else
+            ConPrintf("%s%s: %s", prefix, tostring(k), tostring(v))
+        end
+    end
+end
+
+-- Lua integration (sub-scripts)
+_G.LaunchSubScript = sg.LaunchSubScript
+_G.AbortSubScript = sg.AbortSubScript
+_G.IsSubScriptRunning = sg.IsSubScriptRunning
+
+-- Compression
+_G.Inflate = function(data, dataLen)
+    local outLen = ffi.new("int[1]")
+    local result = sg.Inflate(data, dataLen or #data, outLen)
+    if result ~= nil then
+        return ffi.string(result, outLen[0])
+    end
+    return nil
+end
+_G.Deflate = function(data, dataLen)
+    local outLen = ffi.new("int[1]")
+    local result = sg.Deflate(data, dataLen or #data, outLen)
+    if result ~= nil then
+        return ffi.string(result, outLen[0])
+    end
+    return nil
+end
+
+-- Profiling
+_G.SetProfiling = sg.SetProfiling
+
+-- ImageHandle methods (export to global for direct access)
+_G.ImageHandle_Load = function(handle, filename, async)
+    if type(handle) == "table" and handle._handle then
+        return sg.ImageHandle_Load(handle._handle, filename, async or 0)
+    end
+    return sg.ImageHandle_Load(handle, filename, async or 0)
+end
+_G.ImageHandle_LoadArrayLayer = function(handle, filename, layerIndex)
+    if type(handle) == "table" and handle._handle then
+        return sg.ImageHandle_LoadArrayLayer(handle._handle, filename, layerIndex)
+    end
+    return sg.ImageHandle_LoadArrayLayer(handle, filename, layerIndex)
+end
+_G.ImageHandle_Unload = function(handle)
+    if type(handle) == "table" and handle._handle then
+        sg.ImageHandle_Unload(handle._handle)
+    else
+        sg.ImageHandle_Unload(handle)
+    end
+end
+_G.ImageHandle_IsValid = function(handle)
+    if type(handle) == "table" and handle._handle then
+        return sg.ImageHandle_IsValid(handle._handle) ~= 0
+    end
+    return sg.ImageHandle_IsValid(handle) ~= 0
+end
+_G.ImageHandle_ImageSize = function(handle)
+    local w = ffi.new("int[1]")
+    local h = ffi.new("int[1]")
+    if type(handle) == "table" and handle._handle then
+        sg.ImageHandle_ImageSize(handle._handle, w, h)
+    else
+        sg.ImageHandle_ImageSize(handle, w, h)
+    end
+    return w[0], h[0]
+end
+_G.ImageHandle_SetLoadingPriority = function(handle, priority)
+    if type(handle) == "table" and handle._handle then
+        sg.ImageHandle_SetLoadingPriority(handle._handle, priority)
+    else
+        sg.ImageHandle_SetLoadingPriority(handle, priority)
+    end
+end
 
 print("✓ Global functions registered")
 
