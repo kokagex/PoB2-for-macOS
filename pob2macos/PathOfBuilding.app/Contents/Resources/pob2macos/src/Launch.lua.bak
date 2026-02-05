@@ -1,0 +1,360 @@
+-- Launch.lua - Passive Tree Display Test
+-- Purpose: Render the passive tree view to verify TreeData + draw pipeline
+
+print("=== Passive Tree Display Test ===")
+
+-- Debug log file for MINIMAL mode
+local debugLogFile = io.open("/tmp/pob_debug.log", "a")
+
+function ConPrintf(fmt, ...)
+    local msg = string.format(fmt, ...)
+    print(msg)
+    -- Also write to debug log file
+    if debugLogFile then
+        debugLogFile:write(os.date("[%Y-%m-%d %H:%M:%S] ") .. msg .. "\n")
+        debugLogFile:flush()
+    end
+end
+
+-- Minimal launch state expected by Common.lua
+launch = {
+    devMode = true,
+    devModeAlt = false,
+}
+
+-- Define colorCodes globally (needed by tooltips before OnInit runs)
+colorCodes = {
+    NORMAL = "^xC8C8C8", MAGIC = "^x8888FF", RARE = "^xFFFF77", UNIQUE = "^xAF6025",
+    RELIC = "^x60C060", GEM = "^x1AA29B", PROPHECY = "^xB54BFF", CURRENCY = "^xAA9E82",
+    ENCHANTED = "^xB8DAF1", CUSTOM = "^x5CF0BB", SOURCE = "^x88FFFF",
+    UNSUPPORTED = "^xF05050", WARNING = "^xFF9922", TIP = "^x80A080",
+    FIRE = "^xB97123", COLD = "^x3F6DB3", LIGHTNING = "^xADAA47", CHAOS = "^xD02090",
+    POSITIVE = "^x33FF77", NEGATIVE = "^xDD0022", HIGHLIGHT = "^xFF0000",
+    OFFENCE = "^xE07030", DEFENCE = "^x8080E0",
+    WARRIOR = "^xE05030", HUNTRESS = "^x70FF70", SORCERESS = "^x7070FF",
+    MERCENARY = "^xE0E070", MONK = "^x30C0D0", DRUID = "^xC040FF",
+}
+
+-- Prefer app bundle sources; fall back to dev sources if missing
+local devRoot = "../../../../dev/pob2-original/src"
+
+local function loadLuaFile(path, ...)
+    local file = io.open(path, "r")
+    if not file then
+        return false, "not_found"
+    end
+    file:close()
+    local chunk, err = loadfile(path)
+    if not chunk then
+        return true, err
+    end
+    local ok, result = pcall(chunk, ...)
+    if not ok then
+        return true, result
+    end
+    return true, nil, result
+end
+
+function LoadModule(modulePath, ...)
+    local candidates = {
+        "src/" .. modulePath .. ".lua",
+        devRoot .. "/" .. modulePath .. ".lua",
+    }
+    for _, path in ipairs(candidates) do
+        local loaded, err, result = loadLuaFile(path, ...)
+        if loaded then
+            if err then
+                ConPrintf("ERROR loading module '%s' from %s: %s", modulePath, path, tostring(err))
+                return nil
+            end
+            return result
+        end
+    end
+    ConPrintf("ERROR: Module not found: %s", modulePath)
+    return nil
+end
+
+function PLoadModule(modulePath)
+    local result = LoadModule(modulePath)
+    if result == nil then
+        return "Module load failed: " .. tostring(modulePath), nil
+    end
+    return nil, result
+end
+
+function launch:OnInit()
+    -- Initialize renderer
+    ConPrintf("Initializing renderer...")
+    RenderInit("")
+
+    self.screenWidth, self.screenHeight = GetScreenSize()
+    ConPrintf("Screen size: %dx%d", self.screenWidth, self.screenHeight)
+    SetWindowTitle("PASSIVE TREE TEST")
+
+    -- Load core modules (prefer app bundle, fallback to dev)
+    LoadModule("GameVersions")
+    LoadModule("Modules/Common")     -- newClass(), copyTable(), copyTableElements()
+
+    -- Initialize data table for PoE2
+    data = {}
+    LoadModule("Data/Misc", data)    -- Load PoE2 data (characterConstants, gameConstants, etc.)
+
+    -- Note: Can't load full Modules/Data or Modules/ModTools yet - they have PoE1 vs PoE2 incompatibilities
+    -- Will integrate these in Phase 2.2 after adapting for PoE2
+
+    -- Keep minimal mode during spec creation to avoid full app dependencies
+    _G.MINIMAL_PASSIVE_TEST = true
+
+    -- Add PoE2-specific jewelRadii data
+    data.jewelRadii = {
+        ["0_1"] = {
+            { inner = 0, outer = 1000, col = "^xBB6600", label = "Small" },
+            { inner = 0, outer = 1150, col = "^x66FFCC", label = "Medium" },
+            { inner = 0, outer = 1300, col = "^x2222CC", label = "Large" },
+            { inner = 0, outer = 1500, col = "^xC100FF", label = "Very Large" },
+            { inner = 650, outer = 950, col = "^xD35400", label = "Variable" },
+            { inner = 800, outer = 1100, col = "^x66FFCC", label = "Variable" },
+            { inner = 950, outer = 1250, col = "^x2222CC", label = "Variable" },
+            { inner = 1100, outer = 1400, col = "^xC100FF", label = "Variable" },
+            { inner = 1250, outer = 1550, col = "^x0B9300", label = "Variable" },
+            { inner = 1400, outer = 1700, col = "^xFFCC00", label = "Variable" },
+            { inner = 1650, outer = 1950, col = "^xFF6600", label = "Variable" },
+            { inner = 1800, outer = 2100, col = "^x0099FF", label = "Variable" },
+        },
+    }
+
+    -- setJewelRadiiGlobally for PoE2
+    data.setJewelRadiiGlobally = function(treeVersion)
+        local tMajor, tMinor = treeVersion:match("(%d+)_(%d+)")
+        tMajor, tMinor = tonumber(tMajor), tonumber(tMinor)
+
+        -- For PoE2 versions (0_x), find the best matching version
+        local sMajor, sMinor = nil, nil
+        for version, _ in pairs(data.jewelRadii) do
+            local jMajor, jMinor = version:match("(%d+)_(%d+)")
+            jMajor, jMinor = tonumber(jMajor), tonumber(jMinor)
+            if jMajor == 0 and jMinor <= tMinor then
+                if not sMajor or jMinor > sMinor then
+                    sMajor, sMinor = jMajor, jMinor
+                end
+            end
+        end
+        if sMajor then
+            data.jewelRadius = data.jewelRadii[sMajor.."_"..sMinor]
+        else
+            -- Fallback to 0_1 if no match found
+            data.jewelRadius = data.jewelRadii["0_1"]
+        end
+
+        -- Calculate squared values and max radius
+        local maxJewelRadius = 0
+        for _, radiusInfo in ipairs(data.jewelRadius) do
+            local mult = (data.gameConstants and data.gameConstants["PassiveTreeJewelDistanceMultiplier"]) or 1
+            radiusInfo.outerSquared = radiusInfo.outer * radiusInfo.outer * mult * mult
+            radiusInfo.innerSquared = radiusInfo.inner * radiusInfo.inner * mult * mult
+            if radiusInfo.outer > maxJewelRadius then
+                maxJewelRadius = radiusInfo.outer * mult
+            end
+        end
+        data.maxJewelRadius = maxJewelRadius
+        return data.jewelRadius
+    end
+
+    -- Minimal main object for PassiveSpec/Tooltip
+    main = {
+        tree = {},
+        allowTreeDownload = false,
+        notSupportedModTooltips = false,
+        showFlavourText = false,
+        popups = {},  -- Empty popups array for MINIMAL mode
+    }
+
+    function main:SetWindowTitleSubtext(text)
+        local title = text or "PASSIVE TREE TEST"
+        SetWindowTitle(title)
+    end
+
+    function main:WrapString(line, size, maxWidth)
+        return { line }
+    end
+
+    function main:OpenConfirmPopup(title, message, confirmLabel, confirmFunc, altLabel, altFunc)
+        -- MINIMAL mode: Auto-confirm cross-class switches without popup
+        -- In MINIMAL mode, we don't have UI for popups, so automatically execute confirm action
+        ConPrintf("MINIMAL [OpenConfirmPopup]: %s - %s", title, message)
+        ConPrintf("MINIMAL: Auto-executing '%s' action", confirmLabel or "Confirm")
+        if confirmFunc then
+            confirmFunc()
+        end
+    end
+
+    function main:LoadTree(treeVersion)
+        if self.tree[treeVersion] then
+            data.setJewelRadiiGlobally(treeVersion)
+            return self.tree[treeVersion]
+        end
+        if isValueInTable(treeVersionList, treeVersion) then
+            data.setJewelRadiiGlobally(treeVersion)
+            self.tree[treeVersion] = new("PassiveTree", treeVersion)
+            return self.tree[treeVersion]
+        end
+        return nil
+    end
+
+    -- Minimal itemLib to prevent wiki key errors
+    itemLib = {
+        wiki = {
+            matchesKey = function()
+                return false
+            end,
+            open = function() end,
+        },
+    }
+
+    ConPrintf("Loading passive tree (version: %s)...", tostring(latestTreeVersion))
+    SetWindowTitle(string.format("PASSIVE TREE TEST (%s)", tostring(latestTreeVersion)))
+    self.build = { outputRevision = 0, buildFlag = false }
+    self.build.buildName = "Passive Tree Test"
+    self.build.calcsTab = {
+        mainEnv = { grantedPassives = { } },
+        powerStat = nil,
+        powerMax = { offence = 1, defence = 1, singleStat = 1 },
+        GetMiscCalculator = function() return nil, nil end,
+        BuildPower = function() end,
+    }
+    self.build.itemsTab = {
+        items = {},
+        sockets = {},
+        activeItemSet = { useSecondWeaponSet = false },
+        activeSocketList = {},
+        GetSocketAndJewelForNodeID = function()
+            return nil, nil
+        end,
+        AddItemTooltip = function() end,
+        SelectControl = function() end,
+    }
+    ConPrintf("Init: creating PassiveSpec...")
+    self.spec = new("PassiveSpec", self.build, latestTreeVersion)
+    ConPrintf("Init: PassiveSpec created")
+    self.build.spec = self.spec
+
+    -- Ensure a valid class start is allocated so node paths exist in minimal mode
+    if _G.MINIMAL_PASSIVE_TEST and self.spec and self.spec.tree and self.spec.tree.classes then
+        -- Provide a no-op ModList so BuildAllDependsAndPaths doesn't require modLib
+        local emptyModList = {
+            HasMod = function() return false end,
+            List = function() return {} end,
+            Sum = function() return 0 end,
+            More = function() return 1 end,
+            NewMod = function() end,
+            AddMod = function() end,
+            AddList = function() end,
+        }
+        if self.spec.nodes then
+            for _, node in pairs(self.spec.nodes) do
+                node.modList = node.modList or emptyModList
+            end
+        end
+        local classId
+        for id, class in pairs(self.spec.tree.classes) do
+            if class and class.startNodeId then
+                if not classId or id < classId then
+                    classId = id
+                end
+            end
+        end
+        if not classId then
+            classId = next(self.spec.tree.classes)
+        end
+        local class = classId and self.spec.tree.classes[classId] or nil
+        if class then
+            self.spec.curClassId = classId
+            self.spec.curClass = class
+            self.spec.curClassName = class.name or "Unknown"
+            self.spec.curAscendClassId = 0
+            self.spec.curAscendClass = (class.classes and class.classes[0]) or { name = "None" }
+            self.spec.curAscendClassName = self.spec.curAscendClass.name or "None"
+            self.spec.curAscendClassBaseName = self.spec.curAscendClass.id
+            if class.startNodeId and self.spec.nodes[class.startNodeId] then
+                local startNode = self.spec.nodes[class.startNodeId]
+                startNode.alloc = true
+                self.spec.allocNodes[startNode.id] = startNode
+            end
+            self.spec:BuildAllDependsAndPaths()
+        end
+    end
+
+    ConPrintf("Init: creating PassiveTreeView...")
+    self.viewer = new("PassiveTreeView")
+    ConPrintf("Init: PassiveTreeView created")
+    self.viewPort = {
+        x = 0,
+        y = 0,
+        width = self.screenWidth,
+        height = self.screenHeight,
+    }
+    self.inputEvents = { }
+
+    -- Center the view on the tree bounds so nodes are visible on first frame
+    if self.spec and self.spec.tree and self.spec.tree.nodes then
+        local minX, maxX, minY, maxY
+        for _, node in pairs(self.spec.tree.nodes) do
+            if node.x and node.y then
+                minX = minX and math.min(minX, node.x) or node.x
+                maxX = maxX and math.max(maxX, node.x) or node.x
+                minY = minY and math.min(minY, node.y) or node.y
+                maxY = maxY and math.max(maxY, node.y) or node.y
+            end
+        end
+        if minX and maxX and minY and maxY then
+            local centerX = (minX + maxX) * 0.5
+            local centerY = (minY + maxY) * 0.5
+            -- Start fully zoomed out for visibility
+            self.viewer.zoomLevel = 0
+            self.viewer.zoom = 1.0
+            local treeSize = self.spec.tree.size or math.max(maxX - minX, maxY - minY)
+            if not treeSize or treeSize <= 0 then
+                treeSize = math.min(self.viewPort.width, self.viewPort.height)
+            end
+            local scale = math.min(self.viewPort.width, self.viewPort.height) / treeSize * self.viewer.zoom
+            self.viewer.zoomX = -centerX * scale
+            self.viewer.zoomY = -centerY * scale
+            ConPrintf("Centered view: center=(%.2f, %.2f) treeSize=%.2f scale=%.4f",
+                centerX, centerY, treeSize, scale)
+        else
+            ConPrintf("WARNING: Could not compute tree bounds for centering")
+        end
+    end
+
+    self.frameCount = 0
+    ConPrintf("Starting render loop...")
+end
+
+function launch:OnKeyDown(key, doubleClick)
+    table.insert(self.inputEvents, { type = "KeyDown", key = key, doubleClick = doubleClick })
+end
+
+function launch:OnKeyUp(key)
+    table.insert(self.inputEvents, { type = "KeyUp", key = key })
+end
+
+function launch:OnFrame()
+    SetViewport(0, 0, self.screenWidth, self.screenHeight)
+    SetClearColor(0.08, 0.08, 0.10, 1.0)
+
+    ConPrintf("DEBUG: OnFrame starting, frameCount=%d, inputEvents=%d", self.frameCount, #self.inputEvents)
+    self.viewer:Draw(self.build, self.viewPort, self.inputEvents)
+    ConPrintf("DEBUG: Draw completed for frame %d", self.frameCount)
+    self.inputEvents = { }
+
+    self.frameCount = self.frameCount + 1
+    if self.frameCount % 60 == 0 then
+        ConPrintf("Frame %d", self.frameCount)
+    end
+
+	if self.frameCount >= 3600 then
+		ConPrintf("Test complete - %d frames", self.frameCount)
+		Shutdown()
+		os.exit(0)
+	end
+end
