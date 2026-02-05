@@ -12,6 +12,11 @@ print("=== Path of Building 2 for macOS ===")
 print("Loading SimpleGraphic library...")
 
 local ffi = require("ffi")
+local bit = require("bit")
+
+-- Export bit operations globally (required by ModList.lua and other modules)
+_G.AND64 = bit.band
+_G.OR64 = bit.bor
 
 -- FFI declarations for SimpleGraphic API
 ffi.cdef[[
@@ -414,7 +419,6 @@ _G.LoadModule = function(moduleName, ...)
     local searchPaths = {
         "src/" .. moduleName .. ".lua",
         "src/" .. moduleName,  -- Try without .lua extension
-        "src/Modules/" .. moduleName .. ".lua",
         "runtime/lua/" .. moduleName .. ".lua",
         moduleName .. ".lua"
     }
@@ -814,6 +818,14 @@ while IsUserTerminated() == 0 do
     -- Debug: Log every frame for first 10 frames, then every 10 frames
     if frame_count <= 10 or frame_count % 10 == 0 then
         print(string.format("Frame %d: IsUserTerminated() = 0, calling ProcessEvents()...", frame_count))
+    end
+
+    -- Debug: Print error message if present
+    if frame_count == 1 and launch and launch.promptMsg then
+        print("===============================================")
+        print("ERROR MESSAGE DETECTED:")
+        print(launch.promptMsg)
+        print("===============================================")
     end
 
     ProcessEvents()
