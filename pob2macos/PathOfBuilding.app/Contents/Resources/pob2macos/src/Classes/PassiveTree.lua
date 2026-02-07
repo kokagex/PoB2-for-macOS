@@ -134,7 +134,15 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 
 	self.size = m_min(self.max_x - self.min_x, self.max_y - self.min_y) * self.scaleImage * 1.1
 	
-	for i = 0, 6 do
+	-- Shift classes from 1-indexed to 0-indexed
+	-- Dynamically detect max index to support both PoE1 (7 classes) and PoE2 (8 classes)
+	local maxClassIndex = 0
+	for k in pairs(self.classes) do
+		if type(k) == "number" and k > maxClassIndex then
+			maxClassIndex = k
+		end
+	end
+	for i = 0, maxClassIndex - 1 do
 		self.classes[i] = self.classes[i + 1]
 		self.classes[i + 1] = nil
 	end
@@ -429,7 +437,7 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 			   node.type ~= "OnlyImage" and other.type ~= "OnlyImage" and
 			   node.id ~= otherId and
 			   node.ascendancyName == other.ascendancyName and
-			   node.classesStart == nil and other.classesStart == nil then
+			   (node.classesStart == nil or other.classesStart == nil) then
 				local connectors = self:BuildConnector(node, other, connection)
 
 				if connectors then

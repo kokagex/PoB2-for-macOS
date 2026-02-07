@@ -178,7 +178,7 @@ data.misc = { -- magic numbers
 	SuppressionEffect = 40,
 	AvoidChanceCap = 75,
 	FortifyBaseDuration = 6,
-	ManaRegenBase = data.characterConstants["mana_regeneration_rate_per_minute_%"] / 60 / 100,
+	ManaRegenBase = data.characterConstants["character_inherent_mana_regeneration_rate_per_minute_%"] / 60 / 100,
 	EnergyShieldRechargeBase = data.characterConstants["energy_shield_recharge_rate_per_minute_%"] / 60 / 100,
 	EnergyShieldRechargeBase = 0.33,
 	EnergyShieldRechargeDelay = 2,
@@ -575,6 +575,7 @@ data.itemMods = {
 	JewelAbyss = LoadModule("Data/ModJewelAbyss"),
 	JewelCluster = LoadModule("Data/ModJewelCluster"),
 	JewelCharm = LoadModule("Data/ModJewelCharm"),
+	Runes = LoadModule("Data/ModRunes"),
 }
 data.masterMods = LoadModule("Data/ModMaster")
 data.enchantments = {

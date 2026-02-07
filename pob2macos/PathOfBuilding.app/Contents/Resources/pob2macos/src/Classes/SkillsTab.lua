@@ -173,14 +173,20 @@ local SkillsTabClass = newClass("SkillsTab", "UndoHandler", "ControlHost", "Cont
 		if mode == "OUT" or index == 1 then
 			tooltip:AddLine(16, "Select the item in which this skill is socketed.")
 			tooltip:AddLine(16, "This will allow the skill to benefit from modifiers on the item that affect socketed gems.")
-		else
+		elseif self.build.itemsTab and self.build.itemsTab.slots then
 			local slot = self.build.itemsTab.slots[value.slotName]
-			local ttItem = self.build.itemsTab.items[slot.selItemId]
-			if ttItem then
-				self.build.itemsTab:AddItemTooltip(tooltip, ttItem, slot)
+			if slot then
+				local ttItem = self.build.itemsTab.items[slot.selItemId]
+				if ttItem then
+					self.build.itemsTab:AddItemTooltip(tooltip, ttItem, slot)
+				else
+					tooltip:AddLine(16, "No item is equipped in this slot.")
+				end
 			else
 				tooltip:AddLine(16, "No item is equipped in this slot.")
 			end
+		else
+			tooltip:AddLine(16, "No item is equipped in this slot.")
 		end
 	end
 	self.controls.groupSlot.enabled = function()
@@ -802,7 +808,7 @@ function SkillsTabClass:CreateGemSlot(index)
 			addQualityLines(qualityTable, gemData.additionalGrantedEffects[2])
 		end
 		-- Add stat comparisons for hovered quality (based on set quality)
-		if gemData and (gemData.grantedEffect.qualityStats or (gemData.additionalGrantedEffects[1] and gemData.additionalGrantedEffects[1].qualityStats or gemData.additionalGrantedEffects[2] and gemData.additionalGrantedEffects[2].qualityStats)) and self.displayGroup.gemList[index] then
+		if gemData and (gemData.grantedEffect.qualityStats or (gemData.additionalGrantedEffects[1] and gemData.additionalGrantedEffects[1].qualityStats or gemData.additionalGrantedEffects[2] and gemData.additionalGrantedEffects[2].qualityStats)) and self.displayGroup.gemList[index] and self.build.calcsTab then
 			local calcFunc, calcBase = self.build.calcsTab:GetMiscCalculator(self.build)
 			if calcFunc then
 				local storedQuality = self.displayGroup.gemList[index].quality
@@ -843,7 +849,7 @@ function SkillsTabClass:CreateGemSlot(index)
 	end)
 	slot.enabled.tooltipFunc = function(tooltip)
 		if tooltip:CheckForUpdate(self.build.outputRevision, self.displayGroup) then
-			if self.displayGroup.gemList[index] then
+			if self.displayGroup.gemList[index] and self.build.calcsTab then
 				local calcFunc, calcBase = self.build.calcsTab:GetMiscCalculator(self.build)
 				if calcFunc then
 					self.displayGroup.gemList[index].enabled = not self.displayGroup.gemList[index].enabled
@@ -1242,7 +1248,7 @@ function SkillsTabClass:CreateUndoState()
 	state.skillSetOrderList = copyTable(self.skillSetOrderList)
 	-- Save active socket group for both skillsTab and calcsTab to UndoState
 	state.activeSocketGroup = self.build.mainSocketGroup
-	state.activeSocketGroup2 = self.build.calcsTab.input.skill_number
+	state.activeSocketGroup2 = self.build.calcsTab and self.build.calcsTab.input.skill_number or 1
 	return state
 end
 
@@ -1263,7 +1269,9 @@ function SkillsTabClass:RestoreUndoState(state)
 	end
 	-- Load active socket group for both skillsTab and calcsTab from UndoState
 	self.build.mainSocketGroup = state.activeSocketGroup
-	self.build.calcsTab.input.skill_number = state.activeSocketGroup2
+	if self.build.calcsTab then
+		self.build.calcsTab.input.skill_number = state.activeSocketGroup2
+	end
 end
 
 -- Opens the skill set manager

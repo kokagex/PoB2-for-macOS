@@ -114,6 +114,37 @@ Test shows: "B step 2" logged, "B step 3" NOT logged
 → Crash is between step 2 and step 3
 ```
 
+**Visual Verification Workflow (表示確認ワークフロー)**:
+When testing visual/display issues, follow this automated workflow:
+1. **Launch from command line** (requires user approval): `./PathOfBuilding.app/Contents/MacOS/PathOfBuilding &`
+2. **User takes screenshot**: User captures screen state and says "撮った"
+3. **Auto-terminate app**: `pkill -f PathOfBuilding` (no confirmation needed)
+4. **Auto-check screenshot**: Read latest `~/Desktop/スクリーンショット*.png`
+5. **Analyze visually**: Verify UI rendering, layout, text visibility
+6. **Auto-delete screenshot**: `rm ~/Desktop/スクリーンショット*.png` (no confirmation needed)
+
+**Commands** (automated after step 1 approval):
+```bash
+# 1. Launch app (ASK USER FIRST, then run)
+./PathOfBuilding.app/Contents/MacOS/PathOfBuilding &
+
+# 2-6. Run automatically when user says "撮った"
+pkill -f PathOfBuilding
+ls -lt ~/Desktop/スクリーンショット*.png | head -1
+# Read tool to view image
+rm ~/Desktop/スクリーンショット*.png
+```
+
+**User Approval Points**:
+- ✅ App launch (step 1): Always ask before launching
+- ❌ Screenshot deletion (step 6): No confirmation needed, auto-delete after viewing
+
+**Why Visual Verification**:
+- Logs don't show UI rendering issues (coordinate misalignment, scaling problems)
+- Screenshot provides objective visual evidence of display state
+- Automated workflow ensures consistent verification process
+- Prevents "3 days with zero visual progress" failure pattern
+
 ### 5. Success Documentation
 When fix succeeds:
 1. Document final solution in `LESSONS_LEARNED.md`

@@ -302,7 +302,7 @@ function ModStoreClass:GetStat(stat, cfg)
 end
 
 function ModStoreClass:EvalMod(mod, cfg, globalLimits)
-	local value = mod.value
+	local value = mod.value or 0
 	local GetStat = self.GetStat
 	local GetMultiplier = self.GetMultiplier
 	local GetCondition = self.GetCondition

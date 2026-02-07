@@ -120,21 +120,35 @@ local lib_path = "runtime/SimpleGraphic.dylib"
 local sg = ffi.load(lib_path)
 print("✓ SimpleGraphic loaded from: " .. lib_path)
 
+-- DPI scale cache (avoids repeated C calls per frame)
+local _dpi_scale = nil
+local function getDpiScale()
+    if not _dpi_scale then
+        _dpi_scale = tonumber(sg.GetScreenScale()) or 1.0
+        print(string.format("DPI scale detected: %.2f", _dpi_scale))
+    end
+    return _dpi_scale
+end
+
 -- Setup global functions for Path of Building
 _G.RenderInit = sg.RenderInit
 _G.Shutdown = sg.Shutdown
 _G.IsUserTerminated = sg.IsUserTerminated
 _G.ProcessEvents = sg.ProcessEvents
 _G.SetWindowTitle = sg.SetWindowTitle
--- GetScreenSize: Wrapper to handle C pointer arguments
+-- GetScreenSize: Returns logical pixels (physical / dpi_scale)
 _G.GetScreenSize = function()
     local w = ffi.new("int[1]")
     local h = ffi.new("int[1]")
     sg.GetScreenSize(w, h)
-    return w[0], h[0]
+    local scale = getDpiScale()
+    local logW = math.floor(w[0] / scale)
+    local logH = math.floor(h[0] / scale)
+    print(string.format("GetScreenSize: physical=%dx%d, scale=%.2f, logical=%dx%d", w[0], h[0], scale, logW, logH))
+    return logW, logH
 end
 
--- Stage 4: GetVirtualScreenSize stub (same as GetScreenSize for now)
+-- GetVirtualScreenSize: Same as GetScreenSize (returns logical pixels)
 _G.GetVirtualScreenSize = function()
     return _G.GetScreenSize()
 end
@@ -228,14 +242,18 @@ _G.NewFileSearch = function(pattern, foldersOnly)
 end
 
 _G.SetClearColor = sg.SetClearColor
--- SetViewport: Wrapper to handle optional arguments (defaults to full screen)
+-- SetViewport: Logical→Physical conversion
 _G.SetViewport = function(x, y, width, height)
     if not x or not y or not width or not height then
-        -- Default to full screen
-        local w, h = _G.GetScreenSize()
-        sg.SetViewport(0, 0, w, h)
+        -- Default to full physical screen
+        local w = ffi.new("int[1]")
+        local h = ffi.new("int[1]")
+        sg.GetScreenSize(w, h)
+        sg.SetViewport(0, 0, w[0], h[0])
     else
-        sg.SetViewport(x, y, width, height)
+        local scale = getDpiScale()
+        sg.SetViewport(math.floor(x * scale), math.floor(y * scale),
+                       math.floor(width * scale), math.floor(height * scale))
     end
 end
 -- SetDrawColor: Wrapper to handle type conversion and optional alpha argument
@@ -258,21 +276,34 @@ end
 _G.SetDrawLayer = function(layer, subLayer)
     sg.SetDrawLayer(layer or 0, subLayer or 0)
 end
--- DrawString: Wrapper to convert alignment string to int
+-- DrawString: Logical→Physical conversion + alignment mapping
 _G.DrawString = function(left, top, align, height, font, text)
     local alignMap = {
         LEFT = 0,
         CENTER = 1,
-        RIGHT = 2
+        CENTER_X = 1,
+        RIGHT = 2,
+        RIGHT_X = 2,
     }
     local alignInt = align
     if type(align) == "string" then
         alignInt = alignMap[align:upper()] or 0
     end
-    sg.DrawString(left, top, alignInt, height, font, text)
+    local scale = getDpiScale()
+    sg.DrawString(math.floor(left * scale), math.floor(top * scale),
+                  alignInt, math.floor(height * scale), font, text)
 end
-_G.DrawStringWidth = sg.DrawStringWidth
-_G.DrawStringCursorIndex = sg.DrawStringCursorIndex
+-- DrawStringWidth: Scale font height up, scale result back to logical
+_G.DrawStringWidth = function(height, font, text)
+    local scale = getDpiScale()
+    return math.floor(sg.DrawStringWidth(math.floor(height * scale), font, text) / scale)
+end
+-- DrawStringCursorIndex: Scale font height and cursor coords to physical
+_G.DrawStringCursorIndex = function(height, font, text, cursorX, cursorY)
+    local scale = getDpiScale()
+    return sg.DrawStringCursorIndex(math.floor(height * scale), font, text,
+                                     math.floor(cursorX * scale), math.floor(cursorY * scale))
+end
 -- DrawImage: Wrapper to handle wrapped ImageHandle objects
 _G.DrawImage = function(imageHandle, left, top, width, height, tcLeft, tcTop, tcRight, tcBottom)
     local handle = imageHandle
@@ -305,7 +336,9 @@ _G.DrawImage = function(imageHandle, left, top, width, height, tcLeft, tcTop, tc
         if tcBottom == nil then tcBottom = 1.0 end
     end
 
-    sg.DrawImage(handle, left, top, width, height, tcLeft, tcTop, tcRight, tcBottom)
+    local scale = getDpiScale()
+    sg.DrawImage(handle, left * scale, top * scale, width * scale, height * scale,
+                 tcLeft, tcTop, tcRight, tcBottom)
 end
 -- DrawImageQuad: Wrapper to handle wrapped ImageHandle objects
 _G.DrawImageQuad = function(imageHandle, x1, y1, x2, y2, x3, y3, x4, y4, s1, t1, s2, t2, s3, t3, s4, t4)
@@ -323,7 +356,10 @@ _G.DrawImageQuad = function(imageHandle, x1, y1, x2, y2, x3, y3, x4, y4, s1, t1,
     t3 = t3 or 1.0
     s4 = s4 or 0.0
     t4 = t4 or 1.0
-    sg.DrawImageQuad(handle, x1, y1, x2, y2, x3, y3, x4, y4, s1, t1, s2, t2, s3, t3, s4, t4)
+    local scale = getDpiScale()
+    sg.DrawImageQuad(handle, x1*scale, y1*scale, x2*scale, y2*scale,
+                     x3*scale, y3*scale, x4*scale, y4*scale,
+                     s1, t1, s2, t2, s3, t3, s4, t4)
 end
 
 -- Load DrawImage parameter test module (enabled for debugging)
@@ -403,12 +439,13 @@ _G.IsKeyDown = function(key)
     end
     return 0
 end
--- GetCursorPos: Wrapper to handle C pointer arguments
+-- GetCursorPos: Physical→Logical conversion
 _G.GetCursorPos = function()
     local x = ffi.new("int[1]")
     local y = ffi.new("int[1]")
     sg.GetCursorPos(x, y)
-    return x[0], y[0]
+    local scale = getDpiScale()
+    return math.floor(x[0] / scale), math.floor(y[0] / scale)
 end
 _G.GetMouseWheelDelta = function()
     return sg.GetMouseWheelDelta()
@@ -455,10 +492,10 @@ end
 _G.PCall = function(func, ...)
     local results = {pcall(func, ...)}
     if results[1] then
-        -- Success: return nil for error, plus all results
+        -- Success: return nil for error, plus all return values from func
         return nil, select(2, unpack(results))
     else
-        -- Failure: return error message
+        -- Failure: return error message string
         return tostring(results[2])
     end
 end
@@ -509,8 +546,11 @@ end
 -- Text rendering
 -- Note: StripEscapes already implemented as Lua function above
 
--- Input management
-_G.SetCursorPos = sg.SetCursorPos
+-- Input management: Logical→Physical conversion
+_G.SetCursorPos = function(x, y)
+    local scale = getDpiScale()
+    sg.SetCursorPos(math.floor(x * scale), math.floor(y * scale))
+end
 _G.ShowCursor = sg.ShowCursor
 
 -- Clipboard operations
@@ -700,6 +740,10 @@ if not launch then
 end
 
 print("✓ Launch object found")
+
+-- Set installedMode to suppress developer mode warning
+launch.installedMode = true
+print("✓ installedMode set to true")
 print("")
 
 -- Call OnInit
@@ -812,6 +856,10 @@ print("=====================================")
 print("Starting main event loop...")
 print("=====================================")
 print("")
+
+-- Set window title to Path of Building
+SetWindowTitle("Path of Building (PoE2)")
+
 while IsUserTerminated() == 0 do
     frame_count = frame_count + 1
 

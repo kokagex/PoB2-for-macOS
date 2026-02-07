@@ -86,7 +86,8 @@ function ButtonClass:Draw(viewPort, noTooltip)
 		DrawImageQuad(nil, x + width * 0.7, y + height * 0.2, x + width * 0.8, y + height * 0.3, x + width * 0.3, y + height * 0.8, x + width * 0.2, y + height * 0.7)
 	else
 		local overSize = self.overSizeText or 0
-		DrawString(x + width / 2, y + 2 - overSize, "CENTER_X", height - 4 + overSize * 2, "VAR", label)
+		-- Text is vertically centered in button: y offset proportional to height
+		DrawString(x + width / 2, y + height * 0.1, "CENTER_X", height * 0.8, "VAR", label)
 	end
 	if mOver then
 		if not noTooltip or self.forceTooltip then

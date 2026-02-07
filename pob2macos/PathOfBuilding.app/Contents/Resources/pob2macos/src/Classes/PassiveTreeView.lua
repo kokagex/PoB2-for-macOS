@@ -79,23 +79,32 @@ end
 
 function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 	-- Normal rendering.
-	ConPrintf("DEBUG: PassiveTreeView:Draw() called, inputEvents=%d", #inputEvents)
+	-- Log events only when there ARE events (click diagnostics)
+	local eventCount = 0
+	for id, ev in pairs(inputEvents) do if ev then eventCount = eventCount + 1 end end
+	if eventCount > 0 then
+		local evList = ""
+		for id, ev in pairs(inputEvents) do
+			if ev then evList = evList .. string.format("[%s:%s:%s]", tostring(id), tostring(ev.type), tostring(ev.key)) end
+		end
+		ConPrintf("PTV-EVENTS: count=%s events=%s", tostring(eventCount), evList)
+	end
 
 	local spec = build.spec
 	local tree = spec.tree
+	-- Phase 3: Debug mode disabled by default (2026-02-07)
 	if self.showNodeCenter == nil then
-		self.showNodeCenter = true
+		self.showNodeCenter = false
 	end
 
 	-- PRJ-003 Fix: Guard against missing tree.nodes
 	-- If tree data is not ready yet, skip rendering this frame
 	if not spec or not tree or not tree.nodes then
 		-- Tree data not loaded yet, skip rendering
-		ConPrintf("DEBUG: Skipping draw - spec/tree/nodes not ready")
 		return
 	end
 
-	ConPrintf("DEBUG: Draw validation passed, processing input")
+	-- (per-frame debug removed)
 	local cursorX, cursorY = GetCursorPos()
 	local mOver = cursorX >= viewPort.x and cursorX < viewPort.x + viewPort.width and cursorY >= viewPort.y and cursorY < viewPort.y + viewPort.height
 
@@ -141,7 +150,6 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 				if self.dragX and not self.dragging then
 					-- Mouse button went down, but didn't move far enough to trigger drag, so register a normal click
 					treeClick = "LEFT"
-					ConPrintf("DEBUG: LEFT click detected")
 				end
 				self.dragHeld = false
 				self.dragging = false
@@ -149,7 +157,6 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 			elseif mOver then
 				if event.key == "RIGHTBUTTON" then
 					treeClick = "RIGHT"
-					ConPrintf("DEBUG: RIGHT click detected")
 				elseif event.key == "WHEELUP" then
 					local step = IsKeyDown("SHIFT") == 1 and 1.5 or 0.5
 					self:Zoom(step, viewPort)
@@ -179,9 +186,7 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 	-- Ctrl-click to zoom
 	if treeClick then
 		local ctrlPressed = IsKeyDown("CTRL") == 1
-		ConPrintf("DEBUG: treeClick=%s, CTRL=%s", tostring(treeClick), tostring(ctrlPressed))
 		if ctrlPressed then
-			ConPrintf("DEBUG: Executing Ctrl+Click zoom")
 			self:Zoom(treeClick == "RIGHT" and -2 or 2, viewPort)
 			treeClick = nil
 		end
@@ -192,7 +197,7 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 	self.zoomX = self.zoomX ~= nil and m_min(m_max(self.zoomX, -viewPort.width * clampFactor), viewPort.width * clampFactor) or 1
 	self.zoomY = self.zoomY ~= nil and m_min(m_max(self.zoomY, -viewPort.height * clampFactor), viewPort.height * clampFactor) or 1
 
-	ConPrintf("DEBUG: Input processing complete, preparing tree rendering")
+	-- (per-frame debug removed)
 
 	-- PRJ-003 Fix: Validate tree.size before using in scale calculation
 	-- If tree.size is invalid, use viewport size as fallback
@@ -232,12 +237,12 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 	local hoverNode
 	local nearestNode, nearestDistSq
 	local nearestNodePx, nearestDistPxSq
-	ConPrintf("DEBUG: Starting hover detection, mOver=%s", tostring(mOver))
+	-- (per-frame hover debug removed)
 	if mOver then
 		-- Cursor is over the tree, check if it is over a node
 		local curTreeX, curTreeY = screenToTree(cursorX, cursorY)
 		-- Use spec.nodes so hover matches rendered nodes/allocation state
-		ConPrintf("DEBUG: Iterating spec.nodes for hover detection")
+		-- (per-frame node iteration debug removed)
 		for nodeId, node in pairs(spec.nodes) do
 			if node.rsq and node.group and not node.isProxy and not node.group.isProxy then
 				-- Node has a defined size (i.e. has artwork)
@@ -281,7 +286,19 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 			end
 		end
 	end
-	ConPrintf("DEBUG: Hover detection complete, hoverNode=%s", hoverNode and hoverNode.dn or "nil")
+	-- Periodic diagnostic for hover detection (every 120 frames)
+	if not self._hoverDiagCount then self._hoverDiagCount = 0 end
+	self._hoverDiagCount = self._hoverDiagCount + 1
+	if mOver and self._hoverDiagCount % 120 == 0 then
+		ConPrintf("DIAG[%d]: cursor=(%s,%s) nearestPx=%s distPxSq=%s radiusPx=%s hover=%s",
+			self._hoverDiagCount,
+			tostring(cursorX), tostring(cursorY),
+			nearestNodePx and tostring(nearestNodePx.dn) or "nil",
+			tostring(nearestDistPxSq),
+			nearestNodePx and tostring(m_min(160, m_max(40, (nearestNodePx.size or 70) * scale * 0.6))) or "nil",
+			hoverNode and tostring(hoverNode.dn) or "nil")
+	end
+	-- (per-frame hover result debug removed)
 
 	self.hoverNode = hoverNode
 	-- If hovering over a node, find the path to it (if unallocated) or the list of dependent nodes (if allocated)
@@ -393,10 +410,7 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 	end
 
 	if treeClick == "LEFT" then
-		ConPrintf("DEBUG: Processing LEFT click, hoverNode=%s", hoverNode and hoverNode.dn or "nil")
 		if hoverNode then
-			ConPrintf("DEBUG: Node type=%s, alloc=%s, ascendancyName=%s",
-				tostring(hoverNode.type), tostring(hoverNode.alloc), tostring(hoverNode.ascendancyName))
 			-- User left-clicked on a node
 			if hoverNode.alloc and not shouldBlockGlobalNodeDeallocation(hoverNode) then
 				-- Handle deallocation of allocated nodes
@@ -418,18 +432,15 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 			else
 				-- Check if the node belongs to a different ascendancy
 				if hoverNode.ascendancyName then
-					ConPrintf("DEBUG: Ascendancy node clicked: %s", tostring(hoverNode.ascendancyName))
 					local isDifferentAscendancy = false
 					local targetAscendClassId = nil
 					local targetBaseClassId = nil
 					local targetBaseClass = nil
 
 					-- Check if it's different from current primary or secondary ascendancy
-					ConPrintf("DEBUG: Current ascend: %s, base: %s", tostring(spec.curAscendClassId), tostring(spec.curAscendClassBaseName))
 					if spec.curAscendClassId == 0 or hoverNode.ascendancyName ~= spec.curAscendClassBaseName then
 						if not (spec.curSecondaryAscendClass and hoverNode.ascendancyName == spec.curSecondaryAscendClass.id) then
 							isDifferentAscendancy = true
-							ConPrintf("DEBUG: Different ascendancy detected")
 						end
 					end
 
@@ -446,9 +457,7 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 
 						if targetAscendClassId then
 							-- Same-class switching - always allowed
-							ConPrintf("DEBUG: Same-class switch to ascendClassId=%s", tostring(targetAscendClassId))
 							spec:SelectAscendClass(targetAscendClassId)
-							ConPrintf("DEBUG: SelectAscendClass completed")
 							spec:AddUndoState()
 							spec:SetWindowTitleWithBuildClass()
 							build.buildFlag = true
@@ -471,9 +480,7 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 							end
 
 							if targetBaseClassId then
-								ConPrintf("DEBUG: Cross-class switch to classId=%s, ascendId=%s", tostring(targetBaseClassId), tostring(targetAscendClassId))
 								local used = spec:CountAllocNodes()
-								ConPrintf("DEBUG: Allocated nodes count: %d", used)
 								local clickedAscendNodeId = hoverNode and hoverNode.id
 								local function allocateClickedAscendancy()
 									if not clickedAscendNodeId then
@@ -487,9 +494,7 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 
 								-- Allow cross-class switching if: no regular points allocated OR tree is connected to target class
 								if used == 0 or spec:IsClassConnected(targetBaseClassId) then
-									ConPrintf("DEBUG: Allowed - calling SelectClass")
 									spec:SelectClass(targetBaseClassId)
-									ConPrintf("DEBUG: SelectClass completed")
 
 									-- === OPTION A: pcall error handling to identify crash location ===
 									local success, err = pcall(function()
@@ -499,7 +504,6 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 										ConPrintf("ERROR: SelectAscendClass failed: %s", tostring(err))
 										return
 									end
-									ConPrintf("DEBUG: SelectAscendClass completed")
 
 									success, err = pcall(function()
 										allocateClickedAscendancy()
@@ -508,7 +512,6 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 										ConPrintf("ERROR: allocateClickedAscendancy failed: %s", tostring(err))
 										return
 									end
-									ConPrintf("DEBUG: allocateClickedAscendancy completed")
 
 									success, err = pcall(function()
 										spec:AddUndoState()
@@ -517,7 +520,6 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 										ConPrintf("ERROR: AddUndoState failed: %s", tostring(err))
 										-- Non-critical, continue
 									end
-									ConPrintf("DEBUG: AddUndoState completed")
 
 									success, err = pcall(function()
 										spec:SetWindowTitleWithBuildClass()
@@ -526,11 +528,8 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 										ConPrintf("ERROR: SetWindowTitleWithBuildClass failed: %s", tostring(err))
 										-- Non-critical, continue
 									end
-									ConPrintf("DEBUG: SetWindowTitleWithBuildClass completed")
 
 									build.buildFlag = true
-									ConPrintf("DEBUG: Cross-class switch fully completed")
-									ConPrintf("DEBUG: Exiting cross-class switch if-block")
 								else
 									-- Tree has points but isn't connected to target class
 									main:OpenConfirmPopup("Class Change", "Changing class to "..targetBaseClass.name.." will reset your passive tree.\nThis can be avoided by connecting one of the "..targetBaseClass.name.." starting nodes to your tree.", "Continue", function()
@@ -550,26 +549,23 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 											build.buildFlag = true
 										end
 									end)
-									ConPrintf("DEBUG: OpenConfirmPopup called, returning early")
 									return
 								end
-								ConPrintf("DEBUG: Exited cross-class switch if-else structure")
 							end
 						end
 					end
 				end
 				-- MINIMAL mode: Allow allocation without path (AllocNode will handle it)
+				ConPrintf("PTV-ALLOC-CHECK: node=%s hasPath=%s pathLen=%s MINIMAL=%s",
+					tostring(hoverNode.dn), tostring(hoverNode.path ~= nil),
+					hoverNode.path and tostring(#hoverNode.path) or "N/A",
+					tostring(_G.MINIMAL_PASSIVE_TEST))
 				if (hoverNode.path or _G.MINIMAL_PASSIVE_TEST) and not shouldBlockGlobalNodeAllocation(hoverNode) then
 					-- Handle allocation of unallocated nodes
-					ConPrintf("DEBUG: Normal node allocation - node=%s, type=%s, alloc=%s",
-						hoverNode.dn or "unknown", hoverNode.type or "unknown", tostring(hoverNode.alloc))
-
 					if hoverNode.isAttribute and not hotkeyPressed then
 						-- MINIMAL mode: Skip treeTab popup (not available)
 						if build.treeTab then
 							build.treeTab:ModifyAttributePopup(hoverNode)
-						else
-							ConPrintf("DEBUG: Skipping ModifyAttributePopup (MINIMAL mode)")
 						end
 					else
 						-- the odd conditional here is so the popup only calls AllocNode inside and to avoid duplicating some code
@@ -577,42 +573,16 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 						if hotkeyPressed then
 							processAttributeHotkeys(hoverNode.isAttribute)
 						end
-						-- Elimination method: File logging
-						local logFile = io.open("/tmp/pob_crash_log.txt", "a")
-						if logFile then
-						logFile:write(string.format("[%s] 1. Before AllocNode - id=%s, dn=%s, alloc=%s\n", os.date("%H:%M:%S"), tostring(hoverNode.id), tostring(hoverNode.dn), tostring(hoverNode.alloc)))
-							logFile:close()
-						end
-						ConPrintf("DEBUG: About to call AllocNode")
 						spec:AllocNode(hoverNode, self.tracePath and hoverNode == self.tracePath[#self.tracePath] and self.tracePath)
-						logFile = io.open("/tmp/pob_crash_log.txt", "a")
-						if logFile then
-						logFile:write(string.format("[%s] 2. After AllocNode - alloc=%s\n", os.date("%H:%M:%S"), tostring(hoverNode.alloc)))
-							logFile:close()
-						end
-						ConPrintf("DEBUG: AllocNode completed")
 						spec:AddUndoState()
-						logFile = io.open("/tmp/pob_crash_log.txt", "a")
-						if logFile then
-							logFile:write(string.format("[%s] 3. Before AddUndoState\n", os.date("%H:%M:%S")))
-							logFile:close()
-						end
 						build.buildFlag = true
 					end
-						logFile = io.open("/tmp/pob_crash_log.txt", "a")
-						if logFile then
-							logFile:write(string.format("[%s] 4. After AddUndoState\n", os.date("%H:%M:%S")))
-							logFile:close()
-						end
 				end
 			end
 		end
 	elseif treeClick == "RIGHT" then
 		-- User right-clicked on a node
 		if hoverNode then
-			ConPrintf("DEBUG: RIGHT-click on node=%s, type=%s, alloc=%s",
-				hoverNode.dn or "unknown", hoverNode.type or "unknown", tostring(hoverNode.alloc))
-
 			if hoverNode.alloc and (hoverNode.type == "Socket" or hoverNode.containJewelSocket) then
 				-- MINIMAL mode: Skip jewel socket handling (requires itemsTab)
 				if build.itemsTab then
@@ -623,8 +593,6 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 						build.itemsTab:SelectControl(slot)
 						build.viewMode = "ITEMS"
 					end
-				else
-					ConPrintf("DEBUG: Skipping jewel socket handling (MINIMAL mode)")
 				end
 			else
 				-- a way for us to bypass the popup when allocating attribute nodes, last used hotkey + RMB
@@ -643,18 +611,15 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 					end
 					spec:SwitchAttributeNode(hoverNode.id, spec.attributeIndex or 1)
 				end
-				ConPrintf("DEBUG: About to call AllocNode (RIGHT-click)")
 				spec:AllocNode(hoverNode, self.tracePath and hoverNode == self.tracePath[#self.tracePath] and self.tracePath)
-				ConPrintf("DEBUG: AllocNode completed (RIGHT-click)")
 				spec:AddUndoState()
 				build.buildFlag = true
 			end
 		end
 	end
-	ConPrintf("DEBUG: Completed treeClick processing (LEFT/RIGHT)")
+	-- (per-frame treeClick debug removed)
 
 	-- Draw the background artwork
-	ConPrintf("DEBUG: Starting background artwork rendering")
 	local bg = tree:GetAssetByName("Background2")
 	if bg.width == 0 then
 		bg.width, bg.height = bg.handle:ImageSize()
@@ -663,13 +628,11 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 		SetDrawColor(1, 1, 1, 1)
 		DrawImage(bg.handle, viewPort.x, viewPort.y, viewPort.width, viewPort.height, 0, 0, viewPort.width / 100, viewPort.height / 100)
 	end
-	ConPrintf("DEBUG: Background artwork drawn")
 
 	-- draw allocMode text
 	self:DrawAllocMode(spec.allocMode, viewPort)
 
 	-- TODO: More dynamic
-	ConPrintf("DEBUG: Drawing class-specific background for classId=%s", tostring(spec.curClassId))
 	local treeCenter = tree:GetAssetByName("BGTree")
 	local treeCenterActive = tree:GetAssetByName("BGTreeActive")
 	-- draw background artwork base on current class
@@ -699,7 +662,6 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 		treeCenter.height = class.background['bg'].height
 		self:DrawAsset(treeCenter, scrX, scrY, scale)
 	end
-	ConPrintf("DEBUG: Class background drawing completed")
 
 	-- draw ascendancies
 	for name, data in pairs(tree.ascendNameMap) do
@@ -724,7 +686,6 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 			self:DrawAsset(bg, scrX, scrY, scale)
 		end
 	end
-	ConPrintf("DEBUG: Ascendancy backgrounds drawn")
 
 	local function renderGroup(group)
 		-- MINIMAL mode fix: Comprehensive guards for group rendering after class switch
@@ -751,7 +712,6 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 	end
 
 	-- Draw the group backgrounds
-	ConPrintf("DEBUG: About to draw group backgrounds")
 	for _, group in pairs(tree.groups) do
 		if not group.isProxy then
 			renderGroup(group)
@@ -851,7 +811,7 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 	ConPrintf("DEBUG: All connectors drawn successfully")
 
 	ConPrintf("DEBUG: Checking showHeatMap, value=%s", tostring(self.showHeatMap))
-	if self.showHeatMap then
+	if self.showHeatMap and build.calcsTab then
 		ConPrintf("DEBUG: Building heat map power")
 		-- Build the power numbers if needed
 		build.calcsTab:BuildPower()
@@ -965,7 +925,10 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 
 			local base, overlay, effect
 			local overlayImage
-			local isAlloc = node.alloc or build.calcsTab.mainEnv.grantedPassives[nodeId] or (compareNode and compareNode.alloc)
+			-- Phase 1: Nil-safety for calcsTab (2026-02-06)
+			local isAlloc = node.alloc
+				or (build.calcsTab and build.calcsTab.mainEnv and build.calcsTab.mainEnv.grantedPassives and build.calcsTab.mainEnv.grantedPassives[nodeId])
+				or (compareNode and compareNode.alloc)
 			SetDrawLayer(nil, 25)
 			if node.type == "ClassStart" then
 				overlay = nil
@@ -989,7 +952,11 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 					-- Node is a jewel socket, retrieve the socketed jewel (if present) so we can display the correct art
 					base = tree:GetAssetByName(node.overlay[state])
 
-					local socket, jewel = build.itemsTab:GetSocketAndJewelForNodeID(nodeId)
+					-- Phase 1: Nil-safety for itemsTab (2026-02-06)
+					local socket, jewel
+					if build.itemsTab then
+						socket, jewel = build.itemsTab:GetSocketAndJewelForNodeID(nodeId)
+					end
 					if isAlloc and jewel then
 						if jewel.rarity == "UNIQUE" and jewel.title ~= "Grand Spectrum" then
 							overlay = jewel.title
@@ -1018,12 +985,14 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 			local scrX, scrY = treeToScreen(node.x, node.y)
 
 			-- Determine color for the base artwork
-			if self.showHeatMap then
+			if self.showHeatMap and build.calcsTab then
 				if not isAlloc and node.type ~= "ClassStart" and node.type ~= "AscendClassStart" then
-					if self.heatMapStat and self.heatMapStat.stat then
+					if self.heatMapStat and self.heatMapStat.stat and build.calcsTab.powerMax then
 						-- Calculate color based on a single stat
 						local stat = m_max(node.power.singleStat or 0, 0)
-						local statCol = (stat / build.calcsTab.powerMax.singleStat * 1.5) ^ 0.5
+						local powerMaxSingle = build.calcsTab.powerMax.singleStat or 1
+						if powerMaxSingle == 0 then powerMaxSingle = 1 end
+						local statCol = (stat / powerMaxSingle * 1.5) ^ 0.5
 						if main.nodePowerTheme == "RED/BLUE" then
 							SetDrawColor(statCol, 0, 0)
 						elseif main.nodePowerTheme == "RED/GREEN" then
@@ -1031,12 +1000,16 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 						elseif main.nodePowerTheme == "GREEN/BLUE" then
 							SetDrawColor(0, 0, statCol)
 						end
-					else
+					elseif build.calcsTab.powerMax then
 						-- Calculate color based on DPS and defensive powers
 						local offence = m_max(node.power.offence or 0, 0)
 						local defence = m_max(node.power.defence or 0, 0)
-						local dpsCol = (offence / build.calcsTab.powerMax.offence * 1.5) ^ 0.5
-						local defCol = (defence / build.calcsTab.powerMax.defence * 1.5) ^ 0.5
+						local powerMaxOff = build.calcsTab.powerMax.offence or 1
+						local powerMaxDef = build.calcsTab.powerMax.defence or 1
+						if powerMaxOff == 0 then powerMaxOff = 1 end
+						if powerMaxDef == 0 then powerMaxDef = 1 end
+						local dpsCol = (offence / powerMaxOff * 1.5) ^ 0.5
+						local defCol = (defence / powerMaxDef * 1.5) ^ 0.5
 						local mixCol = (m_max(dpsCol - 0.5, 0) + m_max(defCol - 0.5, 0)) / 2
 						if main.nodePowerTheme == "RED/BLUE" then
 							SetDrawColor(dpsCol, mixCol, defCol)
@@ -1144,7 +1117,11 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 							SetDrawColor(1, 0, 0)
 						elseif hoverNode.type == "Socket" and hoverNode.nodesInRadius then
 							-- Hover node is a socket, check if this node falls within its radius and color it accordingly
-							local socket, jewel = build.itemsTab:GetSocketAndJewelForNodeID(hoverNode.id)
+							-- Phase 1: Nil-safety for itemsTab (2026-02-06)
+				local socket, jewel
+				if build.itemsTab then
+					socket, jewel = build.itemsTab:GetSocketAndJewelForNodeID(hoverNode.id)
+				end
 							local isThreadOfHope = jewel and jewel.jewelRadiusLabel == "Variable"
 							if isThreadOfHope then
 								-- Jewel in socket is Thread of Hope or similar
@@ -1191,39 +1168,7 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 					SetDrawColor(1, 1, 1)
 				end
 			end
-			if self.showNodeCenter and nearestNode and node == nearestNode then
-				local function drawBox(x, y, w, h, r, g, b)
-					SetDrawColor(r, g, b, 1)
-					DrawImage(nil, x - w, y - h, w * 2, 2)
-					DrawImage(nil, x - w, y + h - 2, w * 2, 2)
-					DrawImage(nil, x - w, y - h, 2, h * 2)
-					DrawImage(nil, x + w - 2, y - h, 2, h * 2)
-				end
-				SetDrawLayer(nil, 200)
-				local cx, cy = scrX, scrY
-				-- Node center cross (red)
-				SetDrawColor(1, 0, 0, 1)
-				DrawImage(nil, cx - 20, cy - 1, 40, 2)
-				DrawImage(nil, cx - 1, cy - 20, 2, 40)
-				DrawImage(nil, cx - 3, cy - 3, 6, 6)
-				-- Base icon box (magenta) + top-left marker (cyan)
-				if base and base.width and base.height then
-					local bw = base.width * scale
-					local bh = base.height * scale
-					drawBox(cx, cy, bw, bh, 1, 0, 1)
-					SetDrawColor(0, 1, 1, 1)
-					DrawImage(nil, cx - bw - 3, cy - bh - 3, 6, 6)
-				end
-				-- Overlay box (green)
-				if overlayImage and overlayImage.width and overlayImage.height then
-					local ow = overlayImage.width * scale
-					local oh = overlayImage.height * scale
-					drawBox(cx, cy, ow, oh, 0, 1, 0)
-				end
-				SetDrawColor(1, 1, 1, 1)
-				DrawString(viewPort.x + 10, viewPort.y + 10, "LEFT", 18, "FIXED",
-					string.format("nearest id=%s icon=%s", tostring(nodeId), tostring(node.icon)))
-			end
+			-- Phase 3: Debug code removed (2026-02-07) - showNodeCenter node boundary display
 			if self.searchStrResults[nodeId] then
 				-- Node matches the search string, show the highlight circle
 				SetDrawLayer(nil, 30)
@@ -1284,20 +1229,7 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 		end
 	end
 	ConPrintf("DEBUG: Main node rendering loop complete, rendered %d nodes", nodeRenderCount)
-	if self.showNodeCenter and nearestNode and nearestNode.x and nearestNode.y then
-		local cx, cy = treeToScreen(nearestNode.x, nearestNode.y)
-		SetDrawColor(1, 0, 0, 1)
-		DrawImage(nil, cx - 20, cy - 1, 40, 2)
-		DrawImage(nil, cx - 1, cy - 20, 2, 40)
-		DrawImage(nil, cx - 3, cy - 3, 6, 6)
-		SetDrawColor(1, 1, 1, 1)
-		local debugTextSize = 48
-		DrawString(viewPort.x + 10, viewPort.y + 110, "LEFT", debugTextSize, "FIXED",
-			string.format("hover=%s nearest=%s dist_px=%.1f",
-				tostring(hoverNode and hoverNode.id or "none"),
-				tostring(nearestNodePx and nearestNodePx.id or "none"),
-				nearestDistPxSq and math.sqrt(nearestDistPxSq) or -1))
-	end
+	-- Phase 3: Debug code removed (2026-02-07) - showNodeCenter debug display
 
 	-- Diagnostic: Report nodes that passed filter check
 	-- End node draw loop
@@ -1309,7 +1241,11 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 		local node = tree.nodes[nodeId]
 		if node and node.name ~= "Charm Socket" and node.containJewelSocket ~= true and (not node.expansionJewel or node.expansionJewel.size == 2) then
 			local scrX, scrY = treeToScreen(node.x, node.y)
-			local socket, jewel = build.itemsTab:GetSocketAndJewelForNodeID(nodeId)
+			-- Phase 1: Nil-safety for itemsTab (2026-02-06)
+			local socket, jewel
+			if build.itemsTab then
+				socket, jewel = build.itemsTab:GetSocketAndJewelForNodeID(nodeId)
+			end
 			if node == hoverNode then
 				local isThreadOfHope = jewel and jewel.jewelRadiusLabel == "Variable"
 				if isThreadOfHope then
@@ -1669,7 +1605,8 @@ function PassiveTreeViewClass:AddNodeTooltip(tooltip, node, build, incSmallPassi
 	tooltip.center = true
 	tooltip.maxWidth = 800
 	-- Special case for sockets
-	if (node.type == "Socket" or node.containJewelSocket) and node.alloc then
+	-- Phase 1: Nil-safety for itemsTab (2026-02-06)
+	if (node.type == "Socket" or node.containJewelSocket) and node.alloc and build.itemsTab then
 		local socket, jewel = build.itemsTab:GetSocketAndJewelForNodeID(node.id)
 		if jewel then
 			build.itemsTab:AddItemTooltip(tooltip, jewel, { nodeId = node.id })
@@ -1811,7 +1748,9 @@ function PassiveTreeViewClass:AddNodeTooltip(tooltip, node, build, incSmallPassi
 			-- otherwise the mod came from a jewel that is allocMode 0, so it always applies
 			for _, modCriteria in ipairs(mod) do
 				if modCriteria.type == "Condition" and modCriteria.var and modCriteria.var:match("^WeaponSet") then
-					if (tonumber(modCriteria.var:match("(%d)")) == (build.itemsTab.activeItemSet.useSecondWeaponSet and 2 or 1)) then
+					-- Phase 1: Nil-safety for itemsTab (2026-02-06)
+					local weaponSet = (build.itemsTab and build.itemsTab.activeItemSet and build.itemsTab.activeItemSet.useSecondWeaponSet) and 2 or 1
+					if (tonumber(modCriteria.var:match("(%d)")) == weaponSet) then
 						if mod.name == "JewelSmallPassiveSkillEffect" then
 							localIncEffect = mod.value
 						elseif mod.name == "JewelNotablePassiveSkillEffect" then
@@ -1841,7 +1780,11 @@ function PassiveTreeViewClass:AddNodeTooltip(tooltip, node, build, incSmallPassi
 	-- we only want to run the timeLost function on a node that can could be in a jewel socket radius of up to Large
 	-- essentially trying to avoid calling ProcessStats for a Normal/Notable node that can't possibly be affected
 	-- loops potentially every socket (24) until itemsTab is loaded or a jewel socket is hovered, then it will only loop the allocated sockets
-	local function isNodeInARadius(node) 
+	local function isNodeInARadius(node)
+		-- Phase 1: Nil-safety for itemsTab (2026-02-06)
+		if not build.itemsTab then
+			return false
+		end
 		local isInRadius = false
 		for id, socket in pairs(build.itemsTab.sockets) do
 			if build.itemsTab.activeSocketList and socket.inactive == false or socket.inactive == nil then
@@ -1875,7 +1818,8 @@ function PassiveTreeViewClass:AddNodeTooltip(tooltip, node, build, incSmallPassi
 		end
 	end
 
-	if node.containJewelSocket and node.alloc then
+	-- Phase 1: Nil-safety for itemsTab (2026-02-06)
+	if node.containJewelSocket and node.alloc and build.itemsTab then
 		tooltip:AddSeparator(14)
 		-- Jewel socket with a jewel in it, show the jewel tooltip instead of the node tooltip
 		local socket, jewel = build.itemsTab:GetSocketAndJewelForNodeID(node.id)
@@ -1904,45 +1848,50 @@ function PassiveTreeViewClass:AddNodeTooltip(tooltip, node, build, incSmallPassi
 	end
 
 	-- Mod differences
-	if self.showStatDifferences then
-		local calcFunc, calcBase = build.calcsTab:GetMiscCalculator(build)
-		tooltip:AddSeparator(14)
-		local path = (node.alloc and node.depends) or self.tracePath or node.path or { }
-		local pathLength = #path
-		local pathNodes = { }
-		for _, node in pairs(path) do
-			pathNodes[node] = true
-		end
-		local nodeOutput, pathOutput
-		local isGranted = build.calcsTab.mainEnv.grantedPassives[node.id]
-		local realloc = false
-		if node.alloc then
-			-- Calculate the differences caused by deallocating this node and its dependent nodes
-			nodeOutput = calcFunc({ removeNodes = { [node] = true } })
-			if pathLength > 1 then
-				pathOutput = calcFunc({ removeNodes = pathNodes })
+	if self.showStatDifferences and build.calcsTab then
+		local ok, calcFunc, calcBase = pcall(function() return build.calcsTab:GetMiscCalculator(build) end)
+		if ok and calcFunc then
+			tooltip:AddSeparator(14)
+			local path = (node.alloc and node.depends) or self.tracePath or node.path or { }
+			local pathLength = #path
+			local pathNodes = { }
+			for _, node in pairs(path) do
+				pathNodes[node] = true
 			end
-		elseif isGranted then
-			-- Calculate the differences caused by deallocating this node
-			nodeOutput = calcFunc({ removeNodes = { [node.id] = true } })
-		else
-			nodeOutput = calcFunc({ addNodes = { [node] = true } })
-			if pathLength > 1 then
-				pathOutput = calcFunc({ addNodes = pathNodes })
-			end
-		end
-		local count = build:AddStatComparesToTooltip(tooltip, calcBase, nodeOutput, realloc and "^7Reallocating this node will give you:" or node.alloc and "^7Unallocating this node will give you:" or isGranted and "^7This node is granted by an item. Removing it will give you:" or "^7Allocating this node will give you:")
-		if pathLength > 1 and not isGranted and (#node.intuitiveLeapLikesAffecting == 0 or node.alloc) then
-			count = count + build:AddStatComparesToTooltip(tooltip, calcBase, pathOutput, node.alloc and "^7Unallocating this node and all nodes depending on it will give you:" or "^7Allocating this node and all nodes leading to it will give you:", pathLength)
-		end
-		if count == 0 then
-			if isGranted then
-				tooltip:AddLine(14, string.format("^7This node is granted by an item. Removing it will cause no changes"))
+			local nodeOutput, pathOutput
+			local isGranted = build.calcsTab.mainEnv and build.calcsTab.mainEnv.grantedPassives and build.calcsTab.mainEnv.grantedPassives[node.id]
+			local realloc = false
+			if node.alloc then
+				-- Calculate the differences caused by deallocating this node and its dependent nodes
+				nodeOutput = calcFunc({ removeNodes = { [node] = true } })
+				if pathLength > 1 then
+					pathOutput = calcFunc({ removeNodes = pathNodes })
+				end
+			elseif isGranted then
+				-- Calculate the differences caused by deallocating this node
+				nodeOutput = calcFunc({ removeNodes = { [node.id] = true } })
 			else
-				tooltip:AddLine(14, string.format("^7No changes from %s this node%s.", node.alloc and "unallocating" or "allocating", node.intuitiveLeapLikesAffecting == 0 and pathLength > 1 and " or the nodes leading to it" or ""))
+				nodeOutput = calcFunc({ addNodes = { [node] = true } })
+				if pathLength > 1 then
+					pathOutput = calcFunc({ addNodes = pathNodes })
+				end
 			end
+			local count = build:AddStatComparesToTooltip(tooltip, calcBase, nodeOutput, realloc and "^7Reallocating this node will give you:" or node.alloc and "^7Unallocating this node will give you:" or isGranted and "^7This node is granted by an item. Removing it will give you:" or "^7Allocating this node will give you:")
+			if pathLength > 1 and not isGranted and (#node.intuitiveLeapLikesAffecting == 0 or node.alloc) then
+				count = count + build:AddStatComparesToTooltip(tooltip, calcBase, pathOutput, node.alloc and "^7Unallocating this node and all nodes depending on it will give you:" or "^7Allocating this node and all nodes leading to it will give you:", pathLength)
+			end
+			if count == 0 then
+				if isGranted then
+					tooltip:AddLine(14, string.format("^7This node is granted by an item. Removing it will cause no changes"))
+				else
+					tooltip:AddLine(14, string.format("^7No changes from %s this node%s.", node.alloc and "unallocating" or "allocating", node.intuitiveLeapLikesAffecting == 0 and pathLength > 1 and " or the nodes leading to it" or ""))
+				end
+			end
+			tooltip:AddLine(14, colorCodes.TIP.."Tip: Press Ctrl+D to disable the display of stat differences.")
+		else
+			tooltip:AddSeparator(14)
+			tooltip:AddLine(14, "^7Stat differences not available yet.")
 		end
-		tooltip:AddLine(14, colorCodes.TIP.."Tip: Press Ctrl+D to disable the display of stat differences.")
 	else
 		tooltip:AddSeparator(14)
 		tooltip:AddLine(14, colorCodes.TIP.."Tip: Press Ctrl+D to enable the display of stat differences.")

@@ -835,7 +835,7 @@ function ItemClass:ParseRaw(raw, rarity, highQuality)
 			local statGroupedRunes = { }
 			local broadItemType = self.base.weapon and "weapon" or (self.base.tags.wand or self.base.tags.staff) and "caster" or "armour" -- minor optimisation
 			local specificItemType = self.base.type:lower()
-			for runeName, runeMods in pairs(data.itemMods.Runes) do
+			for runeName, runeMods in pairs(data.itemMods.Runes or {}) do
 				local addModToGroupedRunes = function (modLine)
 					local runeValue = 1
 					local runeStrippedModLine = modLine:gsub("(%d%.?%d*)", function(val)
@@ -1544,9 +1544,9 @@ function ItemClass:BuildModListForSlotNum(baseList, slotNum)
 		self.weaponData[slotNum] = weaponData
 		weaponData.type = self.base.type
 		weaponData.name = self.name
-		weaponData.AttackSpeedInc = calcLocal(modList, "Speed", "INC", ModFlag.Attack) + m_floor(self.quality / 8 * calcLocal(modList, "AlternateQualityLocalAttackSpeedPer8Quality", "INC", 0))
+		weaponData.AttackSpeedInc = calcLocal(modList, "Speed", "INC", ModFlag.Attack) + m_floor((self.quality or 0) /8 * calcLocal(modList, "AlternateQualityLocalAttackSpeedPer8Quality", "INC", 0))
 		weaponData.AttackRate = round(self.base.weapon.AttackRateBase * (1 + weaponData.AttackSpeedInc / 100), 2)
-		weaponData.rangeBonus = calcLocal(modList, "WeaponRange", "BASE", 0) + 10 * calcLocal(modList, "WeaponRangeMetre", "BASE", 0) + m_floor(self.quality / 10 * calcLocal(modList, "AlternateQualityLocalWeaponRangePer10Quality", "BASE", 0))
+		weaponData.rangeBonus = calcLocal(modList, "WeaponRange", "BASE", 0) + 10 * calcLocal(modList, "WeaponRangeMetre", "BASE", 0) + m_floor((self.quality or 0) /10 * calcLocal(modList, "AlternateQualityLocalWeaponRangePer10Quality", "BASE", 0))
 		weaponData.range = self.base.weapon.Range + weaponData.rangeBonus
 		if self.base.weapon.ReloadTimeBase then 
 			weaponData.ReloadSpeedInc = calcLocal(modList, "ReloadSpeed", "INC", ModFlag.Attack) + weaponData.AttackSpeedInc
@@ -1558,7 +1558,7 @@ function ItemClass:BuildModListForSlotNum(baseList, slotNum)
 			local max = (self.base.weapon[dmgType.."Max"] or 0) + calcLocal(modList, dmgType.."Max", "BASE", 0)
 			if dmgType == "Physical" then
 				local physInc = calcLocal(modList, "PhysicalDamage", "INC", 0)
-				local qualityScalar = self.quality
+				local qualityScalar = self.quality or 0
 				if calcLocal(modList, "AlternateQualityWeapon", "BASE", 0) > 0 then
 					qualityScalar = 0
 				end
@@ -1579,7 +1579,7 @@ function ItemClass:BuildModListForSlotNum(baseList, slotNum)
 				end
 			end
 		end
-		weaponData.CritChance = round((self.base.weapon.CritChanceBase + calcLocal(modList, "CritChance", "BASE", 0)) * (1 + (calcLocal(modList, "CritChance", "INC", 0) + m_floor(self.quality / 4 * calcLocal(modList, "AlternateQualityLocalCritChancePer4Quality", "INC", 0))) / 100), 2)
+		weaponData.CritChance = round((self.base.weapon.CritChanceBase + calcLocal(modList, "CritChance", "BASE", 0)) * (1 + (calcLocal(modList, "CritChance", "INC", 0) + m_floor((self.quality or 0) /4 * calcLocal(modList, "AlternateQualityLocalCritChancePer4Quality", "INC", 0))) / 100), 2)
 		for _, value in ipairs(modList:List(nil, "WeaponData")) do
 			weaponData[value.key] = value.value
 		end
@@ -1616,7 +1616,7 @@ function ItemClass:BuildModListForSlotNum(baseList, slotNum)
 		local wardInc = calcLocal(modList, "Ward", "INC", 0)
 		local armourEnergyShieldInc = calcLocal(modList, "ArmourAndEnergyShield", "INC", 0)
 		local defencesInc = calcLocal(modList, "Defences", "INC", 0)
-		local qualityScalar = self.quality
+		local qualityScalar = self.quality or 0
 		if calcLocal(modList, "AlternateQualityArmour", "BASE", 0) > 0 then
 			qualityScalar = 0
 		end
@@ -1646,7 +1646,7 @@ function ItemClass:BuildModListForSlotNum(baseList, slotNum)
 			local rateMod = 1 + calcLocal(modList, "FlaskRecoveryRate", "INC", 0) / 100
 			flaskData.duration = round(self.base.flask.duration * (1 + durationInc / 100) / rateMod * durationMore, 1)
 			if self.base.flask.life then
-				flaskData.lifeBase = self.base.flask.life * (1 + self.quality / 100) * recoveryMod
+				flaskData.lifeBase = self.base.flask.life * (1 + (self.quality or 0) / 100) * recoveryMod
 				flaskData.lifeInstant = flaskData.lifeBase * flaskData.instantPerc / 100
 				flaskData.lifeGradual = flaskData.lifeBase * (1 - flaskData.instantPerc / 100)
 				flaskData.lifeTotal = flaskData.lifeInstant + flaskData.lifeGradual
@@ -1654,7 +1654,7 @@ function ItemClass:BuildModListForSlotNum(baseList, slotNum)
 				flaskData.lifeEffectNotRemoved = calcLocal(baseList, "LifeFlaskEffectNotRemoved", "FLAG", 0)
 			end
 			if self.base.flask.mana then
-				flaskData.manaBase = self.base.flask.mana * (1 + self.quality / 100) * recoveryMod
+				flaskData.manaBase = self.base.flask.mana * (1 + (self.quality or 0) / 100) * recoveryMod
 				flaskData.manaInstant = flaskData.manaBase * flaskData.instantPerc / 100
 				flaskData.manaGradual = flaskData.manaBase * (1 - flaskData.instantPerc / 100)
 				flaskData.manaTotal = flaskData.manaInstant + flaskData.manaGradual

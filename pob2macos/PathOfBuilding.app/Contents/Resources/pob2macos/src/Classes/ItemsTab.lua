@@ -132,7 +132,8 @@ local ItemsTabClass = newClass("ItemsTab", "UndoHandler", "ControlHost", "Contro
 			end
 		elseif slotName == "Ring 3" then
 			slot.shown = function()
-				return self.build.calcsTab.mainEnv.modDB:Flag(nil, "AdditionalRingSlot")
+				local calcsTab = self.build.calcsTab
+				return calcsTab and calcsTab.mainEnv and calcsTab.mainEnv.modDB and calcsTab.mainEnv.modDB:Flag(nil, "AdditionalRingSlot")
 			end
 		end
 	end
@@ -877,12 +878,18 @@ holding Shift will put it in the second.]])
 	t_insert(self.controls.itemList.dragTargetList, build.controls.mainSkillMinion)
 	t_insert(self.controls.uniqueDB.dragTargetList, self.controls.itemList)
 	t_insert(self.controls.uniqueDB.dragTargetList, self.controls.sharedItemList)
-	t_insert(self.controls.uniqueDB.dragTargetList, build.controls.mainSkillMinion)
+	if build.controls.mainSkillMinion then
+		t_insert(self.controls.uniqueDB.dragTargetList, build.controls.mainSkillMinion)
+	end
 	t_insert(self.controls.rareDB.dragTargetList, self.controls.itemList)
 	t_insert(self.controls.rareDB.dragTargetList, self.controls.sharedItemList)
-	t_insert(self.controls.rareDB.dragTargetList, build.controls.mainSkillMinion)
+	if build.controls.mainSkillMinion then
+		t_insert(self.controls.rareDB.dragTargetList, build.controls.mainSkillMinion)
+	end
 	t_insert(self.controls.sharedItemList.dragTargetList, self.controls.itemList)
-	t_insert(self.controls.sharedItemList.dragTargetList, build.controls.mainSkillMinion)
+	if build.controls.mainSkillMinion then
+		t_insert(self.controls.sharedItemList.dragTargetList, build.controls.mainSkillMinion)
+	end
 	for _, slot in pairs(self.slots) do
 		t_insert(self.controls.itemList.dragTargetList, slot)
 		t_insert(self.controls.uniqueDB.dragTargetList, slot)

@@ -1703,7 +1703,86 @@ ModParser.lua:2758: attempt to index a nil value
 
 ---
 
-**最終更新**: 2026-02-05 (Stage 2 Calculation Infrastructure 部分完了)
-**総学習記録数**: 38件 (成功13件、失敗11件、繰り返し3件、効率化2件、技術的発見7件、エージェントシステム改善1件、診断失敗2件、プロジェクト失敗1件)
+---
+
+## PassiveTree ClassStart 接続条件のロジックバグ (失敗→成功)
+
+### ClassStart ノードの接続が全て除外されるバグ (成功)
+
+**日付**: 2026-02-08
+**記録者**: Claude (直接実装)
+**重要度**: CRITICAL
+
+**状況**:
+- RANGER ClassStart ノードに `linked=0` と表示され、接続ノードがゼロだった
+- BuildPathFromNode BFS がパスを構築できず、すべての通常ノードで `hoverNode.path` が nil
+- ノード割り当て（クリック）が完全に不可能な状態
+
+**原因**:
+PassiveTree.lua line 440 の接続条件にロジックバグがあった：
+
+```lua
+-- バグ（AND条件）: ClassStartノードが関与する接続をすべて除外
+if node.classesStart == nil and other.classesStart == nil then
+    -- ClassStartノード同士の接続のみ除外するつもりだったが、
+    -- ClassStart↔通常ノードの接続も除外してしまっていた
+end
+```
+
+この `and` 条件では、**片方でも** ClassStart ノードであれば接続が作成されない。つまり：
+- ClassStart ↔ ClassStart: 除外（意図通り）
+- ClassStart ↔ 通常ノード: **除外（意図しない動作）**
+- 通常ノード ↔ 通常ノード: 接続される（正常）
+
+**解決策**:
+```lua
+-- 修正（OR条件）: ClassStart同士の接続のみ除外
+if node.classesStart == nil or other.classesStart == nil then
+    -- ClassStart↔通常ノードは接続される（正常）
+    -- ClassStart↔ClassStartのみ除外（意図通り）
+end
+```
+
+`and` → `or` の1文字変更で、ClassStart↔通常ノード接続が正常に作成されるようになった。
+
+**診断の鍵**:
+- `linked=0` が RANGER ClassStart ノードで表示されたことが決定的な証拠だった
+- ClassStart ノードには必ず隣接する通常ノードが存在するはずなので、linked=0 は異常
+
+**副次的発見: ConPrintf の `%d` フォーマット問題**:
+
+LuaJIT FFI 経由の ConPrintf で `%d` フォーマットを使用すると、Lua の number 型（IEEE 754 double）がそのまま C の `int` として解釈される。小さい整数（例: 5）の IEEE 754 表現は下位32ビットが 0x00000000 であるため、`%d` は常に 0 またはゴミ値を表示する。
+
+```lua
+-- 間違い: 常に 0 またはゴミ値が表示される
+ConPrintf("count=%d", someNumber)
+
+-- 正しい: tostring() で文字列変換してから %s で表示
+ConPrintf("count=%s", tostring(someNumber))
+```
+
+**これは LuaJIT FFI の重要な制約であり、すべての数値ログ出力に影響する。**
+
+**教訓**:
+1. **論理条件の `and` と `or` を慎重に検証**: 特に「除外条件」では、ドモルガンの法則を意識し、意図した範囲のみが除外されるか確認する
+2. **ConPrintf では `%d` を絶対に使わない**: LuaJIT FFI 経由の varargs では double→int 変換が正しく行われない。常に `%s` + `tostring()` を使用する
+3. **linked=0 は致命的異常**: グラフ構造でノードの接続数が0の場合、BFS/DFS ベースのすべてのアルゴリズムが機能しない
+4. **1文字の変更が全機能を復活させることがある**: 根本原因を正確に特定すれば、修正は最小限で済む
+
+**適用**:
+- PassiveTree.lua のノード接続ロジックを修正する際は、ClassStart の特殊処理に注意
+- すべての ConPrintf 呼び出しで `%s` + `tostring()` パターンを使用
+- ノード接続数のデバッグログは、問題の早期発見に非常に有効
+
+**効果**:
+- ✅ RANGER ClassStart ノードに正しい接続数が表示される
+- ✅ BuildPathFromNode BFS がパスを正常に構築
+- ✅ 通常ノードのクリック割り当てが完全に機能
+- ✅ パッシブツリー全体のノード操作が復活
+
+---
+
+**最終更新**: 2026-02-08 (PassiveTree ClassStart 接続バグ修正)
+**総学習記録数**: 39件 (成功14件、失敗11件、繰り返し3件、効率化2件、技術的発見7件、エージェントシステム改善1件、診断失敗2件、プロジェクト失敗1件)
 **次回更新**: 新しい学習発生時、即座に
 

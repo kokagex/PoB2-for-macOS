@@ -65,7 +65,6 @@ function PassiveSpecClass:Init(treeVersion, convert)
 	for _ in pairs(self.tree.nodes) do
 		treeNodeCount = treeNodeCount + 1
 	end
-	ConPrintf("DEBUG [PassiveSpec]: self.tree.nodes count BEFORE filtering: %s", tostring(treeNodeCount))
 
 	-- ★ PHASE1: rawget/next method to bypass metatable pollution
 	local function copyNodeSafely(treeNode)
@@ -81,7 +80,6 @@ function PassiveSpecClass:Init(treeVersion, convert)
 		return newNode
 	end
 
-	ConPrintf("★ Phase1: Starting safe node copy (rawget/next method)")
 	local copyCount = 0
 
 	for nodeId, treeNode in pairs(self.tree.nodes) do
@@ -92,21 +90,18 @@ function PassiveSpecClass:Init(treeVersion, convert)
 		end
 	end
 
-	ConPrintf("★ Phase1: Successfully copied %d nodes", copyCount)
 
 	-- Verification: Test pairs() iteration
 	local verifyCount = 0
 	for _ in pairs(self.nodes) do
 		verifyCount = verifyCount + 1
 	end
-	ConPrintf("★ Phase1: Verification - pairs() iterates %d times", verifyCount)
 
 	-- Debug: Count filtered nodes
 	local filteredNodeCount = 0
 	for _ in pairs(self.nodes) do
 		filteredNodeCount = filteredNodeCount + 1
 	end
-	ConPrintf("DEBUG [PassiveSpec]: self.nodes count AFTER filtering: %s", tostring(filteredNodeCount))
 	for id, node in pairs(self.nodes) do
 		-- init all nodes as normal allocationMode
 		node.allocMode = 0
@@ -505,13 +500,6 @@ function PassiveSpecClass:DecodePoePlannerURL(url, return_tree_version_only)
 	if not b or #b < 15 then
 		return "Invalid tree link (unrecognised format)."
 	end
-	-- Quick debug for when we change tree versions. Print the first 20 or so bytes
-	-- s = ""
-	-- for i = 1, 20 do
-		-- s = s..i..":"..string.format('%02X ', b:byte(i))
-	-- end
-	-- print(s)
-
 	-- 4-7 is tree version.version
 	major_version = byteToInt(b,4)
 	minor_version = translatePoepToGggTreeVersion(byteToInt(b,6))
@@ -526,7 +514,6 @@ function PassiveSpecClass:DecodePoePlannerURL(url, return_tree_version_only)
 	-- 8 is Class, 9 is Ascendancy
 	local classId = b:byte(8)
 	local ascendClassId = b:byte(9)
-	-- print("classId, ascendClassId", classId, ascendClassId)
 
 	self:ResetNodes()
 	self:SelectClass(classId)
@@ -537,14 +524,12 @@ function PassiveSpecClass:DecodePoePlannerURL(url, return_tree_version_only)
 	local nodesCount = byteToInt(b, idx)
 	local nodesEnd = idx + 2 + (nodesCount * 2)
 	local nodes = b:sub(idx  + 2, nodesEnd - 1)
-	-- print("idx + 2 , nodesEnd, nodesCount, len(nodes)", idx + 2, nodesEnd, nodesCount, #nodes)
 	self:AllocateDecodedNodes(nodes, false, "little")
 
 	idx = nodesEnd
 	local clusterCount = byteToInt(b, idx)
 	local clusterEnd = idx + 2 + (clusterCount * 2)
 	local clusterNodes = b:sub(idx  + 2, clusterEnd - 1)
-	-- print("idx + 2 , clusterEnd, clusterCount, len(clusterNodes)", idx + 2, clusterEnd, clusterCount, #clusterNodes)
 	self:AllocateDecodedNodes(clusterNodes, true, "little")
 
 	-- poeplanner has Ascendancy nodes in a separate array
@@ -552,14 +537,12 @@ function PassiveSpecClass:DecodePoePlannerURL(url, return_tree_version_only)
 	local ascendancyCount = byteToInt(b, idx)
 	local ascendancyEnd = idx + 2 + (ascendancyCount * 2)
 	local ascendancyNodes = b:sub(idx  + 2, ascendancyEnd - 1)
-	-- print("idx + 2 , ascendancyEnd, ascendancyCount, len(ascendancyNodes)", idx + 2, ascendancyEnd, ascendancyCount, #ascendancyNodes)
 	self:AllocateDecodedNodes(ascendancyNodes, false, "little")
 
 	idx = ascendancyEnd
 	local masteryCount = byteToInt(b, idx)
 	local masteryEnd = idx + 2 + (masteryCount * 4)
 	local masteryEffects = b:sub(idx  + 2, masteryEnd - 1)
-	-- print("idx + 2 , masteryEnd, masteryCount, len(masteryEffects)", idx + 2, masteryEnd, masteryCount, #masteryEffects)
 	self:AllocateMasteryEffects(masteryEffects, "little")
 end
 
@@ -933,39 +916,17 @@ function PassiveSpecClass:AllocNode(node, altPath)
 	end
 
 	-- Allocate all nodes along the path
-	local logFile = io.open("/tmp/pob_alloc_debug.txt", "a")
-	if logFile then
-		logFile:write(string.format("[%s] AllocNode: node.id=%s, intuitiveLeapLikes=%d, path=%s, MINIMAL=%s\n",
-			os.date("%H:%M:%S"), tostring(node.id), node.intuitiveLeapLikesAffecting and #node.intuitiveLeapLikesAffecting or -1,
-			tostring(node.path ~= nil), tostring(_G.MINIMAL_PASSIVE_TEST)))
-		logFile:close()
-	end
 	if #node.intuitiveLeapLikesAffecting > 0 then
-		logFile = io.open("/tmp/pob_alloc_debug.txt", "a")
-		if logFile then
-			logFile:write("[DEBUG] Taking intuitiveLeap path\n")
-			logFile:close()
-		end
 		node.alloc = true
 		node.allocMode = (node.ascendancyName or node.type == "Keystone" or node.type == "Socket" or node.containJewelSocket) and 0 or self.allocMode
 		self.allocNodes[node.id] = node
 	else
 		-- MINIMAL mode: If no path, allocate only the clicked node
 		if not node.path and _G.MINIMAL_PASSIVE_TEST then
-			logFile = io.open("/tmp/pob_alloc_debug.txt", "a")
-			if logFile then
-				logFile:write("[DEBUG] Taking MINIMAL mode path (no path)\n")
-				logFile:close()
-			end
 			node.alloc = true
 			node.allocMode = (node.ascendancyName or node.type == "Keystone" or node.type == "Socket" or node.containJewelSocket) and 0 or self.allocMode
 			self.allocNodes[node.id] = node
 		else
-			logFile = io.open("/tmp/pob_alloc_debug.txt", "a")
-			if logFile then
-				logFile:write(string.format("[DEBUG] Taking path iteration (altPath or path)\n"))
-				logFile:close()
-			end
 			for _, pathNode in ipairs(altPath or node.path) do
 			pathNode.alloc = true
 			pathNode.allocMode = (node.ascendancyName or pathNode.type == "Keystone" or pathNode.type == "Socket" or pathNode.containJewelSocket) and 0 or self.allocMode
@@ -1025,6 +986,11 @@ function PassiveSpecClass:AllocNode(node, altPath)
 			end
 		end
 	end
+
+	-- Phase 3: Update BuildStub stats after node allocation (2026-02-07)
+	if self.build and self.build.buildStub and self.build.buildStub.CalculateStats then
+		self.build.buildStub:CalculateStats()
+	end
 end
 
 function PassiveSpecClass:DeallocSingleNode(node)
@@ -1049,6 +1015,11 @@ function PassiveSpecClass:DeallocNode(node)
 
 	-- Rebuild all paths and dependencies for all allocated nodes
 	self:BuildAllDependsAndPaths()
+
+	-- Phase 3: Update BuildStub stats after node deallocation (2026-02-07)
+	if self.build and self.build.buildStub and self.build.buildStub.CalculateStats then
+		self.build.buildStub:CalculateStats()
+	end
 end
 
 -- Count the number of allocated nodes and allocated ascendancy nodes
@@ -1190,15 +1161,6 @@ function PassiveSpecClass:BuildPathFromNode(root)
 			end
 		end
 	end
-	-- DEBUG: Count nodes with paths
-	local pathCount = 0
-	for id, node in pairs(self.nodes) do
-		if node.path then
-			pathCount = pathCount + 1
-		end
-	end
-	ConPrintf("DEBUG: BuildPathFromNode complete - %d nodes now have paths (root was id=%s, dn=%s)",
-		pathCount, tostring(root.id), tostring(root.dn))
 end
 
 -- Determine this node's distance from the class' start
@@ -1874,23 +1836,14 @@ function PassiveSpecClass:BuildAllDependsAndPaths()
 			node.distanceToClassStart = 0
 		end
 	end
-	ConPrintf("DEBUG: BuildAllDependsAndPaths - allocNodes count=%d", self.allocNodes and #self.allocNodes or 0)
-	local pathBuildCount = 0
 	for id, node in pairs(self.allocNodes) do
-		ConPrintf("DEBUG: allocNode id=%s, dn=%s, type=%s, intuitiveLeapLikesAffecting=%d",
-			tostring(id), tostring(node.dn), tostring(node.type), node.intuitiveLeapLikesAffecting and #node.intuitiveLeapLikesAffecting or -1)
 		if #node.intuitiveLeapLikesAffecting == 0 or node.connectedToStart then
-			ConPrintf("DEBUG: Building path from node id=%s", tostring(id))
 			self:BuildPathFromNode(node)
-			pathBuildCount = pathBuildCount + 1
 			if node.isJewelSocket or node.expansionJewel then
 				self:SetNodeDistanceToClassStart(node)
 			end
-		else
-			ConPrintf("DEBUG: Skipping path build for node id=%s (intuitiveLeap or not connectedToStart)", tostring(id))
 		end
 	end
-	ConPrintf("DEBUG: BuildAllDependsAndPaths complete - built paths from %d nodes", pathBuildCount)
 end
 
 function PassiveSpecClass:ReplaceNode(old, newNode)

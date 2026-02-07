@@ -239,6 +239,12 @@ function calcs.buildActiveSkillModList(env, activeSkill)
 	local skillFlags = activeSkill.skillFlags
 	local activeEffect = activeSkill.activeEffect
 	local activeGrantedEffect = activeEffect.grantedEffect
+	if not activeGrantedEffect then
+		activeSkill.skillCfg = { flags = 0, keywordFlags = 0, skillName = "Unknown", skillTypes = {}, skillCond = {} }
+		activeSkill.skillModList = new("ModList", activeSkill.actor.modDB)
+		activeSkill.baseSkillModList = activeSkill.skillModList
+		return
+	end
 	local effectiveRange = 0
 
 	-- Set mode flags

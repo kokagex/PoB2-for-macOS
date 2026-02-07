@@ -18,7 +18,7 @@ jit.opt.start('maxtrace=4000','maxmcode=8192')
 collectgarbage("setpause", 400)
 
 function launch:OnInit()
-	self.devMode = true  -- macOS: Enable dev mode to disable update checks
+	self.devMode = false  -- macOS: Disable dev mode for clean UI
 	self.installedMode = false
 	self.versionNumber = "?"
 	self.versionBranch = "?"
@@ -110,6 +110,14 @@ function launch:OnFrame()
 		if self.main.OnFrame then
 			local errMsg = PCall(self.main.OnFrame, self.main)
 			if errMsg then
+				-- Write complete error to file
+				local f = io.open("/tmp/pob_error.txt", "w")
+				if f then
+					f:write("COMPLETE ERROR MESSAGE:\n")
+					f:write(errMsg)
+					f:write("\n")
+					f:close()
+				end
 				self:ShowErrMsg("In 'OnFrame': %s", errMsg)
 			end
 		end
@@ -341,6 +349,10 @@ function launch:CheckForUpdate(inBackground)
 	self.updateProgress = "Checking..."
 	self.lastUpdateCheck = GetTime()
 	local update = io.open("UpdateCheck.lua", "r")
+	if not update then
+		ConPrintf("UpdateCheck.lua not found, skipping update check")
+		return
+	end
 	local id = LaunchSubScript(update:read("*a"), "GetScriptPath,GetRuntimePath,GetWorkDir,MakeDir", "ConPrintf,UpdateProgress", self.connectionProtocol, self.proxyURL, self.noSSL or false)
 	if id then
 		self.subScripts[id] = {
@@ -369,10 +381,15 @@ end
 
 function launch:ShowErrMsg(fmt, ...)
 	if not self.promptMsg then
-		local version = self.versionNumber and 
+		local fullError = string.format(fmt, ...)
+		-- Log the complete error message for debugging
+		ConPrintf("=== FULL ERROR MESSAGE ===")
+		ConPrintf("%s", fullError)
+		ConPrintf("=========================")
+		local version = self.versionNumber and
 			"^8v"..self.versionNumber..(self.versionBranch and " "..self.versionBranch or "")
 			or ""
-		self:ShowPrompt(1, 0, 0, "^1Error:\n\n^0"..string.format(fmt, ...).."\n"..version.."\n^0Press Enter/Escape to dismiss, or F5 to restart the application.\nPress CTRL + C to copy error text.")
+		self:ShowPrompt(1, 0, 0, "^1Error:\n\n^0"..fullError.."\n"..version.."\n^0Press Enter/Escape to dismiss, or F5 to restart the application.\nPress CTRL + C to copy error text.")
 	end
 end
 

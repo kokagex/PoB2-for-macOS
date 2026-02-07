@@ -93,23 +93,37 @@ local ConfigTabClass = newClass("ConfigTab", "UndoHandler", "ControlHost", "Cont
 	end
 
 	local function implyCond(varData)
-		local mainEnv = self.build.calcsTab.mainEnv
+		local calcsTab = self.build.calcsTab
+		if not calcsTab or not calcsTab.mainEnv then return false end
+		local mainEnv = calcsTab.mainEnv
 		if self.configSets[self.activeConfigSetId].input[varData.var] then
 			if varData.implyCondList then
 				for _, implyCond in ipairs(varData.implyCondList) do
-					if (implyCond and mainEnv.conditionsUsed[implyCond]) then
+					if (implyCond and mainEnv.conditionsUsed and mainEnv.conditionsUsed[implyCond]) then
 						return true
 					end
 				end
 			end
-			if (varData.implyCond and mainEnv.conditionsUsed[varData.implyCond]) or
-			   (varData.implyMinionCond and mainEnv.minionConditionsUsed[varData.implyMinionCond]) or
-			   (varData.implyEnemyCond and mainEnv.enemyConditionsUsed[varData.implyEnemyCond]) then
+			if (varData.implyCond and mainEnv.conditionsUsed and mainEnv.conditionsUsed[varData.implyCond]) or
+			   (varData.implyMinionCond and mainEnv.minionConditionsUsed and mainEnv.minionConditionsUsed[varData.implyMinionCond]) or
+			   (varData.implyEnemyCond and mainEnv.enemyConditionsUsed and mainEnv.enemyConditionsUsed[varData.implyEnemyCond]) then
 				return true
 			end
 		end
 
 		return false
+	end
+
+	-- Safe accessor for calcsTab.mainEnv (returns stub if calcsTab not ready)
+	local emptyEnvStub = setmetatable({
+		player = setmetatable({ activeSkillList = {} }, { __index = function() return nil end }),
+	}, { __index = function() return {} end })
+	local function getMainEnv()
+		local calcsTab = self.build.calcsTab
+		if calcsTab and calcsTab.mainEnv then
+			return calcsTab.mainEnv
+		end
+		return emptyEnvStub
 	end
 
 	local function listOrSingleIfOption(ifOption, ifFunc)
@@ -252,7 +266,7 @@ local ConfigTabClass = newClass("ConfigTab", "UndoHandler", "ControlHost", "Cont
 					end
 					local node = self.build.spec.nodes[ifOption]
 					if node and node.type == "Keystone" then
-						return self.build.calcsTab.mainEnv.keystonesAdded[node.dn]
+						return getMainEnv().keystonesAdded[node.dn]
 					end
 				end))
 				t_insert(tooltipFuncs, listOrSingleIfTooltip(varData.ifNode, function(ifOption)
@@ -269,14 +283,14 @@ local ConfigTabClass = newClass("ConfigTab", "UndoHandler", "ControlHost", "Cont
 					if implyCond(varData) then
 						return true
 					end
-					return self.build.calcsTab.mainEnv.conditionsUsed[ifOption]
+					return getMainEnv().conditionsUsed[ifOption]
 				end))
 				t_insert(tooltipFuncs, listOrSingleIfTooltip(varData.ifCond, function(ifOption)
 					if not launch.devModeAlt then
 						return
 					end
 					local out
-					local mods = self.build.calcsTab.mainEnv.conditionsUsed[ifOption]
+					local mods = getMainEnv().conditionsUsed[ifOption]
 					if not mods then
 						return out
 					end
@@ -291,14 +305,14 @@ local ConfigTabClass = newClass("ConfigTab", "UndoHandler", "ControlHost", "Cont
 					if implyCond(varData) then
 						return true
 					end
-					return self.build.calcsTab.mainEnv.minionConditionsUsed[ifOption]
+					return getMainEnv().minionConditionsUsed[ifOption]
 				end))
 				t_insert(tooltipFuncs, listOrSingleIfTooltip(varData.ifMinionCond, function(ifOption)
 					if not launch.devModeAlt then
 						return
 					end
 					local out
-					local mods = self.build.calcsTab.mainEnv.minionConditionsUsed[ifOption]
+					local mods = getMainEnv().minionConditionsUsed[ifOption]
 					if not mods then
 						return out
 					end
@@ -313,14 +327,14 @@ local ConfigTabClass = newClass("ConfigTab", "UndoHandler", "ControlHost", "Cont
 					if implyCond(varData) then
 						return true
 					end
-					return self.build.calcsTab.mainEnv.enemyConditionsUsed[ifOption]
+					return getMainEnv().enemyConditionsUsed[ifOption]
 				end))
 				t_insert(tooltipFuncs, listOrSingleIfTooltip(varData.ifEnemyCond, function(ifOption)
 					if not launch.devModeAlt then
 						return
 					end
 					local out
-					local mods = self.build.calcsTab.mainEnv.enemyConditionsUsed[ifOption]
+					local mods = getMainEnv().enemyConditionsUsed[ifOption]
 					if not mods then
 						return out
 					end
@@ -335,14 +349,14 @@ local ConfigTabClass = newClass("ConfigTab", "UndoHandler", "ControlHost", "Cont
 					if implyCond(varData) then
 						return true
 					end
-					return self.build.calcsTab.mainEnv.multipliersUsed[ifOption]
+					return getMainEnv().multipliersUsed[ifOption]
 				end))
 				t_insert(tooltipFuncs, listOrSingleIfTooltip(varData.ifMult, function(ifOption)
 					if not launch.devModeAlt then
 						return
 					end
 					local out
-					local mods = self.build.calcsTab.mainEnv.multipliersUsed[ifOption]
+					local mods = getMainEnv().multipliersUsed[ifOption]
 					if not mods then
 						return out
 					end
@@ -357,14 +371,14 @@ local ConfigTabClass = newClass("ConfigTab", "UndoHandler", "ControlHost", "Cont
 					if implyCond(varData) then
 						return true
 					end
-					return self.build.calcsTab.mainEnv.enemyMultipliersUsed[ifOption]
+					return getMainEnv().enemyMultipliersUsed[ifOption]
 				end))
 				t_insert(tooltipFuncs, listOrSingleIfTooltip(varData.ifEnemyMult, function(ifOption)
 					if not launch.devModeAlt then
 						return
 					end
 					local out
-					local mods = self.build.calcsTab.mainEnv.enemyMultipliersUsed[ifOption]
+					local mods = getMainEnv().enemyMultipliersUsed[ifOption]
 					if not mods then
 						return out
 					end
@@ -379,20 +393,20 @@ local ConfigTabClass = newClass("ConfigTab", "UndoHandler", "ControlHost", "Cont
 					if implyCond(varData) then
 						return true
 					end
-					return self.build.calcsTab.mainEnv.perStatsUsed[ifOption] or self.build.calcsTab.mainEnv.enemyMultipliersUsed[ifOption]
+					return getMainEnv().perStatsUsed[ifOption] or getMainEnv().enemyMultipliersUsed[ifOption]
 				end))
 				t_insert(tooltipFuncs, listOrSingleIfTooltip(varData.ifStat, function(ifOption)
 					if not launch.devModeAlt then
 						return
 					end
 					local out
-					local mods = self.build.calcsTab.mainEnv.perStatsUsed[ifOption]
+					local mods = getMainEnv().perStatsUsed[ifOption]
 					if mods then
 						for _, mod in ipairs(mods) do
 							out = (out and out.."\n" or "") .. modLib.formatMod(mod) .. "|" .. mod.source
 						end
 					end
-					local mods2 = self.build.calcsTab.mainEnv.enemyMultipliersUsed[ifOption]
+					local mods2 = getMainEnv().enemyMultipliersUsed[ifOption]
 					if mods2 then
 						for _, mod in ipairs(mods2) do
 							out = (out and out.."\n" or "") .. modLib.formatMod(mod) .. "|" .. mod.source
@@ -406,14 +420,14 @@ local ConfigTabClass = newClass("ConfigTab", "UndoHandler", "ControlHost", "Cont
 					if implyCond(varData) then
 						return true
 					end
-					return self.build.calcsTab.mainEnv.enemyPerStatsUsed[ifOption]
+					return getMainEnv().enemyPerStatsUsed[ifOption]
 				end))
 				t_insert(tooltipFuncs, listOrSingleIfTooltip(varData.ifEnemyStat, function(ifOption)
 					if not launch.devModeAlt then
 						return
 					end
 					local out
-					local mods = self.build.calcsTab.mainEnv.enemyPerStatsUsed[ifOption]
+					local mods = getMainEnv().enemyPerStatsUsed[ifOption]
 					if not mods then
 						return out
 					end
@@ -428,14 +442,14 @@ local ConfigTabClass = newClass("ConfigTab", "UndoHandler", "ControlHost", "Cont
 					if implyCond(varData) then
 						return true
 					end
-					return self.build.calcsTab.mainEnv.tagTypesUsed[ifOption]
+					return getMainEnv().tagTypesUsed[ifOption]
 				end))
 				t_insert(tooltipFuncs, listOrSingleIfTooltip(varData.ifTagType, function(ifOption)
 					if not launch.devModeAlt then
 						return
 					end
 					local out
-					local mods = self.build.calcsTab.mainEnv.tagTypesUsed[ifOption]
+					local mods = getMainEnv().tagTypesUsed[ifOption]
 					if not mods then
 						return out
 					end
@@ -447,11 +461,15 @@ local ConfigTabClass = newClass("ConfigTab", "UndoHandler", "ControlHost", "Cont
 			end
 			if varData.ifFlag then
 				t_insert(shownFuncs, listOrSingleIfOption(varData.ifFlag, function(ifOption)
-					local skillModList = self.build.calcsTab.mainEnv.player.mainSkill.skillModList
+					local mainEnv = getMainEnv()
+					local mainSkill = mainEnv.player and mainEnv.player.mainSkill
+					if not mainSkill then return false end
+					local skillModList = mainSkill.skillModList
 					-- only checking flags of skill in main env. rework may be required
-					local skillFlags = self.build.calcsTab.mainEnv.player.mainSkill.activeEffect.statSet.skillFlags
+					local skillFlags = mainSkill.activeEffect and mainSkill.activeEffect.statSet and mainSkill.activeEffect.statSet.skillFlags
+					if not skillFlags then return false end
 					-- Check both the skill mods for flags and flags that are set via calcPerform
-					return skillFlags[ifOption] or skillModList:Flag(nil, ifOption)
+					return skillFlags[ifOption] or (skillModList and skillModList:Flag(nil, ifOption))
 				end))
 			end
 			if varData.ifMod then
@@ -459,14 +477,14 @@ local ConfigTabClass = newClass("ConfigTab", "UndoHandler", "ControlHost", "Cont
 					if implyCond(varData) then
 						return true
 					end
-					return self.build.calcsTab.mainEnv.modsUsed[ifOption]
+					return getMainEnv().modsUsed[ifOption]
 				end))
 				t_insert(tooltipFuncs, listOrSingleIfTooltip(varData.ifMod, function(ifOption)
 					if not launch.devModeAlt then
 						return
 					end
 					local out
-					local mods = self.build.calcsTab.mainEnv.modsUsed[ifOption]
+					local mods = getMainEnv().modsUsed[ifOption]
 					if not mods then
 						return out
 					end
@@ -482,7 +500,7 @@ local ConfigTabClass = newClass("ConfigTab", "UndoHandler", "ControlHost", "Cont
 						if not calcLib.getGameIdFromGemName(ifOption, true) then
 							return false
 						end
-						for skill,_ in pairs(self.build.calcsTab.mainEnv.skillsUsed) do
+						for skill,_ in pairs(getMainEnv().skillsUsed) do
 							if calcLib.isGemIdSame(skill, ifOption, true) then
 								return true
 							end
@@ -491,13 +509,13 @@ local ConfigTabClass = newClass("ConfigTab", "UndoHandler", "ControlHost", "Cont
 					end))
 				else
 					t_insert(shownFuncs, listOrSingleIfOption(varData.ifSkill, function(ifOption)
-						return self.build.calcsTab.mainEnv.skillsUsed[ifOption]
+						return getMainEnv().skillsUsed[ifOption]
 					end))
 				end
 			end
 			if varData.ifSkillType then
 				t_insert(shownFuncs, listOrSingleIfOption(varData.ifSkillType, function(ifOption)
-					for _, activeSkill in ipairs(self.build.calcsTab.mainEnv.player.activeSkillList) do
+					for _, activeSkill in ipairs(getMainEnv().player.activeSkillList) do
 						-- only checking flags of skill in main env. rework may be required
 						if activeSkill.skillTypes[ifOption] then
 							return true
@@ -508,7 +526,7 @@ local ConfigTabClass = newClass("ConfigTab", "UndoHandler", "ControlHost", "Cont
 			end
 			if varData.ifSkillFlag then
 				t_insert(shownFuncs, listOrSingleIfOption(varData.ifSkillFlag, function(ifOption)
-					for _, activeSkill in ipairs(self.build.calcsTab.mainEnv.player.activeSkillList) do
+					for _, activeSkill in ipairs(getMainEnv().player.activeSkillList) do
 						-- only checking flags of skill in main env. rework may be required
 						if activeSkill.activeEffect.statSet.skillFlags[ifOption] then
 							return true
@@ -519,7 +537,7 @@ local ConfigTabClass = newClass("ConfigTab", "UndoHandler", "ControlHost", "Cont
 			end
 			if varData.ifSkillData then
 				t_insert(shownFuncs, listOrSingleIfOption(varData.ifSkillData, function(ifOption)
-					for _, activeSkill in ipairs(self.build.calcsTab.mainEnv.player.activeSkillList) do
+					for _, activeSkill in ipairs(getMainEnv().player.activeSkillList) do
 						if activeSkill.skillData[ifOption] then
 							return true
 						end

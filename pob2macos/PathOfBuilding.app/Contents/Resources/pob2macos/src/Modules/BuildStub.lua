@@ -1,0 +1,298 @@
+-- Path of Building
+--
+-- Module: BuildStub
+-- BuildStub.lua
+--
+-- Phase 2: Minimal build data structure for Phase 1-4 (MVB)
+-- Date: 2026-02-06
+--
+-- This stub provides basic character data without full calculation system.
+-- Used during incremental BUILD screen reconstruction to avoid nil-safety errors.
+
+local pairs = pairs
+local ipairs = ipairs
+local t_insert = table.insert
+local m_min = math.min
+local m_max = math.max
+
+local BuildStubClass = newClass("BuildStub", function(self)
+	self:Init()
+end)
+
+function BuildStubClass:Init()
+	-- Character basic info
+	self.characterLevel = 1
+	self.className = "Ranger"
+	self.characterClassName = "Ranger"
+	self.ascendClassName = "None"
+
+	-- Base stats (PoE2 base values for Ranger)
+	self.baseLife = 50
+	self.baseMana = 40
+	self.baseEnergyShield = 0
+
+	-- Base attributes
+	self.baseStr = 14
+	self.baseDex = 32  -- Ranger starts with high Dex
+	self.baseInt = 14
+
+	-- Derived stats (calculated from base + passives)
+	self.life = self.baseLife
+	self.mana = self.baseMana
+	self.energyShield = self.baseEnergyShield
+	self.str = self.baseStr
+	self.dex = self.baseDex
+	self.int = self.baseInt
+
+	-- Passive tree integration (Phase 3)
+	self.allocatedNodes = {}
+	self.allocatedNodeCount = 0
+	self.spec = nil  -- Phase 3: Reference to PassiveSpec (set by Build.lua)
+
+	-- Passive points
+	self.questPoints = 0  -- From quests
+	self.totalPassivePoints = self.characterLevel - 1 + self.questPoints
+	self.usedPassivePoints = 0
+	self.freePassivePoints = self.totalPassivePoints - self.usedPassivePoints
+
+	-- Phase 4: Item slots (stub for now)
+	self.itemSlots = {
+		{ id = "Weapon1", name = "Weapon", label = "Main Hand", empty = true },
+		{ id = "Weapon2", name = "Weapon", label = "Off Hand", empty = true },
+		{ id = "Helmet", name = "Helmet", label = "Helmet", empty = true },
+		{ id = "Body", name = "Body Armour", label = "Body Armour", empty = true },
+		{ id = "Gloves", name = "Gloves", label = "Gloves", empty = true },
+		{ id = "Boots", name = "Boots", label = "Boots", empty = true },
+		{ id = "Amulet", name = "Amulet", label = "Amulet", empty = true },
+		{ id = "Ring1", name = "Ring", label = "Ring 1", empty = true },
+		{ id = "Ring2", name = "Ring", label = "Ring 2", empty = true },
+		{ id = "Belt", name = "Belt", label = "Belt", empty = true },
+		{ id = "Charm1", name = "Charm", label = "Charm 1", empty = true },
+		{ id = "Charm2", name = "Charm", label = "Charm 2", empty = true },
+		{ id = "Charm3", name = "Charm", label = "Charm 3", empty = true },
+	}
+end
+
+-- Phase 3: Node allocation (stub for now)
+function BuildStubClass:AllocateNode(nodeId)
+	if self.allocatedNodes[nodeId] then
+		return  -- Already allocated
+	end
+
+	self.allocatedNodes[nodeId] = true
+	self.allocatedNodeCount = self.allocatedNodeCount + 1
+	self.usedPassivePoints = self.usedPassivePoints + 1
+	self.freePassivePoints = self.totalPassivePoints - self.usedPassivePoints
+
+	-- Phase 3: Calculate stats from node
+	-- For now, just placeholder
+end
+
+-- Phase 3: Node deallocation (stub for now)
+function BuildStubClass:DeallocateNode(nodeId)
+	if not self.allocatedNodes[nodeId] then
+		return  -- Not allocated
+	end
+
+	self.allocatedNodes[nodeId] = nil
+	self.allocatedNodeCount = self.allocatedNodeCount - 1
+	self.usedPassivePoints = self.usedPassivePoints - 1
+	self.freePassivePoints = self.totalPassivePoints - self.usedPassivePoints
+
+	-- Phase 3: Recalculate stats
+	-- For now, just placeholder
+end
+
+-- Phase 3: Calculate stats from allocated nodes
+function BuildStubClass:CalculateStats()
+	-- Reset to base values
+	self.life = self.baseLife
+	self.mana = self.baseMana
+	self.energyShield = self.baseEnergyShield
+	self.str = self.baseStr
+	self.dex = self.baseDex
+	self.int = self.baseInt
+
+	-- Phase 3: Calculate bonuses from allocated passive nodes
+	-- Nil-safety: Check if spec exists
+	if not self.spec or not self.spec.allocNodes then
+		ConPrintf("DEBUG [BuildStub]: spec or allocNodes not available, using placeholder calculation")
+		-- Fallback: simple placeholder calculation
+		self.life = self.baseLife + (self.allocatedNodeCount * 10)
+		self.mana = self.baseMana + (self.allocatedNodeCount * 5)
+		return
+	end
+
+	-- Iterate over all allocated nodes in spec
+	local nodeCount = 0
+	for nodeId, node in pairs(self.spec.allocNodes) do
+		nodeCount = nodeCount + 1
+		-- Nil-safety: Check if node and node.sd exist
+		if node and node.sd then
+			-- Parse stat descriptions (node.sd is array of strings)
+			for _, statDesc in ipairs(node.sd) do
+				-- Safe string conversion
+				local stat = tostring(statDesc)
+
+				-- Life bonuses
+				local lifeFlat = stat:match("^%+?(%d+) to maximum Life$")
+				if lifeFlat then
+					local value = tonumber(lifeFlat)
+					if value then
+						self.life = self.life + value
+						ConPrintf("DEBUG [BuildStub]: +%d Life from node %s", value, tostring(node.dn))
+					end
+				end
+
+				local lifePercent = stat:match("^(%d+)%% increased maximum Life$")
+				if lifePercent then
+					local percent = tonumber(lifePercent)
+					if percent then
+						self.life = self.life * (1 + percent/100)
+						ConPrintf("DEBUG [BuildStub]: +%d%% Life from node %s", percent, tostring(node.dn))
+					end
+				end
+
+				-- Mana bonuses
+				local manaFlat = stat:match("^%+?(%d+) to maximum Mana$")
+				if manaFlat then
+					local value = tonumber(manaFlat)
+					if value then
+						self.mana = self.mana + value
+						ConPrintf("DEBUG [BuildStub]: +%d Mana from node %s", value, tostring(node.dn))
+					end
+				end
+
+				local manaPercent = stat:match("^(%d+)%% increased maximum Mana$")
+				if manaPercent then
+					local percent = tonumber(manaPercent)
+					if percent then
+						self.mana = self.mana * (1 + percent/100)
+						ConPrintf("DEBUG [BuildStub]: +%d%% Mana from node %s", percent, tostring(node.dn))
+					end
+				end
+
+				-- Energy Shield bonuses
+				local esFlat = stat:match("^%+?(%d+) to maximum Energy Shield$")
+				if esFlat then
+					local value = tonumber(esFlat)
+					if value then
+						self.energyShield = self.energyShield + value
+						ConPrintf("DEBUG [BuildStub]: +%d ES from node %s", value, tostring(node.dn))
+					end
+				end
+
+				local esPercent = stat:match("^(%d+)%% increased maximum Energy Shield$")
+				if esPercent then
+					local percent = tonumber(esPercent)
+					if percent then
+						self.energyShield = self.energyShield * (1 + percent/100)
+						ConPrintf("DEBUG [BuildStub]: +%d%% ES from node %s", percent, tostring(node.dn))
+					end
+				end
+
+				-- Attribute bonuses
+				local strFlat = stat:match("^%+?(%d+) to Strength$")
+				if strFlat then
+					local value = tonumber(strFlat)
+					if value then
+						self.str = self.str + value
+						ConPrintf("DEBUG [BuildStub]: +%d Str from node %s", value, tostring(node.dn))
+					end
+				end
+
+				local dexFlat = stat:match("^%+?(%d+) to Dexterity$")
+				if dexFlat then
+					local value = tonumber(dexFlat)
+					if value then
+						self.dex = self.dex + value
+						ConPrintf("DEBUG [BuildStub]: +%d Dex from node %s", value, tostring(node.dn))
+					end
+				end
+
+				local intFlat = stat:match("^%+?(%d+) to Intelligence$")
+				if intFlat then
+					local value = tonumber(intFlat)
+					if value then
+						self.int = self.int + value
+						ConPrintf("DEBUG [BuildStub]: +%d Int from node %s", value, tostring(node.dn))
+					end
+				end
+
+				-- +X to all Attributes
+				local allAttr = stat:match("^%+?(%d+) to all Attributes$")
+				if allAttr then
+					local value = tonumber(allAttr)
+					if value then
+						self.str = self.str + value
+						self.dex = self.dex + value
+						self.int = self.int + value
+						ConPrintf("DEBUG [BuildStub]: +%d to all Attributes from node %s", value, tostring(node.dn))
+					end
+				end
+			end
+		end
+	end
+
+	-- Round final values
+	self.life = math.floor(self.life)
+	self.mana = math.floor(self.mana)
+	self.energyShield = math.floor(self.energyShield)
+	self.str = math.floor(self.str)
+	self.dex = math.floor(self.dex)
+	self.int = math.floor(self.int)
+
+	ConPrintf("DEBUG [BuildStub]: CalculateStats() complete - Life=%d, Mana=%d, Str=%d, Dex=%d, Int=%d (from %d nodes)",
+		self.life, self.mana, self.str, self.dex, self.int, nodeCount)
+end
+
+-- Set character level
+function BuildStubClass:SetLevel(level)
+	self.characterLevel = m_max(1, m_min(100, level))
+	self.totalPassivePoints = self.characterLevel - 1 + self.questPoints
+	self.freePassivePoints = self.totalPassivePoints - self.usedPassivePoints
+end
+
+-- Set character class
+function BuildStubClass:SetClass(className)
+	self.className = className
+	self.characterClassName = className
+
+	-- Reset base stats based on class (PoE2 starting values)
+	if className == "Ranger" then
+		self.baseStr = 14
+		self.baseDex = 32
+		self.baseInt = 14
+	elseif className == "Witch" then
+		self.baseStr = 14
+		self.baseDex = 14
+		self.baseInt = 32
+	elseif className == "Duelist" then
+		self.baseStr = 23
+		self.baseDex = 23
+		self.baseInt = 14
+	elseif className == "Marauder" then
+		self.baseStr = 32
+		self.baseDex = 14
+		self.baseInt = 14
+	elseif className == "Templar" then
+		self.baseStr = 23
+		self.baseDex = 14
+		self.baseInt = 23
+	elseif className == "Shadow" then
+		self.baseStr = 14
+		self.baseDex = 23
+		self.baseInt = 23
+	elseif className == "Scion" then
+		self.baseStr = 20
+		self.baseDex = 20
+		self.baseInt = 20
+	end
+
+	self:CalculateStats()
+end
+
+-- Register class globally for new() to work
+_G.BuildStub = BuildStubClass
+
+return BuildStubClass

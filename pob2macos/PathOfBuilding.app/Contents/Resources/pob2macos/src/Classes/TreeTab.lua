@@ -338,7 +338,22 @@ function TreeTabClass:Draw(viewPort, inputEvents)
 			end
 		end
 	end
+	-- Log TreeTab selControl state before processing
+	if self.selControl then
+		ConPrintf("TREETAB-SEL: selControl=%s before ProcessControlsInput",
+			tostring(self.selControl._className or self.selControl.label or self.selControl))
+	end
+	-- Count events before and after to detect consumption
+	local preCount = 0
+	for id, ev in pairs(inputEvents) do if ev then preCount = preCount + 1 end end
 	self:ProcessControlsInput(inputEvents, viewPort)
+	local postCount = 0
+	for id, ev in pairs(inputEvents) do if ev then postCount = postCount + 1 end end
+	if preCount ~= postCount then
+		ConPrintf("TREETAB-PCI: consumed %s events (%s -> %s), selControl after=%s",
+			tostring(preCount - postCount), tostring(preCount), tostring(postCount),
+			tostring(self.selControl and (self.selControl._className or self.selControl.label or "?") or "nil"))
+	end
 
 	-- Determine positions if one line of controls doesn't fit in the screen width
 	local linesHeight = 24
@@ -438,7 +453,8 @@ function TreeTabClass:Draw(viewPort, inputEvents)
 	self.controls.treeHeatMapStatSelect.list = self.powerStatList
 	self.controls.treeHeatMapStatSelect.selIndex = 1
 	self.controls.treeHeatMapStatSelect:CheckDroppedWidth(true)
-	if self.build.calcsTab.powerStat then
+	-- Phase 1: Nil-safety for calcsTab (2026-02-06)
+	if self.build.calcsTab and self.build.calcsTab.powerStat then
 		self.controls.treeHeatMapStatSelect:SelByValue(self.build.calcsTab.powerStat.stat, "stat")
 	end
 
@@ -525,28 +541,34 @@ function TreeTabClass:SetActiveSpec(specId)
 	self.build.buildFlag = true
 	self.build.spec:SetWindowTitleWithBuildClass()
 	self.build:UpdateClassDropdowns(curSpec.treeVersion)
-	for _, slot in pairs(self.build.itemsTab.slots) do
-		if slot.nodeId then
-			if prevSpec then
-				-- Update the previous spec's jewel for this slot
-				prevSpec.jewels[slot.nodeId] = slot.selItemId
-			end
-			if curSpec.jewels[slot.nodeId] then
-				-- Socket the jewel for the new spec
-				slot.selItemId = curSpec.jewels[slot.nodeId]
-			else
-				-- Unsocket the old jewel from the previous spec
-				slot.selItemId = 0
+
+	-- Phase 1: Nil-safety for itemsTab (2026-02-06)
+	-- In minimal mode, itemsTab doesn't exist, so skip item/jewel processing
+	if self.build.itemsTab then
+		for _, slot in pairs(self.build.itemsTab.slots) do
+			if slot.nodeId then
+				if prevSpec then
+					-- Update the previous spec's jewel for this slot
+					prevSpec.jewels[slot.nodeId] = slot.selItemId
+				end
+				if curSpec.jewels[slot.nodeId] then
+					-- Socket the jewel for the new spec
+					slot.selItemId = curSpec.jewels[slot.nodeId]
+				else
+					-- Unsocket the old jewel from the previous spec
+					slot.selItemId = 0
+				end
 			end
 		end
+		if self.build.itemsTab.itemOrderList[1] then
+			-- Update item slots if items have been loaded already
+			self.build.itemsTab:PopulateSlots()
+		end
+		-- Update the passive tree dropdown control in itemsTab
+		self.build.itemsTab.controls.specSelect.selIndex = specId
 	end
+
 	self.showConvert = not curSpec.treeVersion:match("^" .. latestTreeVersion)
-	if self.build.itemsTab.itemOrderList[1] then
-		-- Update item slots if items have been loaded already
-		self.build.itemsTab:PopulateSlots()
-	end
-	-- Update the passive tree dropdown control in itemsTab
-	self.build.itemsTab.controls.specSelect.selIndex = specId
 	-- Update Version dropdown to active spec's
 	if self.controls.versionSelect then
 		self.controls.versionSelect:SelByValue(curSpec.treeVersion, 'value')
