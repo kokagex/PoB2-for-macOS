@@ -242,23 +242,88 @@ _G.NewFileSearch = function(pattern, foldersOnly)
 end
 
 _G.SetClearColor = sg.SetClearColor
--- SetViewport: Logical→Physical conversion
+-- Viewport state: coordinate offset for DrawString/DrawImage
+local viewportStack = {}
+local viewportOffX = 0
+local viewportOffY = 0
+-- Viewport clip stack (for scissor rect restoration)
+local viewportClipStack = {}
+-- SetViewport: Translate coordinates + set scissor clipping for all subsequent draw calls
 _G.SetViewport = function(x, y, width, height)
+    local scale = getDpiScale()
     if not x or not y or not width or not height then
-        -- Default to full physical screen
-        local w = ffi.new("int[1]")
-        local h = ffi.new("int[1]")
-        sg.GetScreenSize(w, h)
-        sg.SetViewport(0, 0, w[0], h[0])
+        -- Reset viewport: pop to previous state or (0,0)
+        if #viewportStack > 0 then
+            local prev = table.remove(viewportStack)
+            viewportOffX = prev.x
+            viewportOffY = prev.y
+        else
+            viewportOffX = 0
+            viewportOffY = 0
+        end
+        -- Pop scissor rect
+        if #viewportClipStack > 0 then
+            local prevClip = table.remove(viewportClipStack)
+            sg.SetViewport(prevClip.x, prevClip.y, prevClip.w, prevClip.h)
+        else
+            -- Reset to full screen
+            local sw = ffi.new("int[1]")
+            local sh = ffi.new("int[1]")
+            sg.GetScreenSize(sw, sh)
+            sg.SetViewport(0, 0, sw[0], sh[0])
+        end
     else
-        local scale = getDpiScale()
-        sg.SetViewport(math.floor(x * scale), math.floor(y * scale),
-                       math.floor(width * scale), math.floor(height * scale))
+        -- Push current state and set new viewport offset
+        table.insert(viewportStack, { x = viewportOffX, y = viewportOffY })
+        -- Push current scissor rect (the absolute clip region we'll restore later)
+        if #viewportClipStack > 0 then
+            local cur = viewportClipStack[#viewportClipStack]
+            table.insert(viewportClipStack, { x = cur.x, y = cur.y, w = cur.w, h = cur.h })
+        else
+            local sw = ffi.new("int[1]")
+            local sh = ffi.new("int[1]")
+            sg.GetScreenSize(sw, sh)
+            table.insert(viewportClipStack, { x = 0, y = 0, w = sw[0], h = sh[0] })
+        end
+        viewportOffX = viewportOffX + x
+        viewportOffY = viewportOffY + y
+        -- Set scissor rect to clip to viewport bounds (in physical pixels)
+        sg.SetViewport(
+            math.floor(viewportOffX * scale),
+            math.floor(viewportOffY * scale),
+            math.floor(width * scale),
+            math.floor(height * scale)
+        )
     end
+end
+-- ResetViewport: Fully clear viewport stack and offset (use at frame boundaries)
+_G.ResetViewport = function()
+    viewportStack = {}
+    viewportClipStack = {}
+    viewportOffX = 0
+    viewportOffY = 0
+    -- Reset scissor to full screen
+    local sw = ffi.new("int[1]")
+    local sh = ffi.new("int[1]")
+    sg.GetScreenSize(sw, sh)
+    sg.SetViewport(0, 0, sw[0], sh[0])
 end
 -- SetDrawColor: Wrapper to handle type conversion and optional alpha argument
 _G.SetDrawColor = function(r, g, b, a)
-    -- Force conversion to number with explicit tonumber() and fallback to 0
+    -- Handle PoB color code strings like "^xRRGGBB"
+    if type(r) == "string" then
+        local hex = r:match("^%^x(%x%x%x%x%x%x)")
+        if hex then
+            local ri = tonumber(hex:sub(1,2), 16) / 255.0
+            local gi = tonumber(hex:sub(3,4), 16) / 255.0
+            local bi = tonumber(hex:sub(5,6), 16) / 255.0
+            sg.SetDrawColor(ri, gi, bi, tonumber(g) or 1.0)
+            return
+        end
+        -- Fallback: try tonumber on the string
+        r = tonumber(r) or 0.0
+    end
+
     local r_num = tonumber(r) or 0.0
     local g_num = tonumber(g) or 0.0
     local b_num = tonumber(b) or 0.0
@@ -276,7 +341,7 @@ end
 _G.SetDrawLayer = function(layer, subLayer)
     sg.SetDrawLayer(layer or 0, subLayer or 0)
 end
--- DrawString: Logical→Physical conversion + alignment mapping
+-- DrawString: Logical→Physical conversion + alignment mapping + viewport offset
 _G.DrawString = function(left, top, align, height, font, text)
     local alignMap = {
         LEFT = 0,
@@ -290,7 +355,7 @@ _G.DrawString = function(left, top, align, height, font, text)
         alignInt = alignMap[align:upper()] or 0
     end
     local scale = getDpiScale()
-    sg.DrawString(math.floor(left * scale), math.floor(top * scale),
+    sg.DrawString(math.floor((left + viewportOffX) * scale), math.floor((top + viewportOffY) * scale),
                   alignInt, math.floor(height * scale), font, text)
 end
 -- DrawStringWidth: Scale font height up, scale result back to logical
@@ -298,11 +363,11 @@ _G.DrawStringWidth = function(height, font, text)
     local scale = getDpiScale()
     return math.floor(sg.DrawStringWidth(math.floor(height * scale), font, text) / scale)
 end
--- DrawStringCursorIndex: Scale font height and cursor coords to physical
+-- DrawStringCursorIndex: Scale font height and cursor coords to physical (viewport-adjusted)
 _G.DrawStringCursorIndex = function(height, font, text, cursorX, cursorY)
     local scale = getDpiScale()
     return sg.DrawStringCursorIndex(math.floor(height * scale), font, text,
-                                     math.floor(cursorX * scale), math.floor(cursorY * scale))
+                                     math.floor((cursorX - viewportOffX) * scale), math.floor((cursorY - viewportOffY) * scale))
 end
 -- DrawImage: Wrapper to handle wrapped ImageHandle objects
 _G.DrawImage = function(imageHandle, left, top, width, height, tcLeft, tcTop, tcRight, tcBottom)
@@ -337,7 +402,7 @@ _G.DrawImage = function(imageHandle, left, top, width, height, tcLeft, tcTop, tc
     end
 
     local scale = getDpiScale()
-    sg.DrawImage(handle, left * scale, top * scale, width * scale, height * scale,
+    sg.DrawImage(handle, (left + viewportOffX) * scale, (top + viewportOffY) * scale, width * scale, height * scale,
                  tcLeft, tcTop, tcRight, tcBottom)
 end
 -- DrawImageQuad: Wrapper to handle wrapped ImageHandle objects
@@ -357,8 +422,10 @@ _G.DrawImageQuad = function(imageHandle, x1, y1, x2, y2, x3, y3, x4, y4, s1, t1,
     s4 = s4 or 0.0
     t4 = t4 or 1.0
     local scale = getDpiScale()
-    sg.DrawImageQuad(handle, x1*scale, y1*scale, x2*scale, y2*scale,
-                     x3*scale, y3*scale, x4*scale, y4*scale,
+    sg.DrawImageQuad(handle, (x1+viewportOffX)*scale, (y1+viewportOffY)*scale,
+                     (x2+viewportOffX)*scale, (y2+viewportOffY)*scale,
+                     (x3+viewportOffX)*scale, (y3+viewportOffY)*scale,
+                     (x4+viewportOffX)*scale, (y4+viewportOffY)*scale,
                      s1, t1, s2, t2, s3, t3, s4, t4)
 end
 
@@ -883,6 +950,9 @@ while IsUserTerminated() == 0 do
     end
 
     poll_input_events()
+
+    -- Reset viewport state at start of each frame (prevents cross-frame leaks)
+    ResetViewport()
 
     -- Call OnFrame
     if launch.OnFrame then

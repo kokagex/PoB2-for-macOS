@@ -288,11 +288,11 @@ function DropDownClass:Draw(viewPort, noTooltip)
 
 	-- draw dropdown bar
 	if enabled then
-		if (mOver or self.dropped) and mOverComp ~= "DROP" and not noTooltip then
+		if mOver and not self.dropped and mOverComp ~= "DROP" and not noTooltip then
 			SetDrawLayer(nil, 100)
 			self:DrawTooltip(
-				x, y - (self.dropped and self.dropUp and dropExtra or 0), 
-				width, height + (self.dropped and dropExtra or 0), 
+				x, y - (self.dropped and self.dropUp and dropExtra or 0),
+				width, height + (self.dropped and dropExtra or 0),
 				viewPort,
 				mOver and "BODY" or "OUT", self.selIndex, self.list[self.selIndex])
 			SetDrawLayer(nil, 0)
@@ -336,18 +336,14 @@ function DropDownClass:Draw(viewPort, noTooltip)
 		if self.hoverSel and not self.list[self.hoverSel] then
 			self.hoverSel = nil
 		end
-		if self.hoverSel and not noTooltip then
-			SetDrawLayer(nil, 100)
-			self:DrawTooltip(
-				x, dropY + 2 + (self.hoverSelDrop - 1) * lineHeight - scrollBar.offset,
-				width, lineHeight,
-				viewPort,
-				"HOVER", self.hoverSel, self.list[self.hoverSel])
-			SetDrawLayer(nil, 5)
-		end
-
-		-- draw dropdown items
+		-- draw dropdown items first (so tooltips render on top)
 		SetViewport(x + 2, dropY + 2, scrollBar.enabled and width - 22 or width - 4, self.dropHeight)
+		local cursorX, cursorY = GetCursorPos()
+		self.hoverSelDrop = mOver and not scrollBar:IsMouseOver() and math.floor((cursorY - dropY + scrollBar.offset) / lineHeight) + 1
+		self.hoverSel = self:DropIndexToListIndex(self.hoverSelDrop)
+		if self.hoverSel and not self.list[self.hoverSel] then
+			self.hoverSel = nil
+		end
 		local dropIndex = 0
 		for index, listVal in ipairs(self.list) do
 			local searchInfo = self.searchInfos[index]
@@ -372,7 +368,7 @@ function DropDownClass:Draw(viewPort, noTooltip)
 				if type(listVal) == "table" then
 					label = listVal.label
 					detail = listVal.detail
-				else 
+				else
 					label = listVal
 				end
 				DrawString(0, y, "LEFT", lineHeight, "VAR", label)
@@ -389,6 +385,17 @@ function DropDownClass:Draw(viewPort, noTooltip)
 			DrawString(0, 0 , "LEFT", lineHeight, "VAR", "<No matches>")
 		end
 		SetViewport()
+
+		-- draw tooltip for hovered item (AFTER items so it renders on top)
+		if self.hoverSel and not noTooltip then
+			SetDrawLayer(nil, 100)
+			self:DrawTooltip(
+				x, dropY + 2 + (self.hoverSelDrop - 1) * lineHeight - scrollBar.offset,
+				width, lineHeight,
+				viewPort,
+				"HOVER", self.hoverSel, self.list[self.hoverSel])
+			SetDrawLayer(nil, 5)
+		end
 		SetDrawLayer(nil, 0)
 	end
 end

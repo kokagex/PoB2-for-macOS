@@ -446,27 +446,38 @@ function GemSelectClass:Draw(viewPort, noTooltip)
 		SetViewport()
 		self:DrawControls(viewPort, (noTooltip and not self.forceTooltip) and self)
 		if self.hoverSel then
-			local calcFunc, calcBase = self.skillsTab.build.calcsTab:GetMiscCalculator(self.build)
-			if calcFunc then
+			local success, err = pcall(function()
+				local calcFunc, calcBase = self.skillsTab.build.calcsTab:GetMiscCalculator(self.build)
+				if calcFunc then
+					self.tooltip:Clear()
+					local gemData = self.gems[self.list[self.hoverSel]]
+					local output = self:CalcOutputWithThisGem(calcFunc, gemData, self.skillsTab.sortGemsByDPSField == "FullDPS", nil, calcBase)
+					local gemInstance = {
+							level = self.skillsTab:ProcessGemLevel(gemData),
+							quality = self.skillsTab.defaultGemQuality or 0,
+							count = 1,
+							enabled = true,
+							enableGlobal1 = true,
+							enableGlobal2 = true,
+							gemId = gemData.id,
+							nameSpec = gemData.name,
+							skillId = gemData.grantedEffectId,
+							displayEffect = nil,
+							gemData = gemData
+						}
+					self:AddGemTooltip(gemInstance)
+					self.tooltip:AddSeparator(10)
+					self.skillsTab.build:AddStatComparesToTooltip(self.tooltip, calcBase, output, "^7Selecting this gem will give you:")
+					self.tooltip:Draw(x, y + height + 2 + (self.hoverSel - 1) * (height - 4) - scrollBar.offset, width, height - 4, viewPort)
+				end
+			end)
+			if not success then
+				-- Show simple tooltip with gem name instead of crashing
 				self.tooltip:Clear()
 				local gemData = self.gems[self.list[self.hoverSel]]
-				local output = self:CalcOutputWithThisGem(calcFunc, gemData, self.skillsTab.sortGemsByDPSField == "FullDPS", nil, calcBase)
-				local gemInstance = {
-						level = self.skillsTab:ProcessGemLevel(gemData),
-						quality = self.skillsTab.defaultGemQuality or 0,
-						count = 1,
-						enabled = true,
-						enableGlobal1 = true,
-						enableGlobal2 = true,
-						gemId = gemData.id,
-						nameSpec = gemData.name,
-						skillId = gemData.grantedEffectId,
-						displayEffect = nil,
-						gemData = gemData
-					}
-				self:AddGemTooltip(gemInstance)
-				self.tooltip:AddSeparator(10)
-				self.skillsTab.build:AddStatComparesToTooltip(self.tooltip, calcBase, output, "^7Selecting this gem will give you:")
+				if gemData then
+					self.tooltip:AddLine(16, colorCodes.GEM .. gemData.name)
+				end
 				self.tooltip:Draw(x, y + height + 2 + (self.hoverSel - 1) * (height - 4) - scrollBar.offset, width, height - 4, viewPort)
 			end
 		end
@@ -489,48 +500,54 @@ function GemSelectClass:Draw(viewPort, noTooltip)
 			end
 		end
 		if mOver and (not self.skillsTab.selControl or self.skillsTab.selControl._className ~= "GemSelectControl" or not self.skillsTab.selControl.dropped) and (not noTooltip or self.forceTooltip) then
-			local gemInstance = self.skillsTab.displayGroup.gemList[self.index]
-			local cursorX, cursorY = GetCursorPos()
-			self.tooltip:Clear()
-			if gemInstance and gemInstance.gemData then
-				self:AddGemTooltip(gemInstance)
-			else
-				self.tooltip:AddLine(16, toolTipText)
-			end
-
-			colorS = 0.5
-			colorA = 0.5
-			if cursorX > (x + width - 18) then
-				colorS = 1
+			local success, err = pcall(function()
+				local gemInstance = self.skillsTab.displayGroup.gemList[self.index]
+				local cursorX, cursorY = GetCursorPos()
 				self.tooltip:Clear()
-				self.tooltip:AddLine(16, "Only show Support gems")
-			elseif (cursorX > (x + width - 40) and cursorX < (cursorX + width - 20)) then
-				colorA = 1
-				self.tooltip:Clear()
-				self.tooltip:AddLine(16, "Only show Active gems")
+				if gemInstance and gemInstance.gemData then
+					self:AddGemTooltip(gemInstance)
+				else
+					self.tooltip:AddLine(16, toolTipText)
+				end
+
+				colorS = 0.5
+				colorA = 0.5
+				if cursorX > (x + width - 18) then
+					colorS = 1
+					self.tooltip:Clear()
+					self.tooltip:AddLine(16, "Only show Support gems")
+				elseif (cursorX > (x + width - 40) and cursorX < (cursorX + width - 20)) then
+					colorA = 1
+					self.tooltip:Clear()
+					self.tooltip:AddLine(16, "Only show Active gems")
+				end
+
+				-- support shortcut
+				sx = x + width - 16 - 2
+				SetDrawColor(colorS,colorS,colorS)
+				DrawImage(nil, sx, y+2, 16, height-4)
+				SetDrawColor(0,0,0)
+				DrawImage(nil, sx+1, y+2, 16-2, height-4)
+				SetDrawColor(colorS,colorS,colorS)
+				DrawString(sx + 8, y, "CENTER_X", height - 2, "VAR", "S")
+
+				-- active shortcut
+				sx = x + width - (16*2) - (2*2)
+				SetDrawColor(colorA,colorA,colorA)
+				DrawImage(nil, sx, y+2, 16, height-4)
+				SetDrawColor(0,0,0)
+				DrawImage(nil, sx+1, y+2, 16-2, height-4)
+				SetDrawColor(colorA,colorA,colorA)
+				DrawString(sx + 8, y, "CENTER_X", height - 2, "VAR", "A")
+
+				SetDrawLayer(nil, 10)
+				self.tooltip:Draw(x, y, width, height, viewPort)
+				SetDrawLayer(nil, 0)
+			end)
+			if not success then
+				-- Ensure draw layer is reset on error
+				SetDrawLayer(nil, 0)
 			end
-
-			-- support shortcut
-			sx = x + width - 16 - 2
-			SetDrawColor(colorS,colorS,colorS)
-			DrawImage(nil, sx, y+2, 16, height-4)
-			SetDrawColor(0,0,0)
-			DrawImage(nil, sx+1, y+2, 16-2, height-4)
-			SetDrawColor(colorS,colorS,colorS)
-			DrawString(sx + 8, y, "CENTER_X", height - 2, "VAR", "S")
-
-			-- active shortcut
-			sx = x + width - (16*2) - (2*2)
-			SetDrawColor(colorA,colorA,colorA)
-			DrawImage(nil, sx, y+2, 16, height-4)
-			SetDrawColor(0,0,0)
-			DrawImage(nil, sx+1, y+2, 16-2, height-4)
-			SetDrawColor(colorA,colorA,colorA)
-			DrawString(sx + 8, y, "CENTER_X", height - 2, "VAR", "A")
-
-			SetDrawLayer(nil, 10)
-			self.tooltip:Draw(x, y, width, height, viewPort)
-			SetDrawLayer(nil, 0)
 		end
 	end
 end
@@ -697,9 +714,9 @@ function GemSelectClass:AddGrantedEffectInfo(gemInstance, grantedEffect, addReq)
 	self.tooltip:AddSeparator(10)
 	if addReq then
 		local reqLevel = grantedEffect.levels[gemInstance.level] and grantedEffect.levels[gemInstance.level].levelRequirement or 1
-		local reqStr = calcLib.getGemStatRequirement(reqLevel, gemInstance.gemData.reqStr, grantedEffect.support)
-		local reqDex = calcLib.getGemStatRequirement(reqLevel, gemInstance.gemData.reqDex, grantedEffect.support)
-		local reqInt = calcLib.getGemStatRequirement(reqLevel, gemInstance.gemData.reqInt, grantedEffect.support)
+		local reqStr = calcLib.getGemStatRequirement(reqLevel, grantedEffect.support, gemInstance.gemData.reqStr)
+		local reqDex = calcLib.getGemStatRequirement(reqLevel, grantedEffect.support, gemInstance.gemData.reqDex)
+		local reqInt = calcLib.getGemStatRequirement(reqLevel, grantedEffect.support, gemInstance.gemData.reqInt)
 		self.skillsTab.build:AddRequirementsToTooltip(self.tooltip, reqLevel, reqStr, reqDex, reqInt)
 	end
 	if grantedEffect.description then

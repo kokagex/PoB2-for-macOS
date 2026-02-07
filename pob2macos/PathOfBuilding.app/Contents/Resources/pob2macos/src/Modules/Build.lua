@@ -1900,6 +1900,9 @@ function buildMode:OnFrame(inputEvents)
 		width = main.screenW - sideBarWidth,
 		height = main.screenH - 32
 	}
+	-- Draw dark background for tab content area (prevents transparent/white bleed-through)
+	SetDrawColor(0.05, 0.05, 0.05)
+	DrawImage(nil, 0, 0, main.screenW, main.screenH)
 	if self.viewMode == "IMPORT" then
 		if self.importTab then
 			self.importTab:Draw(tabViewPort, inputEvents)
@@ -1923,6 +1926,7 @@ function buildMode:OnFrame(inputEvents)
 	self.unsaved = self.modFlag or self.notesTab.modFlag or self.partyTab.modFlag or self.configTab.modFlag or self.treeTab.modFlag or self.treeTab.searchFlag or self.spec.modFlag or self.skillsTab.modFlag or self.itemsTab.modFlag or self.calcsTab.modFlag
 
 	SetDrawLayer(5)
+	ResetViewport()
 
 	-- Draw top bar background
 	SetDrawColor(0.2, 0.2, 0.2)

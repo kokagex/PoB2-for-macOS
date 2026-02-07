@@ -1208,11 +1208,6 @@ function ItemsTabClass:Draw(viewPort, inputEvents)
 	end
 	self.controls.setSelect:SetList(newItemList)
 
-	if self.displayItem then
-		local x, y = self.controls.displayItemTooltipAnchor:GetPos()
-		self.displayItemTooltip:Draw(x, y, nil, nil, viewPort)
-	end
-
 	self:UpdateSockets()
 	-- Update weapon slots in case we got Giant's Blood from somewhere
 	self.slots["Weapon 2"]:Populate()
@@ -1224,6 +1219,14 @@ function ItemsTabClass:Draw(viewPort, inputEvents)
 	end
 	if self.controls.scrollBarV:IsShown() then
 		self.controls.scrollBarV:Draw(viewPort)
+	end
+
+	-- Draw display item tooltip AFTER controls so it renders on top
+	if self.displayItem then
+		-- Force batch flush by resetting viewport, then draw tooltip last
+		ResetViewport()
+		local x, y = self.controls.displayItemTooltipAnchor:GetPos()
+		self.displayItemTooltip:Draw(x, y, nil, nil, viewPort)
 	end
 
 	self.controls.specSelect:SetList(self.build.treeTab:GetSpecList())
