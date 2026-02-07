@@ -116,7 +116,6 @@ function BuildStubClass:CalculateStats()
 	-- Phase 3: Calculate bonuses from allocated passive nodes
 	-- Nil-safety: Check if spec exists
 	if not self.spec or not self.spec.allocNodes then
-		ConPrintf("DEBUG [BuildStub]: spec or allocNodes not available, using placeholder calculation")
 		-- Fallback: simple placeholder calculation
 		self.life = self.baseLife + (self.allocatedNodeCount * 10)
 		self.mana = self.baseMana + (self.allocatedNodeCount * 5)
@@ -140,7 +139,6 @@ function BuildStubClass:CalculateStats()
 					local value = tonumber(lifeFlat)
 					if value then
 						self.life = self.life + value
-						ConPrintf("DEBUG [BuildStub]: +%d Life from node %s", value, tostring(node.dn))
 					end
 				end
 
@@ -149,7 +147,6 @@ function BuildStubClass:CalculateStats()
 					local percent = tonumber(lifePercent)
 					if percent then
 						self.life = self.life * (1 + percent/100)
-						ConPrintf("DEBUG [BuildStub]: +%d%% Life from node %s", percent, tostring(node.dn))
 					end
 				end
 
@@ -159,7 +156,6 @@ function BuildStubClass:CalculateStats()
 					local value = tonumber(manaFlat)
 					if value then
 						self.mana = self.mana + value
-						ConPrintf("DEBUG [BuildStub]: +%d Mana from node %s", value, tostring(node.dn))
 					end
 				end
 
@@ -168,7 +164,6 @@ function BuildStubClass:CalculateStats()
 					local percent = tonumber(manaPercent)
 					if percent then
 						self.mana = self.mana * (1 + percent/100)
-						ConPrintf("DEBUG [BuildStub]: +%d%% Mana from node %s", percent, tostring(node.dn))
 					end
 				end
 
@@ -178,7 +173,6 @@ function BuildStubClass:CalculateStats()
 					local value = tonumber(esFlat)
 					if value then
 						self.energyShield = self.energyShield + value
-						ConPrintf("DEBUG [BuildStub]: +%d ES from node %s", value, tostring(node.dn))
 					end
 				end
 
@@ -187,7 +181,6 @@ function BuildStubClass:CalculateStats()
 					local percent = tonumber(esPercent)
 					if percent then
 						self.energyShield = self.energyShield * (1 + percent/100)
-						ConPrintf("DEBUG [BuildStub]: +%d%% ES from node %s", percent, tostring(node.dn))
 					end
 				end
 
@@ -197,7 +190,6 @@ function BuildStubClass:CalculateStats()
 					local value = tonumber(strFlat)
 					if value then
 						self.str = self.str + value
-						ConPrintf("DEBUG [BuildStub]: +%d Str from node %s", value, tostring(node.dn))
 					end
 				end
 
@@ -206,7 +198,6 @@ function BuildStubClass:CalculateStats()
 					local value = tonumber(dexFlat)
 					if value then
 						self.dex = self.dex + value
-						ConPrintf("DEBUG [BuildStub]: +%d Dex from node %s", value, tostring(node.dn))
 					end
 				end
 
@@ -215,7 +206,6 @@ function BuildStubClass:CalculateStats()
 					local value = tonumber(intFlat)
 					if value then
 						self.int = self.int + value
-						ConPrintf("DEBUG [BuildStub]: +%d Int from node %s", value, tostring(node.dn))
 					end
 				end
 
@@ -227,7 +217,6 @@ function BuildStubClass:CalculateStats()
 						self.str = self.str + value
 						self.dex = self.dex + value
 						self.int = self.int + value
-						ConPrintf("DEBUG [BuildStub]: +%d to all Attributes from node %s", value, tostring(node.dn))
 					end
 				end
 			end
@@ -242,8 +231,6 @@ function BuildStubClass:CalculateStats()
 	self.dex = math.floor(self.dex)
 	self.int = math.floor(self.int)
 
-	ConPrintf("DEBUG [BuildStub]: CalculateStats() complete - Life=%d, Mana=%d, Str=%d, Dex=%d, Int=%d (from %d nodes)",
-		self.life, self.mana, self.str, self.dex, self.int, nodeCount)
 end
 
 -- Set character level

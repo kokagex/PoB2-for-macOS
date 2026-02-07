@@ -362,9 +362,7 @@ function main:OnFrame()
 		end
 		self.mode = self.newMode
 		self.newMode = nil
-		ConPrintf("DEBUG: Calling Init for mode %s with %d args", tostring(self.mode), #(self.newModeArgs or {}))
 		self:CallMode("Init", unpack(self.newModeArgs))
-		ConPrintf("DEBUG: Init complete for mode %s", tostring(self.mode))
 		if self.newModeChangeToTree then
 			self.modes[self.mode].viewMode = "TREE"
 		end

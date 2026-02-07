@@ -70,19 +70,6 @@ local tabList = {
 function buildMode:OnFrameMinimal(inputEvents)
 	main:DrawBackground(main.viewPort)
 
-	-- Debug: count raw events (including nil gaps from ProcessControlsInput)
-	if not self._eventDiagCount then self._eventDiagCount = 0 end
-	self._eventDiagCount = self._eventDiagCount + 1
-	if self._eventDiagCount % 60 == 1 then
-		local rawCount = 0
-		local nilCount = 0
-		for i = 1, 20 do
-			if inputEvents[i] then rawCount = rawCount + 1
-			elseif inputEvents[i] == nil and rawCount > 0 then nilCount = nilCount + 1 end
-		end
-		local iCount = #inputEvents
-	end
-
 	-- Input handling
 	for id, event in ipairs(inputEvents) do
 		if event.type == "KeyDown" then
@@ -1819,7 +1806,7 @@ function buildMode:OnFrame(inputEvents)
 			end
 		end
 	end
-	-- (DIAG-SEL removed)
+	self:ProcessControlsInput(inputEvents, main.viewPort)
 
 	-- Nil-safety check for spec before accessing its properties
 	if self.spec then

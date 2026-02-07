@@ -297,15 +297,6 @@ local TreeTabClass = newClass("TreeTab", "ControlHost", function(self, build)
 end)
 
 function TreeTabClass:Draw(viewPort, inputEvents)
-	-- Debug: Log received viewport (first 5 frames)
-	if not self.viewPortLogCount then self.viewPortLogCount = 0 end
-	if self.viewPortLogCount < 5 then
-		self.viewPortLogCount = self.viewPortLogCount + 1
-		ConPrintf("TreeTab:Draw received viewport: x=%s y=%s w=%s h=%s",
-			tostring(viewPort.x), tostring(viewPort.y),
-			tostring(viewPort.width), tostring(viewPort.height))
-	end
-
 	self.anchorControls.x = viewPort.x + 4
 	self.anchorControls.y = viewPort.y + viewPort.height - 24
 
@@ -338,22 +329,7 @@ function TreeTabClass:Draw(viewPort, inputEvents)
 			end
 		end
 	end
-	-- Log TreeTab selControl state before processing
-	if self.selControl then
-		ConPrintf("TREETAB-SEL: selControl=%s before ProcessControlsInput",
-			tostring(self.selControl._className or self.selControl.label or self.selControl))
-	end
-	-- Count events before and after to detect consumption
-	local preCount = 0
-	for id, ev in pairs(inputEvents) do if ev then preCount = preCount + 1 end end
 	self:ProcessControlsInput(inputEvents, viewPort)
-	local postCount = 0
-	for id, ev in pairs(inputEvents) do if ev then postCount = postCount + 1 end end
-	if preCount ~= postCount then
-		ConPrintf("TREETAB-PCI: consumed %s events (%s -> %s), selControl after=%s",
-			tostring(preCount - postCount), tostring(preCount), tostring(postCount),
-			tostring(self.selControl and (self.selControl._className or self.selControl.label or "?") or "nil"))
-	end
 
 	-- Determine positions if one line of controls doesn't fit in the screen width
 	local linesHeight = 24
@@ -410,30 +386,11 @@ function TreeTabClass:Draw(viewPort, inputEvents)
 
 	local treeViewPort = { x = viewPort.x, y = viewPort.y, width = viewPort.width, height = viewPort.height - (self.showConvert and 64 + bottomDrawerHeight + linesHeight or 32 + bottomDrawerHeight + linesHeight)}
 
-	-- Debug: Log calculated treeViewPort (first 5 frames)
-	if not self.treeViewPortLogCount then self.treeViewPortLogCount = 0 end
-	if self.treeViewPortLogCount < 5 then
-		self.treeViewPortLogCount = self.treeViewPortLogCount + 1
-		ConPrintf("TreeTab: treeViewPort calculated: x=%s y=%s w=%s h=%s (showConvert=%s, bottomDrawerHeight=%s, linesHeight=%s)",
-			tostring(treeViewPort.x), tostring(treeViewPort.y),
-			tostring(treeViewPort.width), tostring(treeViewPort.height),
-			tostring(self.showConvert), tostring(bottomDrawerHeight), tostring(linesHeight))
-	end
-
 	if self.jumpToNode then
 		self.viewer:Focus(self.jumpToX, self.jumpToY, treeViewPort, self.build)
 		self.jumpToNode = false
 	end
 	self.viewer.compareSpec = self.isComparing and self.specList[self.activeCompareSpec] or nil
-
-	-- Debug: Log treeViewPort right before Draw call (first 5 frames)
-	if not self.beforeDrawLogCount then self.beforeDrawLogCount = 0 end
-	if self.beforeDrawLogCount < 5 then
-		self.beforeDrawLogCount = self.beforeDrawLogCount + 1
-		ConPrintf("TreeTab: treeViewPort BEFORE Draw: x=%s y=%s w=%s h=%s",
-			tostring(treeViewPort.x), tostring(treeViewPort.y),
-			tostring(treeViewPort.width), tostring(treeViewPort.height))
-	end
 
 	self.viewer:Draw(self.build, treeViewPort, inputEvents)
 

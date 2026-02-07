@@ -717,7 +717,6 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 			renderGroup(group)
 		end
 	end
-	ConPrintf("DEBUG: Group backgrounds drawn successfully")
 
 	local connectorColor = { 1, 1, 1 }
 	local function setConnectorColor(r, g, b)
@@ -796,34 +795,24 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 	end
 
 	-- Draw the connecting lines between nodes
-	ConPrintf("DEBUG: About to call SetDrawLayer for connectors")
 	SetDrawLayer(nil, 20)
-	ConPrintf("DEBUG: SetDrawLayer completed, about to draw tree.connectors")
 	for _, connector in pairs(tree.connectors) do
 		renderConnector(connector)
 	end
-	ConPrintf("DEBUG: tree.connectors drawn, about to draw subGraph connectors")
 	for _, subGraph in pairs(spec.subGraphs) do
 		for _, connector in pairs(subGraph.connectors) do
 			renderConnector(connector)
 		end
 	end
-	ConPrintf("DEBUG: All connectors drawn successfully")
 
-	ConPrintf("DEBUG: Checking showHeatMap, value=%s", tostring(self.showHeatMap))
 	if self.showHeatMap and build.calcsTab then
-		ConPrintf("DEBUG: Building heat map power")
 		-- Build the power numbers if needed
 		build.calcsTab:BuildPower()
 		self.heatMapStat = build.calcsTab.powerStat
-		ConPrintf("DEBUG: Heat map power built")
 	end
 
-	ConPrintf("DEBUG: Checking cached node data update, searchStrCached=%s searchStr=%s",
-		tostring(self.searchStrCached), tostring(self.searchStr))
 	-- Update cached node data
 	if self.searchStrCached ~= self.searchStr or self.searchNeedsForceUpdate == true then
-		ConPrintf("DEBUG: Updating cached node data")
 		self.searchStrCached = self.searchStr
 		self.searchNeedsForceUpdate = false
 
@@ -848,14 +837,9 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 		for nodeId, node in pairs(tree.nodes) do
 			self.searchStrResults[nodeId] = #self.searchParams > 0 and self:DoesNodeMatchSearchParams(node)
 		end
-		ConPrintf("DEBUG: Cached node data updated")
 	end
-	ConPrintf("DEBUG: Cached node data section complete")
 
-	ConPrintf("DEBUG: Checking devModeAlt, value=%s hoverNode=%s",
-		tostring(launch.devModeAlt), hoverNode and hoverNode.dn or "nil")
 	if launch.devModeAlt and hoverNode then
-		ConPrintf("DEBUG: Drawing dev mode orbits")
 		-- Draw orbits of the group node
 		local groupNode = hoverNode.group
 		SetDrawLayer(nil, 80)
@@ -892,11 +876,8 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 			end
 		end
 	end
-	ConPrintf("DEBUG: devMode section complete")
 
 	-- calculate inc from SmallPassiveSkillEffect
-	ConPrintf("DEBUG: Calculating SmallPassiveSkillEffect, allocNodes count=%d",
-		spec.allocNodes and #spec.allocNodes or 0)
 	local incSmallPassiveSkillEffect = 0
 	for _, node in pairs(spec.allocNodes) do
 		-- MINIMAL mode fix: Guard against missing modList after class switch (same pattern as Phase 2)
@@ -904,20 +885,13 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 			incSmallPassiveSkillEffect = incSmallPassiveSkillEffect + node.modList:Sum("INC", nil ,"SmallPassiveSkillEffect")
 		end
 	end
-	ConPrintf("DEBUG: SmallPassiveSkillEffect calculated, value=%d", incSmallPassiveSkillEffect)
 
 	-- Draw the nodes
 	-- ★ METATABLE FIX: Use spec.nodes (now plain tables without metatables)
 	-- spec.nodes has both tree data AND allocation state (alloc field)
 
-	ConPrintf("DEBUG: Starting main node rendering loop")
 	-- Draw the nodes using standard pairs() iteration
-	local nodeRenderCount = 0
 	for nodeId, node in pairs(spec.nodes) do
-		nodeRenderCount = nodeRenderCount + 1
-		if nodeRenderCount == 1 or nodeRenderCount % 1000 == 0 then
-			ConPrintf("DEBUG: Rendering node %d...", nodeRenderCount)
-		end
 		-- Filtering already done in PassiveSpec.lua
 		if node and node.group then
 			-- Determine the base and overlay images for this node based on type and state
@@ -1217,18 +1191,11 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 				end)
 
 				if not success then
-					local logFile = io.open("/tmp/pob_tooltip_error.txt", "w")
-					if logFile then
-						logFile:write("TOOLTIP DRAW ERROR:\n")
-						logFile:write(tostring(err) .. "\n")
-						logFile:close()
-					end
 					ConPrintf("ERROR: Tooltip Draw failed: %s", tostring(err))
 				end
 			end
 		end
 	end
-	ConPrintf("DEBUG: Main node rendering loop complete, rendered %d nodes", nodeRenderCount)
 	-- Phase 3: Debug code removed (2026-02-07) - showNodeCenter debug display
 
 	-- Diagnostic: Report nodes that passed filter check
@@ -1331,7 +1298,6 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 			end
 		end
 	end
-	ConPrintf("DEBUG: PassiveTreeView:Draw() completed successfully")
 end
 
 -- Draws the given asset at the given position
