@@ -413,8 +413,12 @@ end
 
 function CalcsTabClass:CheckFlag(obj)
 	local actor = self.input.showMinion and self.calcsEnv.minion or self.calcsEnv.player
-	local skillFlags = actor.mainSkill.activeEffect.statSetCalcs.skillFlags
-	local skillData = actor.mainSkill.skillData
+	if not actor or not actor.mainSkill then
+		return
+	end
+	local statSetCalcs = actor.mainSkill.activeEffect and actor.mainSkill.activeEffect.statSetCalcs
+	local skillFlags = statSetCalcs and statSetCalcs.skillFlags or actor.mainSkill.skillFlags or {}
+	local skillData = actor.mainSkill.skillData or {}
 	if obj.flag and not skillFlags[obj.flag] then
 		return
 	end
@@ -428,7 +432,9 @@ function CalcsTabClass:CheckFlag(obj)
 			end
 		end
 	end
-	if obj.playerFlag and not self.calcsEnv.player.mainSkill.activeEffect.statSetCalcs.skillFlags[obj.playerFlag] then
+	local playerStatSetCalcs = self.calcsEnv.player and self.calcsEnv.player.mainSkill and self.calcsEnv.player.mainSkill.activeEffect and self.calcsEnv.player.mainSkill.activeEffect.statSetCalcs
+	local playerSkillFlags = playerStatSetCalcs and playerStatSetCalcs.skillFlags or (self.calcsEnv.player and self.calcsEnv.player.mainSkill and self.calcsEnv.player.mainSkill.skillFlags) or {}
+	if obj.playerFlag and not playerSkillFlags[obj.playerFlag] then
 		return
 	end
 	if obj.notFlag and skillFlags[obj.notFlag] then
@@ -670,7 +676,10 @@ function CalcsTabClass:GetNodeCalculator()
 end
 
 function CalcsTabClass:GetMiscCalculator()
-	return unpack(self.miscCalculator)
+	if self.miscCalculator then
+		return unpack(self.miscCalculator)
+	end
+	return nil, nil
 end
 
 function CalcsTabClass:CreateUndoState()

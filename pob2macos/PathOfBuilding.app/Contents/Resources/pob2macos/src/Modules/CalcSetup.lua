@@ -1762,6 +1762,24 @@ function calcs.initEnv(build, mode, override, specEnv)
 		for _, activeSkill in pairs(env.player.activeSkillList) do
 			calcs.buildActiveSkillModList(env, activeSkill)
 		end
+		-- Auto-select a non-disabled main skill if current is disabled or has no attack/spell flags
+		if env.player.mainSkill and env.player.mainSkill.skillFlags then
+			local dominated = env.player.mainSkill.skillFlags.disable
+				or (not env.player.mainSkill.skillFlags.attack and not env.player.mainSkill.skillFlags.spell)
+			if dominated then
+				for _, activeSkill in ipairs(env.player.activeSkillList) do
+					if activeSkill.skillFlags
+						and not activeSkill.skillFlags.disable
+						and activeSkill.activeEffect
+						and activeSkill.activeEffect.grantedEffect
+						and not activeSkill.activeEffect.grantedEffect.support
+						and (activeSkill.skillFlags.attack or activeSkill.skillFlags.spell) then
+						env.player.mainSkill = activeSkill
+						break
+					end
+				end
+			end
+		end
 	else
 		-- Wipe skillData and readd required data the rest of the data will be added by the rest of code this stops iterative calculations on skillData not being reset
 		for _, activeSkill in pairs(env.player.activeSkillList) do

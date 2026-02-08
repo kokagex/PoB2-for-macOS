@@ -347,24 +347,17 @@ function GemSelectClass:UpdateSortCache()
 
 	local dpsField = self.skillsTab.sortGemsByDPSField
 	local useFullDPS = dpsField == "FullDPS"
-	local calcsTab = self.skillsTab.build and self.skillsTab.build.calcsTab
-	local calcFunc, calcBase
-	if calcsTab and calcsTab.miscCalculator then
-		calcFunc, calcBase = calcsTab:GetMiscCalculator()
-	end
-	local baseDPS = 0
-	if calcBase then
-		baseDPS = (dpsField == "FullDPS" and calcBase[dpsField] ~= nil and calcBase[dpsField]) or (calcBase.Minion and calcBase.Minion.CombinedDPS) or (calcBase[dpsField] ~= nil and calcBase[dpsField]) or 0
-	end
+	local calcFunc, calcBase = self.skillsTab.build.calcsTab:GetMiscCalculator(self.build)
+	-- Check for nil because some fields may not be populated, default to 0
+	local baseDPS = (dpsField == "FullDPS" and calcBase[dpsField] ~= nil and calcBase[dpsField]) or (calcBase.Minion and calcBase.Minion.CombinedDPS) or (calcBase[dpsField] ~= nil and calcBase[dpsField]) or 0
 
 	for gemId, gemData in pairs(self.gems) do
 		sortCache.dps[gemId] = baseDPS
-		-- Calculate DPS impact only if calculator is available
-		if calcFunc and calcBase and (sortCache.canSupport[gemId] or (gemData.grantedEffect.hasGlobalEffect and not gemData.grantedEffect.support)) then
-			local ok, output = pcall(self.CalcOutputWithThisGem, self, calcFunc, gemData, useFullDPS, nil, calcBase)
-			if ok and output then
-				sortCache.dps[gemId] = (dpsField == "FullDPS" and output[dpsField] ~= nil and output[dpsField]) or (output.Minion and output.Minion.CombinedDPS) or (output[dpsField] ~= nil and output[dpsField]) or 0
-			end
+		-- Ignore gems that don't support the active skill
+		if sortCache.canSupport[gemId] or (gemData.grantedEffect.hasGlobalEffect and not gemData.grantedEffect.support) then
+			local output = self:CalcOutputWithThisGem(calcFunc, gemData, useFullDPS, fastCalcOptions, calcBase)
+			-- Check for nil because some fields may not be populated, default to 0
+			sortCache.dps[gemId] = (dpsField == "FullDPS" and output[dpsField] ~= nil and output[dpsField]) or (output.Minion and output.Minion.CombinedDPS) or (output[dpsField] ~= nil and output[dpsField]) or 0
 		end
 		-- Color based on the DPS
 		if sortCache.dps[gemId] > baseDPS then
@@ -506,11 +499,7 @@ function GemSelectClass:Draw(viewPort, noTooltip)
 		self:DrawControls(viewPort, (noTooltip and not self.forceTooltip) and self)
 		if self.hoverSel then
 			local success, err = pcall(function()
-				local calcsTab = self.skillsTab.build and self.skillsTab.build.calcsTab
-				local calcFunc, calcBase
-				if calcsTab and calcsTab.miscCalculator then
-					calcFunc, calcBase = calcsTab:GetMiscCalculator()
-				end
+				local calcFunc, calcBase = self.skillsTab.build.calcsTab:GetMiscCalculator(self.build)
 				if calcFunc then
 					self.tooltip:Clear()
 					local gemData = self.gems[self.list[self.hoverSel]]
@@ -813,8 +802,8 @@ function GemSelectClass:AddStatSetInfo(gemInstance, grantedEffect, statSet, noLa
 		--end
 		local descriptions, lineMap = self.skillsTab.build.data.describeStats(stats, statSet.statDescriptionScope)
 		for i, line in ipairs(descriptions) do
-			local source = (statSet.statMap and statSet.statMap[lineMap[line]]) or self.skillsTab.build.data.skillStatMap[lineMap[line]]
-			local bg = nil  -- GemHoverModBg.png asset not available on macOS
+			local source = statSet.statMap[lineMap[line]] or self.skillsTab.build.data.skillStatMap[lineMap[line]]
+			local bg = (i % 2 == 0) and "GemHoverModBg" or nil  -- every second line gets background
 			if source then
 				if launch.devModeAlt then
 					local devText = lineMap[line]

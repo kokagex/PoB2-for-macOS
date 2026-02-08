@@ -113,6 +113,14 @@ function buildMode:OnFrameMinimal(inputEvents)
 		local buildErr = PCall(self.calcsTab.BuildOutput, self.calcsTab)
 		if buildErr then
 			ConPrintf("WARNING: BuildOutput failed in OnFrame: %s", tostring(buildErr))
+			-- Ensure miscCalculator exists even if BuildOutput fails
+			if not self.calcsTab.miscCalculator then
+				local fallbackOutput = self.calcsTab.mainOutput or {}
+				self.calcsTab.miscCalculator = {
+					function(override, useFullDPS) return fallbackOutput end,
+					fallbackOutput
+				}
+			end
 		end
 		self:RefreshStatList()
 	end
@@ -348,6 +356,14 @@ function buildMode:InitMinimal(dbFileName, buildName)
 				minion = nil,
 			}
 			self.calcsTab.mainOutput = self.calcsTab.mainEnv.player.output
+		end
+		-- Create fallback miscCalculator so DPS sorting doesn't crash
+		if not self.calcsTab.miscCalculator then
+			local fallbackOutput = self.calcsTab.mainOutput or {}
+			self.calcsTab.miscCalculator = {
+				function(override, useFullDPS) return fallbackOutput end,
+				fallbackOutput
+			}
 		end
 	end
 

@@ -1157,7 +1157,7 @@ function calcs.offence(env, actor, activeSkill)
 	if activeSkill.skillTypes[SkillType.Warcry] then
 		local full_duration = calcSkillDuration(skillModList, skillCfg, activeSkill.skillData, env, enemyDB)
 		local cooldownOverride = skillModList:Override(skillCfg, "CooldownRecovery")
-		local actual_cooldown = cooldownOverride or (activeSkill.skillData.cooldown  + skillModList:Sum("BASE", skillCfg, "CooldownRecovery")) / calcLib.mod(skillModList, skillCfg, "CooldownRecovery")
+		local actual_cooldown = cooldownOverride or ((activeSkill.skillData.cooldown or 0)  + skillModList:Sum("BASE", skillCfg, "CooldownRecovery")) / calcLib.mod(skillModList, skillCfg, "CooldownRecovery")
 		local uptime = env.modDB:Flag(nil, "Condition:WarcryMaxHit") and 1 or m_min(full_duration / actual_cooldown, 1)
 		local unscaledEffect = calcLib.mod(skillModList, skillCfg, "WarcryEffect", "BuffEffect")
 		output.WarcryEffectMod = unscaledEffect * uptime

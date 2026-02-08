@@ -268,6 +268,7 @@ will automatically apply to the skill.]]
 	self.controls.gemQualityHeader = new("LabelControl", {"BOTTOMLEFT", self.gemSlots[1].quality, "TOPLEFT"}, {0, -2, 0, 16}, "^7Quality:")
 	self.controls.gemEnableHeader = new("LabelControl", {"BOTTOMLEFT", self.gemSlots[1].enabled, "TOPLEFT"}, {-16, -2, 0, 16}, "^7Enabled:")
 	self.controls.gemCountHeader = new("LabelControl", {"BOTTOMLEFT", self.gemSlots[1].count, "TOPLEFT"}, {8, -2, 0, 16}, "^7Count:")
+
 end)
 
 function SkillsTabClass:LoadSkill(node, skillSetId)
@@ -797,18 +798,18 @@ function SkillsTabClass:CreateGemSlot(index)
 			local qualityTable = gemData.grantedEffect.qualityStats
 			addQualityLines(qualityTable, gemData.grantedEffect)
 		end
-		if gemData and gemData.additionalGrantedEffects[1] and gemData.additionalGrantedEffects[1].qualityStats and #gemData.additionalGrantedEffects[1].qualityStats > 0 then
+		if gemData and gemData.additionalGrantedEffects and gemData.additionalGrantedEffects[1] and gemData.additionalGrantedEffects[1].qualityStats and #gemData.additionalGrantedEffects[1].qualityStats > 0 then
 			local qualityTable = gemData.additionalGrantedEffects[1].qualityStats
 			tooltip:AddSeparator(10)
 			addQualityLines(qualityTable, gemData.additionalGrantedEffects[1])
 		end
-		if gemData and gemData.additionalGrantedEffects[2] and gemData.additionalGrantedEffects[2].qualityStats and #gemData.additionalGrantedEffects[2].qualityStats > 0  then
+		if gemData and gemData.additionalGrantedEffects and gemData.additionalGrantedEffects[2] and gemData.additionalGrantedEffects[2].qualityStats and #gemData.additionalGrantedEffects[2].qualityStats > 0  then
 			local qualityTable = gemData.additionalGrantedEffects[2].qualityStats
 			tooltip:AddSeparator(10)
 			addQualityLines(qualityTable, gemData.additionalGrantedEffects[2])
 		end
 		-- Add stat comparisons for hovered quality (based on set quality)
-		if gemData and (gemData.grantedEffect.qualityStats or (gemData.additionalGrantedEffects[1] and gemData.additionalGrantedEffects[1].qualityStats or gemData.additionalGrantedEffects[2] and gemData.additionalGrantedEffects[2].qualityStats)) and self.displayGroup.gemList[index] and self.build.calcsTab then
+		if gemData and (gemData.grantedEffect.qualityStats or (gemData.additionalGrantedEffects and (gemData.additionalGrantedEffects[1] and gemData.additionalGrantedEffects[1].qualityStats or gemData.additionalGrantedEffects[2] and gemData.additionalGrantedEffects[2].qualityStats))) and self.displayGroup.gemList[index] and self.build.calcsTab then
 			local calcFunc, calcBase = self.build.calcsTab:GetMiscCalculator(self.build)
 			if calcFunc then
 				local storedQuality = self.displayGroup.gemList[index].quality

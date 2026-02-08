@@ -186,9 +186,10 @@ function calcLib.buildSkillInstanceStats(skillInstance, grantedEffect)
 			stats[stat[1]] = (stats[stat[1]] or 0) + math.modf(stat[2] * skillInstance.quality)
 		end
 	end
-	local level = grantedEffect.levels[skillInstance.level] or { }
+	local statSetLevels = grantedEffect.statSets and grantedEffect.statSets[1] and grantedEffect.statSets[1].levels
+	local level = (statSetLevels and statSetLevels[skillInstance.level]) or grantedEffect.levels[skillInstance.level] or { }
 	local availableEffectiveness
-	local actorLevel = skillInstance.actorLevel or level.levelRequirement or 1
+	local actorLevel = skillInstance.actorLevel or level.actorLevel or level.levelRequirement or 1
 	local grantedStats = grantedEffect.stats or (grantedEffect.statSets and grantedEffect.statSets[1] and grantedEffect.statSets[1].stats) or {}
 	for index, stat in ipairs(grantedStats) do
 		-- Static value used as default (assumes statInterpolation == 1)
@@ -197,9 +198,11 @@ function calcLib.buildSkillInstanceStats(skillInstance, grantedEffect)
 			if level.statInterpolation[index] == 3 then
 				-- Effectiveness interpolation
 				if not availableEffectiveness then
+					local baseEff = grantedEffect.baseEffectiveness or (grantedEffect.statSets and grantedEffect.statSets[1] and grantedEffect.statSets[1].baseEffectiveness) or 1
+					local incrEff = grantedEffect.incrementalEffectiveness or (grantedEffect.statSets and grantedEffect.statSets[1] and grantedEffect.statSets[1].incrementalEffectiveness) or 0
 					availableEffectiveness =
-					(data.gameConstants["SkillDamageBaseEffectiveness"] + data.gameConstants["SkillDamageIncrementalEffectiveness"] * (actorLevel - 1)) * (grantedEffect.baseEffectiveness or 1)
-							* (1 + (grantedEffect.incrementalEffectiveness or 0)) ^ (actorLevel - 1)
+					(data.gameConstants["SkillDamageBaseEffectiveness"] + data.gameConstants["SkillDamageIncrementalEffectiveness"] * (actorLevel - 1)) * baseEff
+							* (1 + incrEff) ^ (actorLevel - 1)
 				end
 				statValue = round(availableEffectiveness * level[index])
 			elseif level.statInterpolation[index] == 2 then
@@ -208,7 +211,7 @@ function calcLib.buildSkillInstanceStats(skillInstance, grantedEffect)
 				-- Order the levels, since sometimes they skip around
 				local orderedLevels = { }
 				local currentLevelIndex
-				for level, _ in pairs(grantedEffect.levels) do
+				for level, _ in pairs(statSetLevels or grantedEffect.levels) do
 					t_insert(orderedLevels, level)
 				end
 				table.sort(orderedLevels)
@@ -220,20 +223,21 @@ function calcLib.buildSkillInstanceStats(skillInstance, grantedEffect)
 
 				if #orderedLevels > 1 then
 					local nextLevelIndex = m_min(currentLevelIndex + 1, #orderedLevels)
-					local nextReq = grantedEffect.levels[orderedLevels[nextLevelIndex]].levelRequirement
-					local prevReq = grantedEffect.levels[orderedLevels[nextLevelIndex - 1]].levelRequirement
-					local nextStat = grantedEffect.levels[orderedLevels[nextLevelIndex]][index]
-					local prevStat = grantedEffect.levels[orderedLevels[nextLevelIndex - 1]][index]
+					local nextReq = (statSetLevels or grantedEffect.levels)[orderedLevels[nextLevelIndex]].levelRequirement
+					local prevReq = (statSetLevels or grantedEffect.levels)[orderedLevels[nextLevelIndex - 1]].levelRequirement
+					local nextStat = (statSetLevels or grantedEffect.levels)[orderedLevels[nextLevelIndex]][index]
+					local prevStat = (statSetLevels or grantedEffect.levels)[orderedLevels[nextLevelIndex - 1]][index]
 					statValue = round(prevStat + (nextStat - prevStat) * (actorLevel - prevReq) / (nextReq - prevReq))
 				else
-					statValue = round(grantedEffect.levels[orderedLevels[currentLevelIndex]][index])
+					statValue = round((statSetLevels or grantedEffect.levels)[orderedLevels[currentLevelIndex]][index])
 				end
 			end
 		end
 		stats[stat] = (stats[stat] or 0) + statValue
 	end
-	if grantedEffect.constantStats then
-		for _, stat in ipairs(grantedEffect.constantStats) do
+	local constantStats = grantedEffect.constantStats or (grantedEffect.statSets and grantedEffect.statSets[1] and grantedEffect.statSets[1].constantStats)
+	if constantStats then
+		for _, stat in ipairs(constantStats) do
 			stats[stat[1]] = (stats[stat[1]] or 0) + (stat[2] or 0)
 		end
 	end

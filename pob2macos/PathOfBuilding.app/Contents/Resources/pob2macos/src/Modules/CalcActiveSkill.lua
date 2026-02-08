@@ -59,7 +59,8 @@ function calcs.mergeSkillInstanceMods(env, modList, skillEffect, extraStats)
 		end
 	end
 	for stat, statValue in pairs(stats) do
-		local map = grantedEffect.statMap[stat]
+		local statMap = grantedEffect.statMap or (grantedEffect.statSets and grantedEffect.statSets[1] and grantedEffect.statSets[1].statMap)
+		local map = statMap and statMap[stat]
 		if map then
 			-- Some mods need different scalars for different stats, but the same value.  Putting them in a group allows this
 			for _, modOrGroup in ipairs(map) do
@@ -74,7 +75,7 @@ function calcs.mergeSkillInstanceMods(env, modList, skillEffect, extraStats)
 			end
 		end
 	end
-	modList:AddList(grantedEffect.baseMods)
+	modList:AddList(grantedEffect.baseMods or (grantedEffect.statSets and grantedEffect.statSets[1] and grantedEffect.statSets[1].baseMods))
 end
 
 -- Create an active skill using the given active gem and list of support gems
@@ -109,7 +110,7 @@ function calcs.createActiveSkill(activeEffect, supportList, actor, socketGroup, 
 	end
 
 	-- Initialise skill flag set ('attack', 'projectile', etc)
-	local skillFlags = copyTable(activeGrantedEffect.baseFlags)
+	local skillFlags = copyTable(activeGrantedEffect.baseFlags or (activeGrantedEffect.statSets and activeGrantedEffect.statSets[1] and activeGrantedEffect.statSets[1].baseFlags) or {})
 	activeSkill.skillFlags = skillFlags
 	skillFlags.hit = skillFlags.hit or activeSkill.skillTypes[SkillType.Attack] or activeSkill.skillTypes[SkillType.Damage] or activeSkill.skillTypes[SkillType.Projectile]
 
