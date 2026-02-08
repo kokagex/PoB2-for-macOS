@@ -1900,6 +1900,16 @@ function buildMode:OnFrame(inputEvents)
 		width = main.screenW - sideBarWidth,
 		height = main.screenH - 32
 	}
+
+	-- Enable deferred tooltip drawing for all tabs except TREE: tooltip:Draw() calls during
+	-- tab content and controls will be queued instead of drawn immediately. This ensures
+	-- tooltips render ABOVE top bar, sidebar, and all Build-level controls.
+	-- (SetDrawLayer is a no-op in our Metal backend, so draw order = z-order)
+	-- TREE tab excluded: deferral causes visual artifacts (white rectangles) due to custom viewport.
+	main.tooltipQueue = main.tooltipQueue or {}
+	wipeTable(main.tooltipQueue)
+	main.deferTooltips = (self.viewMode ~= "TREE")
+
 	-- Draw dark background for tab content area (prevents transparent/white bleed-through)
 	SetDrawColor(0.05, 0.05, 0.05)
 	DrawImage(nil, 0, 0, main.screenW, main.screenH)
@@ -1925,7 +1935,6 @@ function buildMode:OnFrame(inputEvents)
 
 	self.unsaved = self.modFlag or self.notesTab.modFlag or self.partyTab.modFlag or self.configTab.modFlag or self.treeTab.modFlag or self.treeTab.searchFlag or self.spec.modFlag or self.skillsTab.modFlag or self.itemsTab.modFlag or self.calcsTab.modFlag
 
-	SetDrawLayer(5)
 	ResetViewport()
 
 	-- Draw top bar background
@@ -1942,6 +1951,41 @@ function buildMode:OnFrame(inputEvents)
 	DrawImage(nil, sideBarWidth - 4, 32, 4, main.screenH - 32)
 
 	self:DrawControls(main.viewPort)
+
+	-- Disable deferred mode and flush all queued tooltips
+	-- This draws ALL tooltips AFTER top bar, sidebar, and Build controls
+	main.deferTooltips = false
+
+	-- Draw Items tab displayItemTooltip first (static tooltip, always visible when item selected)
+	if self.viewMode == "ITEMS" and self.itemsTab and self.itemsTab.displayItem then
+		local ttAnchor = self.itemsTab.controls.displayItemTooltipAnchor
+		if ttAnchor then
+			local tx, ty = ttAnchor:GetPos()
+			local ttW, ttH = self.itemsTab.displayItemTooltip:GetSize()
+			-- Screen boundary clamping
+			if tx + ttW > main.screenW then
+				tx = main.screenW - ttW
+			end
+			if ty + ttH > main.screenH then
+				ty = main.screenH - ttH
+			end
+			if tx < 0 then tx = 0 end
+			if ty < 0 then ty = 0 end
+			self.itemsTab.displayItemTooltip:Draw(tx, ty, nil, nil, main.viewPort)
+		end
+	end
+
+	-- Flush queued hover tooltips (drawn LAST = on top of everything)
+	-- Copy queue to local and clear before flushing to avoid re-entrancy issues
+	local pendingTooltips = {}
+	for i, drawFunc in ipairs(main.tooltipQueue) do
+		pendingTooltips[i] = drawFunc
+	end
+	wipeTable(main.tooltipQueue)
+	for _, drawFunc in ipairs(pendingTooltips) do
+		drawFunc()
+	end
+	main.deferTooltips = false
 end
 
 -- Opens the game version conversion popup

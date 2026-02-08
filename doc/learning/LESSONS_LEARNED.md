@@ -1828,7 +1828,46 @@ self:ProcessControlsInput(inputEvents, main.viewPort)
 
 ---
 
-**最終更新**: 2026-02-08 (サブエージェント誤削除の教訓追加)
-**総学習記録数**: 40件 (成功14件、失敗12件、繰り返し3件、効率化2件、技術的発見7件、エージェントシステム改善1件、診断失敗2件、プロジェクト失敗1件)
+---
+
+### Deferred Tooltip Drawing による Z-Order 修正（成功）
+
+**日付**: 2026-02-08
+**記録者**: Lua専門エージェント（general-purpose subagent）
+**重要度**: HIGH
+
+**状況**: Items タブで displayItemTooltip がアイテムDBリスト、共有アイテムセクション、トップバーボタン等の下に表示される（z-orderが逆）。
+
+**原因**: Metal backend の `SetDrawLayer` は NO-OP（`sg_state.cpp:93` - "Layer sorting not implemented in MVP"）。描画順序のみが z-order を決定する。タブコンテンツ描画中に tooltip が描画され、その後 Build.lua の DrawControls がトップバー/サイドバーを上書き。
+
+**解決策**: Deferred Tooltip Drawing System
+1. `Tooltip.lua:Draw()` に遅延描画チェックを追加
+2. `main.deferTooltips = true` の時、Draw呼び出しをクロージャとしてキューに保存
+3. Build.lua OnFrame の最後（全 DrawControls 後）にキューをフラッシュ
+4. Items タブのみ有効化（他タブでは即座描画を維持）
+
+**重要な教訓**:
+1. **SetDrawLayer は NO-OP** - Metal MVP では描画順序のみが z-order
+2. **全タブに適用するとリグレッション発生** - Tree タブで白い矩形が出現。`main.deferTooltips = (self.viewMode == "ITEMS")` でスコープ限定が必要
+3. **Lua専門エージェントへの委託が効果的** - 3回のイテレーション（初期修正→deferred設計→スコープ限定）で完全解決
+4. **境界クランプ**も同時実装 - 大きいtooltipが画面外にはみ出す問題も解決
+
+**成功プロセス（再利用可能）**:
+```
+1. スクリーンショットで問題確認
+2. 描画順序の分析（コード読み）
+3. Lua専門エージェントに包括的なコンテキスト付きで委託
+4. エージェント計画レビュー→承認→実装
+5. スクリーンショットで視覚検証
+6. リグレッション発見→再委託→修正
+7. 最終スクリーンショットで全体確認
+```
+
+**適用**: Metal backend で z-order 問題が発生した場合、描画順序の制御で解決する。SetDrawLayer に依存しない。
+
+---
+
+**最終更新**: 2026-02-08 (Deferred Tooltip Drawing 成功記録追加)
+**総学習記録数**: 41件 (成功15件、失敗12件、繰り返し3件、効率化2件、技術的発見7件、エージェントシステム改善1件、診断失敗2件、プロジェクト失敗1件)
 **次回更新**: 新しい学習発生時、即座に
 

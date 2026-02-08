@@ -279,6 +279,18 @@ function TooltipClass:Draw(x, y, w, h, viewPort)
 	if #self.lines == 0 then
 		return
 	end
+	-- Deferred tooltip mode: queue draw for later instead of drawing now
+	-- This ensures tooltips render ABOVE all controls (since SetDrawLayer is a no-op in our Metal backend)
+	if main and main.deferTooltips and main.tooltipQueue then
+		local tt = self
+		t_insert(main.tooltipQueue, function()
+			-- Draw with deferral disabled to prevent infinite recursion
+			main.deferTooltips = false
+			tt:Draw(x, y, w, h, viewPort)
+			main.deferTooltips = true
+		end)
+		return
+	end
 	local ttW, ttH = self:GetSize()
 
 	-- ensure ttW is at least title width + 50 pixels, this fixes the header image for Magic items and some Tree passives.

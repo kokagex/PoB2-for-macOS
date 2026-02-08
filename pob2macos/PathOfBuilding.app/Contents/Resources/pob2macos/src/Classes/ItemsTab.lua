@@ -1221,13 +1221,8 @@ function ItemsTabClass:Draw(viewPort, inputEvents)
 		self.controls.scrollBarV:Draw(viewPort)
 	end
 
-	-- Draw display item tooltip AFTER controls so it renders on top
-	if self.displayItem then
-		-- Force batch flush by resetting viewport, then draw tooltip last
-		ResetViewport()
-		local x, y = self.controls.displayItemTooltipAnchor:GetPos()
-		self.displayItemTooltip:Draw(x, y, nil, nil, viewPort)
-	end
+	-- NOTE: displayItemTooltip is now drawn from Build.lua OnFrame (after DrawControls)
+	-- to ensure it renders ABOVE top bar/sidebar backgrounds and Build-level controls.
 
 	self.controls.specSelect:SetList(self.build.treeTab:GetSpecList())
 end

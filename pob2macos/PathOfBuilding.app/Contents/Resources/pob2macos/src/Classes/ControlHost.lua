@@ -86,9 +86,20 @@ function ControlHostClass:ProcessControlsInput(inputEvents, viewPort)
 end
 
 function ControlHostClass:DrawControls(viewPort, selControl)
+	local noTooltipArg
+	-- Pass 1: Draw all non-dropped controls first
 	for _, control in pairs(self.controls) do
-		if control:IsShown() and control.Draw then
-			control:Draw(viewPort, (self.selControl and self.selControl.hasFocus and self.selControl ~= control) or (selControl and selControl.hasFocus and selControl ~= control))
+		if control:IsShown() and control.Draw and not control.dropped then
+			noTooltipArg = (self.selControl and self.selControl.hasFocus and self.selControl ~= control) or (selControl and selControl.hasFocus and selControl ~= control)
+			control:Draw(viewPort, noTooltipArg)
+		end
+	end
+	-- Pass 2: Draw dropped controls last (on top of everything)
+	-- This fixes z-order for open dropdown lists since SetDrawLayer is a no-op in Metal backend
+	for _, control in pairs(self.controls) do
+		if control:IsShown() and control.Draw and control.dropped then
+			noTooltipArg = (self.selControl and self.selControl.hasFocus and self.selControl ~= control) or (selControl and selControl.hasFocus and selControl ~= control)
+			control:Draw(viewPort, noTooltipArg)
 		end
 	end
 end
