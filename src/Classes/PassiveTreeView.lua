@@ -34,7 +34,6 @@ local PassiveTreeViewClass = newClass("PassiveTreeView", function(self)
 	self.zoom = 1.2 ^ self.zoomLevel
 	self.zoomX = 0
 	self.zoomY = 0
-
 	self.searchStr = ""
 	self.searchStrSaved = ""
 	self.searchStrCached = ""
@@ -124,9 +123,9 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 				end
 			elseif IsKeyDown("ALT") == 1 and mOver then
 				if event.key == "WHEELDOWN" then
-					spec.allocMode = math.max(0, spec.allocMode - 1)
+					spec.allocMode = math.max(0, (spec.allocMode or 0) - 1)
 				elseif event.key == "WHEELUP" then
-					spec.allocMode = math.min(2, spec.allocMode + 1)
+					spec.allocMode = math.min(2, (spec.allocMode or 0) + 1)
 				end
 			elseif event.key == "p" then
 				self.showHeatMap = not self.showHeatMap
@@ -385,7 +384,7 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 			return false
 		end
 
-		local weaponSetMode = spec.allocMode > 0
+		local weaponSetMode = (spec.allocMode or 0) > 0
 		local connectedToWeaponSetNodes = self:IsConnectedToWeaponSetNodes(node)
 
 		-- Only allow allocation from main tree AND node must not be connected to weapon set nodes
@@ -404,7 +403,7 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 
 		-- Main-tree global nodes can only be deallocated from main tree
 		-- Legacy weapon-set global nodes can be deallocated from any mode
-		local shouldBlock = node.allocMode == 0 and spec.allocMode > 0
+		local shouldBlock = node.allocMode == 0 and (spec.allocMode or 0) > 0
 
 		return shouldBlock
 	end
@@ -758,10 +757,10 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 			setConnectorColor(1, 0, 0)
 		end
 
-		if baseState == "Intermediate" and spec.allocMode > 0 and not connector.ascendancyName then
-			if spec.allocMode == 1 then
+		if baseState == "Intermediate" and (spec.allocMode or 0) > 0 and not connector.ascendancyName then
+			if (spec.allocMode or 0) == 1 then
 				setConnectorColor(unpack(hexToRGB(colorCodes["NEGATIVE"]:sub(3))))
-			elseif spec.allocMode == 2 then
+			elseif (spec.allocMode or 0) == 2 then
 				setConnectorColor(unpack(hexToRGB(colorCodes["POSITIVE"]:sub(3))))
 			end
 		end
@@ -1283,7 +1282,7 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 	end
 
 	-- Draw ring overlays for other sources of intuitive leap-like effects
-	for _, effectData in ipairs(spec.intuitiveLeapLikeNodes) do
+	for _, effectData in ipairs(spec.intuitiveLeapLikeNodes or {}) do
 		local radData = build.data.jewelRadius[effectData.radiusIndex]
 		local outerSize = radData.outer * data.gameConstants["PassiveTreeJewelDistanceMultiplier"] * scale
 		if effectData.from == "Keystone" then
@@ -1979,16 +1978,16 @@ function PassiveTreeViewClass:AddGlobalNodeWarningsToTooltip(tooltip, node, buil
 
 	if not node.alloc and node.path then
 		-- Unallocated global node - check allocation conditions
-		if build.spec.allocMode > 0 then
-			warningText = "Cannot allocate " .. nodeTypeText .. " while weapon set " .. build.spec.allocMode .. " is selected"
+		if (build.spec.allocMode or 0) > 0 then
+			warningText = "Cannot allocate " .. nodeTypeText .. " while weapon set " .. (build.spec.allocMode or 0) .. " is selected"
 			tipText = "Tip: Switch to main tree (Alt+scroll) to allocate " .. nodeTypeText
 		elseif self:IsConnectedToWeaponSetNodes(node) then
 			warningText = "Cannot allocate " .. nodeTypeText .. " - connected to weapon set nodes"
 			tipText = "Tip: Deallocate weapon set nodes in the connection path to allow allocation"
 		end
-	elseif node.alloc and node.allocMode == 0 and build.spec.allocMode > 0 then
+	elseif node.alloc and node.allocMode == 0 and (build.spec.allocMode or 0) > 0 then
 		-- Allocated main-tree global node viewed from weapon set
-		warningText = "Cannot deallocate global " .. nodeTypeText .. " from weapon set " .. build.spec.allocMode
+		warningText = "Cannot deallocate global " .. nodeTypeText .. " from weapon set " .. (build.spec.allocMode or 0)
 		tipText = "Tip: Switch to main tree (Alt+scroll) to deallocate " .. nodeTypeText
 	end
 
@@ -2001,7 +2000,7 @@ end
 
 function PassiveTreeViewClass:DrawAllocMode(allocMode, viewPort)
 	local rgbColor
-	if allocMode == 0 then
+	if not allocMode or allocMode == 0 then
 		return
 	elseif allocMode == 1 then
 		rgbColor = hexToRGB(colorCodes["NEGATIVE"]:sub(3))

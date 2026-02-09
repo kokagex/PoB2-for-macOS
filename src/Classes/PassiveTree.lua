@@ -227,6 +227,34 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 		end
 	end
 
+	-- PoE2: merge PoE1 frame/overlay assets as base (orbits, connectors, backgrounds)
+	local versionNum = treeVersions[self.treeVersion].num
+	if versionNum < 1.0 then
+		local err, poe1Assets = PLoadModule("TreeData/3_19/Assets.lua")
+		if not err and poe1Assets and poe1Assets.assets then
+			for name, data in pairs(poe1Assets.assets) do
+				if not self.assets[name] then
+					self.assets[name] = data
+				end
+			end
+		end
+		-- Map PoE2 orbit/connector names to standard names used by rendering code
+		for i = 1, 9 do
+			for _, state in ipairs({"Normal", "Intermediate", "Active"}) do
+				local poe2Key = "CharacterOrbit"..i..state
+				if self.assets[poe2Key] then
+					self.assets["Orbit"..i..state] = self.assets[poe2Key]
+				end
+			end
+		end
+		for _, state in ipairs({"Normal", "Intermediate", "Active"}) do
+			local poe2Key = "CharacterLineConnector"..state
+			if self.assets[poe2Key] then
+				self.assets["LineConnector"..state] = self.assets[poe2Key]
+			end
+		end
+	end
+
 	-- Load passive tree assets (orbits, lines, backgrounds, etc.)
 	ConPrintf("Loading passive tree assets...")
 	local assetsLoaded = 0

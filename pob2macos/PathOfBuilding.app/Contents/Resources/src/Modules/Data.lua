@@ -17,7 +17,7 @@ local skillTypes = {
 	"act_dex",
 	"act_int",
 	"other",
-	"glove",
+	-- "glove", -- Stage 4: Removed (PoE1 feature, causes SkillType errors)
 	"minion",
 	"spectre",
 	"sup_str",
@@ -178,7 +178,7 @@ data.misc = { -- magic numbers
 	SuppressionEffect = 40,
 	AvoidChanceCap = 75,
 	FortifyBaseDuration = 6,
-	ManaRegenBase = data.characterConstants["mana_regeneration_rate_per_minute_%"] / 60 / 100,
+	ManaRegenBase = data.characterConstants["character_inherent_mana_regeneration_rate_per_minute_%"] / 60 / 100,
 	EnergyShieldRechargeBase = data.characterConstants["energy_shield_recharge_rate_per_minute_%"] / 60 / 100,
 	EnergyShieldRechargeBase = 0.33,
 	EnergyShieldRechargeDelay = 2,
@@ -499,11 +499,7 @@ data.unarmedWeaponData = {
 
 data.setJewelRadiiGlobally = function(treeVersion)
 	local major, minor = treeVersion:match("(%d+)_(%d+)")
-	major, minor = tonumber(major), tonumber(minor)
-	if major < 1 then
-		-- PoE2: use 3_16 radii as reasonable default
-		data.jewelRadius = data.jewelRadii["3_16"]
-	elseif major <= 3 and minor <= 15 then
+	if tonumber(major) <= 3 and tonumber(minor) <= 15 then
 		data.jewelRadius = data.jewelRadii["3_15"]
 	else
 		data.jewelRadius = data.jewelRadii["3_16"]
@@ -579,6 +575,7 @@ data.itemMods = {
 	JewelAbyss = LoadModule("Data/ModJewelAbyss"),
 	JewelCluster = LoadModule("Data/ModJewelCluster"),
 	JewelCharm = LoadModule("Data/ModJewelCharm"),
+	Runes = LoadModule("Data/ModRunes"),
 }
 data.masterMods = LoadModule("Data/ModMaster")
 data.enchantments = {

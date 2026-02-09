@@ -59,7 +59,8 @@ function calcs.mergeSkillInstanceMods(env, modList, skillEffect, extraStats)
 		end
 	end
 	for stat, statValue in pairs(stats) do
-		local map = grantedEffect.statMap[stat]
+		local statMap = grantedEffect.statMap or (grantedEffect.statSets and grantedEffect.statSets[1] and grantedEffect.statSets[1].statMap)
+		local map = statMap and statMap[stat]
 		if map then
 			-- Some mods need different scalars for different stats, but the same value.  Putting them in a group allows this
 			for _, modOrGroup in ipairs(map) do
@@ -74,7 +75,7 @@ function calcs.mergeSkillInstanceMods(env, modList, skillEffect, extraStats)
 			end
 		end
 	end
-	modList:AddList(grantedEffect.baseMods)
+	modList:AddList(grantedEffect.baseMods or (grantedEffect.statSets and grantedEffect.statSets[1] and grantedEffect.statSets[1].baseMods))
 end
 
 -- Create an active skill using the given active gem and list of support gems
@@ -92,12 +93,13 @@ function calcs.createActiveSkill(activeEffect, supportList, actor, socketGroup, 
 
 	local activeGrantedEffect = activeEffect.grantedEffect
 
-	-- Nil safety: if grantedEffect is missing, set safe defaults
+	-- Stage 4: Nil guard for activeGrantedEffect
 	if not activeGrantedEffect then
+		ConPrintf("WARNING: activeGrantedEffect is nil in createActiveSkill")
+		-- Initialize critical fields with safe defaults
 		activeSkill.skillTypes = {}
 		activeSkill.skillFlags = {}
-		activeSkill.skillCfg = { }
-		activeSkill.effectList = { }
+		activeSkill.effectList = { activeEffect }
 		return activeSkill
 	end
 
@@ -108,7 +110,7 @@ function calcs.createActiveSkill(activeEffect, supportList, actor, socketGroup, 
 	end
 
 	-- Initialise skill flag set ('attack', 'projectile', etc)
-	local skillFlags = copyTable(activeGrantedEffect.baseFlags)
+	local skillFlags = copyTable(activeGrantedEffect.baseFlags or (activeGrantedEffect.statSets and activeGrantedEffect.statSets[1] and activeGrantedEffect.statSets[1].baseFlags) or {})
 	activeSkill.skillFlags = skillFlags
 	skillFlags.hit = skillFlags.hit or activeSkill.skillTypes[SkillType.Attack] or activeSkill.skillTypes[SkillType.Damage] or activeSkill.skillTypes[SkillType.Projectile]
 
@@ -238,7 +240,12 @@ function calcs.buildActiveSkillModList(env, activeSkill)
 	local skillFlags = activeSkill.skillFlags
 	local activeEffect = activeSkill.activeEffect
 	local activeGrantedEffect = activeEffect.grantedEffect
-	if not activeGrantedEffect then return end
+	if not activeGrantedEffect then
+		activeSkill.skillCfg = { flags = 0, keywordFlags = 0, skillName = "Unknown", skillTypes = {}, skillCond = {} }
+		activeSkill.skillModList = new("ModList", activeSkill.actor.modDB)
+		activeSkill.baseSkillModList = activeSkill.skillModList
+		return
+	end
 	local effectiveRange = 0
 
 	-- Set mode flags

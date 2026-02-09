@@ -1072,17 +1072,6 @@ function calcs.perform(env, skipEHP)
 	env.keystonesAdded = { }
 	modLib.mergeKeystones(env, env.modDB)
 
-	-- Filter out skills with nil grantedEffect to prevent downstream errors
-	do
-		local filtered = {}
-		for _, activeSkill in ipairs(env.player.activeSkillList) do
-			if activeSkill.activeEffect and activeSkill.activeEffect.grantedEffect then
-				t_insert(filtered, activeSkill)
-			end
-		end
-		env.player.activeSkillList = filtered
-	end
-
 	-- Build minion skills
 	for _, activeSkill in ipairs(env.player.activeSkillList) do
 		activeSkill.skillModList = new("ModList", activeSkill.baseSkillModList)
@@ -1132,18 +1121,20 @@ function calcs.perform(env, skipEHP)
 			-- Minion Attacks now inherently always hit (Patch 3.27)
 			env.minion.modDB:NewMod("CannotBeEvaded", "FLAG", 1, "Minion Attacks always hit")
 		end
-		env.minion.modDB:NewMod("CritMultiplier", "BASE", env.data.monsterConstants["base_critical_strike_multiplier"] - 100, "Base")
-		env.minion.modDB:NewMod("DotMultiplier", "BASE", env.data.monsterConstants["critical_ailment_dot_multiplier_+"], "Base", { type = "Condition", var = "CriticalStrike" })
+		-- PoE2: Use base_critical_hit_damage_bonus instead of base_critical_strike_multiplier
+		env.minion.modDB:NewMod("CritMultiplier", "BASE", (env.data.monsterConstants["base_critical_hit_damage_bonus"] or env.data.monsterConstants["base_critical_strike_multiplier"] or 150) - 100, "Base")
+		env.minion.modDB:NewMod("DotMultiplier", "BASE", env.data.monsterConstants["critical_ailment_dot_multiplier_+"] or 0, "Base", { type = "Condition", var = "CriticalStrike" })
 		env.minion.modDB:NewMod("FireResist", "BASE", env.minion.minionData.fireResist, "Base")
 		env.minion.modDB:NewMod("ColdResist", "BASE", env.minion.minionData.coldResist, "Base")
 		env.minion.modDB:NewMod("LightningResist", "BASE", env.minion.minionData.lightningResist, "Base")
 		env.minion.modDB:NewMod("ChaosResist", "BASE", env.minion.minionData.chaosResist, "Base")
-		env.minion.modDB:NewMod("CritChance", "INC", env.data.monsterConstants["critical_strike_chance_+%_per_power_charge"], "Base", { type = "Multiplier", var = "PowerCharge" })
-		env.minion.modDB:NewMod("Speed", "INC", env.data.monsterConstants["base_attack_speed_+%_per_frenzy_charge"], "Base", ModFlag.Attack, { type = "Multiplier", var = "FrenzyCharge" })
-		env.minion.modDB:NewMod("Speed", "INC", env.data.monsterConstants["base_cast_speed_+%_per_frenzy_charge"], "Base", ModFlag.Cast, { type = "Multiplier", var = "FrenzyCharge" })
-		env.minion.modDB:NewMod("Damage", "MORE", env.data.monsterConstants["object_inherent_damage_+%_final_per_frenzy_charge"], "Base", { type = "Multiplier", var = "FrenzyCharge" })
-		env.minion.modDB:NewMod("PhysicalDamageReduction", "BASE", env.data.monsterConstants["physical_damage_reduction_%_per_endurance_charge"], "Base", { type = "Multiplier", var = "EnduranceCharge" })
-		env.minion.modDB:NewMod("ElementalDamageReduction", "BASE", env.data.monsterConstants["elemental_damage_reduction_%_per_endurance_charge_if_player_minion"], "Base", { type = "Multiplier", var = "EnduranceCharge" })
+		-- PoE2: Add nil-safety with PoE1 default values
+		env.minion.modDB:NewMod("CritChance", "INC", env.data.monsterConstants["critical_strike_chance_+%_per_power_charge"] or 40, "Base", { type = "Multiplier", var = "PowerCharge" })
+		env.minion.modDB:NewMod("Speed", "INC", env.data.monsterConstants["base_attack_speed_+%_per_frenzy_charge"] or 4, "Base", ModFlag.Attack, { type = "Multiplier", var = "FrenzyCharge" })
+		env.minion.modDB:NewMod("Speed", "INC", env.data.monsterConstants["base_cast_speed_+%_per_frenzy_charge"] or 4, "Base", ModFlag.Cast, { type = "Multiplier", var = "FrenzyCharge" })
+		env.minion.modDB:NewMod("Damage", "MORE", env.data.monsterConstants["object_inherent_damage_+%_final_per_frenzy_charge"] or 4, "Base", { type = "Multiplier", var = "FrenzyCharge" })
+		env.minion.modDB:NewMod("PhysicalDamageReduction", "BASE", env.data.monsterConstants["physical_damage_reduction_%_per_endurance_charge"] or 4, "Base", { type = "Multiplier", var = "EnduranceCharge" })
+		env.minion.modDB:NewMod("ElementalDamageReduction", "BASE", env.data.monsterConstants["elemental_damage_reduction_%_per_endurance_charge_if_player_minion"] or 4, "Base", { type = "Multiplier", var = "EnduranceCharge" })
 		env.minion.modDB:NewMod("ProjectileCount", "BASE", 1, "Base")
 		env.minion.modDB:NewMod("MaximumFortification", "BASE", env.data.monsterConstants["base_max_fortification"], "Base")
 		env.minion.modDB:NewMod("Damage", "MORE", 200, "Base", 0, KeywordFlag.Bleed, { type = "ActorCondition", actor = "enemy", var = "Moving" })

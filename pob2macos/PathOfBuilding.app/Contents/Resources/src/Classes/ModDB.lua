@@ -11,8 +11,8 @@ local m_floor = math.floor
 local m_min = math.min
 local m_max = math.max
 local m_modf = math.modf
-local band = bit.band
-local bor = bit.bor
+local band = AND64 -- bit.band
+local bor = OR64 -- bit.bor
 
 local mod_createMod = modLib.createMod
 
@@ -45,9 +45,8 @@ function ModDBClass:ReplaceModInternal(mod)
 	local modIndex = -1
 	for i = 1, #modList do
 		local curMod = modList[i]
-		if mod.name == curMod.name and mod.type == curMod.type and mod.flags == curMod.flags and mod.keywordFlags == curMod.keywordFlags and mod.source == curMod.source and not curMod.replaced then
+		if mod.name == curMod.name and mod.type == curMod.type and mod.flags == curMod.flags and mod.keywordFlags == curMod.keywordFlags and mod.source == curMod.source then
 			modIndex = i
-			mod.replaced = true
 			break;
 		end
 	end
@@ -97,12 +96,12 @@ function ModDBClass:SumInternal(context, modType, cfg, flags, keywordFlags, sour
 		if modList then
 			for i = 1, #modList do
 				local mod = modList[i]
-				if mod.type == modType and band(flags, mod.flags) == mod.flags and MatchKeywordFlags(keywordFlags, mod.keywordFlags) and (not source or ( mod.source and mod.source:match("[^:]+") == source )) then
+				if mod.type == modType and band(flags, mod.flags) == mod.flags and MatchKeywordFlags(keywordFlags, mod.keywordFlags) and (not source or ( mod.source and (mod.source:match("[^:]+") == source or mod.source == source))) then
 					if mod[1] then
 						local value = context:EvalMod(mod, cfg, globalLimits) or 0
 						result = result + value
 					else
-						result = result + mod.value
+						result = result + (mod.value or 0)
 					end
 				end
 			end
@@ -159,7 +158,8 @@ function ModDBClass:FlagInternal(context, cfg, flags, keywordFlags, source, ...)
 		if modList then
 			for i = 1, #modList do
 				local mod = modList[i]
-				if mod.type == "FLAG" and band(flags, mod.flags) == mod.flags and MatchKeywordFlags(keywordFlags, mod.keywordFlags) and (not source or mod.source:match("[^:]+") == source) then
+				local checkSource = not cfg or not cfg.ignoreSourceinCheckConditions
+				if mod.type == "FLAG" and band(flags, mod.flags) == mod.flags and MatchKeywordFlags(keywordFlags, mod.keywordFlags) and (not checkSource or not source or mod.source:match("[^:]+") == source) then
 					if mod[1] then
 						if context:EvalMod(mod, cfg) then
 							return true

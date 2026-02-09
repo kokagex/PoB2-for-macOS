@@ -126,31 +126,22 @@ local TreeTabClass = newClass("TreeTab", "ControlHost", function(self, build)
 	self.controls.compareSelect.maxDroppedWidth = 1000
 	self.controls.compareSelect.enableDroppedWidth = true
 	self.controls.compareSelect.enableChangeBoxWidth = true
-	self.controls.reset = new("ButtonControl", { "LEFT", self.controls.compareCheck, "RIGHT" }, { 8, 0, 145, 20 }, "Reset Tree/Tattoos", function()
+	self.controls.reset = new("ButtonControl", { "LEFT", self.controls.compareCheck, "RIGHT" }, { 8, 0, 100, 20 }, "Reset Tree", function()
 		local controls = { }
 		local buttonY = 65
-		controls.warningLabel = new("LabelControl", nil, { 0, 30, 0, 16 }, "^7Warning: resetting your passive tree or removing all tattoos cannot be undone.\n")
-		controls.reset = new("ButtonControl", nil, { -130, buttonY, 100, 20 }, "Reset Tree", function()
+		controls.warningLabel = new("LabelControl", nil, { 0, 30, 0, 16 }, "^7Warning: resetting your passive tree cannot be undone.\n")
+		controls.reset = new("ButtonControl", nil, { -65, buttonY, 100, 20 }, "Reset", function()
+			wipeTable(self.build.spec.hashOverrides) -- reset attribute nodes to "Attribute"
 			self.build.spec:ResetNodes()
 			self.build.spec:BuildAllDependsAndPaths()
 			self.build.spec:AddUndoState()
 			self.build.buildFlag = true
 			main:ClosePopup()
 		end)
-		controls.removeTattoo = new("ButtonControl", nil, { 0, buttonY, 144, 20 }, "Remove All Tattoos", function()
-			for id, node in pairs(self.build.spec.hashOverrides) do --hashOverrides will contain only the nodes that have been tattoo-ed
-				if node.isTattoo then
-					self:RemoveTattooFromNode(self.build.spec.nodes[id])
-				end
-			end
-			self.modFlag = true
-			self.build.buildFlag = true
+		controls.cancel = new("ButtonControl", nil, { 65, buttonY, 100, 20 }, "Cancel", function()
 			main:ClosePopup()
 		end)
-		controls.cancel = new("ButtonControl", nil, { 130, buttonY, 100, 20 }, "Cancel", function()
-			main:ClosePopup()
-		end)
-		main:OpenPopup(570, 100, "Reset Tree/Tattoos", controls, nil, "edit", "cancel")
+		main:OpenPopup(470, 100, "Reset Tree", controls, nil, "edit", "cancel")
 	end)
 
 	-- Tree Version Dropdown
@@ -163,7 +154,7 @@ local TreeTabClass = newClass("TreeTab", "ControlHost", function(self, build)
 		t_insert(self.treeVersions, value)
 	end
 	self.controls.versionText = new("LabelControl", { "LEFT", self.controls.reset, "RIGHT" }, { 8, 0, 0, 16 }, "Version:")
-	self.controls.versionSelect = new("DropDownControl", { "LEFT", self.controls.versionText, "RIGHT" }, { 8, 0, 100, 20 }, self.treeVersions, function(index, selected)
+	self.controls.versionSelect = new("DropDownControl", { "LEFT", self.controls.versionText, "RIGHT" }, { 8, 0, 60, 20 }, self.treeVersions, function(index, selected)
 		if selected.value ~= self.build.spec.treeVersion then
 			self:OpenVersionConvertPopup(selected.value, true)
 		end
@@ -171,7 +162,6 @@ local TreeTabClass = newClass("TreeTab", "ControlHost", function(self, build)
 	self.controls.versionSelect.maxDroppedWidth = 1000
 	self.controls.versionSelect.enableDroppedWidth = true
 	self.controls.versionSelect.enableChangeBoxWidth = true
-	self.controls.versionSelect:CheckDroppedWidth(true)
 	self.controls.versionSelect.selIndex = #self.treeVersions
 
 	-- Tree Search Textbox
@@ -183,15 +173,13 @@ local TreeTabClass = newClass("TreeTab", "ControlHost", function(self, build)
 
 	self.tradeLeaguesList = { }
 	-- Find Timeless Jewel Button
-	self.controls.findTimelessJewel = new("ButtonControl", { "LEFT", self.controls.treeSearch, "RIGHT" }, { 8, 0, 150, 20 }, "Find Timeless Jewel", function()
-		self:FindTimelessJewel()
-	end)
-
-	--Default index for Tattoos
-	self.defaultTattoo = { }
+	-- Add button back if/when we figure out how to search for them again
+	--self.controls.findTimelessJewel = new("ButtonControl", { "LEFT", self.controls.treeSearch, "RIGHT" }, { 8, 0, 150, 20 }, "Find Timeless Jewel", function()
+		--self:FindTimelessJewel()
+	--end)
 
 	-- Show Node Power Checkbox
-	self.controls.treeHeatMap = new("CheckBoxControl", { "LEFT", self.controls.findTimelessJewel, "RIGHT" }, { 130, 0, 20 }, "Show Node Power:", function(state)
+	self.controls.treeHeatMap = new("CheckBoxControl", { "LEFT", self.controls.treeSearch, "RIGHT" }, { 130, 0, 20 }, "Show Node Power:", function(state)
 		self.viewer.showHeatMap = state
 		self.controls.treeHeatMapStatSelect.shown = state
 
@@ -308,13 +296,6 @@ local TreeTabClass = newClass("TreeTab", "ControlHost", function(self, build)
 	self.jumpToY = 0
 end)
 
-function TreeTabClass:RemoveTattooFromNode(node)
-	self.build.spec.tree.nodes[node.id].isTattoo = false
-	self.build.spec.hashOverrides[node.id] = nil
-	self.build.spec:ReplaceNode(node, self.build.spec.tree.nodes[node.id])
-	self.build.spec:BuildAllDependsAndPaths()
-end
-
 function TreeTabClass:Draw(viewPort, inputEvents)
 	self.anchorControls.x = viewPort.x + 4
 	self.anchorControls.y = viewPort.y + viewPort.height - 24
@@ -361,7 +342,7 @@ function TreeTabClass:Draw(viewPort, inputEvents)
 								+ (self.isComparing and (self.controls.compareSelect.width + self.controls.compareSelect.x) or 0)
 	
 	local widthSecondLineControls = self.controls.treeSearch.width + 8
-									+ self.controls.findTimelessJewel.width + self.controls.findTimelessJewel.x
+									--+ self.controls.findTimelessJewel.width + self.controls.findTimelessJewel.x
 									+ self.controls.treeHeatMap.width + 130
 									+ self.controls.nodePowerMaxDepthSelect.width + self.controls.nodePowerMaxDepthSelect.x
 									+ (self.isCustomMaxDepth and (self.controls.nodePowerMaxDepthCustom.width + self.controls.nodePowerMaxDepthCustom.x) or 0)
@@ -379,8 +360,9 @@ function TreeTabClass:Draw(viewPort, inputEvents)
 	end
 
 	-- Check second line
+	-- Revert comments if we add back find Timeless Jewel function
 	if viewPort.width >= widthSecondLineControls + rightMargin then
-		self.controls.treeHeatMap:SetAnchor("LEFT", self.controls.findTimelessJewel, "RIGHT", 130, 0)
+		self.controls.treeHeatMap:SetAnchor("LEFT", self.controls.treeSearch, "RIGHT", 130, 0)
 	else
 		linesHeight = linesHeight * 2
 		self.controls.treeHeatMap:SetAnchor("TOPLEFT", self.controls.treeSearch, "BOTTOMLEFT", 124, 4)
@@ -403,11 +385,13 @@ function TreeTabClass:Draw(viewPort, inputEvents)
 	self.controls.specSelect.y = -bottomDrawerHeight - linesHeight
 
 	local treeViewPort = { x = viewPort.x, y = viewPort.y, width = viewPort.width, height = viewPort.height - (self.showConvert and 64 + bottomDrawerHeight + linesHeight or 32 + bottomDrawerHeight + linesHeight)}
+
 	if self.jumpToNode then
 		self.viewer:Focus(self.jumpToX, self.jumpToY, treeViewPort, self.build)
 		self.jumpToNode = false
 	end
 	self.viewer.compareSpec = self.isComparing and self.specList[self.activeCompareSpec] or nil
+
 	self.viewer:Draw(self.build, treeViewPort, inputEvents)
 
 	local newSpecList = self:GetSpecList()
@@ -426,7 +410,8 @@ function TreeTabClass:Draw(viewPort, inputEvents)
 	self.controls.treeHeatMapStatSelect.list = self.powerStatList
 	self.controls.treeHeatMapStatSelect.selIndex = 1
 	self.controls.treeHeatMapStatSelect:CheckDroppedWidth(true)
-	if self.build.calcsTab.powerStat then
+	-- Phase 1: Nil-safety for calcsTab (2026-02-06)
+	if self.build.calcsTab and self.build.calcsTab.powerStat then
 		self.controls.treeHeatMapStatSelect:SelByValue(self.build.calcsTab.powerStat.stat, "stat")
 	end
 
@@ -514,8 +499,9 @@ function TreeTabClass:SetActiveSpec(specId)
 	self.build.spec:SetWindowTitleWithBuildClass()
 	self.build:UpdateClassDropdowns(curSpec.treeVersion)
 
-	-- Stage 3 Phase 3: Nil guard for itemsTab (may not exist yet during initialization)
-	if self.build.itemsTab and self.build.itemsTab.slots then
+	-- Phase 1: Nil-safety for itemsTab (2026-02-06)
+	-- In minimal mode, itemsTab doesn't exist, so skip item/jewel processing
+	if self.build.itemsTab then
 		for _, slot in pairs(self.build.itemsTab.slots) do
 			if slot.nodeId then
 				if prevSpec then
@@ -531,21 +517,15 @@ function TreeTabClass:SetActiveSpec(specId)
 				end
 			end
 		end
-	end
-
-	self.showConvert = not curSpec.treeVersion:match("^" .. latestTreeVersion)
-
-	-- Stage 3 Phase 3: Nil guard for itemsTab
-	if self.build.itemsTab and self.build.itemsTab.itemOrderList and self.build.itemsTab.itemOrderList[1] then
-		-- Update item slots if items have been loaded already
-		self.build.itemsTab:PopulateSlots()
-	end
-
-	-- Stage 3 Phase 3: Nil guard for itemsTab.controls
-	if self.build.itemsTab and self.build.itemsTab.controls and self.build.itemsTab.controls.specSelect then
+		if self.build.itemsTab.itemOrderList[1] then
+			-- Update item slots if items have been loaded already
+			self.build.itemsTab:PopulateSlots()
+		end
 		-- Update the passive tree dropdown control in itemsTab
 		self.build.itemsTab.controls.specSelect.selIndex = specId
 	end
+
+	self.showConvert = not curSpec.treeVersion:match("^" .. latestTreeVersion)
 	-- Update Version dropdown to active spec's
 	if self.controls.versionSelect then
 		self.controls.versionSelect:SelByValue(curSpec.treeVersion, 'value')
@@ -560,11 +540,10 @@ function TreeTabClass:SetCompareSpec(specId)
 	self.compareSpec = curSpec
 end
 
-function TreeTabClass:ConvertToVersion(version, remove, success, ignoreTreeSubType)
-	local treeSubTypeCapture = self.build.spec.treeVersion:match("(_%l+_?%l*)")
-	if not ignoreTreeSubType and treeSubTypeCapture and not version:match(treeSubTypeCapture) then
-		if isValueInTable(treeVersionList, version..treeSubTypeCapture) then
-			version = version..treeSubTypeCapture
+function TreeTabClass:ConvertToVersion(version, remove, success, ignoreRuthlessCheck)
+	if not ignoreRuthlessCheck and self.build.spec.treeVersion:match("ruthless") and not version:match("ruthless") then
+		if isValueInTable(treeVersionList, version.."_ruthless") then
+			version = version.."_ruthless"
 		end
 	end
 	local newSpec = new("PassiveSpec", self.build, version)
@@ -610,6 +589,8 @@ function TreeTabClass:OpenSpecManagePopup()
 		new("ButtonControl", {"LEFT", importTree, "RIGHT"}, {8, 0, 90, 20}, "Export Tree", function()
 			self:OpenExportPopup()
 		end)
+	importTree.enabled = false
+	exportTree.enabled = false
 
 	main:OpenPopup(370, 290, "Manage Passive Trees", {
 		new("PassiveSpecListControl", nil, {0, 50, 350, 200}, self),
@@ -621,16 +602,16 @@ function TreeTabClass:OpenSpecManagePopup()
 	})
 end
 
-function TreeTabClass:OpenVersionConvertPopup(version, ignoreTreeSubType)
+function TreeTabClass:OpenVersionConvertPopup(version, ignoreRuthlessCheck)
 	local controls = { }
 	controls.warningLabel = new("LabelControl", nil, {0, 20, 0, 16}, "^7Warning: some or all of the passives may be de-allocated due to changes in the tree.\n\n" ..
 		"Convert will replace your current tree.\nCopy + Convert will backup your current tree.\n")
 	controls.convert = new("ButtonControl", nil, {-125, 105, 100, 20}, "Convert", function()
-		self:ConvertToVersion(version, true, false, ignoreTreeSubType)
+		self:ConvertToVersion(version, true, false, ignoreRuthlessCheck)
 		main:ClosePopup()
 	end)
 	controls.convertCopy = new("ButtonControl", nil, {0, 105, 125, 20}, "Copy + Convert", function()
-		self:ConvertToVersion(version, false, false, ignoreTreeSubType)
+		self:ConvertToVersion(version, false, false, ignoreRuthlessCheck)
 		main:ClosePopup()
 	end)
 	controls.cancel = new("ButtonControl", nil, {125, 105, 100, 20}, "Cancel", function()
@@ -683,7 +664,6 @@ function TreeTabClass:OpenImportPopup()
 	local function decodeTreeLink(treeLink, newTreeVersion)
 		-- newTreeVersion is passed in as an output of validateTreeVersion(). It will always be a valid tree version text string
 		-- 20230908. We always create a new Spec()
-		ConPrintf("Tree version: " .. newTreeVersion)
 		local newSpec = new("PassiveSpec", self.build, newTreeVersion)
 		newSpec.title = controls.name.buf
 		local errMsg = newSpec:DecodeURL(treeLink)
@@ -699,7 +679,7 @@ function TreeTabClass:OpenImportPopup()
 			main:ClosePopup()
 		end
 	end
-	local function validateTreeVersion(alternateType, major, minor)
+	local function validateTreeVersion(isRuthless, major, minor)
 		-- Take the Major and Minor version numbers and confirm it is a valid tree version. The point release is also passed in but it is not used
 		-- Return: the passed in tree version as text or latestTreeVersion
 		if major and minor then
@@ -707,12 +687,12 @@ function TreeTabClass:OpenImportPopup()
 			local newTreeVersionNum = tonumber(string.format("%d.%02d", major, minor))
 			if newTreeVersionNum >= treeVersions[defaultTreeVersion].num and newTreeVersionNum <= treeVersions[latestTreeVersion].num then
 				-- no leading 0 here
-				return string.format("%s_%s", major, minor) .. (alternateType and ("_" .. alternateType:gsub("-", "_")) or "")
+				return string.format("%s_%s", major, minor) .. (isRuthless and "_ruthless" or "")
 			else
 				print(string.format("Version '%d_%02d' is out of bounds", major, minor))
 			end
 		end
-		return latestTreeVersion .. (alternateType and ("_" .. alternateType:gsub("-", "_")) or "")
+		return latestTreeVersion .. (isRuthless and "_ruthless" or "")
 	end
 
 	controls.nameLabel = new("LabelControl", nil, {-180, 20, 0, 16}, "Enter name for this passive tree:")
@@ -758,23 +738,21 @@ function TreeTabClass:OpenImportPopup()
 						controls.import.enabled = true
 						return
 					else
-						decodeTreeLink(treeLink, validateTreeVersion(treeLink:match("tree/(%l+%-?%l*)"), treeLink:match(versionLookup)))
+						decodeTreeLink(treeLink, validateTreeVersion(treeLink:match("tree/ruthless"), treeLink:match(versionLookup)))
 					end
 				end)
 			end
 		elseif treeLink:match("poeplanner.com/") then
 			decodePoePlannerTreeLink(treeLink:gsub("/%?v=.+#","/"))
 		elseif treeLink:match("poeskilltree.com/") then
-			local oldStyleVersionLookup = "/%?v=([0-9]+)%.([0-9]+)%.([0-9]+)%-?%w?%-?%w?#"
+			local oldStyleVersionLookup = "/%?v=([0-9]+)%.([0-9]+)%.([0-9]+)%-?r?u?t?h?l?e?s?s?#"
 			-- Strip the version from the tree : https://poeskilltree.com/?v=3.6.0#AAAABAMAABEtfIOFMo6-ksHfsOvu -> https://poeskilltree.com/AAAABAMAABEtfIOFMo6-ksHfsOvu
-			decodeTreeLink(treeLink:gsub("/%?v=.+#","/"), validateTreeVersion(treeLink:match("%-(%l+%-?%l*)#"), treeLink:match(oldStyleVersionLookup)))
+			decodeTreeLink(treeLink:gsub("/%?v=.+#","/"), validateTreeVersion(treeLink:match("-ruthless#"), treeLink:match(oldStyleVersionLookup)))
 		else
 			-- EG: https://www.pathofexile.com/passive-skill-tree/3.15.0/AAAABgMADI6-HwKSwQQHLJwtH9-wTLNfKoP3ES3r5AAA
 			-- EG: https://www.pathofexile.com/fullscreen-passive-skill-tree/3.15.0/AAAABgMADAQHES0fAiycLR9Ms18qg_eOvpLB37Dr5AAA
 			-- EG: https://www.pathofexile.com/passive-skill-tree/ruthless/AAAABgAAAAAA (Ruthless doesn't have versions)
-			-- EG: https://www.pathofexile.com/passive-skill-tree/ruthless-alternate/AAAABgAAAAAA
-			-- EG: https://www.pathofexile.com/passive-skill-tree/alternate/AAAABgAAAAAA
-			decodeTreeLink(treeLink, validateTreeVersion(treeLink:match("tree/(%l+%-?%l*)"), treeLink:match(versionLookup)))
+			decodeTreeLink(treeLink, validateTreeVersion(treeLink:match("tree/ruthless"), treeLink:match(versionLookup)))
 		end
 	end)
 	controls.import.enabled = false
@@ -813,133 +791,31 @@ function TreeTabClass:OpenExportPopup()
 	popup = main:OpenPopup(380, 100, "Export Tree", controls, "done", "edit")
 end
 
-function TreeTabClass:ModifyNodePopup(selectedNode)
+function TreeTabClass:ModifyAttributePopup(hoverNode)
 	local controls = { }
-	local modGroups = { }
-	local treeNodes = self.build.spec.tree.nodes
-	local nodeName = treeNodes[selectedNode.id].dn
-	local function buildMods(selectedNode)
-		wipeTable(modGroups)
-		local numLinkedNodes = selectedNode.linkedId and #selectedNode.linkedId or 0
-		local nodeValue = treeNodes[selectedNode.id].sd[1] or ""
-		for id, node in pairs(self.build.spec.tree.tattoo.nodes) do
-			if (nodeName:match(node.targetType:gsub("^Small ", "")) or (node.targetValue ~= "" and nodeValue:match(node.targetValue)) or
-					(node.targetType == "Small Attribute" and (nodeName == "Intelligence" or nodeName == "Strength" or nodeName == "Dexterity"))
-					or (node.targetType == "Keystone" and treeNodes[selectedNode.id].type == node.targetType))
-					and node.MinimumConnected <= numLinkedNodes and ((node.legacy == nil or node.legacy == false) or node.legacy == self.showLegacyTattoo) then
-				local combine = false
-				for id, desc in pairs(node.stats) do
-					combine = (id:match("^local_display.*") and #node.stats == (#node.sd - 1)) or combine
-					if combine then break end
-				end
-				local descriptionsAndReminders = copyTable(node.sd)
-				if combine then
-					t_remove(descriptionsAndReminders, 1)
-					t_remove(descriptionsAndReminders, 1)
-					t_insert(descriptionsAndReminders, 1, node.sd[1] .. " " .. node.sd[2])
-				end
-				local descriptionsAndReminders = combine and { [1] = table.concat(node.sd, " ") } or copyTable(node.sd)
-				if node.reminderText then
-					t_insert(descriptionsAndReminders, node.reminderText[1])
-				end
-				t_insert(modGroups, {
-				label = node.dn .. "                                                " .. table.concat(node.sd, ","),
-				descriptions = descriptionsAndReminders,
-				id = id,
-				})
-			end
-		end
-		table.sort(modGroups, function(a, b) return a.label < b.label end)
-		end
-	local function addModifier(selectedNode)
-		local newTattooNode = self.build.spec.tree.tattoo.nodes[modGroups[controls.modSelect.selIndex].id]
-		newTattooNode.id = selectedNode.id
-		self.build.spec.hashOverrides[selectedNode.id] = newTattooNode
-		self.build.spec:ReplaceNode(selectedNode, newTattooNode)
-		self.build.spec:BuildAllDependsAndPaths()
-	end
-
-	local function constructUI(modGroup)
-		local totalHeight = 43
-		local maxWidth = 375
-		local i = 1
-		while controls[i] do
-			controls[i] = nil
-			i = i + 1
-		end
-
-		local wrapTable = {}
-		for idx, desc in ipairs(modGroup.descriptions) do
-			for _, wrappedDesc in ipairs(main:WrapString(desc, 16, maxWidth)) do
-				t_insert(wrapTable, wrappedDesc)
-			end
-		end
-		for idx, desc in ipairs(wrapTable) do
-			controls[idx] = new("LabelControl", {"TOPLEFT", controls[idx-1] or controls.modSelect,"TOPLEFT"}, {0, 20, 600, 16}, "^7"..desc)
-			totalHeight = totalHeight + 20
-		end
-		main.popups[1].height = totalHeight + 75
-		local buttonHeight = totalHeight + 15
-		controls.save.y = buttonHeight
-		controls.reset.y = buttonHeight
-		controls.close.y = buttonHeight
-		controls.totalTattoos.y = buttonHeight + 30
-	end
-
-	buildMods(selectedNode)
-	controls.modSelectLabel = new("LabelControl", {"TOPRIGHT",nil,"TOPLEFT"}, {150, 25, 0, 16}, "^7Modifier:")
-	controls.modSelect = new("DropDownControl", {"TOPLEFT",nil,"TOPLEFT"}, {155, 25, 250, 18}, modGroups, function(idx) constructUI(modGroups[idx]) end)
-	controls.modSelect.selIndex = self.defaultTattoo[nodeName] or 1
-	controls.modSelect.tooltipFunc = function(tooltip, mode, index, value)
-		tooltip:Clear()
-		if mode ~= "OUT" and value then
-			for _, line in ipairs(value.descriptions) do
-				tooltip:AddLine(16, "^7"..line)
-			end
-		end
-	end
-	controls.save = new("ButtonControl", nil, {-90, 75, 80, 20}, "Add", function()
-		addModifier(selectedNode)
-		self.build.spec:AddUndoState()
-		self.modFlag = true
-		self.build.buildFlag = true
-		self.defaultTattoo[nodeName] = controls.modSelect.selIndex
-		main:ClosePopup()
-	end)
-	controls.reset = new("ButtonControl", nil, {0, 75, 80, 20}, "Reset Node", function()
-		self:RemoveTattooFromNode(selectedNode)
-		self.build.spec:AddUndoState()
-		self.modFlag = true
-		self.build.buildFlag = true
-		self.defaultTattoo[nodeName] = nil
-		main:ClosePopup()
-	end)
-	controls.close = new("ButtonControl", nil, {90, 75, 80, 20}, "Cancel", function()
-		main:ClosePopup()
-	end)
-
-	local function getTattooCount()
-		local count = 0
-		for _, node in pairs(self.build.spec.hashOverrides) do
-			if node.isTattoo and not node.dn:find("Runegraft") then
-				count = count + 1
-			end
-		end
-		if count > 50 then
-			count = colorCodes.NEGATIVE..count
-		end
-		return count
-	end
-	controls.totalTattoos = new("LabelControl", nil, { 0, 95, 0, 16 }, "^7Tattoo Count: ".. getTattooCount() .."/50" )
-	main:OpenPopup(600, 105, "Replace Modifier of Node", controls, "save")
-	constructUI(modGroups[self.defaultTattoo[nodeName] or 1])
+	local spec = self.build.spec
+	local attributes = { "Strength", "Dexterity", "Intelligence" }
 	
-	-- Show Legacy Tattoos
-	controls.showLegacyTattoo = new("CheckBoxControl", { "LEFT", controls.totalTattoos, "RIGHT" }, { 205, 0, 20 }, "Show Legacy Tattoos:", function(state)
-		self.showLegacyTattoo = state
-		buildMods(selectedNode)
+	controls.attrSelect = new("DropDownControl", {"TOPLEFT",nil,"TOPLEFT"}, {225, 30, 100, 18}, attributes, nil)
+	controls.save = new("ButtonControl", nil, {-50, 65, 80, 20}, "Allocate", function()
+		spec:SwitchAttributeNode(hoverNode.id, controls.attrSelect.selIndex)
+		spec.attributeIndex = controls.attrSelect.selIndex
+		spec:AllocNode(hoverNode, spec.tracePath and hoverNode == spec.tracePath[#spec.tracePath] and spec.tracePath)
+		spec:AddUndoState()
+		self.build.buildFlag = true
+		main:ClosePopup()
 	end)
-	controls.showLegacyTattoo.state = self.showLegacyTattoo
+	controls.close = new("ButtonControl", nil, {50, 65, 80, 20}, "Cancel", function()
+		spec:DeallocNode(hoverNode)
+		main:ClosePopup()
+	end)
+	controls.hotkeyTooltip = new("LabelControl", nil, {0, 100, 0, 16}, 
+		"^8You can switch attributes quicker by holding hotkeys while allocating:\n"..colorCodes.INTELLIGENCE.."\"1\" or \"I\" for Intelligence, "
+		..colorCodes.STRENGTH.."\"2\" or \"S\" for Strength, "..colorCodes.DEXTERITY.."\"3\" or \"D\" for Dexterity\n\n"
+		..colorCodes.RARE.."Right-click ^8an allocated node to toggle attribute types or to set an\n" .. 
+		"unallocated node to your last used attribute\n\n"
+	)
+	main:OpenPopup(550, 185, "Choose Attribute", controls, "save")
 end
 
 function TreeTabClass:SaveMasteryPopup(node, listControl)
@@ -1229,12 +1105,16 @@ function TreeTabClass:FindTimelessJewel()
 				keystone = "Templar/Witch"
 			else
 				local minDistance = math.huge
-				for _, nodeInRadius in pairs(treeData.nodes[socketId].nodesInRadius[3]) do
-					if nodeInRadius.isKeystone then
-						local distance = math.sqrt((nodeInRadius.x - socketData.x) ^ 2 + (nodeInRadius.y - socketData.y) ^ 2)
-						if distance < minDistance then
-							keystone = nodeInRadius.name
-							minDistance = distance
+				-- PRJ-003 Fix: Validate node and nodesInRadius[3] before access
+				local socketNode = treeData.nodes[socketId]
+				if socketNode and socketNode.nodesInRadius and socketNode.nodesInRadius[3] then
+					for _, nodeInRadius in pairs(socketNode.nodesInRadius[3]) do
+						if nodeInRadius.isKeystone then
+							local distance = math.sqrt((nodeInRadius.x - socketData.x) ^ 2 + (nodeInRadius.y - socketData.y) ^ 2)
+							if distance < minDistance then
+								keystone = nodeInRadius.name
+								minDistance = distance
+							end
 						end
 					end
 				end
@@ -1458,7 +1338,12 @@ function TreeTabClass:FindTimelessJewel()
 	self.allocatedNodesInRadiusCount = 0
 	local function setAllocatedNodes() -- find allocated nodes in radius for Militant Faith filtering / protected nodes dropdown
 		local nodeNames = { }
-		local radiusNodes = treeData.nodes[timelessData.jewelSocket.id].nodesInRadius[3] -- large radius around timelessData.jewelSocket.id
+		-- PRJ-003 Fix: Validate node and nodesInRadius[3] before access
+		local jewelSocketNode = treeData.nodes[timelessData.jewelSocket.id]
+		if not jewelSocketNode or not jewelSocketNode.nodesInRadius or not jewelSocketNode.nodesInRadius[3] then
+			return
+		end
+		local radiusNodes = jewelSocketNode.nodesInRadius[3] -- large radius around timelessData.jewelSocket.id
 		for nodeId in pairs(radiusNodes) do
 			if self.build.calcsTab.mainEnv.grantedPassives[nodeId] ~= nil or self.build.spec.allocNodes[nodeId] ~= nil then
 				allocatedNodes[nodeId] = true
@@ -1941,17 +1826,6 @@ function TreeTabClass:FindTimelessJewel()
 		tooltip:Clear()
 		tooltip:AddLine(16, "^7Click this button to generate new fallback node weights, replacing your old ones.")
 	end
-	controls.totalMinimumWeightLabel = new("LabelControl", {"TOPRIGHT", nil, "TOPLEFT"}, {405, 250, 0, 16}, "^7Total Minimum Weight:")
-	controls.totalMinimumWeight = new("EditControl", {"LEFT", controls.totalMinimumWeightLabel, "RIGHT"}, {10, 0, 60, 18}, "", nil, "%D", nil, function(val)
-		local num = tonumber(val)
-		timelessData.totalMinimumWeight = num or nil
-		self.build.modFlag = true
-	end)
-	controls.totalMinimumWeight.tooltipFunc = function(tooltip, mode, index, value)
-		tooltip:Clear()
-		tooltip:AddLine(16, "^7Optional: Only show results where total weight meets or exceeds this value.")
-	end
-	
 
 	controls.searchListButton = new("ButtonControl", {"TOPLEFT", nil, "TOPLEFT"}, {12, 250, 106, 20}, "^7Desired Nodes", function()
 		if controls.searchListFallback.shown then
@@ -2000,7 +1874,7 @@ function TreeTabClass:FindTimelessJewel()
 	controls.searchListFallback.enabled = false
 	controls.searchListFallback:SetText(timelessData.searchListFallback and timelessData.searchListFallback or "")
 
-	controls.searchResultsLabel = new("LabelControl", { "TOPLEFT", nil, "TOPRIGHT" }, { -390, 250, 0, 16 }, "^7Results:")
+	controls.searchResultsLabel = new("LabelControl", { "TOPLEFT", nil, "TOPRIGHT" }, { -450, 250, 0, 16 }, "^7Search Results:")
 	controls.searchResults = new("TimelessJewelListControl", { "TOPLEFT", nil, "TOPRIGHT" }, { -450, 275, 438, 200 }, self.build)
 	controls.searchTradeLeagueSelect = new("DropDownControl", { "BOTTOMRIGHT", controls.searchResults, "TOPRIGHT" }, { -175, -5, 140, 20 }, nil, function(_, value)
 		self.timelessJewelLeagueSelect = value
@@ -2017,15 +1891,15 @@ function TreeTabClass:FindTimelessJewel()
 			end
 		end
 	else
-		self.tradeQueryRequests:FetchLeagues("pc", function(leagues, errMsg)
+		self.tradeQueryRequests:FetchLeagues("poe2", function(leagues, errMsg)
 			if errMsg then
 				controls.msg.label = "^1Error fetching league list, default league will be used\n"..errMsg.."^7"
 				return
 			end
 			local tempLeagueTable = { }
 			for _, league in ipairs(leagues) do
-				if league ~= "Standard" and  league ~= "Ruthless" and league ~= "Hardcore" and league ~= "Hardcore Ruthless" then
-					if not (league:find("Hardcore") or league:find("Ruthless")) then
+				if league ~= "Standard" and league ~= "Hardcore" then
+					if not league:find("Hardcore") then
 						-- set the dynamic, base league name to index 1 to sync league shown in dropdown on load with default/old behavior of copy trade url
 						t_insert(tempLeagueTable, league)
 						for _, val in ipairs(self.tradeLeaguesList) do
@@ -2039,8 +1913,6 @@ function TreeTabClass:FindTimelessJewel()
 			end
 			t_insert(self.tradeLeaguesList, "Standard")
 			t_insert(self.tradeLeaguesList, "Hardcore")
-			t_insert(self.tradeLeaguesList, "Ruthless")
-			t_insert(self.tradeLeaguesList, "Hardcore Ruthless")
 			controls.searchTradeLeagueSelect:SetList(self.tradeLeaguesList)
 		end)
 	end
@@ -2152,8 +2024,10 @@ function TreeTabClass:FindTimelessJewel()
 	local buttonX = -totalWidth / 2 + width / 2
 
 	controls.searchButton = new("ButtonControl", nil, {buttonX, 485, width, 20}, "Search", function()
-		if treeData.nodes[timelessData.jewelSocket.id] and treeData.nodes[timelessData.jewelSocket.id].isJewelSocket then
-			local radiusNodes = treeData.nodes[timelessData.jewelSocket.id].nodesInRadius[3] -- large radius around timelessData.jewelSocket.id
+		-- PRJ-003 Fix: Validate node and nodesInRadius[3] before access
+		local jewelSocketNode = treeData.nodes[timelessData.jewelSocket.id]
+		if jewelSocketNode and jewelSocketNode.isJewelSocket and jewelSocketNode.nodesInRadius and jewelSocketNode.nodesInRadius[3] then
+			local radiusNodes = jewelSocketNode.nodesInRadius[3] -- large radius around timelessData.jewelSocket.id
 			local allocatedNodes = { }
 			local unAllocatedNodesDistance = { }
 			local targetNodes = { }
@@ -2395,9 +2269,7 @@ function TreeTabClass:FindTimelessJewel()
 			end
 			local searchResultsIdx = 1
 			for seedMatch, seedData in pairs(resultNodes) do
-				-- filter out the results so that only the ones that beat the total minimum weight parameter remain in search results
-				local passesMin = (not timelessData.totalMinimumWeight) or (seedWeights[seedMatch] >= timelessData.totalMinimumWeight)
-				if seedWeights[seedMatch] > 0 and passesMin then
+				if seedWeights[seedMatch] > 0 then
 					timelessData.searchResults[searchResultsIdx] = { label = seedMatch .. ":" }
 					if timelessData.jewelType.id == 1 or timelessData.jewelType.id == 3 then
 						-- Glorious Vanity [100-8000], Brutal Restraint [500-8000]

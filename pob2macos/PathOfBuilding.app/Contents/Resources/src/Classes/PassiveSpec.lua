@@ -13,8 +13,24 @@ local m_max = math.max
 local m_floor = math.floor
 local b_lshift = bit.lshift
 local b_rshift = bit.rshift
-local band = bit.band
-local bor = bit.bor
+local band = AND64 -- bit.band
+local bor = OR64 -- bit.bor
+
+local function getMinimalModList()
+	if _G.MINIMAL_MODLIST_STUB then
+		return _G.MINIMAL_MODLIST_STUB
+	end
+	_G.MINIMAL_MODLIST_STUB = {
+		HasMod = function() return false end,
+		List = function() return {} end,
+		Sum = function() return 0 end,
+		More = function() return 1 end,
+		NewMod = function() end,
+		AddMod = function() end,
+		AddList = function() end,
+	}
+	return _G.MINIMAL_MODLIST_STUB
+end
 
 local PassiveSpecClass = newClass("PassiveSpec", "UndoHandler", function(self, build, treeVersion, convert)
 	self.UndoHandler()
@@ -32,6 +48,10 @@ function PassiveSpecClass:Init(treeVersion, convert)
 	self.tree = main:LoadTree(treeVersion)
 	self.ignoredNodes = { }
 	self.ignoreAllocatingSubgraph = false
+
+	-- There are 3 allocation modes, [0] normal points, [1] weapon set 1, [2] weapon set 2
+	self.allocMode = 0
+
 	local previousTreeNodes = { }
 	if convert then
 		previousTreeNodes = self.build.spec.nodes
@@ -39,16 +59,52 @@ function PassiveSpecClass:Init(treeVersion, convert)
 
 	-- Make a local copy of the passive tree that we can modify
 	self.nodes = { }
-	for _, treeNode in pairs(self.tree.nodes) do
-		-- Exclude proxy or groupless nodes, as well as expansion sockets
-		if treeNode.group and not treeNode.isProxy and not treeNode.group.isProxy and (not treeNode.expansionJewel or not treeNode.expansionJewel.parent) then
-			self.nodes[treeNode.id] = setmetatable({
-				linked = { },
-				power = { }
-			}, treeNode)
+
+	-- Debug: Count tree.nodes before filtering
+	local treeNodeCount = 0
+	for _ in pairs(self.tree.nodes) do
+		treeNodeCount = treeNodeCount + 1
+	end
+
+	-- ★ PHASE1: rawget/next method to bypass metatable pollution
+	local function copyNodeSafely(treeNode)
+		local newNode = { linked = {}, power = {} }
+		local key = next(treeNode)
+		while key do
+			-- Skip __index field (metatable pollution prevention)
+			if key ~= "__index" then
+				newNode[key] = rawget(treeNode, key)
+			end
+			key = next(treeNode, key)
+		end
+		return newNode
+	end
+
+	local copyCount = 0
+
+	for nodeId, treeNode in pairs(self.tree.nodes) do
+		if treeNode.group and not treeNode.isProxy and not treeNode.group.isProxy
+		   and (not treeNode.expansionJewel or not treeNode.expansionJewel.parent) then
+			self.nodes[nodeId] = copyNodeSafely(treeNode)
+			copyCount = copyCount + 1
 		end
 	end
+
+
+	-- Verification: Test pairs() iteration
+	local verifyCount = 0
+	for _ in pairs(self.nodes) do
+		verifyCount = verifyCount + 1
+	end
+
+	-- Debug: Count filtered nodes
+	local filteredNodeCount = 0
+	for _ in pairs(self.nodes) do
+		filteredNodeCount = filteredNodeCount + 1
+	end
 	for id, node in pairs(self.nodes) do
+		-- init all nodes as normal allocationMode
+		node.allocMode = 0
 		-- if the node is allocated and between the old and new tree has the same ID but does not share the same name, add to list of nodes to be ignored
 		if convert and previousTreeNodes[id] and self.build.spec.allocNodes[id] and node.name ~= previousTreeNodes[id].name then
 			self.ignoredNodes[id] = previousTreeNodes[id]
@@ -57,6 +113,10 @@ function PassiveSpecClass:Init(treeVersion, convert)
 			t_insert(node.linked, self.nodes[otherId])
 		end
 	end
+
+	-- Table of intuitive leap-like jewel node modifiers from one type of node to others with the given radius
+	-- { from = nodeType, radiusIndex = index, to = { nodeType, [...] } }
+	self.intuitiveLeapLikeNodes = { }
 
 	-- List of currently allocated nodes
 	-- Keys are node IDs, values are nodes
@@ -85,6 +145,7 @@ end
 
 function PassiveSpecClass:Load(xml, dbFileName)
 	self.title = xml.attrib.title
+	local weaponSets = {}
 	local url
 	for _, node in pairs(xml) do
 		if type(node) == "table" then
@@ -114,19 +175,55 @@ function PassiveSpecClass:Load(xml, dbFileName)
 						end
 					end
 				end
+			elseif node.elem and node.elem:match("^WeaponSet") then
+				if not node.attrib.nodes then
+					launch:ShowErrMsg("^1Error parsing '%s': 'WeaponSet1' element missing 'nodes' attribute", dbFileName)
+					return true
+				end
+				local weaponSet = tonumber(node.elem:match("^WeaponSet(%d)"))
+				for nodeId in node.attrib.nodes:gmatch("%d+") do
+					weaponSets[tonumber(nodeId)] = weaponSet
+				end
 			end
 		end
 	end
 	if xml.attrib.nodes then
+		local classId = -1
+		local ascendClassId = -1
+		-- Legacy format contain classId and ascendClassId as xml attributes
+		if xml.attrib.classId then
+			classId = tonumber(xml.attrib.classId)
+		end
+		if xml.attrib.ascendClassId then
+			ascendClassId = tonumber(xml.attrib.ascendClassId)
+		end
+
 		-- New format
-		if not xml.attrib.classId then
-			launch:ShowErrMsg("^1Error parsing '%s': 'Spec' element missing 'classId' attribute", dbFileName)
+		if xml.attrib.classInternalId then
+			local classInternalId = tonumber(xml.attrib.classInternalId)
+			if self.tree.classIntegerIdMap[classInternalId] then
+				classId = self.tree.classIntegerIdMap[classInternalId]
+			end
+		end
+		if xml.attrib.ascendancyInternalId then
+			local ascendancyInternalId = tostring(xml.attrib.ascendancyInternalId)
+			if ascendancyInternalId == "" then
+				ascendClassId = 0
+			elseif self.tree.internalAscendNameMap[ascendancyInternalId] then
+				ascendClassId = self.tree.internalAscendNameMap[ascendancyInternalId].ascendClassId
+			end
+		end
+
+		if classId == -1 then
+			launch:ShowErrMsg("^1Error parsing '%s': 'Spec' element missing 'classId' / 'classInternalId' attribute", dbFileName)
 			return true
 		end
-		if not xml.attrib.ascendClassId then
-			launch:ShowErrMsg("^1Error parsing '%s': 'Spec' element missing 'ascendClassId' attribute", dbFileName)
+
+		if ascendClassId == -1 then
+			launch:ShowErrMsg("^1Error parsing '%s': 'Spec' element missing 'ascendClassId' / 'ascendancyInternalId' attribute", dbFileName)
 			return true
 		end
+
 		local hashList = { }
 		for hash in xml.attrib.nodes:gmatch("%d+") do
 			t_insert(hashList, tonumber(hash))
@@ -141,34 +238,24 @@ function PassiveSpecClass:Load(xml, dbFileName)
 			if type(node) == "table" then
 				if node.elem == "Overrides" then
 					for _, child in ipairs(node) do
-						if not child.attrib.nodeId then
-							launch:ShowErrMsg("^1Error parsing '%s': 'Override' element missing 'nodeId' attribute", dbFileName)
-							return true
-						end
-						
-						-- In case a tattoo has been replaced by a different one attempt to find the new name for it
-						if not self.tree.tattoo.nodes[child.attrib.dn] then
-							for name ,data in pairs(self.tree.tattoo.nodes) do
-								if data["activeEffectImage"] == child.attrib["activeEffectImage"] and data["icon"] == child.attrib["icon"] then
-									self.tree.tattoo.nodes[child.attrib.dn] = data
-									ConPrintf("[PassiveSpecClass:Load] " .. child.attrib.dn .. " tattoo has been substituted with " .. name)
-								end
+						if child.elem == "AttributeOverride" then
+							for strengthId in child.attrib.strNodes:gmatch("%d+") do
+								self:SwitchAttributeNode(tonumber(strengthId), 1)
 							end
-						end
-
-						-- If the above failed remove the tattoo to avoid crashing
-						if self.tree.tattoo.nodes[child.attrib.dn] then
-							local nodeId = tonumber(child.attrib.nodeId)
-							self.hashOverrides[nodeId] = copyTable(self.tree.tattoo.nodes[child.attrib.dn], true)
-							self.hashOverrides[nodeId].id = nodeId
+							for dexterityId in child.attrib.dexNodes:gmatch("%d+") do
+								self:SwitchAttributeNode(tonumber(dexterityId), 2)
+							end
+							for intelligenceId in child.attrib.intNodes:gmatch("%d+") do
+								self:SwitchAttributeNode(tonumber(intelligenceId), 3)
+							end
 						else
-							ConPrintf("[PassiveSpecClass:Load] Failed to find a tattoo with dn of: " .. child.attrib.dn)
+							ConPrintf("[PassiveSpecClass:Load] Unexpected element found in Overrides: " .. child.elem)
 						end
 					end
 				end
 			end
 		end
-		self:ImportFromNodeList(tonumber(xml.attrib.classId), tonumber(xml.attrib.ascendClassId), tonumber(xml.attrib.secondaryAscendClassId or 0), hashList, self.hashOverrides, masteryEffects)
+		self:ImportFromNodeList(nil, classId, ascendClassId, tonumber(xml.attrib.secondaryAscendClassId or 0), hashList, weaponSets, copyTable(self.hashOverrides, true), masteryEffects)
 	elseif url then
 		self:DecodeURL(url)
 	end
@@ -177,19 +264,38 @@ end
 
 function PassiveSpecClass:Save(xml)
 	local allocNodeIdList = { }
+	local weaponSets = {}
 	for nodeId in pairs(self.allocNodes) do
 		t_insert(allocNodeIdList, nodeId)
+		if self.nodes[nodeId].allocMode and self.nodes[nodeId].allocMode ~= 0 then
+			local weaponSet = self.nodes[nodeId].allocMode
+			if not weaponSets[weaponSet] then
+				weaponSets[weaponSet] = { }
+			end
+			t_insert(weaponSets[weaponSet], nodeId)
+		end
 	end
 	local masterySelections = { }
 	for mastery, effect in pairs(self.masterySelections) do
 		t_insert(masterySelections, "{"..mastery..","..effect.."}")
 	end
+
+	local classInternalId = self.tree.classes[self.curClassId].integerId
+	local ascendancyInternalId = ""
+	if self.curAscendClassId and self.tree.classes[self.curClassId].classes[self.curAscendClassId] then
+		-- None ascendancy case will have no internalId
+		ascendancyInternalId = self.tree.classes[self.curClassId].classes[self.curAscendClassId].internalId or ""
+	end
+
 	xml.attrib = {
 		title = self.title,
 		treeVersion = self.treeVersion,
-		-- New format
+		-- TODO remove old class format
 		classId = tostring(self.curClassId),
 		ascendClassId = tostring(self.curAscendClassId),
+		-- New format
+		classInternalId = tostring(classInternalId),
+		ascendancyInternalId = tostring(ascendancyInternalId),
 		secondaryAscendClassId = tostring(self.curSecondaryAscendClassId),
 		nodes = table.concat(allocNodeIdList, ","),
 		masteryEffects = table.concat(masterySelections, ",")
@@ -199,6 +305,15 @@ function PassiveSpecClass:Save(xml)
 		elem = "URL",
 		[1] = self:EncodeURL("https://www.pathofexile.com/passive-skill-tree/")
 	})
+
+	if #weaponSets > 0 then
+		for weaponSet, nodes in pairs(weaponSets) do
+			t_insert(xml, {
+				elem = "WeaponSet"..weaponSet,
+				attrib = { nodes = table.concat(nodes, ",") }
+			})
+		end
+	end
 
 	local sockets = {
 		elem = "Sockets"
@@ -216,13 +331,20 @@ function PassiveSpecClass:Save(xml)
 		elem = "Overrides"
 	}
 	if self.hashOverrides then
+		local strList, dexList, intList = { }, { }, { }
 		for nodeId, node in pairs(self.hashOverrides) do
-			local override = { elem = "Override", attrib = { nodeId = tostring(nodeId), icon = tostring(node.icon), activeEffectImage = tostring(node.activeEffectImage), dn = tostring(node.dn) } }
-			for _, modLine in ipairs(node.sd) do
-				t_insert(override, modLine)
+			if node.isAttribute then
+				if node.dn == "Strength" then
+					t_insert(strList, nodeId)
+				elseif node.dn == "Dexterity" then
+					t_insert(dexList, nodeId)
+				elseif node.dn == "Intelligence" then
+					t_insert(intList, nodeId)
+				end
 			end
-			t_insert(overrides, override)
 		end
+		local attributeOverride = { elem = "AttributeOverride", attrib = { strNodes = table.concat(strList, ","), dexNodes = table.concat(dexList, ","), intNodes = table.concat(intList, ",") } }
+		t_insert(overrides, attributeOverride)
 	end
 	t_insert(xml, overrides)
 
@@ -233,13 +355,17 @@ function PassiveSpecClass:PostLoad()
 end
 
 -- Import passive spec from the provided class IDs and node hash list
-function PassiveSpecClass:ImportFromNodeList(classId, ascendClassId, secondaryAscendClassId, hashList, hashOverrides, masteryEffects, treeVersion)
+function PassiveSpecClass:ImportFromNodeList(className, classId, ascendClassId, secondaryAscendClassId, hashList, weaponSets, hashOverrides, masteryEffects, treeVersion)
   if hashOverrides == nil then hashOverrides = {} end
 	if treeVersion and treeVersion ~= self.treeVersion then
 		self:Init(treeVersion)
 		self.build.treeTab.showConvert = self.treeVersion ~= latestTreeVersion
 	end
 	self:ResetNodes()
+	if className then
+		classId = self.tree.classNameMap[className] or (self.tree.ascendNameMap[className] and self.tree.ascendNameMap[className].classId) or (self.tree.internalAscendNameMap[className] and self.tree.internalAscendNameMap[className].classId)
+		ascendClassId = (self.tree.ascendNameMap[className] and self.tree.ascendNameMap[className].ascendClassId) or (self.tree.internalAscendNameMap[className] and self.tree.internalAscendNameMap[className].ascendClassId) or 0
+	end
 	self:SelectClass(classId)
 	self:SelectAscendClass(ascendClassId)
 	self:SelectSecondaryAscendClass(secondaryAscendClassId)
@@ -254,9 +380,8 @@ function PassiveSpecClass:ImportFromNodeList(classId, ascendClassId, secondaryAs
 	end
 	for id, override in pairs(hashOverrides) do
 		local node = self.nodes[id]
+		
 		if node then
-			override.effectSprites = self.tree.spriteMap[override.activeEffectImage]
-			override.sprites = self.tree.spriteMap[override.icon]
 			self:ReplaceNode(node, override)
 		end
 	end
@@ -266,6 +391,7 @@ function PassiveSpecClass:ImportFromNodeList(classId, ascendClassId, secondaryAs
 			-- check to make sure the mastery node has a corresponding selection, if not do not allocate
 			if node.type ~= "Mastery" or (node.type == "Mastery" and self.masterySelections[id]) then
 				node.alloc = true
+				node.allocMode = weaponSets[id] or 0
 				self.allocNodes[id] = node
 			end
 		else
@@ -276,6 +402,7 @@ function PassiveSpecClass:ImportFromNodeList(classId, ascendClassId, secondaryAs
 		local node = self.nodes[id]
 		if node then
 			node.alloc = true
+			node.allocMode = weaponSets[id] or 0
 			self.allocNodes[id] = node
 		end
 	end
@@ -356,81 +483,53 @@ function PassiveSpecClass:DecodePoePlannerURL(url, return_tree_version_only)
 		return bytes:byte(start) + bytes:byte(start + 1) * 256
 	end
 
+	local function translatePoepToGggTreeVersion(minor)
+		-- Translates internal tree version to GGG version.
+		-- Limit poeplanner tree imports to recent versions.
+		tree_versions = { -- poeplanner ID: GGG version
+			[31] = 24, [29] = 23, [27] = 22, [26] = 21, [25] = 20, [24] = 19, [23] = 18,
+			}
+		if tree_versions[minor] then
+			return tree_versions[minor]
+		else
+			return -1
+		end
+	end
+
 	local b = common.base64.decode(url:gsub("^.+/",""):gsub("-","+"):gsub("_","/"))
 	if not b or #b < 15 then
 		return "Invalid tree link (unrecognised format)."
 	end
-	-- Quick debug for when we change tree versions. Print the first 20 or so bytes
-	-- s = ""
-	-- for i = 1, 20 do
-	-- 	s = s..i..":"..string.format('%02X ', b:byte(i))
-	-- end
-	-- print(s)
-
-	--[[
-	PoEPlanner URL format:
-		serializationVersion: u16
-		buildType: u8 (either normal or royale)
-		isPoE2: u8
-		treeBuild: TreeBuild
-		equipmentBuild: EquipmentBuild
-		skillBuild: SkillBuild
-		buildConfig: BuildConfig
-		compressedNotesLength: u16
-		compressedNotesBytes: []u8 (gzip)
-
-		TreeBuild: 
-		treeSerializationVersion: u16
-		treeVersion: u16
-		character: u8
-		ascendancy: u8
-		banditChoice: u8
-		nodeCount: u16
-		nodeHashes: []u16
-		clusterNodeCount: u16
-		clusterNodeHashes: []u16
-		ascendancyNodeCount: u16
-		ascendancyNodeHashes: []u16
-		selectedMasteryEffectCount: u16
-		selectedMasteryEffects: {masteryID: u16, effectID: u16}
-		selectedAttributeChoiceCount: u16
-		selectedAttributeChoices: {nodeHash: u16, choice: u8} (for choice: 0: none, 1: str, 2: dex, 3: int)
-	]]
-
+	-- 4-7 is tree version.version
+	major_version = byteToInt(b,4)
+	minor_version = translatePoepToGggTreeVersion(byteToInt(b,6))
 	-- If we only want the tree version, exit now
-	if not poePlannerVersions[byteToInt(b, 7)] then
+	if minor_version < 0 then
 		return "Invalid tree version found in link."
 	end
 	if return_tree_version_only then
-		return poePlannerVersions[byteToInt(b, 7)]
+		return major_version.."_"..minor_version
 	end
 
-	-- 9 is Class, 10 is Ascendancy
-	local classId = b:byte(9)
-	local ascendClassId = b:byte(10)
-	-- print("classId, ascendClassId", classId, ascendClassId)
-
-	-- 11 is Bandit
-	-- bandit = b[9]
-	-- print("bandit", bandit, bandit_list[bandit])
+	-- 8 is Class, 9 is Ascendancy
+	local classId = b:byte(8)
+	local ascendClassId = b:byte(9)
 
 	self:ResetNodes()
 	self:SelectClass(classId)
 	self:SelectAscendClass(ascendClassId)
 
-	-- 12-13 is node count
-	idx = 12
+	-- 11 is node count
+	idx = 11
 	local nodesCount = byteToInt(b, idx)
 	local nodesEnd = idx + 2 + (nodesCount * 2)
 	local nodes = b:sub(idx  + 2, nodesEnd - 1)
-	-- print("idx + 2 , nodesEnd, nodesCount, len(nodes)", idx + 2, nodesEnd, nodesCount, #nodes)
 	self:AllocateDecodedNodes(nodes, false, "little")
 
 	idx = nodesEnd
 	local clusterCount = byteToInt(b, idx)
 	local clusterEnd = idx + 2 + (clusterCount * 2)
 	local clusterNodes = b:sub(idx  + 2, clusterEnd - 1)
-	-- print("idx + 2 , clusterEnd, clusterCount, len(clusterNodes)", idx + 2, clusterEnd, clusterCount, #clusterNodes)
 	self:AllocateDecodedNodes(clusterNodes, true, "little")
 
 	-- poeplanner has Ascendancy nodes in a separate array
@@ -438,14 +537,12 @@ function PassiveSpecClass:DecodePoePlannerURL(url, return_tree_version_only)
 	local ascendancyCount = byteToInt(b, idx)
 	local ascendancyEnd = idx + 2 + (ascendancyCount * 2)
 	local ascendancyNodes = b:sub(idx  + 2, ascendancyEnd - 1)
-	-- print("idx + 2 , ascendancyEnd, ascendancyCount, len(ascendancyNodes)", idx + 2, ascendancyEnd, ascendancyCount, #ascendancyNodes)
 	self:AllocateDecodedNodes(ascendancyNodes, false, "little")
 
 	idx = ascendancyEnd
 	local masteryCount = byteToInt(b, idx)
 	local masteryEnd = idx + 2 + (masteryCount * 4)
 	local masteryEffects = b:sub(idx  + 2, masteryEnd - 1)
-	-- print("idx + 2 , masteryEnd, masteryCount, len(masteryEffects)", idx + 2, masteryEnd, masteryCount, #masteryEffects)
 	self:AllocateMasteryEffects(masteryEffects, "little")
 end
 
@@ -544,6 +641,39 @@ end
 
 -- Change the current class, preserving currently allocated nodes if they connect to the new class's starting node
 function PassiveSpecClass:SelectClass(classId)
+	if _G.MINIMAL_PASSIVE_TEST then
+		if self.curClassId then
+			local oldStartNodeId = self.curClass and self.curClass.startNodeId
+			if oldStartNodeId and self.nodes[oldStartNodeId] then
+				self.nodes[oldStartNodeId].alloc = false
+				self.allocNodes[oldStartNodeId] = nil
+			end
+			if self.curAscendClassId and self.curAscendClassId ~= 0 then
+				local oldAscendClass = self.curClass and self.curClass.classes and (self.curClass.classes[self.curAscendClassId] or self.curClass.classes[0])
+				local oldAscendStart = oldAscendClass and oldAscendClass.startNodeId
+				if oldAscendStart and self.nodes[oldAscendStart] then
+					self.nodes[oldAscendStart].alloc = false
+					self.allocNodes[oldAscendStart] = nil
+				end
+			end
+		end
+		self.curClassId = classId
+		local class = self.tree.classes[classId] or { name = "Unknown", classes = { [0] = { name = "None" } } }
+		self.curClass = class
+		self.curClassName = class.name or "Unknown"
+		self.curAscendClassId = 0
+		self.curAscendClass = (class.classes and class.classes[0]) or { name = "None" }
+		self.curAscendClassName = self.curAscendClass.name or "None"
+		self.curAscendClassBaseName = self.curAscendClass.id
+		if class.startNodeId and self.nodes[class.startNodeId] then
+			local startNode = self.nodes[class.startNodeId]
+			startNode.alloc = true
+			startNode.modList = startNode.modList or getMinimalModList()
+			self.allocNodes[startNode.id] = startNode
+		end
+		self:BuildAllDependsAndPaths()
+		return
+	end
 	if self.curClassId then
 		-- Deallocate the current class's starting node
 		local oldStartNodeId = self.curClass.startNodeId
@@ -569,6 +699,17 @@ function PassiveSpecClass:SelectClass(classId)
 end
 
 function PassiveSpecClass:ResetAscendClass()
+	if _G.MINIMAL_PASSIVE_TEST then
+		if self.curAscendClassId then
+			local ascendClass = self.curClass and self.curClass.classes and (self.curClass.classes[self.curAscendClassId] or self.curClass.classes[0])
+			local oldStartNodeId = ascendClass and ascendClass.startNodeId
+			if oldStartNodeId and self.nodes[oldStartNodeId] then
+				self.nodes[oldStartNodeId].alloc = false
+				self.allocNodes[oldStartNodeId] = nil
+			end
+		end
+		return
+	end
 	if self.curAscendClassId then
 		-- Deallocate the current ascendancy class's start node
 		local ascendClass = self.curClass.classes[self.curAscendClassId] or self.curClass.classes[0]
@@ -581,6 +722,22 @@ function PassiveSpecClass:ResetAscendClass()
 end
 
 function PassiveSpecClass:SelectAscendClass(ascendClassId)
+	if _G.MINIMAL_PASSIVE_TEST then
+		self:ResetAscendClass()
+		self.curAscendClassId = ascendClassId
+		local ascendClass = (self.curClass and self.curClass.classes and self.curClass.classes[ascendClassId]) or (self.curClass and self.curClass.classes and self.curClass.classes[0]) or { name = "None" }
+		self.curAscendClass = ascendClass
+		self.curAscendClassName = ascendClass.name or "None"
+		self.curAscendClassBaseName = ascendClass.id
+		if ascendClass.startNodeId and self.nodes[ascendClass.startNodeId] then
+			local startNode = self.nodes[ascendClass.startNodeId]
+			startNode.alloc = true
+			startNode.modList = startNode.modList or getMinimalModList()
+			self.allocNodes[startNode.id] = startNode
+		end
+		self:BuildAllDependsAndPaths()
+		return
+	end
 	self:ResetAscendClass()
 
 	self.curAscendClassId = ascendClassId
@@ -752,7 +909,8 @@ end
 -- An alternate path to the node may be provided, otherwise the default path will be used
 -- The path must always contain the given node, as will be the case for the default path
 function PassiveSpecClass:AllocNode(node, altPath)
-	if not node.path then
+	-- MINIMAL mode: Allow allocation without path (direct node allocation only)
+	if not node.path and not _G.MINIMAL_PASSIVE_TEST then
 		-- Node cannot be connected to the tree as there is no possible path
 		return
 	end
@@ -760,31 +918,84 @@ function PassiveSpecClass:AllocNode(node, altPath)
 	-- Allocate all nodes along the path
 	if #node.intuitiveLeapLikesAffecting > 0 then
 		node.alloc = true
+		node.allocMode = (node.ascendancyName or node.type == "Keystone" or node.type == "Socket" or node.containJewelSocket) and 0 or self.allocMode
 		self.allocNodes[node.id] = node
 	else
-		for _, pathNode in ipairs(altPath or node.path) do
+		-- MINIMAL mode: If no path, allocate only the clicked node
+		if not node.path and _G.MINIMAL_PASSIVE_TEST then
+			node.alloc = true
+			node.allocMode = (node.ascendancyName or node.type == "Keystone" or node.type == "Socket" or node.containJewelSocket) and 0 or self.allocMode
+			self.allocNodes[node.id] = node
+		else
+			for _, pathNode in ipairs(altPath or node.path) do
 			pathNode.alloc = true
+			pathNode.allocMode = (node.ascendancyName or pathNode.type == "Keystone" or pathNode.type == "Socket" or pathNode.containJewelSocket) and 0 or self.allocMode
+			-- set path attribute nodes to latest chosen attribute or default to Strength if allocating before choosing an attribute
+			if pathNode.isAttribute then 
+				self:SwitchAttributeNode(pathNode.id, self.attributeIndex or 1)
+			end
 			self.allocNodes[pathNode.id] = pathNode
 		end
+		end -- Close path existence check for MINIMAL mode
 	end
 
 	if node.isMultipleChoiceOption then
 		-- For multiple choice passives, make sure no other choices are allocated
-		local parent = node.linked[1]
+		local parent = nil
+		for _, possibleParent in ipairs(node.linked) do
+			if possibleParent.isMultipleChoice and possibleParent.alloc and possibleParent ~= node then
+				parent = possibleParent
+				break
+			end
+		end
+		assert(parent) -- If we're allocating a multiple choice option without an allocated parent, something has gone wrong
 		for _, optNode in ipairs(parent.linked) do
 			if optNode.isMultipleChoiceOption and optNode.alloc and optNode ~= node then
-				optNode.alloc = false
-				self.allocNodes[optNode.id] = nil
+				self:DeallocSingleNode(optNode)
 			end
 		end
 	end
 
 	-- Rebuild all dependencies and paths for all allocated nodes
+	-- Full App Mode: Preserve allocation state across BuildAllDependsAndPaths
+	-- BuildAllDependsAndPaths() deallocates orphaned nodes, but in MINIMAL mode
+	-- nodes may appear orphaned due to lack of paths
+
+	-- Save allocation states
+	local allocStates = {}
+	for nodeId, node in pairs(self.nodes) do
+		if node.alloc then
+			allocStates[nodeId] = {
+				alloc = true,
+				allocMode = node.allocMode
+			}
+		end
+	end
+
+	-- Run path calculation (may deallocate orphaned nodes)
 	self:BuildAllDependsAndPaths()
+
+	-- Restore allocation states
+	for nodeId, state in pairs(allocStates) do
+		if self.nodes[nodeId] then
+			self.nodes[nodeId].alloc = state.alloc
+			self.nodes[nodeId].allocMode = state.allocMode or 0
+			-- Re-add to allocNodes if it was removed
+			if state.alloc and not self.allocNodes[nodeId] then
+				self.allocNodes[nodeId] = self.nodes[nodeId]
+			end
+		end
+	end
+
+	-- Phase 3: Update BuildStub stats after node allocation (2026-02-07)
+	if self.build and self.build.buildStub and self.build.buildStub.CalculateStats then
+		self.build.buildStub:CalculateStats()
+	end
 end
 
 function PassiveSpecClass:DeallocSingleNode(node)
 	node.alloc = false
+	node.allocMode = 0
 	self.allocNodes[node.id] = nil
 	if node.type == "Mastery" then
 		self:AddMasteryEffectOptionsToNode(node)
@@ -795,23 +1006,33 @@ end
 -- Deallocate the given node, and all nodes which depend on it (i.e. which are only connected to the tree through this node)
 function PassiveSpecClass:DeallocNode(node)
 	for _, depNode in ipairs(node.depends) do
+		-- reset any switched attribute nodes
+		if depNode.isAttribute then
+			self.hashOverrides[depNode.id] = nil
+		end
 		self:DeallocSingleNode(depNode)
 	end
 
 	-- Rebuild all paths and dependencies for all allocated nodes
 	self:BuildAllDependsAndPaths()
+
+	-- Phase 3: Update BuildStub stats after node deallocation (2026-02-07)
+	if self.build and self.build.buildStub and self.build.buildStub.CalculateStats then
+		self.build.buildStub:CalculateStats()
+	end
 end
 
 -- Count the number of allocated nodes and allocated ascendancy nodes
 function PassiveSpecClass:CountAllocNodes()
-	local used, ascUsed, secondaryAscUsed, sockets = 0, 0, 0, 0
+	local used, ascUsed, secondaryAscUsed, sockets, weaponSet1Used, weaponSet2Used = 0, 0, 0, 0, 0, 0
 	for _, node in pairs(self.allocNodes) do
-		if node.type ~= "ClassStart" and node.type ~= "AscendClassStart" then
+		if node.type ~= "ClassStart" and node.type ~= "AscendClassStart" and node.isFreeAllocate == nil then
 			if node.ascendancyName then
 				if not node.isMultipleChoiceOption then
-					ascUsed = ascUsed + 1
 					if self.tree.secondaryAscendNameMap and self.tree.secondaryAscendNameMap[node.ascendancyName] then
 						secondaryAscUsed = secondaryAscUsed + 1
+					else
+						ascUsed = ascUsed + 1
 					end
 				end
 			else
@@ -821,8 +1042,14 @@ function PassiveSpecClass:CountAllocNodes()
 				sockets = sockets + 1
 			end
 		end
+
+		if node.allocMode == 1 then
+			weaponSet1Used = weaponSet1Used + 1
+		elseif node.allocMode == 2 then
+			weaponSet2Used = weaponSet2Used + 1
+		end
 	end
-	return used, ascUsed, secondaryAscUsed, sockets
+	return used, ascUsed, secondaryAscUsed, sockets, weaponSet1Used, weaponSet2Used
 end
 
 -- Attempt to find a class start node starting from the given node
@@ -876,32 +1103,61 @@ function PassiveSpecClass:BuildPathFromNode(root)
 		-- All nodes that are 1 node away from the root will be processed first, then all nodes that are 2 nodes away, etc
 		local node = queue[o]
 		o = o + 1
-		local curDist = node.pathDist
-		-- Iterate through all nodes that are connected to this one
-		for _, other in ipairs(node.linked) do
-			-- Paths must obey these rules:
-			-- 1. They must not pass through class or ascendancy class start nodes (but they can start from such nodes)
-			-- 2. They cannot pass between different ascendancy classes or between an ascendancy class and the main tree
-			--    The one exception to that rule is that a path may start from an ascendancy node and pass into the main tree
-			--    This permits pathing from the Ascendant 'Path of the X' nodes into the respective class start areas
-			-- 3. They must not pass away from mastery nodes
-			if not other.pathDist then
-				ConPrintTable(other, true)
+
+		-- Check unlock constraints
+		local constraintsMet = true
+		if node.unlockConstraint then
+			for _, nodeId in ipairs(node.unlockConstraint.nodes) do
+				if not self.nodes[nodeId].alloc then
+					constraintsMet = false
+					break
+				end
 			end
-			if node.type ~= "Mastery" and other.type ~= "ClassStart" and other.type ~= "AscendClassStart" and other.pathDist > curDist and (node.ascendancyName == other.ascendancyName or (curDist == 0 and not other.ascendancyName)) then
-				-- The shortest path to the other node is through the current node
-				other.pathDist = curDist
-				if not other.alloc then
-					other.pathDist = other.pathDist + 1
+		end
+
+		if constraintsMet then
+			local curDist = node.pathDist
+			-- Iterate through all nodes that are connected to this one
+			for _, other in ipairs(node.linked) do
+				-- Paths must obey these rules:
+				-- 1. They must not pass through class or ascendancy class start nodes (but they can start from such nodes)
+				-- 2. They cannot pass between different ascendancy classes or between an ascendancy class and the main tree
+				--    The one exception to that rule is that a path may start from an ascendancy node and pass into the main tree
+				--    This permits pathing from the Ascendant 'Path of the X' nodes into the respective class start areas
+				-- 3. They must not pass away from mastery nodes
+				-- 4. Unlock constraints must be satisfied
+
+				-- validate if the other node have unlockConstraints met
+				local canPath = true
+				if other.unlockConstraint then
+					for _, nodeId in ipairs(other.unlockConstraint.nodes) do
+						if not self.nodes[nodeId].alloc then
+							canPath = false
+							break
+						end
+					end
 				end
-				other.path = wipeTable(other.path)
-				other.path[1] = other
-				for i, n in ipairs(node.path) do
-					other.path[i+1] = n
+
+				if not other.pathDist then
+					-- PRJ-003 Fix: Initialize missing pathDist to prevent crash
+					other.pathDist = 1000  -- Default value (same as line 1669)
+					ConPrintf("WARNING: Node %s had no pathDist, initialized to 1000", tostring(other.id or "unknown"))
 				end
-				-- Add the other node to the end of the queue
-				queue[i] = other
-				i = i + 1
+				if node.type ~= "Mastery" and other.type ~= "ClassStart" and other.type ~= "AscendClassStart" and other.pathDist > curDist and (node.ascendancyName == other.ascendancyName or (curDist == 0 and not other.ascendancyName)) and canPath then
+					-- The shortest path to the other node is through the current node
+					other.pathDist = curDist
+					if not other.alloc then
+						other.pathDist = other.pathDist + 1
+					end
+					other.path = wipeTable(other.path)
+					other.path[1] = other
+					for i, n in ipairs(node.path) do
+						other.path[i+1] = n
+					end
+					-- Add the other node to the end of the queue
+					queue[i] = other
+					i = i + 1
+				end
 			end
 		end
 	end
@@ -981,10 +1237,12 @@ function PassiveSpecClass:NodesInIntuitiveLeapLikeRadius(node)
 			end
 		end
 
-		if item.jewelData and item.jewelData.impossibleEscapeKeystone then
-			for keyName, keyNode in pairs(item.jewelData.impossibleEscapeKeystones) do
-				if self.tree.keystoneMap[keyName] and self.tree.keystoneMap[keyName].nodesInRadius then
-					for affectedNodeId in pairs(self.tree.keystoneMap[keyName].nodesInRadius[radiusIndex]) do
+		if item.jewelData and item.jewelData.fromNothingKeystone then
+			for keyName, keyNode in pairs(item.jewelData.fromNothingKeystones) do
+				-- PRJ-003 Fix: Validate radiusIndex before array access
+				local keystoneData = self.tree.keystoneMap[keyName]
+				if keystoneData and keystoneData.nodesInRadius and keystoneData.nodesInRadius[radiusIndex] then
+					for affectedNodeId in pairs(keystoneData.nodesInRadius[radiusIndex]) do
 						if self.nodes[affectedNodeId].alloc then
 							t_insert(result, self.nodes[affectedNodeId])
 						end
@@ -1001,8 +1259,27 @@ end
 function PassiveSpecClass:BuildAllDependsAndPaths()
 	-- This table will keep track of which nodes have been visited during each path-finding attempt
 	local visited = { }
-	local attributes = { "Dexterity", "Intelligence", "Strength" }
+	local attributes = { "Dexterity", "Intelligence", "Strength", "Attribute" }
+
+	-- First check for mods that affect intuitive leap-like properties of other nodes
+	local processed = { }
+	local intuitiveLeapLikeNodes = self.intuitiveLeapLikeNodes
+	wipeTable(intuitiveLeapLikeNodes)
+	for id, node in pairs(self.allocNodes) do
+		if node.ascendancyName then -- avoid processing potentially replaceable nodes
+			self.tree:ProcessStats(node)
+			-- MINIMAL mode fix: Guard against missing modList after ProcessStats
+			if node.modList and node.modList:HasMod("LIST", nil, "AllocateFromNodeRadius") then
+				for _, radius in ipairs(node.modList:List(nil, "AllocateFromNodeRadius")) do
+					t_insert(intuitiveLeapLikeNodes, radius)
+				end
+			end
+			processed[id] = true
+		end
+	end
+
 	-- Check all nodes for other nodes which depend on them (i.e. are only connected to the tree through that node)
+	self.switchableNodes = { }
 	for id, node in pairs(self.nodes) do
 		node.depends = wipeTable(node.depends)
 		node.intuitiveLeapLikesAffecting = { }
@@ -1010,17 +1287,28 @@ function PassiveSpecClass:BuildAllDependsAndPaths()
 
 		-- ignore cluster jewel nodes that don't have an id in the tree
 		if self.tree.nodes[id] then
-			self:ReplaceNode(node,self.tree.nodes[id])
+			local nodeToReplace = self.tree.nodes[id]
+			if self.tree.nodes[id].isSwitchable then
+				if self.tree.nodes[id].options[self.curClassName] then
+					nodeToReplace = self.tree.nodes[id].options[self.curClassName]
+				elseif self.tree.nodes[id].options[self.curAscendClassName] then
+					nodeToReplace = self.tree.nodes[id].options[self.curAscendClassName]
+				end
+				self.switchableNodes[nodeToReplace.id] = node
+			end
+			self:ReplaceNode(node, nodeToReplace)
 		end
 
 		if node.type ~= "ClassStart" and node.type ~= "Socket" and not node.ascendancyName then
-			for nodeId, itemId in pairs(self.jewels) do
-				local item = self.build.itemsTab.items[itemId]
-				if item and item.jewelRadiusIndex and self.allocNodes[nodeId] and item.jewelData and not item.jewelData.limitDisabled then
+			-- MINIMAL mode: Skip jewel processing (requires itemsTab)
+			if self.build.itemsTab then
+				for nodeId, itemId in pairs(self.jewels) do
+					local item = self.build.itemsTab.items[itemId]
+					if item and item.jewelRadiusIndex and self.allocNodes[nodeId] and item.jewelData and not item.jewelData.limitDisabled then
 					local radiusIndex = item.jewelRadiusIndex
 					if self.nodes[nodeId].nodesInRadius and self.nodes[nodeId].nodesInRadius[radiusIndex][node.id] then
 						if itemId ~= 0 then
-							if item.jewelData.intuitiveLeapLike and not (item.jewelData.intuitiveLeapKeystoneOnly and node.type ~= "Keystone") then
+							if item.jewelData.intuitiveLeapLike then
 								-- This node depends on Intuitive Leap-like behaviour
 								-- This flag:
 								-- 1. Prevents generation of paths from this node unless it's also connected to the start
@@ -1033,9 +1321,10 @@ function PassiveSpecClass:BuildAllDependsAndPaths()
 						end
 					end
 
-					if item.jewelData and item.jewelData.impossibleEscapeKeystone then
+					if item.jewelData and item.jewelData.fromNothingKeystone then
 						for keyName, keyNode in pairs(self.tree.keystoneMap) do
-							if item.jewelData.impossibleEscapeKeystones[keyName] and keyNode.nodesInRadius then
+							-- PRJ-003 Fix: Validate radiusIndex before array access
+							if item.jewelData.fromNothingKeystones[keyName] and keyNode.nodesInRadius and keyNode.nodesInRadius[radiusIndex] then
 								if keyNode.nodesInRadius[radiusIndex][node.id] then
 									t_insert(node.intuitiveLeapLikesAffecting, self.nodes[nodeId])
 								end
@@ -1044,14 +1333,52 @@ function PassiveSpecClass:BuildAllDependsAndPaths()
 					end
 				end
 			end
+			end -- Close build.itemsTab guard
+			for _, intuitiveLeapMap in ipairs(intuitiveLeapLikeNodes) do
+				local allocatable = false
+				for _, allocatableNodeType in ipairs(intuitiveLeapMap.to) do
+					if allocatableNodeType == node.type then
+						allocatable = true
+						break
+					end
+				end
+				if allocatable then
+					if intuitiveLeapMap.from == "Keystone" then
+						for keyName, keyNode in pairs(self.tree.keystoneMap) do
+							-- PRJ-003 Fix: Validate radiusIndex before array access
+							if self.allocNodes[keyNode.id] and keyNode.nodesInRadius and keyNode.nodesInRadius[intuitiveLeapMap.radiusIndex] and keyNode.nodesInRadius[intuitiveLeapMap.radiusIndex][id] then
+								t_insert(node.intuitiveLeapLikesAffecting, self.nodes[keyNode.id])
+							end
+						end
+					end
+					-- We don't keep a `nodesInRadius` map for notables, so this is disabled for now
+					-- if intuitiveLeapMap.from == "Notable" then
+					-- 	for keyName, keyNode in pairs(self.tree.notableMap) do
+					-- 		if keyNode.nodesInRadius[intuitiveLeapMap.radiusIndex][node.id] then
+					-- 			t_insert(node.intuitiveLeapLikesAffecting, self.nodes[nodeId])
+					-- 		end
+					-- 	end
+					-- end
+				end
+			end
 		end
 		if node.alloc then
 			node.depends[1] = node -- All nodes depend on themselves
 		end
 	end
 
-	for id, node in pairs(self.nodes) do
-		-- If node is tattooed, replace it
+	for _, node in pairs(self.nodes) do
+		-- if the node have unlockConstraints, add this node as dependent to the constraint nodes
+		-- we are running here after wiping all depends above
+		if node.unlockConstraint then
+			for _, nodeId in ipairs(node.unlockConstraint.nodes) do
+				if self.nodes[nodeId] then
+					t_insert(self.nodes[nodeId].depends, node)
+				end
+			end
+		end
+
+		-- set attribute nodes
 		if self.hashOverrides[node.id] then
 			self:ReplaceNode(node, self.hashOverrides[node.id])
 		end
@@ -1064,14 +1391,10 @@ function PassiveSpecClass:BuildAllDependsAndPaths()
 
 			-- FIXME - continue implementing
 			local jewelType = 5
-			if conqueredBy.conqueror.type == "vaal" then
+			if conqueredBy.conqueror.type == "kalguur" then
 				jewelType = 1
-			elseif conqueredBy.conqueror.type == "karui" then
+			elseif conqueredBy.conqueror.type == "abyss" then
 				jewelType = 2
-			elseif conqueredBy.conqueror.type == "maraketh" then
-				jewelType = 3
-			elseif conqueredBy.conqueror.type == "templar" then
-				jewelType = 4
 			end
 			local seed = conqueredBy.id
 			if jewelType == 5 then
@@ -1098,92 +1421,93 @@ function PassiveSpecClass:BuildAllDependsAndPaths()
 			end
 
 			if node.type == "Notable" then
-				local jewelDataTbl = { }
-				if seed ~= m_max(m_min(seed, data.timelessJewelSeedMax[jewelType]), data.timelessJewelSeedMin[jewelType]) then
-					ConPrintf("ERROR: Seed " .. seed .. " is outside of valid range [" .. data.timelessJewelSeedMin[jewelType] .. " - " .. data.timelessJewelSeedMax[jewelType] .. "] for jewel type: " .. data.timelessJewelTypes[jewelType])
-				else
-					jewelDataTbl = data.readLUT(conqueredBy.id, node.id, jewelType)
-				end
-				--print("Need to Update: " .. node.id .. " [" .. node.dn .. "]")
-				if not next(jewelDataTbl) then
-					ConPrintf("Missing LUT: " .. data.timelessJewelTypes[jewelType])
-				else
-					if jewelType == 1 then
-						local headerSize = #jewelDataTbl
-						-- FIXME: complete implementation of this. Need to set roll values for stats
-						--        based on their `fmt` specification
-						if headerSize == 2 or headerSize == 3 then
-							self:ReplaceNode(node, legionNodes[jewelDataTbl[1] + 1 - data.timelessJewelAdditions])
-
-							for i, repStat in ipairs(legionNodes[jewelDataTbl[1] + 1 - data.timelessJewelAdditions].sd) do
-								local statKey = legionNodes[jewelDataTbl[1] + 1 - data.timelessJewelAdditions].sortedStats[i]
-								local statMod = legionNodes[jewelDataTbl[1] + 1 - data.timelessJewelAdditions].stats[statKey]
-								repStat = replaceHelperFunc(repStat, statKey, statMod, jewelDataTbl[statMod.index + 1])
-								self:NodeAdditionOrReplacementFromString(node, repStat, i == 1) -- wipe mods on first run
-							end
-							-- should fix the stat values here (note headerSize == 3 has 2 values)
-						elseif headerSize == 6 or headerSize == 8 then
-							local bias = 0
-							for i,val in ipairs(jewelDataTbl) do
-								if i > (headerSize / 2) then
-									break
-								elseif val <= 21 then
-									bias = bias + 1
-								else
-									bias = bias - 1
-								end
-							end
-							if bias >= 0 then
-								self:ReplaceNode(node, legionNodes[77]) -- might of the vaal
-							else
-								self:ReplaceNode(node, legionNodes[78]) -- legacy of the vaal
-							end
-							local additions = {}
-							for i,val in ipairs(jewelDataTbl) do
-								if i <= (headerSize / 2) then
-									local roll = jewelDataTbl[i + headerSize / 2]
-									if not additions[val] then
-										additions[val] = roll
-									else
-										additions[val] = additions[val] + roll
-									end
-								else
-									break
-								end
-							end
-							for add, val in pairs(additions) do
-								local addition = legionAdditions[add + 1]
-								for _, addStat in ipairs(addition.sd) do
-									for k,statMod in pairs(addition.stats) do -- should only be 1 big, these didn't get changed so can't just grab index
-										addStat = replaceHelperFunc(addStat, k, statMod, val)
-									end
-									self:NodeAdditionOrReplacementFromString(node, addStat)
-								end
-							end
-						else
-							ConPrintf("Unhandled Glorious Vanity headerSize: " .. headerSize)
-						end
-					else
-						for _, jewelData in ipairs(jewelDataTbl) do
-							if jewelData >= data.timelessJewelAdditions then -- replace
-								jewelData = jewelData + 1 - data.timelessJewelAdditions
-								local legionNode = legionNodes[jewelData]
-								if legionNode then
-									self:ReplaceNode(node, legionNode)
-								else
-									ConPrintf("Unhandled 'replace' ID: " .. jewelData)
-								end
-							elseif jewelData then -- add
-								local addition = legionAdditions[jewelData + 1]
-								for _, addStat in ipairs(addition.sd) do
-									self:NodeAdditionOrReplacementFromString(node, " \n" .. addStat)
-								end
-							elseif next(jewelData) then
-								ConPrintf("Unhandled OP: " .. jewelData + 1)
-							end
-						end
-					end
-				end
+				-- todo: update once we get seed data
+				--local jewelDataTbl = { }
+				--if seed ~= m_max(m_min(seed, data.timelessJewelSeedMax[jewelType]), data.timelessJewelSeedMin[jewelType]) then
+				--	ConPrintf("ERROR: Seed " .. seed .. " is outside of valid range [" .. data.timelessJewelSeedMin[jewelType] .. " - " .. data.timelessJewelSeedMax[jewelType] .. "] for jewel type: " .. data.timelessJewelTypes[jewelType])
+				--else
+				--	jewelDataTbl = data.readLUT(conqueredBy.id, node.id, jewelType)
+				--end
+				----print("Need to Update: " .. node.id .. " [" .. node.dn .. "]")
+				--if not next(jewelDataTbl) then
+				--	ConPrintf("Missing LUT: " .. data.timelessJewelTypes[jewelType])
+				--else
+				--	if jewelType == 1 then
+				--		local headerSize = #jewelDataTbl
+				--		-- FIXME: complete implementation of this. Need to set roll values for stats
+				--		--        based on their `fmt` specification
+				--		if headerSize == 2 or headerSize == 3 then
+				--			self:ReplaceNode(node, legionNodes[jewelDataTbl[1] + 1 - data.timelessJewelAdditions])
+				--
+				--			for i, repStat in ipairs(legionNodes[jewelDataTbl[1] + 1 - data.timelessJewelAdditions].sd) do
+				--				local statKey = legionNodes[jewelDataTbl[1] + 1 - data.timelessJewelAdditions].sortedStats[i]
+				--				local statMod = legionNodes[jewelDataTbl[1] + 1 - data.timelessJewelAdditions].stats[statKey]
+				--				repStat = replaceHelperFunc(repStat, statKey, statMod, jewelDataTbl[statMod.index + 1])
+				--				self:NodeAdditionOrReplacementFromString(node, repStat, i == 1) -- wipe mods on first run
+				--			end
+				--			-- should fix the stat values here (note headerSize == 3 has 2 values)
+				--		elseif headerSize == 6 or headerSize == 8 then
+				--			local bias = 0
+				--			for i,val in ipairs(jewelDataTbl) do
+				--				if i > (headerSize / 2) then
+				--					break
+				--				elseif val <= 21 then
+				--					bias = bias + 1
+				--				else
+				--					bias = bias - 1
+				--				end
+				--			end
+				--			if bias >= 0 then
+				--				self:ReplaceNode(node, legionNodes[77]) -- might of the vaal
+				--			else
+				--				self:ReplaceNode(node, legionNodes[78]) -- legacy of the vaal
+				--			end
+				--			local additions = {}
+				--			for i,val in ipairs(jewelDataTbl) do
+				--				if i <= (headerSize / 2) then
+				--					local roll = jewelDataTbl[i + headerSize / 2]
+				--					if not additions[val] then
+				--						additions[val] = roll
+				--					else
+				--						additions[val] = additions[val] + roll
+				--					end
+				--				else
+				--					break
+				--				end
+				--			end
+				--			for add, val in pairs(additions) do
+				--				local addition = legionAdditions[add + 1]
+				--				for _, addStat in ipairs(addition.sd) do
+				--					for k,statMod in pairs(addition.stats) do -- should only be 1 big, these didn't get changed so can't just grab index
+				--						addStat = replaceHelperFunc(addStat, k, statMod, val)
+				--					end
+				--					self:NodeAdditionOrReplacementFromString(node, addStat)
+				--				end
+				--			end
+				--		else
+				--			ConPrintf("Unhandled Glorious Vanity headerSize: " .. headerSize)
+				--		end
+				--	else
+				--		for _, jewelData in ipairs(jewelDataTbl) do
+				--			if jewelData >= data.timelessJewelAdditions then -- replace
+				--				jewelData = jewelData + 1 - data.timelessJewelAdditions
+				--				local legionNode = legionNodes[jewelData]
+				--				if legionNode then
+				--					self:ReplaceNode(node, legionNode)
+				--				else
+				--					ConPrintf("Unhandled 'replace' ID: " .. jewelData)
+				--				end
+				--			elseif jewelData then -- add
+				--				local addition = legionAdditions[jewelData + 1]
+				--				for _, addStat in ipairs(addition.sd) do
+				--					self:NodeAdditionOrReplacementFromString(node, " \n" .. addStat)
+				--				end
+				--			elseif next(jewelData) then
+				--				ConPrintf("Unhandled OP: " .. jewelData + 1)
+				--			end
+				--		end
+				--	end
+				--end
 			elseif node.type == "Keystone" then
 				local matchStr = conqueredBy.conqueror.type .. "_keystone_" .. conqueredBy.conqueror.id
 				for _, legionNode in ipairs(legionNodes) do
@@ -1193,41 +1517,50 @@ function PassiveSpecClass:BuildAllDependsAndPaths()
 					end
 				end
 			elseif node.type == "Normal" then
-				if conqueredBy.conqueror.type == "vaal" then
-					local jewelDataTbl = { }
-					if seed ~= m_max(m_min(seed, data.timelessJewelSeedMax[jewelType]), data.timelessJewelSeedMin[jewelType]) then
-						ConPrintf("ERROR: Seed " .. seed .. " is outside of valid range [" .. data.timelessJewelSeedMin[jewelType] .. " - " .. data.timelessJewelSeedMax[jewelType] .. "] for jewel type: " .. data.timelessJewelTypes[jewelType])
+			-- todo: update once we get seed data
+			--	if conqueredBy.conqueror.type == "vaal" then
+			--		local jewelDataTbl = { }
+			--		if seed ~= m_max(m_min(seed, data.timelessJewelSeedMax[jewelType]), data.timelessJewelSeedMin[jewelType]) then
+			--			ConPrintf("ERROR: Seed " .. seed .. " is outside of valid range [" .. data.timelessJewelSeedMin[jewelType] .. " - " .. data.timelessJewelSeedMax[jewelType] .. "] for jewel type: " .. data.timelessJewelTypes[jewelType])
+			--		else
+			--			jewelDataTbl = data.readLUT(conqueredBy.id, node.id, jewelType)
+			--		end
+			--		--print("Need to Update: " .. node.id .. " [" .. node.dn .. "]")
+			--		if not next(jewelDataTbl) then
+			--			ConPrintf("Missing LUT: " .. data.timelessJewelTypes[jewelType])
+			--		else
+			--			self:ReplaceNode(node, legionNodes[jewelDataTbl[1] + 1 - data.timelessJewelAdditions])
+			--			for i, repStat in ipairs(node.sd) do
+			--				local statKey = legionNodes[jewelDataTbl[1] + 1 - data.timelessJewelAdditions].sortedStats[i]
+			--				local statMod = legionNodes[jewelDataTbl[1] + 1 - data.timelessJewelAdditions].stats[statKey]
+			--				repStat = replaceHelperFunc(repStat, statKey, statMod, jewelDataTbl[2])
+			--				self:NodeAdditionOrReplacementFromString(node, repStat, true)
+			--			end
+			--		end
+			--	elseif conqueredBy.conqueror.type == "karui" then
+			--		local str = isValueInArray(attributes, node.dn) and "2" or "4"
+			--		self:NodeAdditionOrReplacementFromString(node, " \n+" .. str .. " to Strength")
+			--	elseif conqueredBy.conqueror.type == "maraketh" then
+			--		local dex = isValueInArray(attributes, node.dn) and "2" or "4"
+			--		self:NodeAdditionOrReplacementFromString(node, " \n+" .. dex .. " to Dexterity")
+			--	elseif conqueredBy.conqueror.type == "templar" then
+			--		if isValueInArray(attributes, node.dn) then
+			--			local legionNode = legionNodes[91] -- templar_devotion_node
+			--			self:ReplaceNode(node, legionNode)
+			--		else
+			--			self:NodeAdditionOrReplacementFromString(node, " \n+5 to Devotion")
+			--		end
+			--	elseif conqueredBy.conqueror.type == "eternal" then
+			--		local legionNode = legionNodes[110] -- eternal_small_blank
+			--		self:ReplaceNode(node, legionNode)
+			--	end
+				if conqueredBy.conqueror.type == "abyss" then
+					if isValueInArray(attributes, node.dn) then
+						self:NodeAdditionOrReplacementFromString(node, " \n+3 to Tribute")
 					else
-						jewelDataTbl = data.readLUT(conqueredBy.id, node.id, jewelType)
-					end
-					--print("Need to Update: " .. node.id .. " [" .. node.dn .. "]")
-					if not next(jewelDataTbl) then
-						ConPrintf("Missing LUT: " .. data.timelessJewelTypes[jewelType])
-					else
-						self:ReplaceNode(node, legionNodes[jewelDataTbl[1] + 1 - data.timelessJewelAdditions])
-						for i, repStat in ipairs(node.sd) do
-							local statKey = legionNodes[jewelDataTbl[1] + 1 - data.timelessJewelAdditions].sortedStats[i]
-							local statMod = legionNodes[jewelDataTbl[1] + 1 - data.timelessJewelAdditions].stats[statKey]
-							repStat = replaceHelperFunc(repStat, statKey, statMod, jewelDataTbl[2])
-							self:NodeAdditionOrReplacementFromString(node, repStat, true)
-						end
-					end
-				elseif conqueredBy.conqueror.type == "karui" then
-					local str = (isValueInArray(attributes, node.dn) or node.isTattoo) and "2" or "4"
-					self:NodeAdditionOrReplacementFromString(node, " \n+" .. str .. " to Strength")
-				elseif conqueredBy.conqueror.type == "maraketh" then
-					local dex = (isValueInArray(attributes, node.dn) or node.isTattoo) and "2" or "4"
-					self:NodeAdditionOrReplacementFromString(node, " \n+" .. dex .. " to Dexterity")
-				elseif conqueredBy.conqueror.type == "templar" then
-					if (isValueInArray(attributes, node.dn) or node.isTattoo) then
-						local legionNode = legionNodes[91] -- templar_devotion_node
+						local legionNode = legionNodes[201] -- abyss_small_tribute
 						self:ReplaceNode(node, legionNode)
-					else
-						self:NodeAdditionOrReplacementFromString(node, " \n+5 to Devotion")
 					end
-				elseif conqueredBy.conqueror.type == "eternal" then
-					local legionNode = legionNodes[110] -- eternal_small_blank
-					self:ReplaceNode(node, legionNode)
 				end
 			end
 			self:ReconnectNodeToClassStart(node)
@@ -1237,9 +1570,9 @@ function PassiveSpecClass:BuildAllDependsAndPaths()
 	-- Add selected mastery effect mods to mastery nodes
 	self.allocatedMasteryCount = 0
 	self.allocatedNotableCount = 0
+	self.allocatedSmithBodyArmourNodeCount = 0
 	self.allocatedMasteryTypes = { }
 	self.allocatedMasteryTypeCount = 0
-	self.allocatedTattooTypes = { }
 	for id, node in pairs(self.nodes) do
 		if self.ignoredNodes[id] and self.allocNodes[id] then
 			self.nodes[id].alloc = false
@@ -1250,11 +1583,7 @@ function PassiveSpecClass:BuildAllDependsAndPaths()
 			if node.type == "Mastery" and self.masterySelections[id] then
 				local effect = self.tree.masteryEffects[self.masterySelections[id]]
 				if effect and self.allocNodes[id] then
-					if self.hashOverrides and self.hashOverrides[id] then
-						self:ReplaceNode(node, self.hashOverrides[id])
-					else
-						node.sd = effect.sd
-					end
+					node.sd = effect.sd
 					node.allMasteryOptions = false
 					node.reminderText = { "Tip: Right click to select a different effect" }
 					self.tree:ProcessStats(node)
@@ -1279,12 +1608,8 @@ function PassiveSpecClass:BuildAllDependsAndPaths()
 				self:AddMasteryEffectOptionsToNode(node)
 			elseif node.type == "Notable" and node.alloc then
 				self.allocatedNotableCount = self.allocatedNotableCount + 1
-			end
-			if node.isTattoo and node.alloc and node.overrideType then
-				if not self.allocatedTattooTypes[node.overrideType] then
-					self.allocatedTattooTypes[node.overrideType] = 1
-				else
-					self.allocatedTattooTypes[node.overrideType] = self.allocatedTattooTypes[node.overrideType] + 1
+				if node.applyToArmour then
+					self.allocatedSmithBodyArmourNodeCount = self.allocatedSmithBodyArmourNodeCount + 1
 				end
 			end
 		end
@@ -1353,6 +1678,35 @@ function PassiveSpecClass:BuildAllDependsAndPaths()
 
 							-- If n is a jewel socket containing an intuitive leap-like jewel, nodes in its radius (or the radius of the keystone)
 							-- may be dependent on this node if they're found to be unconnected to the start
+							for _, intuitiveLeapMap in ipairs(intuitiveLeapLikeNodes) do
+								local allocatable = false
+								for _, allocatableNodeType in ipairs(intuitiveLeapMap.to) do
+									if allocatableNodeType == node.type then
+										allocatable = true
+										break
+									end
+								end
+								if allocatable then
+									if intuitiveLeapMap.from == n.type then
+										for affectedNodeId, affectedNode in pairs(n.nodesInRadius[intuitiveLeapMap.radiusIndex]) do
+											if affectedNode.alloc then
+												if not intuitiveLeaps[node.id] then
+													intuitiveLeaps[node.id] = { }
+												end
+												t_insert(intuitiveLeaps[node.id], affectedNode)
+											end
+										end
+									end
+									-- We don't keep a `nodesInRadius` map for notables, so this is disabled for now
+									-- if intuitiveLeapMap.from == "Notable" then
+									-- 	for keyName, keyNode in pairs(self.tree.notableMap) do
+									-- 		if keyNode.nodesInRadius[intuitiveLeapMap.radiusIndex][node.id] then
+									-- 			t_insert(node.intuitiveLeapLikesAffecting, self.nodes[nodeId])
+									-- 		end
+									-- 	end
+									-- end
+								end
+							end
 							if not intuitiveLeaps[node.id] then
 								intuitiveLeaps[node.id] = self:NodesInIntuitiveLeapLikeRadius(n)
 							else
@@ -1375,17 +1729,22 @@ function PassiveSpecClass:BuildAllDependsAndPaths()
 				local prune = true
 				for nodeId, itemId in pairs(self.jewels) do
 					if self.allocNodes[nodeId] then
-						if itemId ~= 0 and (
-							 self.build.itemsTab.items[itemId] and (
-								self.build.itemsTab.items[itemId].jewelData
-									and self.build.itemsTab.items[itemId].jewelData.intuitiveLeapLike
-									and self.build.itemsTab.items[itemId].jewelRadiusIndex
-									and self.nodes[nodeId].nodesInRadius
-									and self.nodes[nodeId].nodesInRadius[self.build.itemsTab.items[itemId].jewelRadiusIndex][depNode.id]
+						-- PRJ-003 Fix: Safe navigation for deep chained access
+						local item = itemId ~= 0 and self.build.itemsTab.items[itemId]
+						local socketNode = self.nodes[nodeId]
+
+						if item and (
+							 (item.jewelData
+								and item.jewelData.intuitiveLeapLike
+								and item.jewelRadiusIndex
+								and socketNode
+								and socketNode.nodesInRadius
+								and socketNode.nodesInRadius[item.jewelRadiusIndex]
+								and socketNode.nodesInRadius[item.jewelRadiusIndex][depNode.id]
 							) or (
-								self.build.itemsTab.items[itemId].jewelData
-									and self.build.itemsTab.items[itemId].jewelData.impossibleEscapeKeystones
-									and self:NodeInKeystoneRadius(self.build.itemsTab.items[itemId].jewelData.impossibleEscapeKeystones, depNode.id, self.build.itemsTab.items[itemId].jewelRadiusIndex)
+								item.jewelData
+									and item.jewelData.fromNothingKeystones
+									and self:NodeInKeystoneRadius(item.jewelData.fromNothingKeystones, depNode.id, item.jewelRadiusIndex)
 							)
 						) then
 							-- Hold off on the pruning; this node could be supported by Intuitive Leap-like jewel
@@ -1395,6 +1754,29 @@ function PassiveSpecClass:BuildAllDependsAndPaths()
 							end
 							t_insert(intuitiveLeaps[nodeId], depNode)
 							break
+						end
+					end
+				end
+				for _, intuitiveLeapMap in ipairs(intuitiveLeapLikeNodes) do
+					local allocatable = false
+					for _, allocatableNodeType in ipairs(intuitiveLeapMap.to) do
+						if allocatableNodeType == depNode.type then
+							allocatable = true
+							break
+						end
+					end
+					if allocatable then
+						if intuitiveLeapMap.from == "Keystone" then
+							for keyName, keyNode in pairs(self.tree.keystoneMap) do
+								if keyNode.nodesInRadius and keyNode.nodesInRadius[intuitiveLeapMap.radiusIndex][depNode.id] then
+									-- Hold off on the pruning; this node could be supported by Intuitive Leap-like jewel
+									prune = false
+									if not intuitiveLeaps[keyNode.id] then
+										intuitiveLeaps[keyNode.id] = { }
+									end
+									t_insert(intuitiveLeaps[keyNode.id], depNode)
+								end
+							end
 						end
 					end
 				end
@@ -1465,24 +1847,23 @@ function PassiveSpecClass:BuildAllDependsAndPaths()
 end
 
 function PassiveSpecClass:ReplaceNode(old, newNode)
+	old.overlay = newNode.overlay
+	old.icon = newNode.icon
 	-- Edited nodes can share a name
 	if old.sd == newNode.sd then
 		return 1
 	end
 	old.dn = newNode.dn
 	old.sd = newNode.sd
-	old.name = newNode.name
 	old.mods = newNode.mods
 	old.modKey = newNode.modKey
-	old.modList = new("ModList")
-	old.modList:AddList(newNode.modList)
-	old.sprites = newNode.sprites
-	old.effectSprites = newNode.effectSprites
-	old.isTattoo = newNode.isTattoo
-	old.overrideType = newNode.overrideType
+	if _G.MINIMAL_PASSIVE_TEST then
+		old.modList = old.modList or newNode.modList or getMinimalModList()
+	else
+		old.modList = new("ModList")
+		old.modList:AddList(newNode.modList)
+	end
 	old.keystoneMod = newNode.keystoneMod
-	old.icon = newNode.icon
-	old.spriteId = newNode.spriteId
 	old.activeEffectImage = newNode.activeEffectImage
 	old.reminderText = newNode.reminderText or { }
 end
@@ -1493,7 +1874,10 @@ function PassiveSpecClass:ReconnectNodeToClassStart(node)
 	for _, linkedNodeId in ipairs(node.linkedId) do
 		for classId, class in pairs(self.tree.classes) do
 			if linkedNodeId == class.startNodeId and node.type == "Normal" then
-				node.modList:NewMod("Condition:ConnectedTo"..class.name.."Start", "FLAG", true, "Tree:"..linkedNodeId)
+				-- MINIMAL mode fix: Guard against missing modList
+				if node.modList then
+					node.modList:NewMod("Condition:ConnectedTo"..class.name.."Start", "FLAG", true, "Tree:"..linkedNodeId)
+				end
 			end
 		end
 	end
@@ -1988,39 +2372,55 @@ end
 
 function PassiveSpecClass:CreateUndoState()
 	local allocNodeIdList = { }
+	local weaponSets = { }
 	for nodeId in pairs(self.allocNodes) do
 		t_insert(allocNodeIdList, nodeId)
+		if self.nodes[nodeId].allocMode and self.nodes[nodeId].allocMode ~= 0 then
+			weaponSets[nodeId] = self.nodes[nodeId].allocMode
+		end
 	end
 	local selections = { }
 	for mastery, effect in pairs(self.masterySelections) do
 		selections[mastery] = effect
 	end
-	local hashOverridesCopy = { }
-	for node, override in pairs(self.hashOverrides) do
-		hashOverridesCopy[node] = override
+	local classInternalId = self.tree.classes[self.curClassId].integerId
+	local ascendancyInternalId = ""
+	if self.curAscendClassId and self.tree.classes[self.curClassId].classes[self.curAscendClassId] then
+		-- None ascendancy doesn't have an internalId
+		ascendancyInternalId = self.tree.classes[self.curClassId].classes[self.curAscendClassId].internalId or ""
 	end
+
 	return {
+		classInternalId = classInternalId,
+		ascendancyInternalId = ascendancyInternalId,
 		classId = self.curClassId,
 		ascendClassId = self.curAscendClassId,
 		secondaryAscendClassId = self.secondaryAscendClassId,
 		hashList = allocNodeIdList,
-		hashOverrides = hashOverridesCopy,
+		weaponSets = weaponSets,
+		hashOverrides = copyTable(self.hashOverrides, true),
 		masteryEffects = selections,
 		treeVersion = self.treeVersion
 	}
 end
 
 function PassiveSpecClass:RestoreUndoState(state, treeVersion)
-	self:ImportFromNodeList(state.classId, state.ascendClassId, state.secondaryAscendClassId, state.hashList, state.hashOverrides, state.masteryEffects, treeVersion or state.treeVersion)
+	local classId = state.classId
+	local ascendClassId = state.ascendClassId
+	if treeVersion ~= nil and treeVersion ~= state.treeVersion then
+		-- we are upgrading the tree view so in this case we use the classInternalId to find the correct classId
+		classId = self.tree.classIntegerIdMap[state.classInternalId]
+		ascendClassId = 0
+		if state.ascendancyInternalId and state.ascendancyInternalId ~= "" and self.tree.internalAscendNameMap[state.ascendancyInternalId] then
+			ascendClassId = self.tree.internalAscendNameMap[state.ascendancyInternalId].ascendClassId
+		end
+	end
+	self:ImportFromNodeList(nil, classId, ascendClassId, state.secondaryAscendClassId, state.hashList, state.weaponSets, state.hashOverrides, state.masteryEffects, treeVersion or state.treeVersion)
 	self:SetWindowTitleWithBuildClass()
 end
 
 function PassiveSpecClass:SetWindowTitleWithBuildClass()
-	local classText = self.curAscendClassId == 0 and self.curClassName or self.curAscendClassName
-	if self.curSecondaryAscendClassId and self.curSecondaryAscendClassId ~= 0 and self.curSecondaryAscendClassName then
-		classText = classText .. " + " .. self.curSecondaryAscendClassName
-	end
-	main:SetWindowTitleSubtext(string.format("%s (%s)", self.build.buildName, classText))
+	main:SetWindowTitleSubtext(string.format("%s (%s)", self.build.buildName, self.curAscendClassId == 0 and self.curClassName or self.curAscendClassName))
 end
 
 --- Adds a line to or replaces a node given a line to add/replace with
@@ -2113,11 +2513,25 @@ end
 function PassiveSpecClass:NodeInKeystoneRadius(keystoneNames, nodeId, radiusIndex)
 	for _, node in pairs(self.nodes) do
 		if node.name and node.type == "Keystone" and keystoneNames[node.name:lower()] then
-			if (node.nodesInRadius[radiusIndex][nodeId]) then
+			-- PRJ-003 Fix: Validate radiusIndex before array access
+			if node.nodesInRadius and node.nodesInRadius[radiusIndex] and node.nodesInRadius[radiusIndex][nodeId] then
 				return true
 			end
 		end
 	end
 
 	return false
+end
+
+function PassiveSpecClass:SwitchAttributeNode(nodeId, attributeIndex)
+	if self.tree.nodes[nodeId] then --Make sure node exists on current tree
+		local newNode = copyTableSafe(self.tree.nodes[nodeId], false, true)
+		if not newNode.isAttribute then return end -- safety check
+		
+		local option = newNode.options[attributeIndex]
+		self:ReplaceNode(newNode, option)
+		self.tree:ProcessStats(newNode)
+		
+		self.hashOverrides[nodeId] = newNode
+	end
 end

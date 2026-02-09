@@ -58,6 +58,16 @@ local CalcsTabClass = newClass("CalcsTab", "UndoHandler", "ControlHost", "Contro
 				self.build.buildFlag = true
 			end)
 		}, },
+		{ label = "Stat Set", { controlName = "statSet", 
+			control = new("DropDownControl", nil, {0, 0, 300, 16}, nil, function(index, value)
+				local mainSocketGroup = self.build.skillsTab.socketGroupList[self.input.skill_number]
+				local srcInstance = mainSocketGroup.displaySkillListCalcs[mainSocketGroup.mainActiveSkillCalcs].activeEffect.srcInstance
+				srcInstance.statSetCalcs = srcInstance.statSetCalcs or { }
+				srcInstance.statSetCalcs[value.grantedEffectId] = index
+				self:AddUndoState()
+				self.build.buildFlag = true
+			end)
+		}, },
 		{ label = "Skill Part", playerFlag = "multiPart", { controlName = "mainSkillPart", 
 			control = new("DropDownControl", nil, {0, 0, 250, 16}, nil, function(index, value)
 				local mainSocketGroup = self.build.skillsTab.socketGroupList[self.input.skill_number]
@@ -94,10 +104,23 @@ local CalcsTabClass = newClass("CalcsTab", "UndoHandler", "ControlHost", "Contro
 			control = new("DropDownControl", nil, {0, 0, 160, 16}, nil, function(index, value)
 				local mainSocketGroup = self.build.skillsTab.socketGroupList[self.input.skill_number]
 				local srcInstance = mainSocketGroup.displaySkillListCalcs[mainSocketGroup.mainActiveSkillCalcs].activeEffect.srcInstance
+				-- Synchronize DropDownControl between CalcActiveSkill and skillMinionCalcs
 				if value.itemSetId then
 					srcInstance.skillMinionItemSetCalcs = value.itemSetId
+					srcInstance.skillMinionItemSet = value.itemSetId
+					if srcInstance.nameSpec:match("^Spectre:") then
+						srcInstance.nameSpec = "Spectre: ".. value.label
+					elseif srcInstance.nameSpec:match("^Companion:") then
+						srcInstance.nameSpec = "Companion: ".. value.label
+					end
 				else
 					srcInstance.skillMinionCalcs = value.minionId
+					srcInstance.skillMinion = value.minionId
+					if srcInstance.nameSpec:match("^Spectre:") then
+						srcInstance.nameSpec = "Spectre: ".. value.label
+					elseif srcInstance.nameSpec:match("^Companion:") then
+						srcInstance.nameSpec = "Companion: ".. value.label
+					end
 				end
 				self:AddUndoState()
 				self.build.buildFlag = true
@@ -105,7 +128,12 @@ local CalcsTabClass = newClass("CalcsTab", "UndoHandler", "ControlHost", "Contro
 		} },
 		{ label = "Spectre Library", flag = "spectre", { controlName = "mainSkillMinionLibrary",
 			control = new("ButtonControl", nil, {0, 0, 100, 16}, "Manage Spectres...", function()
-				self.build:OpenSpectreLibrary()
+				self.build:OpenSpectreLibrary("spectre")
+			end)
+		} },
+		{ label = "Beast Library", flag = "summonBeast", { controlName = "mainSkillBeastLibrary",
+			control = new("ButtonControl", nil, {0, 0, 100, 16}, "Manage Beasts...", function()
+			self.build:OpenSpectreLibrary("beast")
 			end)
 		} },
 		{ label = "Minion Skill", flag = "haveMinion", { controlName = "mainSkillMinionSkill",
@@ -113,6 +141,17 @@ local CalcsTabClass = newClass("CalcsTab", "UndoHandler", "ControlHost", "Contro
 				local mainSocketGroup = self.build.skillsTab.socketGroupList[self.input.skill_number]
 				local srcInstance = mainSocketGroup.displaySkillListCalcs[mainSocketGroup.mainActiveSkillCalcs].activeEffect.srcInstance
 				srcInstance.skillMinionSkillCalcs = index
+				self:AddUndoState()
+				self.build.buildFlag = true
+			end)
+		} },
+		{ label = "Minion Skill Stat Set", flag = "minion", { controlName = "mainSkillMinionSkillStatSet",
+			control = new("DropDownControl", nil, {0, 0, 200, 16}, nil, function(index, value)
+				local mainSocketGroup = self.build.skillsTab.socketGroupList[self.input.skill_number]
+				local srcInstance = mainSocketGroup.displaySkillListCalcs[mainSocketGroup.mainActiveSkillCalcs].activeEffect.srcInstance
+				srcInstance.skillMinionSkillStatSetIndexLookupCalcs = srcInstance.skillMinionSkillStatSetIndexLookupCalcs or { }
+				srcInstance.skillMinionSkillStatSetIndexLookupCalcs[value.grantedEffectId] = srcInstance.skillMinionSkillStatSetIndexLookupCalcs[value.grantedEffectId] or { }
+				srcInstance.skillMinionSkillStatSetIndexLookupCalcs[value.grantedEffectId][srcInstance.skillMinionSkillCalcs] = index
 				self:AddUndoState()
 				self.build.buildFlag = true
 			end)
@@ -374,8 +413,16 @@ end
 
 function CalcsTabClass:CheckFlag(obj)
 	local actor = self.input.showMinion and self.calcsEnv.minion or self.calcsEnv.player
-	local skillFlags = actor.mainSkill.skillFlags
+	if not actor or not actor.mainSkill then
+		return
+	end
+	local statSetCalcs = actor.mainSkill.activeEffect and actor.mainSkill.activeEffect.statSetCalcs
+	local skillFlags = statSetCalcs and statSetCalcs.skillFlags or actor.mainSkill.skillFlags or {}
+	local skillData = actor.mainSkill.skillData or {}
 	if obj.flag and not skillFlags[obj.flag] then
+		return
+	end
+	if obj.skillData and not skillData[obj.skillData] then
 		return
 	end
 	if obj.flagList then
@@ -385,10 +432,15 @@ function CalcsTabClass:CheckFlag(obj)
 			end
 		end
 	end
-	if obj.playerFlag and not self.calcsEnv.player.mainSkill.skillFlags[obj.playerFlag] then
+	local playerStatSetCalcs = self.calcsEnv.player and self.calcsEnv.player.mainSkill and self.calcsEnv.player.mainSkill.activeEffect and self.calcsEnv.player.mainSkill.activeEffect.statSetCalcs
+	local playerSkillFlags = playerStatSetCalcs and playerStatSetCalcs.skillFlags or (self.calcsEnv.player and self.calcsEnv.player.mainSkill and self.calcsEnv.player.mainSkill.skillFlags) or {}
+	if obj.playerFlag and not playerSkillFlags[obj.playerFlag] then
 		return
 	end
 	if obj.notFlag and skillFlags[obj.notFlag] then
+		return
+	end
+	if obj.notSkillData and skillData[obj.notSkillData] then
 		return
 	end
 	if obj.notFlagList then
@@ -624,7 +676,10 @@ function CalcsTabClass:GetNodeCalculator()
 end
 
 function CalcsTabClass:GetMiscCalculator()
-	return unpack(self.miscCalculator)
+	if self.miscCalculator then
+		return unpack(self.miscCalculator)
+	end
+	return nil, nil
 end
 
 function CalcsTabClass:CreateUndoState()

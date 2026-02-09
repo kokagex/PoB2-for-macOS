@@ -598,13 +598,6 @@ SkillType = {
 	SupportedByNovaProjectiles = 258,
 	Proxy = 259,
 }
--- Auto-assign IDs for unknown SkillType keys (PoE1 compatibility)
-local _skillTypeNext = 10000
-setmetatable(SkillType, { __index = function(t, k)
-	_skillTypeNext = _skillTypeNext + 1
-	rawset(t, k, _skillTypeNext)
-	return _skillTypeNext
-end })
 
 -- build reverse lookup
 SkillTypeName = {}

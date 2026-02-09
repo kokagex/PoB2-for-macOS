@@ -14,6 +14,28 @@ local m_max = math.max
 
 local tempTable1 = { }
 
+-- PoE2: Initialize missing characterConstants with PoE1 default values
+-- This prevents nil errors when constants are missing from Data/Misc.lua
+if not data.characterConstants["dual_wield_inherent_attack_speed_+%_final"] then
+	data.characterConstants["dual_wield_inherent_attack_speed_+%_final"] = 10
+end
+if not data.characterConstants["inherent_block_while_dual_wielding_%"] then
+	data.characterConstants["inherent_block_while_dual_wielding_%"] = 15
+end
+if not data.characterConstants["maximum_life_leech_rate_%_per_minute"] then
+	data.characterConstants["maximum_life_leech_rate_%_per_minute"] = 1200
+end
+if not data.characterConstants["maximum_mana_leech_rate_%_per_minute"] then
+	data.characterConstants["maximum_mana_leech_rate_%_per_minute"] = 1200
+end
+if not data.characterConstants["base_critical_strike_multiplier"] then
+	-- Use base_critical_hit_damage_bonus if available, otherwise default to 150
+	data.characterConstants["base_critical_strike_multiplier"] = data.characterConstants["base_critical_hit_damage_bonus"] or 150
+end
+if not data.characterConstants["critical_ailment_dot_multiplier_+"] then
+	data.characterConstants["critical_ailment_dot_multiplier_+"] = 0
+end
+
 -- Initialise modifier database with stats and conditions common to all actors
 function calcs.initModDB(env, modDB)
 	modDB:NewMod("FireResistMax", "BASE", data.characterConstants["base_maximum_all_resistances_%"], "Base")
@@ -40,8 +62,9 @@ function calcs.initModDB(env, modDB)
 	modDB:NewMod("AbsorptionChargesMax", "BASE", 0, "Base")
 	modDB:NewMod("AfflictionChargesMax", "BASE", 0, "Base")
 	modDB:NewMod("BloodChargesMax", "BASE", data.characterConstants["maximum_blood_scythe_charges"], "Base")
-	modDB:NewMod("MaxLifeLeechRate", "BASE", data.characterConstants["maximum_life_leech_rate_%_per_minute"] / 60, "Base")
-	modDB:NewMod("MaxManaLeechRate", "BASE", data.characterConstants["maximum_mana_leech_rate_%_per_minute"] / 60, "Base")
+	-- PoE2: Use default values if constants are missing
+	modDB:NewMod("MaxLifeLeechRate", "BASE", (data.characterConstants["maximum_life_leech_rate_%_per_minute"] or 1200) / 60, "Base")
+	modDB:NewMod("MaxManaLeechRate", "BASE", (data.characterConstants["maximum_mana_leech_rate_%_per_minute"] or 1200) / 60, "Base")
 	modDB:NewMod("ImpaleStacksMax", "BASE", data.characterConstants["impaled_debuff_number_of_reflected_hits"], "Base")
 	modDB:NewMod("BleedStacksMax", "BASE", 1, "Base")
 	modDB:NewMod("MaxEnergyShieldLeechRate", "BASE", 10, "Base")
@@ -474,8 +497,9 @@ function calcs.initEnv(build, mode, override, specEnv)
 		modDB:NewMod("Devotion", "BASE", 0, "Base")
 		modDB:NewMod("Evasion", "BASE", data.characterConstants["base_evasion_rating"], "Base")
 		modDB:NewMod("Accuracy", "BASE", data.characterConstants["accuracy_rating_per_level"], "Base", { type = "Multiplier", var = "Level", base = -data.characterConstants["accuracy_rating_per_level"] })
-		modDB:NewMod("CritMultiplier", "BASE", data.characterConstants["base_critical_strike_multiplier"] - 100, "Base")
-		modDB:NewMod("DotMultiplier", "BASE", data.characterConstants["critical_ailment_dot_multiplier_+"], "Base", { type = "Condition", var = "CriticalStrike" })
+		-- PoE2: Use base_critical_hit_damage_bonus instead of base_critical_strike_multiplier
+		modDB:NewMod("CritMultiplier", "BASE", (data.characterConstants["base_critical_hit_damage_bonus"] or data.characterConstants["base_critical_strike_multiplier"] or 150) - 100, "Base")
+		modDB:NewMod("DotMultiplier", "BASE", data.characterConstants["critical_ailment_dot_multiplier_+"] or 0, "Base", { type = "Condition", var = "CriticalStrike" })
 		modDB:NewMod("FireResist", "BASE", env.configInput.resistancePenalty or -60, "Base")
 		modDB:NewMod("ColdResist", "BASE", env.configInput.resistancePenalty or -60, "Base")
 		modDB:NewMod("LightningResist", "BASE", env.configInput.resistancePenalty or -60, "Base")
@@ -1619,10 +1643,8 @@ function calcs.initEnv(build, mode, override, specEnv)
 								if gemInstance.gemData then
 									activeSkill.slotName = groupCfg.slotName
 								end
-								if activeSkill.activeEffect and activeSkill.activeEffect.grantedEffect then
-									t_insert(socketGroupSkillList, activeSkill)
-									t_insert(env.player.activeSkillList, activeSkill)
-								end
+								t_insert(socketGroupSkillList, activeSkill)
+								t_insert(env.player.activeSkillList, activeSkill)
 							end
 						end
 						if gemInstance.gemData and not accelerate.requirementsGems then
@@ -1711,22 +1733,52 @@ function calcs.initEnv(build, mode, override, specEnv)
 
 		if not env.player.mainSkill then
 			-- Add a default main skill if none are specified
-			local meleeSkill = env.data and env.data.skills and env.data.skills.Melee
-			if meleeSkill then
-				local defaultEffect = {
-					grantedEffect = meleeSkill,
-					level = 1,
-					quality = 0,
-					enabled = true,
-				}
-				env.player.mainSkill = calcs.createActiveSkill(defaultEffect, { }, env.player)
-				t_insert(env.player.activeSkillList, env.player.mainSkill)
-			end
+			local defaultGrantedEffect = env.data.skills.Melee or env.data.skills.MeleeUnarmedPlayer or {
+				name = "Default Attack",
+				id = "Melee",
+				modSource = "Skill:Melee",
+				skillTypes = { [SkillType.Attack] = true, [SkillType.Melee] = true, [SkillType.MeleeSingleTarget] = true },
+				baseFlags = { attack = true, melee = true },
+				baseMods = {},
+				qualityMods = {},
+				qualityStats = {},
+				levelMods = {},
+				levels = { [1] = { } },
+				stats = {},
+				parts = {},
+			}
+			local defaultEffect = {
+				grantedEffect = defaultGrantedEffect,
+				level = 1,
+				quality = 0,
+				enabled = true,
+				srcInstance = {},
+			}
+			env.player.mainSkill = calcs.createActiveSkill(defaultEffect, { }, env.player)
+			t_insert(env.player.activeSkillList, env.player.mainSkill)
 		end
 
 		-- Build skill modifier lists
 		for _, activeSkill in pairs(env.player.activeSkillList) do
 			calcs.buildActiveSkillModList(env, activeSkill)
+		end
+		-- Auto-select a non-disabled main skill if current is disabled or has no attack/spell flags
+		if env.player.mainSkill and env.player.mainSkill.skillFlags then
+			local dominated = env.player.mainSkill.skillFlags.disable
+				or (not env.player.mainSkill.skillFlags.attack and not env.player.mainSkill.skillFlags.spell)
+			if dominated then
+				for _, activeSkill in ipairs(env.player.activeSkillList) do
+					if activeSkill.skillFlags
+						and not activeSkill.skillFlags.disable
+						and activeSkill.activeEffect
+						and activeSkill.activeEffect.grantedEffect
+						and not activeSkill.activeEffect.grantedEffect.support
+						and (activeSkill.skillFlags.attack or activeSkill.skillFlags.spell) then
+						env.player.mainSkill = activeSkill
+						break
+					end
+				end
+			end
 		end
 	else
 		-- Wipe skillData and readd required data the rest of the data will be added by the rest of code this stops iterative calculations on skillData not being reset

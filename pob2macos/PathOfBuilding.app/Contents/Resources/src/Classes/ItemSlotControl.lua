@@ -40,10 +40,22 @@ local ItemSlotClass = newClass("ItemSlotControl", "DropDownControl", function(se
 		end
 		self.controls.activate.tooltipText = "Activate this flask."
 		self.labelOffset = -24
+	elseif slotName:match("Charm") then
+		self.controls.activate = new("CheckBoxControl", {"RIGHT",self,"LEFT"}, {-2, 0, 20}, nil, function(state)
+			self.active = state
+			itemsTab.activeItemSet[self.slotName].active = state
+			itemsTab:AddUndoState()
+			itemsTab.build.buildFlag = true
+		end)
+		self.controls.activate.enabled = function()
+			return self.selItemId ~= 0
+		end
+		self.controls.activate.tooltipText = "Activate this charm."
+		self.labelOffset = -24
 	else
 		self.labelOffset = -2
 	end
-	self.abyssalSocketList = { }
+	self.socketList = { }
 	self.tooltipFunc = function(tooltip, mode, index, itemId)
 		local item = itemsTab.items[self.items[index]]
 		-- not selControl.ListControl allows hover when All Items or Unique/Rare DB Sections are in focus
@@ -89,16 +101,6 @@ function ItemSlotClass:Populate()
 	if not self.selItemId or not self.itemsTab.items[self.selItemId] or not self.itemsTab:IsItemValidForSlot(self.itemsTab.items[self.selItemId], self.slotName) then
 		self:SetSelItemId(0)
 	end
-
-	-- Update Abyssal Sockets
-	local abyssalSocketCount = 0
-	if self.selItemId > 0 then
-		local selItem = self.itemsTab.items[self.selItemId]
-		abyssalSocketCount = selItem.abyssalSocketCount or 0
-	end
-	for i, abyssalSocket in ipairs(self.abyssalSocketList) do
-		abyssalSocket.inactive = i > abyssalSocketCount
-	end
 end
 
 function ItemSlotClass:CanReceiveDrag(type, value)
@@ -138,8 +140,8 @@ function ItemSlotClass:Draw(viewPort)
 		DrawImage(nil, viewerX, viewerY, 304, 304)
 		local viewer = self.itemsTab.socketViewer
 		local node = self.itemsTab.build.spec.nodes[self.nodeId]
-		viewer.zoom = 5
-		local scale = self.itemsTab.build.spec.tree.size / 1500
+		viewer.zoom = 20
+		local scale = self.itemsTab.build.spec.tree.size / 6000
 		viewer.zoomX = -node.x / scale
 		viewer.zoomY = -node.y / scale
 		SetViewport(viewerX + 2, viewerY + 2, 300, 300)

@@ -65,7 +65,7 @@ function launch:OnInit()
 		self.installedMode = true
 		installedFile:close()
 	end
-	RenderInit("")
+	RenderInit("DPI_AWARE")
 	ConPrintf("Loading main script...")
 	local errMsg
 	errMsg, self.main = PLoadModule("Modules/Main")
@@ -76,11 +76,6 @@ function launch:OnInit()
 	elseif self.main.Init then
 		errMsg = PCall(self.main.Init, self.main)
 		if errMsg then
-			local f = io.open("/tmp/pob_init_error.txt", "w")
-			if f then
-				f:write("INIT ERROR:\n" .. tostring(errMsg))
-				f:close()
-			end
 			self:ShowErrMsg("In 'Init': %s", errMsg)
 		end
 	end

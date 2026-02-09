@@ -12,7 +12,16 @@ local scopes = { }
 
 local function getScope(scopeName)
 	if not scopes[scopeName] then
-		local scope = LoadModule("Data/StatDescriptions/"..scopeName)
+		local ok, scope = pcall(LoadModule, "Data/StatDescriptions/"..scopeName)
+		if not ok then
+			-- PoE2 per-skill scopes may not exist; fall back to generic skill_stat_descriptions
+			if scopeName ~= "skill_stat_descriptions" then
+				return getScope("skill_stat_descriptions")
+			else
+				-- Even the fallback failed; return empty scope
+				scope = { }
+			end
+		end
 		scope.name = scopeName
 		if scope.parent then
 			local parentScope = getScope(scope.parent)

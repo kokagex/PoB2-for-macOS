@@ -2,6 +2,7 @@
 backup/
 dev/
 skills/
+debug/
 test_tab_system.lua
 test_tab_ui.lua
 test_tabs_simple.lua

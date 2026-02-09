@@ -26,7 +26,7 @@ local ItemDBClass = newClass("ItemDBControl", "ListControl", function(self, anch
 	self.leaguesAndTypesLoaded = false
 	self.leagueList = { "Any league", "No league" }
 	self.typeList = { "Any type", "Armour", "Jewellery", "One Handed Melee", "Two Handed Melee" }
-	self.slotList = { "Any slot", "Weapon 1", "Weapon 2", "Helmet", "Body Armour", "Gloves", "Boots", "Amulet", "Ring", "Belt", "Jewel", "Flask", "Graft 1", "Graft 2" }
+	self.slotList = { "Any slot", "Weapon 1", "Weapon 2", "Helmet", "Body Armour", "Gloves", "Boots", "Amulet", "Ring", "Belt", "Jewel" }
 	local baseY = dbType == "RARE" and -22 or -62
 	self.controls.slot = new("DropDownControl", {"BOTTOMLEFT",self,"TOPLEFT"}, {0, baseY, 179, 18}, self.slotList, function(index, value)
 		self.listBuildFlag = true
@@ -100,6 +100,11 @@ function ItemDBClass:DoesItemMatchFilters(item)
 			if not (weaponInfo and weaponInfo.melee and ((typeSel == 4 and weaponInfo.oneHand) or (typeSel == 5 and not weaponInfo.oneHand))) then 
 				return false
 			end
+			if item.type == "Staff" then
+				if item.base.subType ~= "Warstaff" then
+					return false
+				end
+			end
 		elseif item.type ~= self.typeList[typeSel] then
 			return false
 		end
@@ -144,6 +149,13 @@ function ItemDBClass:DoesItemMatchFilters(item)
 		end
 		if mode == 1 or mode == 3 then
 			for _, line in pairs(item.enchantModLines) do
+				local err, match = PCall(string.matchOrPattern, line.line:lower(), searchStr)
+				if not err and match then
+					found = true
+					break
+				end
+			end
+			for _, line in pairs(item.runeModLines) do
 				local err, match = PCall(string.matchOrPattern, line.line:lower(), searchStr)
 				if not err and match then
 					found = true
@@ -230,7 +242,7 @@ function ItemDBClass:ListBuilder()
 			item.measuredPower = 0
 			for slotName, slot in pairs(self.itemsTab.slots) do
 				if self.itemsTab:IsItemValidForSlot(item, slotName) and not slot.inactive and (not slot.weaponSet or slot.weaponSet == (self.itemsTab.activeItemSet.useSecondWeaponSet and 2 or 1)) then
-					local output = calcFunc(item.base.flask and { toggleFlask = item } or item.base.tincture and { toggleTincture = item } or { repSlotName = slotName, repItem = item }, useFullDPS)
+					local output = calcFunc(item.base.flask and { toggleFlask = item } or item.base.charm and { toggleCharm = item } or { repSlotName = slotName, repItem = item }, useFullDPS)
 					local measuredPower = output.Minion and output.Minion[self.sortMode] or output[self.sortMode] or 0
 					if self.sortDetail.transform then
 						measuredPower = self.sortDetail.transform(measuredPower)

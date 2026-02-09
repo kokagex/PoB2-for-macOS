@@ -12,8 +12,8 @@ local m_ceil = math.ceil
 local m_min = math.min
 local m_max = math.max
 local m_modf = math.modf
-local band = bit.band
-local bor = bit.bor
+local band = AND64 -- bit.band
+local bor = OR64 -- bit.bor
 
 local mod_createMod = modLib.createMod
 
@@ -34,7 +34,7 @@ local ModStoreClass = newClass("ModStore", function(self, parent)
 	self.conditions = { }
 end)
 
-function ModStoreClass:ScaleAddMod(mod, scale, replace)
+function ModStoreClass:ScaleAddMod(mod, scale)
 	local unscalable = false
 	for _, effects in ipairs(mod) do
 		if effects.unscalable then
@@ -51,7 +51,11 @@ function ModStoreClass:ScaleAddMod(mod, scale, replace)
 			if scaledMod.value.mod then
 				subMod = scaledMod.value.mod
 			elseif scaledMod.value.keyOfScaledMod then
-				scaledMod.value[scaledMod.value.keyOfScaledMod] = round(scaledMod.value[scaledMod.value.keyOfScaledMod] * scale, 2)
+				if scaledMod.value.key == "level" then -- +Levels can't get scaled with decimals
+					scaledMod.value[scaledMod.value.keyOfScaledMod] = m_floor(scaledMod.value[scaledMod.value.keyOfScaledMod] * scale)
+				else
+					scaledMod.value[scaledMod.value.keyOfScaledMod] = round(scaledMod.value[scaledMod.value.keyOfScaledMod] * scale, 2)
+				end
 			end
 		end
 		if type(subMod.value) == "number" then
@@ -63,11 +67,7 @@ function ModStoreClass:ScaleAddMod(mod, scale, replace)
 				subMod.value = m_modf(round(subMod.value * scale, 2))
 			end
 		end
-		if replace then
-			self:ReplaceModInternal(scaledMod)
-		else
-			self:AddMod(scaledMod)
-		end
+		self:AddMod(scaledMod)
 	end
 end
 
@@ -77,12 +77,12 @@ function ModStoreClass:CopyList(modList)
 	end
 end
 
-function ModStoreClass:ScaleAddList(modList, scale, replace)
+function ModStoreClass:ScaleAddList(modList, scale)
 	if scale == 1 then
 		self:AddList(modList)
 	else
 		for i = 1, #modList do
-			self:ScaleAddMod(modList[i], scale, replace)
+			self:ScaleAddMod(modList[i], scale)
 		end
 	end
 end
@@ -135,6 +135,24 @@ function ModStoreClass:Sum(modType, cfg, ...)
 		source = cfg.source
 	end
 	return self:SumInternal(self, modType, cfg, flags, keywordFlags, source, ...)
+end
+
+
+--- Returns the value of all positive modifiers to a mod added together, ignoring any negative modifiers.
+--- Works by creating a table using Tabulate and then filtering for positive values.
+---
+--- @param modType string # the mod type for which we want to create the table, e.g. "INC" or "MORE"
+--- @param cfg table | nil # passed configuration, may be nil
+--- @param modName string # the name of the mod for which we want to create the table, e.g. "FlaskRecoveryRate", "ActionSpeed", ...
+function ModStoreClass:SumPositiveValues(modType, cfg, modName, ...)
+	local total = 0
+	local modTable = self:Tabulate(modType, cfg, modName)
+	for i = 1, #modTable do
+		if modTable[i].value > 0 then
+			total = total + modTable[i].value
+		end
+	end
+	return total
 end
 
 function ModStoreClass:More(cfg, ...)
@@ -227,7 +245,11 @@ function ModStoreClass:HasMod(modType, cfg, ...)
 end
 
 function ModStoreClass:GetCondition(var, cfg, noMod)
-	return self.conditions[var] or (self.parent and self.parent:GetCondition(var, cfg, true)) or (not noMod and self:Flag(cfg, conditionName[var]))
+	if (cfg and cfg.overrideCond and cfg.overrideCond[var] ~= nil) then
+		return cfg.overrideCond[var]
+	else
+		return  self.conditions[var] or (self.parent and self.parent:GetCondition(var, cfg, true)) or (not noMod and self:Flag(cfg, conditionName[var]))
+	end
 end
 
 function ModStoreClass:GetMultiplier(var, cfg, noMod)
@@ -235,21 +257,14 @@ function ModStoreClass:GetMultiplier(var, cfg, noMod)
 end
 
 function ModStoreClass:GetStat(stat, cfg)
-	-- Checks if any buff in buffList matches
-	-- Was needed for skills that provide multiple buffs (e.g. Herald of Agony) and can't be accesses with `buffList[1]`
-	local function isNameInBuffList(buffList, name)
-		for _, buff in ipairs(buffList) do
-			if buff.name == name then return true end
-		end
-		return false
-	end
 	if stat == "ManaReservedPercent" then
 		local reservedPercentMana = 0
 		-- Check if mana is 0 (i.e. from Blood Magic) to avoid division by 0.
 		local totalMana = self.actor.output["Mana"]
 		if totalMana == 0 then return 0 else
 			for _, activeSkill in ipairs(self.actor.activeSkillList) do
-				if (activeSkill.skillTypes[SkillType.HasReservation] and not activeSkill.skillFlags.disable and activeSkill.buffList and activeSkill.buffList[1] and cfg and (isNameInBuffList(activeSkill.buffList, cfg.skillName) or isNameInBuffList(activeSkill.buffList, cfg.summonSkillName)) ) then
+				-- currently only checks main statSet for skill flags. rework if required
+				if (activeSkill.skillTypes[SkillType.Aura] and not activeSkill.activeEffect.statSet.skillFlags.disable and activeSkill.buffList and activeSkill.buffList[1] and activeSkill.buffList[1].name == cfg.skillName) then
 					local manaBase = activeSkill.skillData["ManaReservedBase"] or 0
 					reservedPercentMana = m_floor(manaBase / totalMana * 100)
 					break
@@ -265,6 +280,7 @@ function ModStoreClass:GetStat(stat, cfg)
 			for _, activeSkill in ipairs(self.actor.activeSkillList) do
 				if (activeSkill.skillTypes[SkillType.HasReservation] and not activeSkill.skillFlags.disable and activeSkill.buffList and activeSkill.buffList[1] and cfg and (isNameInBuffList(activeSkill.buffList, cfg.skillName) or isNameInBuffList(activeSkill.buffList, cfg.summonSkillName)) ) then
 					local lifeBase = activeSkill.skillData["LifeReservedBase"] or 0
+					reservedPercentLife = lifeBase / totalLife * 100
 					reservedPercentLife = m_floor(lifeBase / totalLife * 100)
 					break
 				end
@@ -286,7 +302,7 @@ function ModStoreClass:GetStat(stat, cfg)
 end
 
 function ModStoreClass:EvalMod(mod, cfg, globalLimits)
-	local value = mod.value
+	local value = mod.value or 0
 	local GetStat = self.GetStat
 	local GetMultiplier = self.GetMultiplier
 	local GetCondition = self.GetCondition
@@ -324,13 +340,10 @@ function ModStoreClass:EvalMod(mod, cfg, globalLimits)
 				tag.div = GetMultiplier(self, tag.divVar, cfg)
 			end
 			local mult = m_floor(base / (tag.div or 1) + 0.0001)
-			if tag.noFloor then
-				mult = base / (tag.div or 1)
-			end
 			local limitTotal
 			local limitNegTotal
-			if tag.limit or tag.limitVar or tag.limitStat then
-				local limit = tag.limit or tag.limitVar and GetMultiplier(limitTarget, tag.limitVar, cfg) or tag.limitStat and GetStat(limitTarget, tag.limitStat, cfg)
+			if tag.limit or tag.limitVar then
+				local limit = tag.limit or GetMultiplier(limitTarget, tag.limitVar, cfg)
 				if tag.limitTotal then
 					limitTotal = limit
 				elseif tag.limitNegTotal then
@@ -531,24 +544,8 @@ function ModStoreClass:EvalMod(mod, cfg, globalLimits)
 					end
 				end
 			end
-		-- Syntax: { type = "MeleeProximity", ramp = {MaxBonusPct,MinBonusPct} }
-		-- 			Both MaxBonusPct and MinBonusPct are percent in decimal form (1.0 = 100%)
-		-- Example: { type = "MeleeProximity", ramp = {1,0} }   ## Duelist-Slayer: Impact
-		elseif tag.type == "MeleeProximity" then
-			if not cfg or not cfg.skillDist then
-				return
-			end
-			-- Max potency is 0-15 units of distance
-			if cfg.skillDist <= 15 then
-				value = value * tag.ramp[1]
-			-- Reduced potency (linear) until 40 units
-			elseif cfg.skillDist >= 16 and cfg.skillDist <= 39 then
-				value = value * (tag.ramp[1] - ((tag.ramp[1] / 25) * (cfg.skillDist - 15)))
-			elseif cfg.skillDist >= 40 then
-				value = 0
-			end
 		elseif tag.type == "Limit" then
-			value = m_min(value, tag.limit or self:GetMultiplier(tag.limitVar, cfg))
+			value = m_min(value, tag.limit or GetMultiplier(self, tag.limitVar, cfg))
 		elseif tag.type == "Condition" then
 			local match = false
 			local allOneH = ((self.actor.weaponData1 and self.actor.weaponData1.countsAsAll1H) and self.actor.weaponData1) or ((self.actor.weaponData2 and self.actor.weaponData2.countsAsAll1H) and self.actor.weaponData2)
@@ -631,7 +628,7 @@ function ModStoreClass:EvalMod(mod, cfg, globalLimits)
 			end
 			if tag.searchCond then
 				for slot, item in pairs(items) do
-					if (not tag.allSlots or tag.allSlots and (item.type ~= "Jewel" and item.type ~= "Graft")) and slot ~= itemSlot or not tag.excludeSelf then
+					if (not tag.allSlots or tag.allSlots and item.type ~= "Jewel") and slot ~= itemSlot or not tag.excludeSelf then
 						t_insert(matches, item:FindModifierSubstring(tag.searchCond:lower(), slot:lower()))
 					end
 				end
@@ -646,21 +643,7 @@ function ModStoreClass:EvalMod(mod, cfg, globalLimits)
 					t_insert(matches, item.corrupted == tag.corruptedCond)
 				end
 			end
-			if tag.shaperCond then
-				for _, item in pairs(items) do
-					t_insert(matches, item.shaper == tag.shaperCond)
-				end
-			end
-			if tag.elderCond then
-				for _, item in pairs(items) do
-					t_insert(matches, item.elder == tag.elderCond)
-				end
-			end
-			if tag.nameCond then
-				for _, item in pairs(items) do
-					t_insert(matches, item.name and item.name:lower() == tag.nameCond:lower())
-				end
-			end
+
 			local hasItems = false
 			for _, item in pairs(items) do
 				hasItems = true
@@ -678,7 +661,7 @@ function ModStoreClass:EvalMod(mod, cfg, globalLimits)
 				return
 			end
 		elseif tag.type == "SocketedIn" then
-			if not cfg or (not tag.slotName and not tag.keyword and not tag.socketColor) then
+			if not cfg or (not tag.slotName and not tag.keyword and not tag.socketColor and not tag.slotType) then
 				return
 			else
 				local function isValidSocket(sockets, targetSocket)
@@ -691,7 +674,9 @@ function ModStoreClass:EvalMod(mod, cfg, globalLimits)
 				end
 				
 				local match = {}
-				if tag.slotName then
+				if tag.slotType then
+					match["slotType"] = true  -- implemented in CalcSetup.lua
+				elseif tag.slotName then
 					match["slotName"] = (tag.slotName == cfg.slotName) or false
 				end
 				if tag.keyword then
@@ -738,13 +723,14 @@ function ModStoreClass:EvalMod(mod, cfg, globalLimits)
 				matchName = matchName:lower()
 				if tag.skillNameList then
 					for _, name in pairs(tag.skillNameList) do
-						if name:lower() == matchName then
+						local nameLower = name:lower()
+						if (tag.partialMatch and matchName:find(nameLower, 1, true)) or (not tag.partialMatch and nameLower == matchName) then
 							match = true
 							break
 						end
 					end
 				else
-					match = (tag.skillName and tag.skillName:lower() == matchName)
+					match = (tag.partialMatch and matchName:find(tag.skillName:lower(), 1, true) ~= nil) or (tag.skillName:lower() == matchName)
 				end
 			end
 			if tag.neg then

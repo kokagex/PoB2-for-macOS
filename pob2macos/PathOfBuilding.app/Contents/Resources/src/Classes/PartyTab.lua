@@ -193,8 +193,8 @@ local PartyTabClass = newClass("PartyTab", "ControlHost", "Control", function(se
 		if not dbXML then
 			launch:ShowErrMsg("^1Error loading '%s': %s", fileName, errMsg)
 			return
-		elseif dbXML[1].elem ~= "PathOfBuilding" then
-			launch:ShowErrMsg("^1Error parsing '%s': 'PathOfBuilding' root element missing", fileName)
+		elseif dbXML[1].elem ~= "PathOfBuilding2" then
+			launch:ShowErrMsg("^1Error parsing '%s': 'PathOfBuilding2' root element missing", fileName)
 			return
 		end
 

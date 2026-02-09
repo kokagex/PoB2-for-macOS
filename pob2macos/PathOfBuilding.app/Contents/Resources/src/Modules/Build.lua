@@ -56,7 +56,703 @@ local function matchFlags(reqFlags, notFlags, flags)
 	return true
 end
 
+-- Tab definitions for the tab bar
+local tabList = {
+	{ mode = "TREE", label = "Tree", key = "1" },
+	{ mode = "SKILLS", label = "Skills", key = "2" },
+	{ mode = "ITEMS", label = "Items", key = "3" },
+	{ mode = "CALCS", label = "Calcs", key = "4" },
+	{ mode = "CONFIG", label = "Config", key = "5" },
+	{ mode = "NOTES", label = "Notes", key = "6" },
+}
+
+-- Full-featured OnFrame with all tabs
+function buildMode:OnFrameMinimal(inputEvents)
+	main:DrawBackground(main.viewPort)
+
+	-- Input handling
+	for id, event in ipairs(inputEvents) do
+		if event.type == "KeyDown" then
+			if event.key == "ESCAPE" or event.key == "MOUSE4" then
+				main:SetMode("LIST")
+			elseif IsKeyDown("CTRL") then
+				-- Ctrl+1-6 tab switching
+				for _, tab in ipairs(tabList) do
+					if event.key == tab.key then
+						self.viewMode = tab.mode
+					end
+				end
+				if event.key == "s" then
+					self:SaveDBFile()
+					inputEvents[id] = nil
+				end
+			end
+		end
+	end
+
+	-- Tab viewport (area to the right of the sidebar, below the top bar controls)
+	-- anchorSideBar is at x=4, sidebar width is ~310
+	local sideBarW = 312
+	local topBarH = 32
+	local tabViewPort = {
+		x = sideBarW,
+		y = topBarH,
+		width = main.screenW - sideBarW,
+		height = main.screenH - topBarH
+	}
+
+	-- Recalculate when buildFlag is set (e.g. after node allocation)
+	if self.buildFlag then
+		wipeGlobalCache()
+		if not self.outputRevision then
+			self.outputRevision = 1
+		else
+			self.outputRevision = self.outputRevision + 1
+		end
+		self.buildFlag = false
+		local buildErr = PCall(self.calcsTab.BuildOutput, self.calcsTab)
+		if buildErr then
+			ConPrintf("WARNING: BuildOutput failed in OnFrame: %s", tostring(buildErr))
+			-- Ensure miscCalculator exists even if BuildOutput fails
+			if not self.calcsTab.miscCalculator then
+				local fallbackOutput = self.calcsTab.mainOutput or {}
+				self.calcsTab.miscCalculator = {
+					function(override, useFullDPS) return fallbackOutput end,
+					fallbackOutput
+				}
+			end
+		end
+		self:RefreshStatList()
+	end
+
+	-- Draw current tab content
+	if self.viewMode == "TREE" then
+		if self.treeTab then
+			self.treeTab:Draw(tabViewPort, inputEvents)
+		end
+	elseif self.viewMode == "NOTES" then
+		if self.notesTab then
+			self.notesTab:Draw(tabViewPort, inputEvents)
+		else
+			self:DrawPlaceholder(tabViewPort, "Notes")
+		end
+	elseif self.viewMode == "CONFIG" then
+		if self.configTab then
+			self.configTab:Draw(tabViewPort, inputEvents)
+		else
+			self:DrawPlaceholder(tabViewPort, "Config")
+		end
+	elseif self.viewMode == "SKILLS" then
+		if self.skillsTab then
+			self.skillsTab:Draw(tabViewPort, inputEvents)
+		else
+			self:DrawPlaceholder(tabViewPort, "Skills")
+		end
+	elseif self.viewMode == "ITEMS" then
+		if self.itemsTab then
+			self.itemsTab:Draw(tabViewPort, inputEvents)
+		else
+			self:DrawPlaceholder(tabViewPort, "Items")
+		end
+	elseif self.viewMode == "CALCS" then
+		if self.calcsTab then
+			self.calcsTab:Draw(tabViewPort, inputEvents)
+		else
+			self:DrawPlaceholder(tabViewPort, "Calcs")
+		end
+	elseif self.viewMode == "IMPORT" then
+		self:DrawPlaceholder(tabViewPort, "Import/Export")
+	elseif self.viewMode == "PARTY" then
+		self:DrawPlaceholder(tabViewPort, "Party")
+	end
+end
+
+-- Draw placeholder for tabs not yet connected
+function buildMode:DrawPlaceholder(viewPort, tabName)
+	SetDrawLayer(1)
+	SetDrawColor(0.12, 0.12, 0.12)
+	DrawImage(nil, viewPort.x, viewPort.y, viewPort.width, viewPort.height)
+	SetDrawColor(0.5, 0.5, 0.5)
+	DrawString(viewPort.x + viewPort.width / 2, viewPort.y + viewPort.height / 2 - 20, "CENTER", 24, "VAR", tabName .. " Tab")
+	SetDrawColor(0.4, 0.4, 0.4)
+	DrawString(viewPort.x + viewPort.width / 2, viewPort.y + viewPort.height / 2 + 20, "CENTER", 16, "VAR", "Under Construction")
+	SetDrawLayer(0, 0)
+end
+
+-- Phase 4: Draw item slot placeholders on right side
+function buildMode:DrawItemSlots(screenW, screenH, scale)
+	local pw = 240 * scale
+	local px = screenW - pw - 10 * scale
+	local py = 80 * scale
+	local slotH = 30 * scale
+	local gap = 4 * scale
+	local headerH = 36 * scale
+	local ph = headerH + (#self.buildStub.itemSlots) * (slotH + gap) + 4 * scale
+
+	-- Panel background
+	SetDrawColor(0, 0, 0, 0.85)
+	DrawImage(nil, px, py, pw, ph)
+	SetDrawColor(0.4, 0.4, 0.4)
+	DrawImage(nil, px, py, pw, 1)
+	DrawImage(nil, px, py + ph - 1, pw, 1)
+	DrawImage(nil, px, py, 1, ph)
+	DrawImage(nil, px + pw - 1, py, 1, ph)
+
+	-- Header
+	SetDrawColor(1, 1, 1)
+	DrawString(px + pw / 2, py + 8 * scale, "CENTER", 18 * scale, "FIXED", "^xFFFF70Equipment Slots")
+	SetDrawColor(0.4, 0.4, 0.4)
+	DrawImage(nil, px + 8 * scale, py + 30 * scale, pw - 16 * scale, 1)
+
+	-- Slot color map
+	local colors = {
+		Weapon = { 0.8, 0.3, 0.3 },
+		Helmet = { 0.3, 0.4, 0.8 },
+		["Body Armour"] = { 0.3, 0.4, 0.8 },
+		Gloves = { 0.3, 0.4, 0.8 },
+		Boots = { 0.3, 0.4, 0.8 },
+		Amulet = { 0.3, 0.8, 0.3 },
+		Ring = { 0.3, 0.8, 0.3 },
+		Belt = { 0.3, 0.8, 0.3 },
+		Charm = { 0.8, 0.8, 0.3 },
+	}
+
+	local y = py + headerH
+	for i, slot in ipairs(self.buildStub.itemSlots) do
+		local c = colors[slot.name] or { 0.5, 0.5, 0.5 }
+
+		-- Slot background
+		SetDrawColor(c[1] * 0.2, c[2] * 0.2, c[3] * 0.2, 0.9)
+		DrawImage(nil, px + 8 * scale, y, pw - 16 * scale, slotH)
+
+		-- Slot border
+		SetDrawColor(c[1], c[2], c[3], 0.8)
+		DrawImage(nil, px + 8 * scale, y, pw - 16 * scale, 1)
+		DrawImage(nil, px + 8 * scale, y + slotH - 1, pw - 16 * scale, 1)
+		DrawImage(nil, px + 8 * scale, y, 1, slotH)
+		DrawImage(nil, px + pw - 9 * scale, y, 1, slotH)
+
+		-- Label
+		SetDrawColor(1, 1, 1)
+		DrawString(px + 14 * scale, y + 7 * scale, "LEFT", 14 * scale, "FIXED", slot.label)
+
+		-- Empty indicator
+		SetDrawColor(0.5, 0.5, 0.5)
+		DrawString(px + pw - 14 * scale, y + 7 * scale, "RIGHT", 12 * scale, "FIXED", "(empty)")
+
+		y = y + slotH + gap
+	end
+end
+
+-- Minimal initialization: creates all tabs incrementally
+function buildMode:InitMinimal(dbFileName, buildName)
+	-- Basic setup
+	self.dbFileName = dbFileName or false
+	self.buildName = buildName or "Unnamed build"
+	self.dbFileSubPath = ""
+	self.viewMode = "TREE"
+	self.targetVersion = liveTargetVersion
+	self.modFlag = false
+	self.abortSave = true
+	self.buildFlag = false
+
+	-- Initialize basic data structures
+	self.xmlSectionList = {}
+	self.spectreList = {}
+	self.timelessData = { jewelType = {}, conquerorType = {}, devotionVariant1 = 1, devotionVariant2 = 1, jewelSocket = {}, fallbackWeightMode = {}, searchList = "", searchListFallback = "", searchResults = {}, sharedResults = {} }
+	wipeTable(self.controls)
+
+	-- Character level and class
+	self.characterLevel = m_min(m_max(main.defaultCharLevel or 1, 1), 100)
+	self.characterLevelAutoMode = main.defaultCharLevel == 1 or main.defaultCharLevel == nil
+	self.bandit = "None"
+	self.pantheonMajorGod = "None"
+	self.pantheonMinorGod = "None"
+	self.mainSocketGroup = 1
+
+	-- Data references (needed by ItemsTab, CalcsTab)
+	self.latestTree = main.tree[latestTreeVersion]
+	data.setJewelRadiiGlobally(latestTreeVersion)
+	self.data = data
+
+	-- Create BuildStub for character data
+	LoadModule("Modules/BuildStub")
+	self.buildStub = new("BuildStub")
+	self.buildStub:SetLevel(self.characterLevel)
+	self.buildStub:SetClass("Ranger")
+
+	-- Expose buildStub values at build level for compatibility
+	self.characterClass = self.buildStub.className
+	self.characterClassName = self.buildStub.characterClassName
+	self.ascendClassName = self.buildStub.ascendClassName
+
+	-- Create passive tree spec
+	self.spec = new("PassiveSpec", self, latestTreeVersion)
+	self.spec.title = self.buildName
+	self.buildStub.spec = self.spec
+
+	-- Phase B: NotesTab (simplest tab, no dependencies)
+	self.notesTab = new("NotesTab", self)
+
+	-- Phase D: PartyTab (provides enemyModList for CalcSetup)
+	self.partyTab = new("PartyTab", self)
+
+	-- Phase C: ConfigTab (provides config options, needed before CalcsTab)
+	self.configTab = new("ConfigTab", self)
+
+	-- TreeTab (passive tree display)
+	self.treeTab = new("TreeTab", self)
+
+	-- Phase E: SkillsTab
+	self.skillsTab = new("SkillsTab", self)
+
+	-- Phase F: ItemsTab (largest constructor, needs latestTree + slots)
+	self.itemsTab = new("ItemsTab", self)
+
+	-- Phase G: CalcsTab (calculation engine)
+	self.calcsTab = new("CalcsTab", self)
+
+	-- Build calculation output
+	self.outputRevision = 1
+	self.configTab:BuildModList()
+
+	-- Attempt initial BuildOutput
+	local buildErr = PCall(self.calcsTab.BuildOutput, self.calcsTab)
+	if buildErr then
+		ConPrintf("WARNING: InitMinimal() - BuildOutput() failed: %s", tostring(buildErr))
+		-- Provide minimal mainEnv fallback so stats sidebar can display basic values
+		if not self.calcsTab.mainEnv then
+			local classData = self.spec and self.spec.curClass and main.tree[self.targetVersion] and main.tree[self.targetVersion].classes[self.spec.curClass]
+			local baseStr = classData and classData.base_str or 14
+			local baseDex = classData and classData.base_dex or 14
+			local baseInt = classData and classData.base_int or 14
+			local fallbackOutput = {
+				Life = 50 + (baseStr * 2),
+				Mana = 40 + (baseInt * 2),
+				EnergyShield = 0,
+				Str = baseStr,
+				Dex = baseDex,
+				Int = baseInt,
+				Armour = 0,
+				Evasion = 0,
+				Ward = 0,
+				TotalDPS = 0,
+				TotalDot = 0,
+				AverageDamage = 0,
+				Speed = 0,
+				CritChance = 0,
+				ActiveMinionLimit = 0,
+			}
+			-- Default missing keys to 0 to prevent nil comparison errors
+			setmetatable(fallbackOutput, { __index = function() return 0 end })
+			local fallbackModDB = new("ModDB")
+			self.calcsTab.mainEnv = {
+				player = {
+					mainSkill = nil,
+					output = fallbackOutput,
+					outputTable = {},
+					modDB = fallbackModDB,
+				},
+				minion = nil,
+			}
+			self.calcsTab.mainOutput = self.calcsTab.mainEnv.player.output
+		end
+		-- Create fallback miscCalculator so DPS sorting doesn't crash
+		if not self.calcsTab.miscCalculator then
+			local fallbackOutput = self.calcsTab.mainOutput or {}
+			self.calcsTab.miscCalculator = {
+				function(override, useFullDPS) return fallbackOutput end,
+				fallbackOutput
+			}
+		end
+	end
+
+	-- Savers for save/load
+	self.savers = {
+		["Config"] = self.configTab,
+		["Notes"] = self.notesTab,
+		["Party"] = self.partyTab,
+		["Tree"] = self.treeTab,
+		["TreeView"] = self.treeTab.viewer,
+		["Items"] = self.itemsTab,
+		["Skills"] = self.skillsTab,
+		["Calcs"] = self.calcsTab,
+	}
+
+	-- Create tooltip helper for controls
+	local miscTooltip = new("Tooltip")
+
+	-- Controls: top bar, left side
+	self.anchorTopBarLeft = new("Control", nil, {4, 4, 0, 20})
+	self.controls.back = new("ButtonControl", {"LEFT",self.anchorTopBarLeft,"RIGHT"}, {0, 0, 60, 20}, "<< Back", function()
+		if self.unsaved then
+			self:OpenSavePopup("LIST")
+		else
+			self:CloseBuild()
+		end
+	end)
+	self.controls.buildName = new("Control", {"LEFT",self.controls.back,"RIGHT"}, {8, 0, 0, 20})
+	self.controls.buildName.width = function(control)
+		local limit = self.anchorTopBarRight:GetPos() - 98 - 40 - self.controls.back:GetSize() - self.controls.save:GetSize() - self.controls.saveAs:GetSize()
+		local bnw = DrawStringWidth(16, "VAR", self.buildName)
+		self.strWidth = m_min(bnw, limit)
+		self.strLimited = bnw > limit
+		return self.strWidth + 98
+	end
+	self.controls.buildName.Draw = function(control)
+		local x, y = control:GetPos()
+		local width, height = control:GetSize()
+		SetDrawColor(0.5, 0.5, 0.5)
+		DrawImage(nil, x + 91, y, self.strWidth + 6, 20)
+		SetDrawColor(0, 0, 0)
+		DrawImage(nil, x + 92, y + 1, self.strWidth + 4, 18)
+		SetDrawColor(1, 1, 1)
+		SetViewport(x, y + 2, self.strWidth + 94, 16)
+		DrawString(0, 0, "LEFT", 16, "VAR", "Current build:  "..self.buildName)
+		SetViewport()
+		if control:IsMouseInBounds() then
+			SetDrawLayer(nil, 10)
+			miscTooltip:Clear()
+			if self.dbFileSubPath and self.dbFileSubPath ~= "" then
+				miscTooltip:AddLine(16, self.dbFileSubPath..self.buildName)
+			elseif self.strLimited then
+				miscTooltip:AddLine(16, self.buildName)
+			end
+			miscTooltip:Draw(x, y, width, height, main.viewPort)
+			SetDrawLayer(nil, 0)
+		end
+	end
+	self.controls.save = new("ButtonControl", {"LEFT",self.controls.buildName,"RIGHT"}, {8, 0, 50, 20}, "Save", function()
+		self:SaveDBFile()
+	end)
+	self.controls.save.enabled = function()
+		return not self.dbFileName or self.unsaved
+	end
+	self.controls.saveAs = new("ButtonControl", {"LEFT",self.controls.save,"RIGHT"}, {8, 0, 70, 20}, "Save As", function()
+		self:OpenSaveAsPopup()
+	end)
+	self.controls.saveAs.enabled = function()
+		return self.dbFileName
+	end
+
+	-- Controls: top bar, right side
+	self.anchorTopBarRight = new("Control", nil, {function() return main.screenW / 2 + 6 end, 4, 0, 20})
+	self.controls.pointDisplay = new("Control", {"LEFT",self.anchorTopBarRight,"RIGHT"}, {-12, 0, 0, 20})
+	self.controls.pointDisplay.x = function(control)
+		local width, height = control:GetSize()
+		if self.controls.saveAs:GetPos() + self.controls.saveAs:GetSize() < self.anchorTopBarRight:GetPos() - width - 16 then
+			return -12 - width
+		else
+			return 0
+		end
+	end
+	self.controls.pointDisplay.width = function(control)
+		control.str, control.req = self:EstimatePlayerProgress()
+		return DrawStringWidth(16, "FIXED", control.str) + 8
+	end
+	self.controls.pointDisplay.Draw = function(control)
+		local x, y = control:GetPos()
+		local width, height = control:GetSize()
+		SetDrawColor(1, 1, 1)
+		DrawImage(nil, x, y, width, height)
+		SetDrawColor(0, 0, 0)
+		DrawImage(nil, x + 1, y + 1, width - 2, height - 2)
+		SetDrawColor(1, 1, 1)
+		DrawString(x + 4, y + 2, "LEFT", 16, "FIXED", control.str)
+		if control:IsMouseInBounds() then
+			SetDrawLayer(nil, 10)
+			miscTooltip:Clear()
+			miscTooltip:AddLine(16, control.req)
+			miscTooltip:Draw(x, y, width, height, main.viewPort)
+			SetDrawLayer(nil, 0)
+		end
+	end
+	self.controls.levelScalingButton = new("ButtonControl", {"LEFT",self.controls.pointDisplay,"RIGHT"}, {12, 0, 50, 20}, self.characterLevelAutoMode and "Auto" or "Manual", function()
+		self.characterLevelAutoMode = not self.characterLevelAutoMode
+		self.controls.levelScalingButton.label = self.characterLevelAutoMode and "Auto" or "Manual"
+		self.configTab:BuildModList()
+		self.modFlag = true
+		self.buildFlag = true
+	end)
+	self.controls.characterLevel = new("EditControl", {"LEFT",self.controls.levelScalingButton,"RIGHT"}, {8, 0, 106, 20}, "", "Level", "%D", 3, function(buf)
+		self.characterLevel = m_min(m_max(tonumber(buf) or 1, 1), 100)
+		self.configTab:BuildModList()
+		self.modFlag = true
+		self.buildFlag = true
+		self.characterLevelAutoMode = false
+		self.controls.levelScalingButton.label = "Manual"
+	end)
+	self.controls.characterLevel:SetText(self.characterLevel)
+	self.controls.characterLevel.tooltipFunc = function(tooltip)
+		if tooltip:CheckForUpdate(self.characterLevel) then
+			tooltip:AddLine(16, "Experience multiplier:")
+			local playerLevel = self.characterLevel
+			local safeZone = 3 + m_floor(playerLevel / 16)
+			if self.data.monsterExperienceLevelMap then
+				for level, expLevel in ipairs(self.data.monsterExperienceLevelMap) do
+					local diff = m_abs(playerLevel - expLevel) - safeZone
+					local mult
+					if diff <= 0 then
+						mult = 1
+					else
+						mult = ((playerLevel + 5) / (playerLevel + 5 + diff ^ 2.5)) ^ 1.5
+					end
+					if playerLevel >= 95 then
+						local xpPenalty = ({0.935, 0.885, 0.813, 0.7175, 0.6})[playerLevel - 94] or 0
+						mult = mult * (1 / (1 + 0.1 * (playerLevel - 94))) * xpPenalty
+					end
+					if mult > 0.01 then
+						local line = level
+						if level >= 68 then
+							line = line .. string.format(" (Tier %d)", level - 67)
+						end
+						line = line .. string.format(": %.1f%%", mult * 100)
+						tooltip:AddLine(14, line)
+					end
+				end
+			end
+		end
+	end
+	self.controls.classDrop = new("DropDownControl", {"LEFT",self.controls.characterLevel,"RIGHT"}, {8, 0, 100, 20}, nil, function(index, value)
+		if value.classId ~= self.spec.curClassId then
+			if self.spec:CountAllocNodes() == 0 or self.spec:IsClassConnected(value.classId) then
+				self.spec:SelectClass(value.classId)
+				self.spec:AddUndoState()
+				self.spec:SetWindowTitleWithBuildClass()
+				self.buildFlag = true
+			else
+				main:OpenConfirmPopup("Class Change", "Changing class to "..value.label.." will reset your passive tree.\nThis can be avoided by connecting one of the "..value.label.." starting nodes to your tree.", "Continue", function()
+					self.spec:SelectClass(value.classId)
+					self.spec:AddUndoState()
+					self.spec:SetWindowTitleWithBuildClass()
+					self.buildFlag = true
+				end, "Connect Path", function()
+					if self.spec:ConnectToClass(value.classId) then
+						self.spec:SelectClass(value.classId)
+						self.spec:AddUndoState()
+						self.spec:SetWindowTitleWithBuildClass()
+						self.buildFlag = true
+					end
+				end)
+			end
+		end
+	end)
+	self.controls.ascendDrop = new("DropDownControl", {"LEFT",self.controls.classDrop,"RIGHT"}, {8, 0, 120, 20}, nil, function(index, value)
+		self.spec:SelectAscendClass(value.ascendClassId)
+		self.spec:AddUndoState()
+		self.spec:SetWindowTitleWithBuildClass()
+		self.buildFlag = true
+	end)
+	self.controls.secondaryAscendDrop = new("DropDownControl", {"LEFT",self.controls.ascendDrop,"RIGHT"}, {8, 0, 160, 20}, {
+		{ label = "None", ascendClassId = 0 },
+	}, function(index, value)
+		if not value or not self.spec then
+			return
+		end
+		self.spec:SelectSecondaryAscendClass(value.ascendClassId)
+		self.spec:AddUndoState()
+		self.spec:SetWindowTitleWithBuildClass()
+		self.buildFlag = true
+	end)
+	self.controls.secondaryAscendDrop.enableDroppedWidth = true
+	self.controls.secondaryAscendDrop.maxDroppedWidth = 360
+	local initialSecondarySelection = (self.spec and self.spec.curSecondaryAscendClassId) or 0
+	self.controls.secondaryAscendDrop:SelByValue(initialSecondarySelection, "ascendClassId")
+	self.controls.buildLoadouts = new("DropDownControl", {"LEFT",self.controls.secondaryAscendDrop,"RIGHT"}, {8, 0, 190, 20}, {"No Loadouts"}, function(index, value)
+		-- Loadout selection (simplified - SyncLoadouts not yet enabled)
+	end)
+
+	-- List of display stats
+	self.displayStats, self.minionDisplayStats, self.extraSaveStats = LoadModule("Modules/BuildDisplayStats")
+
+	-- Controls: Side bar
+	self.anchorSideBar = new("Control", nil, {4, 36, 0, 0})
+	self.controls.modeImport = new("ButtonControl", {"TOPLEFT",self.anchorSideBar,"TOPLEFT"}, {0, 0, 134, 20}, "Import/Export Build", function()
+		self.viewMode = "IMPORT"
+	end)
+	self.controls.modeImport.locked = function() return self.viewMode == "IMPORT" end
+	self.controls.modeNotes = new("ButtonControl", {"LEFT",self.controls.modeImport,"RIGHT"}, {4, 0, 58, 20}, "Notes", function()
+		self.viewMode = "NOTES"
+	end)
+	self.controls.modeNotes.locked = function() return self.viewMode == "NOTES" end
+	self.controls.modeConfig = new("ButtonControl", {"TOPRIGHT",self.anchorSideBar,"TOPLEFT"}, {300, 0, 100, 20}, "Configuration", function()
+		self.viewMode = "CONFIG"
+	end)
+	self.controls.modeConfig.locked = function() return self.viewMode == "CONFIG" end
+	self.controls.modeTree = new("ButtonControl", {"TOPLEFT",self.anchorSideBar,"TOPLEFT"}, {0, 26, 72, 20}, "Tree", function()
+		self.viewMode = "TREE"
+	end)
+	self.controls.modeTree.locked = function() return self.viewMode == "TREE" end
+	self.controls.modeSkills = new("ButtonControl", {"LEFT",self.controls.modeTree,"RIGHT"}, {4, 0, 72, 20}, "Skills", function()
+		self.viewMode = "SKILLS"
+	end)
+	self.controls.modeSkills.locked = function() return self.viewMode == "SKILLS" end
+	self.controls.modeItems = new("ButtonControl", {"LEFT",self.controls.modeSkills,"RIGHT"}, {4, 0, 72, 20}, "Items", function()
+		self.viewMode = "ITEMS"
+	end)
+	self.controls.modeItems.locked = function() return self.viewMode == "ITEMS" end
+	self.controls.modeCalcs = new("ButtonControl", {"LEFT",self.controls.modeItems,"RIGHT"}, {4, 0, 72, 20}, "Calcs", function()
+		self.viewMode = "CALCS"
+	end)
+	self.controls.modeCalcs.locked = function() return self.viewMode == "CALCS" end
+	self.controls.modeParty = new("ButtonControl", {"TOPLEFT",self.anchorSideBar,"TOPLEFT"}, {0, 52, 72, 20}, "Party", function()
+		self.viewMode = "PARTY"
+	end)
+	self.controls.modeParty.locked = function() return self.viewMode == "PARTY" end
+	-- Skills
+	self.controls.mainSkillLabel = new("LabelControl", {"TOPLEFT",self.anchorSideBar,"TOPLEFT"}, {0, 80, 300, 16}, "^7Main Skill:")
+	self.controls.mainSocketGroup = new("DropDownControl", {"TOPLEFT",self.controls.mainSkillLabel,"BOTTOMLEFT"}, {0, 2, 300, 18}, nil, function(index, value)
+		self.mainSocketGroup = index
+		self.modFlag = true
+		self.buildFlag = true
+	end)
+	self.controls.mainSocketGroup.maxDroppedWidth = 500
+	self.controls.mainSocketGroup.tooltipFunc = function(tooltip, mode, index, value)
+		local socketGroup = self.skillsTab and self.skillsTab.socketGroupList and self.skillsTab.socketGroupList[index]
+		if socketGroup and tooltip:CheckForUpdate(socketGroup, self.outputRevision) then
+			self.skillsTab:AddSocketGroupTooltip(tooltip, socketGroup)
+		end
+	end
+	self.controls.mainSkill = new("DropDownControl", {"TOPLEFT",self.controls.mainSocketGroup,"BOTTOMLEFT"}, {0, 2, 300, 18}, nil, function(index, value)
+		local mainSocketGroup = self.skillsTab and self.skillsTab.socketGroupList and self.skillsTab.socketGroupList[self.mainSocketGroup]
+		if mainSocketGroup then
+			mainSocketGroup.mainActiveSkill = index
+			self.modFlag = true
+			self.buildFlag = true
+		end
+	end)
+	self.controls.mainSkillPart = new("DropDownControl", {"TOPLEFT",self.controls.mainSkill,"BOTTOMLEFT",true}, {0, 2, 300, 18}, nil, function(index, value)
+		local mainSocketGroup = self.skillsTab and self.skillsTab.socketGroupList and self.skillsTab.socketGroupList[self.mainSocketGroup]
+		if mainSocketGroup and mainSocketGroup.displaySkillList and mainSocketGroup.displaySkillList[mainSocketGroup.mainActiveSkill] then
+			local srcInstance = mainSocketGroup.displaySkillList[mainSocketGroup.mainActiveSkill].activeEffect.srcInstance
+			srcInstance.skillPart = index
+			self.modFlag = true
+			self.buildFlag = true
+		end
+	end)
+	self.controls.mainSkillStageCountLabel = new("LabelControl", {"TOPLEFT",self.controls.mainSkillPart,"BOTTOMLEFT",true}, {0, 3, 0, 16}, "^7Stages:") {
+		shown = function()
+			return self.controls.mainSkillStageCount:IsShown()
+		end,
+	}
+	self.controls.mainSkillStageCount = new("EditControl", {"LEFT",self.controls.mainSkillStageCountLabel,"RIGHT",true}, {2, 0, 60, 18}, nil, nil, "%D", nil, function(buf)
+		local mainSocketGroup = self.skillsTab and self.skillsTab.socketGroupList and self.skillsTab.socketGroupList[self.mainSocketGroup]
+		if mainSocketGroup and mainSocketGroup.displaySkillList and mainSocketGroup.displaySkillList[mainSocketGroup.mainActiveSkill] then
+			local srcInstance = mainSocketGroup.displaySkillList[mainSocketGroup.mainActiveSkill].activeEffect.srcInstance
+			srcInstance.skillStageCount = tonumber(buf)
+			self.modFlag = true
+			self.buildFlag = true
+		end
+	end)
+	self.controls.mainSkillMineCountLabel = new("LabelControl", {"TOPLEFT",self.controls.mainSkillStageCountLabel,"BOTTOMLEFT",true}, {0, 3, 0, 16}, "^7Active Mines:") {
+		shown = function()
+			return self.controls.mainSkillMineCount:IsShown()
+		end,
+	}
+	self.controls.mainSkillMineCount = new("EditControl", {"LEFT",self.controls.mainSkillMineCountLabel,"RIGHT",true}, {2, 0, 60, 18}, nil, nil, "%D", nil, function(buf)
+		local mainSocketGroup = self.skillsTab and self.skillsTab.socketGroupList and self.skillsTab.socketGroupList[self.mainSocketGroup]
+		if mainSocketGroup and mainSocketGroup.displaySkillList and mainSocketGroup.displaySkillList[mainSocketGroup.mainActiveSkill] then
+			local srcInstance = mainSocketGroup.displaySkillList[mainSocketGroup.mainActiveSkill].activeEffect.srcInstance
+			srcInstance.skillMineCount = tonumber(buf)
+			self.modFlag = true
+			self.buildFlag = true
+		end
+	end)
+	self.controls.mainSkillMinion = new("DropDownControl", {"TOPLEFT",self.controls.mainSkillMineCountLabel,"BOTTOMLEFT",true}, {0, 3, 178, 18}, nil, function(index, value)
+		if not value then return end
+		local mainSocketGroup = self.skillsTab and self.skillsTab.socketGroupList and self.skillsTab.socketGroupList[self.mainSocketGroup]
+		if mainSocketGroup and mainSocketGroup.displaySkillList and mainSocketGroup.displaySkillList[mainSocketGroup.mainActiveSkill] then
+			local srcInstance = mainSocketGroup.displaySkillList[mainSocketGroup.mainActiveSkill].activeEffect.srcInstance
+			if value.itemSetId then
+				srcInstance.skillMinionItemSet = value.itemSetId
+			else
+				srcInstance.skillMinion = value.minionId
+			end
+			self.modFlag = true
+			self.buildFlag = true
+		end
+	end)
+	function self.controls.mainSkillMinion.CanReceiveDrag(control, type, value)
+		if type == "Item" and control.list[control.selIndex] and control.list[control.selIndex].itemSetId then
+			local mainSocketGroup = self.skillsTab and self.skillsTab.socketGroupList and self.skillsTab.socketGroupList[self.mainSocketGroup]
+			if mainSocketGroup and mainSocketGroup.displaySkillList and mainSocketGroup.displaySkillList[mainSocketGroup.mainActiveSkill] then
+				local minionUses = mainSocketGroup.displaySkillList[mainSocketGroup.mainActiveSkill].activeEffect.grantedEffect.minionUses
+				return minionUses and minionUses[value:GetPrimarySlot()]
+			end
+		end
+	end
+	function self.controls.mainSkillMinion.ReceiveDrag(control, type, value, source)
+		self.itemsTab:EquipItemInSet(value, control.list[control.selIndex].itemSetId)
+	end
+	function self.controls.mainSkillMinion.tooltipFunc(tooltip, mode, index, value)
+		tooltip:Clear()
+		if value and value.itemSetId then
+			self.itemsTab:AddItemSetTooltip(tooltip, self.itemsTab.itemSets[value.itemSetId])
+			tooltip:AddSeparator(14)
+			tooltip:AddLine(14, colorCodes.TIP.."Tip: You can drag items from the Items tab onto this dropdown to equip them onto the minion.")
+		end
+	end
+	self.controls.mainSkillMinionLibrary = new("ButtonControl", {"LEFT",self.controls.mainSkillMinion,"RIGHT"}, {2, 0, 120, 18}, "Manage Spectres...", function()
+		self:OpenSpectreLibrary()
+	end)
+	self.controls.mainSkillMinionSkill = new("DropDownControl", {"TOPLEFT",self.controls.mainSkillMinion,"BOTTOMLEFT",true}, {0, 2, 200, 16}, nil, function(index, value)
+		local mainSocketGroup = self.skillsTab and self.skillsTab.socketGroupList and self.skillsTab.socketGroupList[self.mainSocketGroup]
+		if mainSocketGroup and mainSocketGroup.displaySkillList and mainSocketGroup.displaySkillList[mainSocketGroup.mainActiveSkill] then
+			local srcInstance = mainSocketGroup.displaySkillList[mainSocketGroup.mainActiveSkill].activeEffect.srcInstance
+			srcInstance.skillMinionSkill = index
+			self.modFlag = true
+			self.buildFlag = true
+		end
+	end)
+	self.controls.statBoxAnchor = new("Control", {"TOPLEFT",self.controls.mainSkillMinionSkill,"BOTTOMLEFT",true}, {0, 2, 0, 0})
+	self.controls.statBox = new("TextListControl", {"TOPLEFT",self.controls.statBoxAnchor,"BOTTOMLEFT"}, {0, 2, 300, 0}, {{x=170,align="RIGHT_X"},{x=174,align="LEFT"}})
+	self.controls.statBox.height = function(control)
+		local x, y = control:GetPos()
+		local warnHeight = main.showWarnings and self.controls.warnings and #self.controls.warnings.lines > 0 and 18 or 0
+		return main.screenH - (main.mainBarHeight or 58) - 4 - y - warnHeight
+	end
+	self.controls.warnings = new("Control",{"TOPLEFT",self.controls.statBox,"BOTTOMLEFT",true}, {0, 0, 0, 18})
+	self.controls.warnings.lines = {}
+	self.controls.warnings.width = function(control)
+		return control.str and type(control.str) == "string" and DrawStringWidth(16, "FIXED", control.str) + 8 or 0
+	end
+	self.controls.warnings.Draw = function(control)
+		if #self.controls.warnings.lines > 0 then
+			local count = 0
+			for _ in pairs(self.controls.warnings.lines) do count = count + 1 end
+			control.str = string.format(colorCodes.NEGATIVE.."%d Warnings", count)
+			local x, y = control:GetPos()
+			local width, height = control:GetSize()
+			DrawString(x, y + 2, "LEFT", 16, "FIXED", control.str)
+			if control:IsMouseInBounds() then
+				SetDrawLayer(nil, 10)
+				miscTooltip:Clear()
+				for k,v in pairs(self.controls.warnings.lines) do miscTooltip:AddLine(16, v) end
+				miscTooltip:Draw(x, y, width, height, main.viewPort)
+				SetDrawLayer(nil, 0)
+			end
+		else
+			control.str = nil
+		end
+	end
+
+	-- Initialize class dropdowns
+	self:UpdateClassDropdowns()
+
+	-- Refresh stat list (after BuildOutput)
+	self:RefreshStatList()
+
+	self.abortSave = false
+end
+
 function buildMode:Init(dbFileName, buildName, buildXML, convertBuild, importLink)
+	-- Phase 1: Minimal Stub (2026-02-06)
+	-- Skip full initialization, only create TreeTab for passive tree display
+	if true then -- Phase 1 flag: set to false to restore full init
+		self:InitMinimal(dbFileName, buildName)
+		return
+	end
+
 	self.dbFileName = dbFileName
 	self.buildName = buildName
 	self.importLink = importLink
@@ -76,7 +772,6 @@ function buildMode:Init(dbFileName, buildName, buildXML, convertBuild, importLin
 	self.viewMode = "TREE"
 	self.characterLevel = m_min(m_max(main.defaultCharLevel or 1, 1), 100)
 	self.targetVersion = liveTargetVersion
-	self.outputRevision = 0
 	self.bandit = "None"
 	self.pantheonMajorGod = "None"
 	self.pantheonMinorGod = "None"
@@ -686,6 +1381,7 @@ function buildMode:Init(dbFileName, buildName, buildXML, convertBuild, importLin
 
 	self.abortSave = false
 	self:SyncLoadouts()
+
 end
 
 local acts = {
@@ -731,6 +1427,11 @@ local function actExtra(act, extra)
 end
 
 function buildMode:SyncLoadouts()
+	-- Phase 1: Stub (2026-02-06)
+	if true then -- Phase 1 flag: set to false to restore full SyncLoadouts
+		return
+	end
+
 	self.controls.buildLoadouts.list = {"No Loadouts"}
 
 	local filteredList = {"^7^7Loadouts:"}
@@ -982,12 +1683,15 @@ function buildMode:Save(xml)
 		t_insert(xml, { elem = "Spectre", attrib = { id = id } })
 	end
 	local addedStatNames = { }
-	for index, statData in ipairs(self.displayStats) do
-		if matchFlags(statData.flag, statData.notFlag, self.calcsTab.mainEnv.player.mainSkill.skillFlags) then
+	local mainEnv = self.calcsTab and self.calcsTab.mainEnv
+	local mainOutput = self.calcsTab and self.calcsTab.mainOutput
+	local playerSkillFlags = mainEnv and mainEnv.player and mainEnv.player.mainSkill and mainEnv.player.mainSkill.skillFlags or {}
+	for index, statData in ipairs(self.displayStats or {}) do
+		if matchFlags(statData.flag, statData.notFlag, playerSkillFlags) then
 			local statName = statData.stat and statData.stat..(statData.childStat or "")
 			if statName and not addedStatNames[statName] then
 				if statData.stat == "SkillDPS" then
-					local statVal = self.calcsTab.mainOutput[statData.stat]
+					local statVal = mainOutput and mainOutput[statData.stat]
 					for _, skillData in ipairs(statVal) do
 						local triggerStr = ""
 						if skillData.trigger and skillData.trigger ~= "" then
@@ -1001,11 +1705,13 @@ function buildMode:Save(xml)
 					end
 					addedStatNames[statName] = true
 				else
-					local statVal = self.calcsTab.mainOutput[statData.stat]
-					if statVal and statData.childStat then
+					local statVal = mainOutput and mainOutput[statData.stat]
+					if statVal and statData.childStat and type(statVal) == "table" then
 						statVal = statVal[statData.childStat]
+					elseif statData.childStat then
+						statVal = nil
 					end
-					if statVal and (statData.condFunc and statData.condFunc(statVal, self.calcsTab.mainOutput) or true) then
+					if statVal and (statData.condFunc and statData.condFunc(statVal, mainOutput) or true) then
 						t_insert(xml, { elem = "PlayerStat", attrib = { stat = statName, value = tostring(statVal) } })
 						addedStatNames[statName] = true
 					end
@@ -1013,16 +1719,16 @@ function buildMode:Save(xml)
 			end
 		end
 	end
-	for index, stat in ipairs(self.extraSaveStats) do
-		local statVal = self.calcsTab.mainOutput[stat]
+	for index, stat in ipairs(self.extraSaveStats or {}) do
+		local statVal = mainOutput and mainOutput[stat]
 		if statVal then
 			t_insert(xml, { elem = "PlayerStat", attrib = { stat = stat, value = tostring(statVal) } })
 		end
 	end
-	if self.calcsTab.mainEnv.minion then
+	if mainEnv and mainEnv.minion then
 		for index, statData in ipairs(self.minionDisplayStats) do
 			if statData.stat then
-				local statVal = self.calcsTab.mainOutput.Minion[statData.stat]
+				local statVal = mainOutput and mainOutput.Minion and mainOutput.Minion[statData.stat]
 				if statVal then
 					t_insert(xml, { elem = "MinionStat", attrib = { stat = statData.stat, value = tostring(statVal) } })
 				end
@@ -1061,6 +1767,12 @@ function buildMode:ResetModFlags()
 end
 
 function buildMode:OnFrame(inputEvents)
+	-- Phase H: Full OnFrame enabled (2026-02-07)
+	if false then -- Phase 1 flag: bypassed
+		self:OnFrameMinimal(inputEvents)
+		return
+	end
+
 	-- Stop at drawing the background if the loaded build needs to be converted
 	if not self.targetVersion then
 		main:DrawBackground(main.viewPort)
@@ -1080,7 +1792,7 @@ function buildMode:OnFrame(inputEvents)
 					self:CloseBuild()
 				end
 		elseif IsKeyDown("CTRL") then
-				if event.key == "i" then
+				if event.key == "i" and self.importTab then
 						self.viewMode = "IMPORT"
 					self.importTab:SelectControl(self.importTab.controls.importCodeIn)
 				elseif event.key == "s" then
@@ -1112,10 +1824,15 @@ function buildMode:OnFrame(inputEvents)
 	end
 	self:ProcessControlsInput(inputEvents, main.viewPort)
 
-	self.controls.classDrop:SelByValue(self.spec.curClassId, "classId")
-	self.controls.ascendDrop.list = self.controls.classDrop:GetSelValueByKey("ascendancies")
-	self.controls.ascendDrop:SelByValue(self.spec.curAscendClassId, "ascendClassId")
-	self.controls.ascendDrop:CheckDroppedWidth(true)
+	-- Nil-safety check for spec before accessing its properties
+	if self.spec then
+		self.controls.classDrop:SelByValue(self.spec.curClassId, "classId")
+		self.controls.ascendDrop.list = self.controls.classDrop:GetSelValueByKey("ascendancies")
+		self.controls.ascendDrop:SelByValue(self.spec.curAscendClassId, "ascendClassId")
+		self.controls.ascendDrop:CheckDroppedWidth(true)
+	else
+		ConPrintf("WARNING: Build.spec is nil in OnFrame!")
+	end
 	local secondaryDrop = self.controls.secondaryAscendDrop
 	if secondaryDrop then
 		local legacyAlternateAscendancyIds = {
@@ -1157,10 +1874,16 @@ function buildMode:OnFrame(inputEvents)
 		wipeGlobalCache()
 
 		-- Rebuild calculation output tables
-		self.outputRevision = self.outputRevision + 1
+		if not self.outputRevision then
+			ConPrintf("WARNING: outputRevision was nil in OnFrame, initializing to 1")
+			self.outputRevision = 1
+		else
+			self.outputRevision = self.outputRevision + 1
+		end
 		self.buildFlag = false
-		if self.calcsTab then
-			self.calcsTab:BuildOutput()
+		local buildErr = PCall(self.calcsTab.BuildOutput, self.calcsTab)
+		if buildErr then
+			ConPrintf("WARNING: BuildOutput failed in OnFrame: %s", tostring(buildErr))
 		end
 		self:RefreshStatList()
 	end
@@ -1173,12 +1896,17 @@ function buildMode:OnFrame(inputEvents)
 	if main.decimalSeparator ~= self.lastShowDecimalSeparator then
 		self:RefreshStatList()
 	end
-	if main.showTitlebarName ~= self.lastShowTitlebarName then
+	if main.showTitlebarName ~= self.lastShowTitlebarName and self.spec then
 		self.spec:SetWindowTitleWithBuildClass()
 	end
 
 	-- Update contents of main skill dropdowns
-	self:RefreshSkillSelectControls(self.controls, self.mainSocketGroup, "")
+	if self.mainSocketGroup and self.skillsTab and self.skillsTab.socketGroupList then
+		self:RefreshSkillSelectControls(self.controls, self.mainSocketGroup, "")
+	else
+		ConPrintf("WARNING: Cannot refresh skill select controls - mainSocketGroup=%s, skillsTab=%s",
+			tostring(self.mainSocketGroup), tostring(self.skillsTab))
+	end
 
 	-- Draw contents of current tab
 	local sideBarWidth = 312
@@ -1188,8 +1916,23 @@ function buildMode:OnFrame(inputEvents)
 		width = main.screenW - sideBarWidth,
 		height = main.screenH - 32
 	}
+
+	-- Enable deferred tooltip drawing for all tabs except TREE: tooltip:Draw() calls during
+	-- tab content and controls will be queued instead of drawn immediately. This ensures
+	-- tooltips render ABOVE top bar, sidebar, and all Build-level controls.
+	-- (SetDrawLayer is a no-op in our Metal backend, so draw order = z-order)
+	-- TREE tab excluded: deferral causes visual artifacts (white rectangles) due to custom viewport.
+	main.tooltipQueue = main.tooltipQueue or {}
+	wipeTable(main.tooltipQueue)
+	main.deferTooltips = (self.viewMode ~= "TREE")
+
+	-- Draw dark background for tab content area (prevents transparent/white bleed-through)
+	SetDrawColor(0.05, 0.05, 0.05)
+	DrawImage(nil, 0, 0, main.screenW, main.screenH)
 	if self.viewMode == "IMPORT" then
-		self.importTab:Draw(tabViewPort, inputEvents)  
+		if self.importTab then
+			self.importTab:Draw(tabViewPort, inputEvents)
+		end
 	elseif self.viewMode == "NOTES" then
 		self.notesTab:Draw(tabViewPort, inputEvents)
 	elseif self.viewMode == "PARTY" then
@@ -1208,7 +1951,7 @@ function buildMode:OnFrame(inputEvents)
 
 	self.unsaved = self.modFlag or self.notesTab.modFlag or self.partyTab.modFlag or self.configTab.modFlag or self.treeTab.modFlag or self.treeTab.searchFlag or self.spec.modFlag or self.skillsTab.modFlag or self.itemsTab.modFlag or self.calcsTab.modFlag
 
-	SetDrawLayer(5)
+	ResetViewport()
 
 	-- Draw top bar background
 	SetDrawColor(0.2, 0.2, 0.2)
@@ -1224,6 +1967,41 @@ function buildMode:OnFrame(inputEvents)
 	DrawImage(nil, sideBarWidth - 4, 32, 4, main.screenH - 32)
 
 	self:DrawControls(main.viewPort)
+
+	-- Disable deferred mode and flush all queued tooltips
+	-- This draws ALL tooltips AFTER top bar, sidebar, and Build controls
+	main.deferTooltips = false
+
+	-- Draw Items tab displayItemTooltip first (static tooltip, always visible when item selected)
+	if self.viewMode == "ITEMS" and self.itemsTab and self.itemsTab.displayItem then
+		local ttAnchor = self.itemsTab.controls.displayItemTooltipAnchor
+		if ttAnchor then
+			local tx, ty = ttAnchor:GetPos()
+			local ttW, ttH = self.itemsTab.displayItemTooltip:GetSize()
+			-- Screen boundary clamping
+			if tx + ttW > main.screenW then
+				tx = main.screenW - ttW
+			end
+			if ty + ttH > main.screenH then
+				ty = main.screenH - ttH
+			end
+			if tx < 0 then tx = 0 end
+			if ty < 0 then ty = 0 end
+			self.itemsTab.displayItemTooltip:Draw(tx, ty, nil, nil, main.viewPort)
+		end
+	end
+
+	-- Flush queued hover tooltips (drawn LAST = on top of everything)
+	-- Copy queue to local and clear before flushing to avoid re-entrancy issues
+	local pendingTooltips = {}
+	for i, drawFunc in ipairs(main.tooltipQueue) do
+		pendingTooltips[i] = drawFunc
+	end
+	wipeTable(main.tooltipQueue)
+	for _, drawFunc in ipairs(pendingTooltips) do
+		drawFunc()
+	end
+	main.deferTooltips = false
 end
 
 -- Opens the game version conversion popup
@@ -1372,6 +2150,9 @@ function buildMode:OpenSpectreLibrary()
 end
 
 function buildMode:UpdateClassDropdowns(treeVersion)
+	if not self.controls.classDrop then
+		return
+	end
 	local classes = main.tree[treeVersion or latestTreeVersion].classes
 	wipeTable(self.controls.classDrop.list)
 	-- Initialise class dropdown
@@ -1454,7 +2235,25 @@ function buildMode:RefreshSkillSelectControls(controls, mainGroup, suffix)
 		controls.mainSkillMinionSkill.shown = false
 	else
 		local mainSocketGroup = self.skillsTab.socketGroupList[mainGroup]
+		if not mainSocketGroup then
+			controls.mainSkill.shown = false
+			controls.mainSkillPart.shown = false
+			controls.mainSkillMineCount.shown = false
+			controls.mainSkillStageCount.shown = false
+			controls.mainSkillMinion.shown = false
+			controls.mainSkillMinionSkill.shown = false
+			return
+		end
 		local displaySkillList = mainSocketGroup["displaySkillList"..suffix]
+		if not displaySkillList then
+			controls.mainSkill.shown = false
+			controls.mainSkillPart.shown = false
+			controls.mainSkillMineCount.shown = false
+			controls.mainSkillStageCount.shown = false
+			controls.mainSkillMinion.shown = false
+			controls.mainSkillMinionSkill.shown = false
+			return
+		end
 		local mainActiveSkill = mainSocketGroup["mainActiveSkill"..suffix] or 1
 		wipeTable(controls.mainSkill.list)
 		for i, activeSkill in ipairs(displaySkillList) do
@@ -1563,9 +2362,13 @@ end
 
 -- Add stat list for given actor
 function buildMode:AddDisplayStatList(statList, actor)
+	if not actor then
+		return
+	end
+	local skillFlags = actor.mainSkill and actor.mainSkill.skillFlags or {}
 	local statBoxList = self.controls.statBox.list
 	for index, statData in ipairs(statList) do
-		if matchFlags(statData.flag, statData.notFlag, actor.mainSkill.skillFlags) then
+		if matchFlags(statData.flag, statData.notFlag, skillFlags) then
 			local labelColor = "^7"
 			if statData.color then
 				labelColor = statData.color
@@ -1573,8 +2376,10 @@ function buildMode:AddDisplayStatList(statList, actor)
 			if statData.stat then
 				local statVal = actor.output[statData.stat]
 				-- access output values that are one node deeper (statData.stat is a table e.g. output.MainHand.Accuracy vs output.Life)
-				if statVal and statData.childStat then
+				if statVal and statData.childStat and type(statVal) == "table" then
 					statVal = statVal[statData.childStat]
+				elseif statData.childStat then
+					statVal = nil
 				end
 				if statVal and ((statData.condFunc and statData.condFunc(statVal,actor.output)) or (not statData.condFunc and statVal ~= 0)) then
 					local overCapStatVal = actor.output[statData.overCapStat] or nil
@@ -1678,14 +2483,17 @@ function buildMode:AddDisplayStatList(statList, actor)
 end
 
 function buildMode:InsertItemWarnings()
-	if not self.calcsTab or not self.calcsTab.mainEnv then return end
-	if self.calcsTab.mainEnv.itemWarnings.jewelLimitWarning then
-		for _, warning in ipairs(self.calcsTab.mainEnv.itemWarnings.jewelLimitWarning) do
+	local mainEnv = self.calcsTab and self.calcsTab.mainEnv
+	if not mainEnv or not mainEnv.itemWarnings then
+		return
+	end
+	if mainEnv.itemWarnings.jewelLimitWarning then
+		for _, warning in ipairs(mainEnv.itemWarnings.jewelLimitWarning) do
 			InsertIfNew(self.controls.warnings.lines, "You are exceeding jewel limit with the jewel "..warning)
 		end
 	end
-	if self.calcsTab.mainEnv.itemWarnings.socketLimitWarning then
-		for _, warning in ipairs(self.calcsTab.mainEnv.itemWarnings.socketLimitWarning) do
+	if mainEnv.itemWarnings.socketLimitWarning then
+		for _, warning in ipairs(mainEnv.itemWarnings.socketLimitWarning) do
 			InsertIfNew(self.controls.warnings.lines, "You have too many gems in your "..warning.." slot")
 		end
 	end
@@ -1693,52 +2501,69 @@ end
 
 -- Build list of side bar stats
 function buildMode:RefreshStatList()
-	if not self.calcsTab or not self.calcsTab.mainEnv then return end
+	if not self.controls.warnings or not self.controls.statBox then
+		return
+	end
+
 	self.controls.warnings.lines = {}
 	local statBoxList = wipeTable(self.controls.statBox.list)
-	if self.calcsTab.mainEnv.player.mainSkill.infoMessage then
-			if #self.calcsTab.mainEnv.player.mainSkill.infoMessage > 40 then
-				for line in string.gmatch(self.calcsTab.mainEnv.player.mainSkill.infoMessage, "([^:]+)") do
-					t_insert(statBoxList, { height = 14, align = "CENTER_X", x = 140, colorCodes.CUSTOM .. line})
-				end
-			else
-				t_insert(statBoxList, { height = 14, align = "CENTER_X", x = 140, colorCodes.CUSTOM .. self.calcsTab.mainEnv.player.mainSkill.infoMessage})
+
+	-- Nil-safety: guard mainEnv access
+	local mainEnv = self.calcsTab and self.calcsTab.mainEnv
+	if not mainEnv or not mainEnv.player then
+		-- Show placeholder stats when calc engine not ready
+		t_insert(statBoxList, { height = 16, "^7Life:", "^x00FF0050" })
+		t_insert(statBoxList, { height = 16, "^7Mana:", "^x7070FF40" })
+		t_insert(statBoxList, { height = 14, "^8(Calculation engine loading...)" })
+		return
+	end
+
+	if mainEnv.player.mainSkill and mainEnv.player.mainSkill.infoMessage then
+		if #mainEnv.player.mainSkill.infoMessage > 40 then
+			for line in string.gmatch(mainEnv.player.mainSkill.infoMessage, "([^:]+)") do
+				t_insert(statBoxList, { height = 14, align = "CENTER_X", x = 140, colorCodes.CUSTOM .. line})
 			end
-		if self.calcsTab.mainEnv.player.mainSkill.infoMessage2 then
-			t_insert(statBoxList, { height = 14, align = "CENTER_X", x = 140, "^8" .. self.calcsTab.mainEnv.player.mainSkill.infoMessage2})
+		else
+			t_insert(statBoxList, { height = 14, align = "CENTER_X", x = 140, colorCodes.CUSTOM .. mainEnv.player.mainSkill.infoMessage})
+		end
+		if mainEnv.player.mainSkill.infoMessage2 then
+			t_insert(statBoxList, { height = 14, align = "CENTER_X", x = 140, "^8" .. mainEnv.player.mainSkill.infoMessage2})
 		end
 	end
-	if self.calcsTab.mainEnv.minion then
+	if mainEnv.minion then
 		t_insert(statBoxList, { height = 18, "^7Minion:" })
-		if self.calcsTab.mainEnv.minion.mainSkill.infoMessage then
-			-- Split the line if too long
-			if #self.calcsTab.mainEnv.minion.mainSkill.infoMessage > 40 then
-				for line in string.gmatch(self.calcsTab.mainEnv.minion.mainSkill.infoMessage, "([^:]+)") do
+		if mainEnv.minion.mainSkill and mainEnv.minion.mainSkill.infoMessage then
+			if #mainEnv.minion.mainSkill.infoMessage > 40 then
+				for line in string.gmatch(mainEnv.minion.mainSkill.infoMessage, "([^:]+)") do
 					t_insert(statBoxList, { height = 14, align = "CENTER_X", x = 140, colorCodes.CUSTOM .. line})
 				end
 			else
-				t_insert(statBoxList, { height = 14, align = "CENTER_X", x = 140, colorCodes.CUSTOM .. self.calcsTab.mainEnv.minion.mainSkill.infoMessage})
+				t_insert(statBoxList, { height = 14, align = "CENTER_X", x = 140, colorCodes.CUSTOM .. mainEnv.minion.mainSkill.infoMessage})
 			end
-			if self.calcsTab.mainEnv.minion.mainSkill.infoMessage2 then
-				t_insert(statBoxList, { height = 14, align = "CENTER_X", x = 140, "^8" .. self.calcsTab.mainEnv.minion.mainSkill.infoMessage2})
+			if mainEnv.minion.mainSkill.infoMessage2 then
+				t_insert(statBoxList, { height = 14, align = "CENTER_X", x = 140, "^8" .. mainEnv.minion.mainSkill.infoMessage2})
 			end
 		end
-		self:AddDisplayStatList(self.minionDisplayStats, self.calcsTab.mainEnv.minion)
+		self:AddDisplayStatList(self.minionDisplayStats, mainEnv.minion)
 		t_insert(statBoxList, { height = 10 })
 		t_insert(statBoxList, { height = 18, "^7Player:" })
 	end
-	if self.calcsTab.mainEnv.player.mainSkill.skillFlags.disable then
+	if mainEnv.player.mainSkill and mainEnv.player.mainSkill.skillFlags and mainEnv.player.mainSkill.skillFlags.disable then
 		t_insert(statBoxList, { height = 16, "^7Skill disabled:" })
-		t_insert(statBoxList, { height = 14, align = "CENTER_X", x = 140, self.calcsTab.mainEnv.player.mainSkill.disableReason })
+		t_insert(statBoxList, { height = 14, align = "CENTER_X", x = 140, mainEnv.player.mainSkill.disableReason })
 	end
-	self:AddDisplayStatList(self.displayStats, self.calcsTab.mainEnv.player)
-	self:InsertItemWarnings()
+	local ok, err = pcall(self.AddDisplayStatList, self, self.displayStats, mainEnv.player)
+	if not ok then
+		t_insert(statBoxList, { height = 14, "^8(Stats unavailable: calc engine error)" })
+	end
+	local ok2, err2 = pcall(self.InsertItemWarnings, self)
 end
 
 function buildMode:CompareStatList(tooltip, statList, actor, baseOutput, compareOutput, header, nodeCount)
 	local count = 0
 	for _, statData in ipairs(statList) do
-		if statData.stat and matchFlags(statData.flag, statData.notFlag, actor.mainSkill.skillFlags) and not statData.childStat and statData.stat ~= "SkillDPS" then
+		local skillFlags = actor.mainSkill and actor.mainSkill.skillFlags or {}
+		if statData.stat and matchFlags(statData.flag, statData.notFlag, skillFlags) and not statData.childStat and statData.stat ~= "SkillDPS" then
 			local statVal1 = compareOutput[statData.stat] or 0
 			local statVal2 = baseOutput[statData.stat] or 0
 			local diff = statVal1 - statVal2
@@ -1784,15 +2609,19 @@ end
 -- Returns the number of stat lines added
 function buildMode:AddStatComparesToTooltip(tooltip, baseOutput, compareOutput, header, nodeCount)
 	local count = 0
-	if self.calcsTab.mainEnv.player.mainSkill.minion and baseOutput.Minion and compareOutput.Minion then
-		count = count + self:CompareStatList(tooltip, self.minionDisplayStats, self.calcsTab.mainEnv.minion, baseOutput.Minion, compareOutput.Minion, header.."\n^7Minion:", nodeCount)
+	local mainEnv = self.calcsTab and self.calcsTab.mainEnv
+	if not mainEnv or not mainEnv.player or not mainEnv.player.mainSkill then
+		return 0
+	end
+	if mainEnv.player.mainSkill.minion and baseOutput.Minion and compareOutput.Minion then
+		count = count + self:CompareStatList(tooltip, self.minionDisplayStats, mainEnv.minion, baseOutput.Minion, compareOutput.Minion, header.."\n^7Minion:", nodeCount)
 		if count > 0 then
 			header = "^7Player:"
 		else
 			header = header.."\n^7Player:"
 		end
 	end
-	count = count + self:CompareStatList(tooltip, self.displayStats, self.calcsTab.mainEnv.player, baseOutput, compareOutput, header, nodeCount)
+	count = count + self:CompareStatList(tooltip, self.displayStats, mainEnv.player, baseOutput, compareOutput, header, nodeCount)
 	return count
 end
 
@@ -1803,9 +2632,11 @@ do
 		if level and level > 0 then
 			t_insert(req, s_format("^x7F7F7FLevel %s%d", main:StatColor(level, nil, self.characterLevel), level))
 		end
+		local mainEnv = self.calcsTab and self.calcsTab.mainEnv
+		local mainOutput = self.calcsTab and self.calcsTab.mainOutput
 		-- Convert normal attributes to Omni attributes
-		if self.calcsTab.mainEnv.modDB:Flag(nil, "OmniscienceRequirements") then
-			local omniSatisfy = self.calcsTab.mainEnv.modDB:Sum("INC", nil, "OmniAttributeRequirements")
+		if mainEnv and mainEnv.modDB and mainEnv.modDB:Flag(nil, "OmniscienceRequirements") then
+			local omniSatisfy = mainEnv.modDB:Sum("INC", nil, "OmniAttributeRequirements")
 			local highestAttribute = 0
 			for i, stat in ipairs({str, dex, int}) do
 				if((stat or 0) > highestAttribute) then
@@ -1813,18 +2644,18 @@ do
 				end
 			end
 			local omni = math.floor(highestAttribute * (100/omniSatisfy))
-			if omni and (omni > 0 or omni > self.calcsTab.mainOutput.Omni) then
-				t_insert(req, s_format("%s%d ^x7F7F7FOmni", main:StatColor(omni, 0, self.calcsTab.mainOutput.Omni), omni))
+			if mainOutput and omni and (omni > 0 or omni > (mainOutput.Omni or 0)) then
+				t_insert(req, s_format("%s%d ^x7F7F7FOmni", main:StatColor(omni, 0, mainOutput.Omni or 0), omni))
 			end
-		else 
-			if str and (str > 14 or str > self.calcsTab.mainOutput.Str) then
-				t_insert(req, s_format("%s%d ^x7F7F7FStr", main:StatColor(str, strBase, self.calcsTab.mainOutput.Str), str))
+		elseif mainOutput then
+			if str and (str > 14 or str > (mainOutput.Str or 0)) then
+				t_insert(req, s_format("%s%d ^x7F7F7FStr", main:StatColor(str, strBase, mainOutput.Str or 0), str))
 			end
-			if dex and (dex > 14 or dex > self.calcsTab.mainOutput.Dex) then
-				t_insert(req, s_format("%s%d ^x7F7F7FDex", main:StatColor(dex, dexBase, self.calcsTab.mainOutput.Dex), dex))
+			if dex and (dex > 14 or dex > (mainOutput.Dex or 0)) then
+				t_insert(req, s_format("%s%d ^x7F7F7FDex", main:StatColor(dex, dexBase, mainOutput.Dex or 0), dex))
 			end
-			if int and (int > 14 or int > self.calcsTab.mainOutput.Int) then
-				t_insert(req, s_format("%s%d ^x7F7F7FInt", main:StatColor(int, intBase, self.calcsTab.mainOutput.Int), int))
+			if int and (int > 14 or int > (mainOutput.Int or 0)) then
+				t_insert(req, s_format("%s%d ^x7F7F7FInt", main:StatColor(int, intBase, mainOutput.Int or 0), int))
 			end
 		end
 		if req[1] then

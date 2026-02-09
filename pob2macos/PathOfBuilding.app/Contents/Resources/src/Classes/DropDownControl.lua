@@ -288,11 +288,11 @@ function DropDownClass:Draw(viewPort, noTooltip)
 
 	-- draw dropdown bar
 	if enabled then
-		if (mOver or self.dropped) and mOverComp ~= "DROP" and not noTooltip then
+		if mOver and not self.dropped and mOverComp ~= "DROP" and not noTooltip then
 			SetDrawLayer(nil, 100)
 			self:DrawTooltip(
-				x, y - (self.dropped and self.dropUp and dropExtra or 0), 
-				width, height + (self.dropped and dropExtra or 0), 
+				x, y - (self.dropped and self.dropUp and dropExtra or 0),
+				width, height + (self.dropped and dropExtra or 0),
 				viewPort,
 				mOver and "BODY" or "OUT", self.selIndex, self.list[self.selIndex])
 			SetDrawLayer(nil, 0)
@@ -319,19 +319,6 @@ function DropDownClass:Draw(viewPort, noTooltip)
 	DrawString(0, 0, "LEFT", lineHeight, "VAR", selLabel or "")
 	if selDetail ~= nil then
 		local dx = DrawStringWidth(lineHeight, "VAR", selDetail)
-		if not enabled or self.dropped then
-			SetDrawColor(0, 0, 0)
-		elseif mOver then
-			SetDrawColor(0.33, 0.33, 0.33)
-		else
-			SetDrawColor(0, 0, 0)
-		end
-		DrawImage(nil, width - dx - 4 - 22, 0, width - 4, lineHeight)
-		if enabled then
-			SetDrawColor(1, 1, 1)
-		else
-			SetDrawColor(0.66, 0.66, 0.66)
-		end
 		DrawString(width - dx - 22, 0, "LEFT", lineHeight, "VAR", selDetail)
 	end
 	SetViewport()
@@ -349,18 +336,14 @@ function DropDownClass:Draw(viewPort, noTooltip)
 		if self.hoverSel and not self.list[self.hoverSel] then
 			self.hoverSel = nil
 		end
-		if self.hoverSel and not noTooltip then
-			SetDrawLayer(nil, 100)
-			self:DrawTooltip(
-				x, dropY + 2 + (self.hoverSelDrop - 1) * lineHeight - scrollBar.offset,
-				width, lineHeight,
-				viewPort,
-				"HOVER", self.hoverSel, self.list[self.hoverSel])
-			SetDrawLayer(nil, 5)
-		end
-
-		-- draw dropdown items
+		-- draw dropdown items first (so tooltips render on top)
 		SetViewport(x + 2, dropY + 2, scrollBar.enabled and width - 22 or width - 4, self.dropHeight)
+		local cursorX, cursorY = GetCursorPos()
+		self.hoverSelDrop = mOver and not scrollBar:IsMouseOver() and math.floor((cursorY - dropY + scrollBar.offset) / lineHeight) + 1
+		self.hoverSel = self:DropIndexToListIndex(self.hoverSelDrop)
+		if self.hoverSel and not self.list[self.hoverSel] then
+			self.hoverSel = nil
+		end
 		local dropIndex = 0
 		for index, listVal in ipairs(self.list) do
 			local searchInfo = self.searchInfos[index]
@@ -385,25 +368,13 @@ function DropDownClass:Draw(viewPort, noTooltip)
 				if type(listVal) == "table" then
 					label = listVal.label
 					detail = listVal.detail
-				else 
+				else
 					label = listVal
 				end
 				DrawString(0, y, "LEFT", lineHeight, "VAR", label)
 				if detail ~= nil then
 					local detail = listVal.detail
-					local dx = DrawStringWidth(lineHeight, "VAR", detail)
-					if index == self.hoverSel then
-						SetDrawColor(0.33, 0.33, 0.33)
-					else
-						SetDrawColor(0, 0, 0)
-					end
-					DrawImage(nil, width - dx - 8 - 22, y, width - 4, lineHeight)
-					-- highlight font color if hovered or selected
-					if index == self.hoverSel or index == self.selIndex then
-						SetDrawColor(1, 1, 1)
-					else
-						SetDrawColor(0.66, 0.66, 0.66)
-					end
+					dx = DrawStringWidth(lineHeight, "VAR", detail)
 					DrawString(width - dx - 4 - 22, y, "LEFT", lineHeight, "VAR", detail)
 				end
 				self:DrawSearchHighlights(label, searchInfo, 0, y, width - 4, lineHeight)
@@ -414,6 +385,17 @@ function DropDownClass:Draw(viewPort, noTooltip)
 			DrawString(0, 0 , "LEFT", lineHeight, "VAR", "<No matches>")
 		end
 		SetViewport()
+
+		-- draw tooltip for hovered item (AFTER items so it renders on top)
+		if self.hoverSel and not noTooltip then
+			SetDrawLayer(nil, 100)
+			self:DrawTooltip(
+				x, dropY + 2 + (self.hoverSelDrop - 1) * lineHeight - scrollBar.offset,
+				width, lineHeight,
+				viewPort,
+				"HOVER", self.hoverSel, self.list[self.hoverSel])
+			SetDrawLayer(nil, 5)
+		end
 		SetDrawLayer(nil, 0)
 	end
 end
@@ -538,7 +520,7 @@ function DropDownClass:CheckDroppedWidth(enable)
 				line = line.label or ""
 			end
 			  -- +10 to stop clipping
-			dWidth = m_max(dWidth, DrawStringWidth(lineHeight, "VAR", line) + 10)
+			dWidth = m_max(dWidth, DrawStringWidth(lineHeight, "VAR", line or "") + 10)
 		end
 		  -- no greater than self.maxDroppedWidth
 		self.droppedWidth = m_min(dWidth + scrollWidth, self.maxDroppedWidth)

@@ -261,6 +261,7 @@ function sanitiseText(text)
 		:gsub("\226\128\148", "-") -- U+2014 EM DASH
 		:gsub("\226\128\149", "-") -- U+2015 HORIZONTAL BAR
 		:gsub("\226\136\146", "-") -- U+2212 MINUS SIGN
+		:gsub("\226\128\162 ?", "") -- U+2022 BULLET
 		:gsub("\195\164", "a") -- U+00E4 LATIN SMALL LETTER A WITH DIAERESIS
 		:gsub("\195\182", "o") -- U+00F6 LATIN SMALL LETTER O WITH DIAERESIS
 		-- single-byte: Windows-1252 and similar
@@ -271,6 +272,16 @@ function sanitiseText(text)
 		-- unsupported
 		:gsub("[\128-\255]", "?")
 		or text
+end
+
+-- Convert int to 4 bytes string
+function intToBytes(int)
+	return string.char(
+		bit.band(int, 0xFF),
+		bit.band(bit.rshift(int, 8), 0xFF),
+		bit.band(bit.rshift(int, 16), 0xFF),
+		bit.band(bit.rshift(int, 24), 0xFF)
+	)
 end
 
 do
@@ -369,7 +380,7 @@ function writeLuaTable(out, t, indent)
 		if indent then
 			out:write(string.rep("\t", indent))
 		end
-		if type(k) == "string" and k:match("^%a[%a%d]*$") and k ~= "hexproof" then
+		if type(k) == "string" and k:match("^%a[%a%d]*$") and k ~= "hexproof" and k ~= "in" then
 			out:write(k, '=')
 		else
 			out:write('[')
@@ -406,6 +417,8 @@ end
 
 -- Make a copy of a table and all subtables
 function copyTable(tbl, noRecurse)
+	-- Stage 4: Nil guard
+	if not tbl then return {} end
 	local out = {}
 	for k, v in pairs(tbl) do
 		if not noRecurse and type(v) == "table" then
@@ -583,6 +596,8 @@ end
 
 -- Based on https://www.lua.org/pil/19.3.html
 function pairsSortByKey(t, f)
+	-- Stage 4: Nil guard for table parameter
+	if not t then return function() return nil end end
 	local sortedKeys = {}
 	for key in pairs(t) do t_insert(sortedKeys, key) end
 	table.sort(sortedKeys, f)
@@ -631,7 +646,7 @@ function naturalSortCompare(a, b)
 	end
 end
 
--- Rounds a number to the nearest <dec> decimal places
+-- Rounds a number to the nearest <dec> decimal places 2.5->3 and -2.5->-2
 function round(val, dec)
 	if dec then
 		return m_floor(val * 10 ^ dec + 0.5) / 10 ^ dec
@@ -650,6 +665,62 @@ function floor(val, dec)
 		return m_floor(val * mult + 0.0001) / mult
 	else
 		return m_floor(val)
+	end
+end
+
+-- Symmetric round with precision: Rounds towards zero to <dec> decimal places.
+function roundSymmetric(val, dec)
+	if dec then
+		local factor = 10 ^ dec
+		if val >= 0 then
+			return m_floor(val * factor + 0.5) / factor
+		else
+			return m_ceil(val * factor - 0.5) / factor
+		end
+	else
+		if val >= 0 then
+			return m_floor(val + 0.5)
+		else
+			return m_ceil(val - 0.5)
+		end
+	end
+end
+
+-- Use rounding formula for positive numbers always used in corrupted unique roll ranges this is an incorrect way to round numbers.
+function alwaysPositiveRound(val, dec)
+	if dec then
+		local factor = 10 ^ dec
+		return floorSymmetric(val * factor + 0.5) / factor
+	else
+		return floorSymmetric(val + 0.5)
+	end
+end
+
+-- Symmetric floor with precision: Rounds down towards zero to <dec> decimal places.
+function floorSymmetric(val, dec)
+	if dec then
+		local factor = 10 ^ dec
+		return select(1, math.modf(val * factor)) / factor
+	else
+		return select(1, math.modf(val))
+	end
+end
+
+-- Symmetric ceil with precision: Rounds up away from zero to <dec> decimal places.
+function ceilSymmetric(val, dec)
+	if dec then
+		local factor = 10 ^ dec
+		if val >= 0 then
+			return m_ceil(val * factor) / factor
+		else
+			return m_floor(val * factor) / factor
+		end
+	else
+		if val >= 0 then
+			return m_ceil(val)
+		else
+			return m_floor(val)
+		end
 	end
 end
 
@@ -964,13 +1035,11 @@ function ImportBuild(importLink, callback)
 	end
 end
 
--- Returns virtual screen size
-function GetVirtualScreenSize()
-	local width, height = GetScreenSize()
-	local scale = GetScreenScale and GetScreenScale() or 1.0
-	if scale ~= 1.0 then
-		width = math.floor(width / scale)
-		height = math.floor(height / scale)
-	end
-	return width, height
+function escapeGGGString(text)
+	local line = text:gsub("%[([^|%]]+)%]", "%1"):gsub("%[[^|]+|([^|]+)%]", "%1")
+	return line
+end
+
+function getHashFromString(string)
+	return common.sha1(string)
 end
