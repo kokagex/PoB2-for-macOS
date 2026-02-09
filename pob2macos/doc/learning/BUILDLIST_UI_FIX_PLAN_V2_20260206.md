@@ -132,7 +132,7 @@
 **Action**:
 - `open PathOfBuilding.app`
 - Wait for UI to appear
-- Capture logs: `tail -100 codex/passive_tree_app.log`
+- Capture logs: `tail -100 passive_tree_app.log`
 - Search for version strings
 
 **Deliverable**: Log output showing which code version is running

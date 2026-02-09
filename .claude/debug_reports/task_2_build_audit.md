@@ -442,7 +442,7 @@ fi
 # アプリを起動してログを確認
 open PathOfBuilding.app
 sleep 5
-tail -50 /Users/kokage/national-operations/pob2macos/PathOfBuilding.app/Contents/Resources/pob2macos/codex/passive_tree_app.log
+tail -50 /Users/kokage/national-operations/pob2macos/PathOfBuilding.app/Contents/Resources/pob2macos/passive_tree_app.log
 ```
 
 **期待されるログ出力**:

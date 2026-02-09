@@ -115,16 +115,16 @@ Build:OnFrame (Main.lua:393 → Build.lua:1812)
 
 ### ログ出力先
 ```
-PathOfBuilding.app/Contents/Resources/pob2macos/codex/passive_tree_app.log
+PathOfBuilding.app/Contents/Resources/pob2macos/passive_tree_app.log
 ```
 ※ 起動スクリプト (`Contents/MacOS/PathOfBuilding`) が `exec luajit >> $LOG 2>&1` でリダイレクト
 
 ### 検証ワークフロー
-1. ログをtruncate: `truncate -s 0 .../codex/passive_tree_app.log`
+1. ログをtruncate: `truncate -s 0 .../passive_tree_app.log`
 2. アプリ起動: `./PathOfBuilding.app/Contents/MacOS/PathOfBuilding &`
 3. ユーザーがスクリーンショット
 4. アプリ終了: `pkill -f PathOfBuilding`
-5. ログ確認: `grep "KEYWORD" .../codex/passive_tree_app.log | tail -N`
+5. ログ確認: `grep "KEYWORD" .../passive_tree_app.log | tail -N`
 
 ---
 

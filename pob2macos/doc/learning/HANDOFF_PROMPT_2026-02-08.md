@@ -160,7 +160,7 @@ cp runtime/SimpleGraphic.dylib PathOfBuilding.app/Contents/Resources/pob2macos/r
 # ユーザーがスクリーンショット撮影後
 pkill -f PathOfBuilding
 # ログ確認
-grep "FULL ERROR\|WARNING" PathOfBuilding.app/Contents/Resources/pob2macos/codex/passive_tree_app.log | head -30
+grep "FULL ERROR\|WARNING" PathOfBuilding.app/Contents/Resources/pob2macos/passive_tree_app.log | head -30
 ```
 
 ---
