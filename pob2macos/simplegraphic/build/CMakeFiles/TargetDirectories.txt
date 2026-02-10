@@ -1,8 +1,0 @@
-/Users/kokage/national-operations/pob2macos/simplegraphic/build/CMakeFiles/simplegraphic.dir
-/Users/kokage/national-operations/pob2macos/simplegraphic/build/CMakeFiles/test.dir
-/Users/kokage/national-operations/pob2macos/simplegraphic/build/CMakeFiles/edit_cache.dir
-/Users/kokage/national-operations/pob2macos/simplegraphic/build/CMakeFiles/rebuild_cache.dir
-/Users/kokage/national-operations/pob2macos/simplegraphic/build/CMakeFiles/list_install_components.dir
-/Users/kokage/national-operations/pob2macos/simplegraphic/build/CMakeFiles/install.dir
-/Users/kokage/national-operations/pob2macos/simplegraphic/build/CMakeFiles/install/local.dir
-/Users/kokage/national-operations/pob2macos/simplegraphic/build/CMakeFiles/install/strip.dir
