@@ -1622,15 +1622,16 @@ function PassiveTreeViewClass:AddNodeTooltip(tooltip, node, build, incSmallPassi
 	end
 
 	local function addModInfoToTooltip(node, i, line, localIncEffect)
-		if node.mods[i] then
-			if launch.devModeAlt and node.mods[i].list then
+		local nodeMod = node.mods and node.mods[i]
+		if nodeMod then
+			if launch.devModeAlt and nodeMod.list then
 				-- Modifier debugging info
 				local modStr
-				for _, mod in pairs(node.mods[i].list) do
+				for _, mod in pairs(nodeMod.list) do
 					modStr = (modStr and modStr..", " or "^2") .. modLib.formatMod(mod)
 				end
-				if node.mods[i].extra then
-					modStr = (modStr and modStr.."  " or "") .. colorCodes.NEGATIVE .. node.mods[i].extra
+				if nodeMod.extra then
+					modStr = (modStr and modStr.."  " or "") .. colorCodes.NEGATIVE .. nodeMod.extra
 				end
 				if modStr then
 					line = line .. "  " .. modStr
@@ -1638,11 +1639,11 @@ function PassiveTreeViewClass:AddNodeTooltip(tooltip, node, build, incSmallPassi
 			end
 			
 			-- Apply Inc Node scaling from Hulking Form + Radius Jewels only visually
-			if (((incSmallPassiveSkillEffect + localIncEffect) > 0 and node.type == "Normal") or (localIncEffect > 0 and node.type == "Notable")) and not node.isAttribute and not node.ascendancyName and node.mods[i].list then
+			if (((incSmallPassiveSkillEffect + localIncEffect) > 0 and node.type == "Normal") or (localIncEffect > 0 and node.type == "Notable")) and not node.isAttribute and not node.ascendancyName and nodeMod.list then
 				local base = (localIncEffect or 0)
 				local scale = 1 + ((node.type == "Normal" and ((incSmallPassiveSkillEffect or 0) + base) or base) / 100)
 
-				local modsList = copyTable(node.mods[i].list)
+				local modsList = copyTable(nodeMod.list)
 				local scaledList = new("ModList")
 				scaledList:ScaleAddList(modsList, scale)
 				for j, mod in ipairs(scaledList) do
@@ -1663,13 +1664,16 @@ function PassiveTreeViewClass:AddNodeTooltip(tooltip, node, build, incSmallPassi
 				-- line = line .. "  ^8(Effect increased by "..incSmallPassiveSkillEffect.."%)"
 			end
 			
-			if line ~= " " and (node.mods[i].extra or not node.mods[i].list) then 
+			if line ~= " " and (nodeMod.extra or not nodeMod.list) then 
 				local line = colorCodes.UNSUPPORTED..line
 				line = main.notSupportedModTooltips and (line .. main.notSupportedTooltipText) or line
 				tooltip:AddLine(fontSizeBig, line, "FONTIN SC")
 			else
 				tooltip:AddLine(fontSizeBig, colorCodes.MAGIC..line, "FONTIN SC")
 			end
+		elseif line and line ~= " " then
+			-- MINIMAL mode can leave node.mods empty; keep tooltip body visible using raw stat text.
+			tooltip:AddLine(fontSizeBig, colorCodes.MAGIC..line, "FONTIN SC")
 		end
 	end
 

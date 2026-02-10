@@ -388,13 +388,31 @@ end
 -- DrawImage: Wrapper to handle wrapped ImageHandle objects
 _G.DrawImage = function(imageHandle, left, top, width, height, tcLeft, tcTop, tcRight, tcBottom)
     local handle = imageHandle
-    -- If it's a wrapped ImageHandle object, extract the raw C handle
-    if type(imageHandle) == "table" and imageHandle._handle then
-        handle = imageHandle._handle
-        -- Debug: Log if handle is nil after extraction
-        if not handle then
-            print(string.format("WARNING: DrawImage called with table but _handle is nil at pos(%.0f,%.0f)", left or 0, top or 0))
+    -- Accept all common image table forms:
+    -- 1) NewImageHandle wrapper: { _handle = cdata }
+    -- 2) Asset table: { handle = NewImageHandle wrapper or raw cdata, ... }
+    if type(imageHandle) == "table" then
+        if imageHandle._handle then
+            handle = imageHandle._handle
+        elseif imageHandle.handle then
+            local inner = imageHandle.handle
+            if type(inner) == "table" and inner._handle then
+                handle = inner._handle
+            else
+                handle = inner
+            end
+        else
+            -- Unknown table shape: draw nothing instead of crashing FFI conversion.
+            handle = nil
         end
+    end
+    -- Final unwrapping guard if nested wrapper leaked through.
+    if type(handle) == "table" and handle._handle then
+        handle = handle._handle
+    end
+    -- Absolute safety: never pass Lua tables to FFI void* parameters.
+    if type(handle) == "table" then
+        handle = nil
     end
     -- If tcLeft is a non-numeric (e.g., asset filename), ignore UV arguments
     if tcLeft ~= nil and type(tcLeft) ~= "number" then
