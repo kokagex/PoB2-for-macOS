@@ -380,9 +380,10 @@ function EditClass:Draw(viewPort, noTooltip)
 			textY = textY + textHeight
 		end
 		if caretX then
+			local caretWidth = m_max(2, m_floor(textHeight * 0.10))
 			if (GetTime() - self.blinkStart) % 1000 < 500 then
-				SetDrawColor(self.textCol)
-				DrawImage(nil, caretX, caretY, 1, textHeight)
+				SetDrawColor(1, 1, 1, 1)
+				DrawImage(nil, caretX, caretY, caretWidth, textHeight)
 			end
 		end
 	elseif self.sel and self.sel ~= self.caret then
@@ -410,10 +411,11 @@ function EditClass:Draw(viewPort, noTooltip)
 		else
 			DrawString(textX + selWidth, textY, "LEFT", textHeight, self.font, post)
 		end
+		local caretWidth = m_max(2, m_floor(textHeight * 0.10))
 		if (GetTime() - self.blinkStart) % 1000 < 500 then
 			local caretX = (self.caret > self.sel) and textX + selWidth or textX
-			SetDrawColor(self.textCol)
-			DrawImage(nil, caretX, textY, 1, textHeight)
+			SetDrawColor(1, 1, 1, 1)
+			DrawImage(nil, caretX, textY, caretWidth, textHeight)
 		end
 	else
 		local pre = self.textCol .. self.buf:sub(1, self.caret - 1)
@@ -429,9 +431,10 @@ function EditClass:Draw(viewPort, noTooltip)
 		else
 			DrawString(textX, textY, "LEFT", textHeight, self.font, post)
 		end
+		local caretWidth = m_max(2, m_floor(textHeight * 0.10))
 		if (GetTime() - self.blinkStart) % 1000 < 500 then
-			SetDrawColor(self.textCol)
-			DrawImage(nil, textX, textY, 1, textHeight)
+			SetDrawColor(1, 1, 1, 1)
+			DrawImage(nil, textX, textY, caretWidth, textHeight)
 		end
 	end
 	SetViewport()

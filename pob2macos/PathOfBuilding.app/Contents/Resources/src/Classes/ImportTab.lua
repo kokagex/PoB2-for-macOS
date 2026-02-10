@@ -45,29 +45,30 @@ local ImportTabClass = newClass("ImportTab", "ControlHost", "Control", function(
 	end
 	
 	self.controls.characterImportAnchor = new("Control", {"TOPLEFT",self.controls.sectionCharImport,"TOPLEFT"}, {6, 40, 200, 16})
-	self.controls.sectionCharImport.height = function() return self.charImportMode == "AUTHENTICATION" and 60 or 200 end
+	self.controls.sectionCharImport.height = function()
+		if self.charImportMode == "AUTHENTICATION" or self.charImportMode == "AUTHWAIT" then
+			return 60
+		end
+		return 200
+	end
 
 	-- Stage: Authenticate
 	self.controls.authenticateButton = new("ButtonControl", {"TOPLEFT",self.controls.characterImportAnchor,"TOPLEFT"}, {0, 0, 200, 16}, "^7Authorize with Path of Exile", function()
-		self.api:FetchAuthToken(function()
-			if self.api.authToken then
-				self.charImportMode = "GETACCOUNTNAME"
-				self.charImportStatus = "Authenticated"
-
-				main.lastToken = self.api.authToken
-				main.lastRefreshToken = self.api.refreshToken
-				main.tokenExpiry = self.api.tokenExpiry
-				main:SaveSettings()
-				self:DownloadCharacterList()
-			else
-				self.charImportStatus = colorCodes.WARNING.."Not authenticated"
-			end
-		end)
-		local clickTime = os.time()
-		self.charImportStatus = function() return "Logging in... (" .. m_max(0, (clickTime + 30) - os.time()) .. ")" end
+		if self.charImportMode == "AUTHWAIT" then
+			self.api:CancelAuth()
+			self.charImportMode = "AUTHENTICATION"
+		end
+		local ok, errMsg = self.api:FetchAuthToken()
+		if ok then
+			self.charImportMode = "AUTHWAIT"
+			self.charImportStatus = "Waiting for browser authorization..."
+		else
+			self.charImportMode = "AUTHENTICATION"
+			self.charImportStatus = colorCodes.NEGATIVE.."Auth failed: "..tostring(errMsg)
+		end
 	end)
 	self.controls.authenticateButton.shown = function()
-		return self.charImportMode == "AUTHENTICATION"
+		return self.charImportMode == "AUTHENTICATION" or self.charImportMode == "AUTHWAIT"
 	end
 
 	-- Stage: fetch characters
@@ -395,6 +396,19 @@ function ImportTabClass:Draw(viewPort, inputEvents)
 	self.height = viewPort.height
 
 	self:ProcessControlsInput(inputEvents, viewPort)
+
+	if self.charImportMode == "AUTHWAIT" then
+		local ok, errMsg = self.api:PollAuth()
+		if ok == true then
+			self.charImportMode = "GETACCOUNTNAME"
+			self.charImportStatus = "Authenticated"
+			self:SaveApiSettings()
+			self:DownloadCharacterList()
+		elseif ok == false then
+			self.charImportMode = "AUTHENTICATION"
+			self.charImportStatus = colorCodes.WARNING.."Auth failed: "..tostring(errMsg)
+		end
+	end
 
 	main:DrawBackground(viewPort)
 
