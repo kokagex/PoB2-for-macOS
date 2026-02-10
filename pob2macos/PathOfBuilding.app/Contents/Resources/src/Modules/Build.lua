@@ -749,7 +749,7 @@ end
 function buildMode:Init(dbFileName, buildName, buildXML, convertBuild, importLink)
 	-- Phase 1: Minimal Stub (2026-02-06)
 	-- Skip full initialization, only create TreeTab for passive tree display
-	if true then -- Phase 1 flag: set to false to restore full init
+	if false then -- Phase 1 flag: set to false to restore full init
 		self:InitMinimal(dbFileName, buildName)
 		return
 	end
@@ -1429,7 +1429,7 @@ end
 
 function buildMode:SyncLoadouts()
 	-- Phase 1: Stub (2026-02-06)
-	if true then -- Phase 1 flag: set to false to restore full SyncLoadouts
+	if false then -- Phase 1 flag: set to false to restore full SyncLoadouts
 		return
 	end
 
