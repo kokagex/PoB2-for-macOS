@@ -1,0 +1,1201 @@
+/*
+ * SimpleGraphic - Metal Backend
+ * Metal rendering implementation for macOS
+ */
+
+#import <Metal/Metal.h>
+#import <MetalKit/MetalKit.h>
+#import <QuartzCore/CAMetalLayer.h>
+
+#include "sg_internal.h"
+#include "dds_loader.h"
+#include <stdio.h>
+#include <GLFW/glfw3.h>
+
+#define GLFW_EXPOSE_NATIVE_COCOA
+#include <GLFW/glfw3native.h>
+
+/* ===== Metal Context ===== */
+
+// Vertex structure for text rendering
+// CRITICAL: sizeof(TextVertex) must match stride in vertex descriptor
+typedef struct TextVertex {
+    float position[2];      // 8 bytes (offset 0)
+    float texCoord[2];      // 8 bytes (offset 8)
+    float color[4];         // 16 bytes (offset 16)
+    float layerIndex;       // 4 bytes (offset 32) - for texture2d_array
+    // Total: 36 bytes - matches stride below
+} TextVertex;
+
+typedef struct MetalContext {
+    id<MTLDevice> device;
+    id<MTLCommandQueue> commandQueue;
+    CAMetalLayer* metalLayer;
+    id<MTLRenderPipelineState> pipelineState;
+    id<MTLLibrary> library;
+    id<MTLSamplerState> samplerState;
+
+    // Frame resources
+    id<MTLCommandBuffer> commandBuffer;
+    id<MTLRenderCommandEncoder> renderEncoder;
+    id<CAMetalDrawable> currentDrawable;
+
+    // Unified batch rendering
+    id<MTLBuffer> textVertexBuffer;
+    NSUInteger textVertexBufferSize;
+    NSUInteger textVertexCount;
+    id<MTLTexture> currentTexture;  // Unified texture state for both atlas and images
+
+    // Dummy white texture for solid color rendering
+    id<MTLTexture> dummyWhiteTexture;
+
+    // Drawing state
+    float clearColor[4];
+    float drawColor[4];
+} MetalContext;
+
+/* ===== Forward Declarations ===== */
+
+static bool metal_init(SGContext* ctx);
+static void metal_shutdown(SGContext* ctx);
+static void metal_begin_frame(SGContext* ctx);
+static void metal_end_frame(SGContext* ctx);
+static void metal_present(SGContext* ctx);
+static void metal_set_clear_color(float r, float g, float b, float a);
+static void metal_set_draw_color(float r, float g, float b, float a);
+static void metal_set_viewport(int x, int y, int width, int height);
+static void* metal_create_texture(int width, int height, const void* data);
+static void* metal_create_compressed_texture(int width, int height, uint32_t format, const void* data, size_t dataSize);
+static void* metal_create_compressed_texture_array(int width, int height, uint32_t format, const void* dds_tex_ptr, const void* decompressed_data_ptr);
+static void metal_destroy_texture(void* texture);
+static void metal_update_texture(void* texture, const void* data);
+static void metal_draw_glyph(void* texture, int x, int y, int width, int height,
+                             float u0, float v0, float u1, float v1,
+                             float r, float g, float b, float a);
+static void metal_draw_image(struct ImageHandle_s* handle, float left, float top,
+                             float width, float height,
+                             float tcLeft, float tcTop, float tcRight, float tcBottom);
+static void metal_draw_quad(struct ImageHandle_s* handle,
+                           float x1, float y1, float x2, float y2,
+                           float x3, float y3, float x4, float y4,
+                           float s1, float t1, float s2, float t2,
+                           float s3, float t3, float s4, float t4);
+
+/* ===== Metal Shader Source ===== */
+
+static const char* metalShaderSource = R"(
+#include <metal_stdlib>
+using namespace metal;
+
+struct VertexIn {
+    float2 position [[attribute(0)]];
+    float2 texCoord [[attribute(1)]];
+    float4 color [[attribute(2)]];
+    float layerIndex [[attribute(3)]];  // NEW: layer index for texture arrays
+};
+
+struct VertexOut {
+    float4 position [[position]];
+    float3 texCoord;  // CHANGED: float2 -> float3 (z = layer index)
+    float4 color;
+};
+
+vertex VertexOut vertex_main(VertexIn in [[stage_in]]) {
+    VertexOut out;
+    out.position = float4(in.position, 0.0, 1.0);
+    // Extend texCoord to float3, z = layer index from vertex data
+    out.texCoord = float3(in.texCoord, in.layerIndex);
+    out.color = in.color;
+    return out;
+}
+
+fragment float4 fragment_main(VertexOut in [[stage_in]],
+                              texture2d_array<float> tex [[texture(0)]],
+                              sampler sam [[sampler(0)]]) {
+    // Sample texture array using xy for UV coords, z for layer
+    // Metal requires layer index to be uint
+    float4 texColor = tex.sample(sam, in.texCoord.xy, uint(in.texCoord.z));
+
+    // For R8Unorm textures (glyph atlas), red channel is alpha
+    // Heuristic: if R is non-zero but G, B are zero, it's likely R8 format (glyph)
+    if (texColor.r > 0.0 && texColor.g == 0.0 && texColor.b == 0.0) {
+        float alpha = texColor.r;
+        return float4(in.color.rgb, alpha * in.color.a);
+    }
+
+    // For RGBA textures (images) or dummy white texture, multiply by vertex color
+    return texColor * in.color;
+}
+)";
+
+/* ===== Initialization ===== */
+
+static bool metal_init(SGContext* ctx) {
+    if (!ctx) return false;
+
+    printf("Metal: Initializing\n");
+
+    // Create Metal context
+    MetalContext* metal = (MetalContext*)calloc(1, sizeof(MetalContext));
+    if (!metal) {
+        fprintf(stderr, "Metal: Failed to allocate context\n");
+        return false;
+    }
+
+    // Get Metal device
+    metal->device = MTLCreateSystemDefaultDevice();
+    if (!metal->device) {
+        fprintf(stderr, "Metal: No Metal-capable device found\n");
+        free(metal);
+        return false;
+    }
+
+    printf("Metal: Using device: %s\n", [[metal->device name] UTF8String]);
+
+    // Create command queue
+    metal->commandQueue = [metal->device newCommandQueue];
+    if (!metal->commandQueue) {
+        fprintf(stderr, "Metal: Failed to create command queue\n");
+        free(metal);
+        return false;
+    }
+
+    // Compile shader library from source
+    NSString* shaderSource = [NSString stringWithUTF8String:metalShaderSource];
+    NSError* error = nil;
+    metal->library = [metal->device newLibraryWithSource:shaderSource options:nil error:&error];
+    if (!metal->library) {
+        fprintf(stderr, "Metal: Failed to compile shaders: %s\n",
+                [[error localizedDescription] UTF8String]);
+        free(metal);
+        return false;
+    }
+    printf("Metal: Shaders compiled successfully\n");
+
+    // Get native window handle
+    NSWindow* nsWindow = glfwGetCocoaWindow((GLFWwindow*)ctx->window);
+    if (!nsWindow) {
+        fprintf(stderr, "Metal: Failed to get Cocoa window\n");
+        free(metal);
+        return false;
+    }
+
+    // Create Metal layer
+    metal->metalLayer = [CAMetalLayer layer];
+    metal->metalLayer.device = metal->device;
+    metal->metalLayer.pixelFormat = MTLPixelFormatBGRA8Unorm;
+    metal->metalLayer.framebufferOnly = YES;
+
+    // Set layer size
+    CGSize drawableSize = CGSizeMake(ctx->width, ctx->height);
+    metal->metalLayer.drawableSize = drawableSize;
+
+    // Attach layer to window
+    NSView* contentView = [nsWindow contentView];
+    [contentView setWantsLayer:YES];
+    [contentView setLayer:metal->metalLayer];
+
+    // Initialize clear color
+    metal->clearColor[0] = 0.0f;
+    metal->clearColor[1] = 0.0f;
+    metal->clearColor[2] = 0.0f;
+    metal->clearColor[3] = 1.0f;
+
+    metal->drawColor[0] = 1.0f;
+    metal->drawColor[1] = 1.0f;
+    metal->drawColor[2] = 1.0f;
+    metal->drawColor[3] = 1.0f;
+
+    // Create render pipeline state
+    id<MTLFunction> vertexFunction = [metal->library newFunctionWithName:@"vertex_main"];
+    id<MTLFunction> fragmentFunction = [metal->library newFunctionWithName:@"fragment_main"];
+
+    if (!vertexFunction || !fragmentFunction) {
+        fprintf(stderr, "Metal: Failed to load shader functions\n");
+        free(metal);
+        return false;
+    }
+
+    // Create vertex descriptor
+    MTLVertexDescriptor* vertexDesc = [[MTLVertexDescriptor alloc] init];
+
+    // Position (float2)
+    vertexDesc.attributes[0].format = MTLVertexFormatFloat2;
+    vertexDesc.attributes[0].offset = 0;
+    vertexDesc.attributes[0].bufferIndex = 0;
+
+    // TexCoord (float2)
+    vertexDesc.attributes[1].format = MTLVertexFormatFloat2;
+    vertexDesc.attributes[1].offset = 8;
+    vertexDesc.attributes[1].bufferIndex = 0;
+
+    // Color (float4)
+    vertexDesc.attributes[2].format = MTLVertexFormatFloat4;
+    vertexDesc.attributes[2].offset = 16;
+    vertexDesc.attributes[2].bufferIndex = 0;
+
+    // Layer Index (float) - for texture2d_array sampling
+    vertexDesc.attributes[3].format = MTLVertexFormatFloat;
+    vertexDesc.attributes[3].offset = 32;
+    vertexDesc.attributes[3].bufferIndex = 0;
+
+    // Layout - CRITICAL: stride must be 36 bytes to match TextVertex struct
+    // position(8) + texCoord(8) + color(16) + layerIndex(4) = 36 bytes
+    vertexDesc.layouts[0].stride = sizeof(TextVertex);  // Must be 36
+    if (sizeof(TextVertex) != 36) {
+        fprintf(stderr, "Metal: ERROR - TextVertex size is %zu, expected 36 bytes\n", sizeof(TextVertex));
+    }
+    vertexDesc.layouts[0].stepFunction = MTLVertexStepFunctionPerVertex;
+    vertexDesc.layouts[0].stepRate = 1;
+
+    MTLRenderPipelineDescriptor* pipelineDesc = [[MTLRenderPipelineDescriptor alloc] init];
+    pipelineDesc.vertexFunction = vertexFunction;
+    pipelineDesc.fragmentFunction = fragmentFunction;
+    pipelineDesc.vertexDescriptor = vertexDesc;
+    pipelineDesc.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
+
+    // Enable alpha blending
+    pipelineDesc.colorAttachments[0].blendingEnabled = YES;
+    pipelineDesc.colorAttachments[0].sourceRGBBlendFactor = MTLBlendFactorSourceAlpha;
+    pipelineDesc.colorAttachments[0].destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
+    pipelineDesc.colorAttachments[0].rgbBlendOperation = MTLBlendOperationAdd;
+    pipelineDesc.colorAttachments[0].sourceAlphaBlendFactor = MTLBlendFactorOne;
+    pipelineDesc.colorAttachments[0].destinationAlphaBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
+    pipelineDesc.colorAttachments[0].alphaBlendOperation = MTLBlendOperationAdd;
+
+    metal->pipelineState = [metal->device newRenderPipelineStateWithDescriptor:pipelineDesc error:&error];
+    if (!metal->pipelineState) {
+        fprintf(stderr, "Metal: Failed to create pipeline state: %s\n",
+                [[error localizedDescription] UTF8String]);
+        free(metal);
+        return false;
+    }
+
+    // Create sampler state for texture filtering (texture2d_array requires all 3 dimensions)
+    MTLSamplerDescriptor* samplerDesc = [[MTLSamplerDescriptor alloc] init];
+    samplerDesc.minFilter = MTLSamplerMinMagFilterLinear;
+    samplerDesc.magFilter = MTLSamplerMinMagFilterLinear;
+    samplerDesc.sAddressMode = MTLSamplerAddressModeClampToEdge;  // U axis - No tiling, prevents artifacts with BC7
+    samplerDesc.tAddressMode = MTLSamplerAddressModeClampToEdge;  // V axis - No tiling, prevents artifacts with BC7
+    samplerDesc.rAddressMode = MTLSamplerAddressModeClampToEdge;  // Layer axis - Required for texture2d_array
+    metal->samplerState = [metal->device newSamplerStateWithDescriptor:samplerDesc];
+
+    // Allocate text vertex buffer (initial size: 10000 vertices)
+    metal->textVertexBufferSize = 10000 * sizeof(TextVertex);
+    metal->textVertexBuffer = [metal->device newBufferWithLength:metal->textVertexBufferSize
+                                                         options:MTLResourceStorageModeShared];
+    metal->textVertexCount = 0;
+
+    // Store in renderer
+    ctx->renderer->backend_data = metal;
+
+    // Create dummy 1x1 white texture for solid color rendering
+    // CRITICAL: Must be texture2d_array to match shader expectations
+    MTLTextureDescriptor* dummyDesc = [MTLTextureDescriptor new];
+    dummyDesc.textureType = MTLTextureType2DArray;  // Match shader
+    dummyDesc.pixelFormat = MTLPixelFormatRGBA8Unorm;
+    dummyDesc.width = 1;
+    dummyDesc.height = 1;
+    dummyDesc.arrayLength = 1;  // Single layer
+    dummyDesc.usage = MTLTextureUsageShaderRead;
+    dummyDesc.storageMode = MTLStorageModeManaged;
+    dummyDesc.mipmapLevelCount = 1;
+
+    metal->dummyWhiteTexture = [metal->device newTextureWithDescriptor:dummyDesc];
+    uint32_t white = 0xFFFFFFFF;  // RGBA white
+    [metal->dummyWhiteTexture replaceRegion:MTLRegionMake2D(0, 0, 1, 1)
+                                mipmapLevel:0
+                                      slice:0  // Layer 0
+                                  withBytes:&white
+                                bytesPerRow:4
+                              bytesPerImage:4];
+
+    printf("Metal: Initialization complete\n");
+    return true;
+}
+
+static void metal_shutdown(SGContext* ctx) {
+    if (!ctx || !ctx->renderer) return;
+
+    MetalContext* metal = (MetalContext*)ctx->renderer->backend_data;
+    if (!metal) return;
+
+    printf("Metal: Shutting down\n");
+
+    // Release Metal objects (ARC will handle it)
+    metal->commandQueue = nil;
+    metal->device = nil;
+    metal->metalLayer = nil;
+    metal->pipelineState = nil;
+    metal->library = nil;
+
+    free(metal);
+    ctx->renderer->backend_data = NULL;
+}
+
+static void metal_begin_frame(SGContext* ctx) {
+    if (!ctx || !ctx->renderer) return;
+
+    MetalContext* metal = (MetalContext*)ctx->renderer->backend_data;
+    if (!metal) return;
+
+    // Reset unified batch state
+    metal->textVertexCount = 0;
+    metal->currentTexture = nil;
+
+    // Get next drawable
+    metal->currentDrawable = [metal->metalLayer nextDrawable];
+    if (!metal->currentDrawable) return;
+
+    // Create command buffer
+    metal->commandBuffer = [metal->commandQueue commandBuffer];
+
+    // Create render pass descriptor
+    MTLRenderPassDescriptor* renderPass = [MTLRenderPassDescriptor renderPassDescriptor];
+    renderPass.colorAttachments[0].texture = metal->currentDrawable.texture;
+    renderPass.colorAttachments[0].loadAction = MTLLoadActionClear;
+    renderPass.colorAttachments[0].storeAction = MTLStoreActionStore;
+    renderPass.colorAttachments[0].clearColor = MTLClearColorMake(
+        metal->clearColor[0],
+        metal->clearColor[1],
+        metal->clearColor[2],
+        metal->clearColor[3]
+    );
+
+    // Create render command encoder (keep it open for drawing)
+    metal->renderEncoder = [metal->commandBuffer renderCommandEncoderWithDescriptor:renderPass];
+}
+
+static void metal_end_frame(SGContext* ctx) {
+    if (!ctx || !ctx->renderer) return;
+
+    MetalContext* metal = (MetalContext*)ctx->renderer->backend_data;
+    if (!metal || !metal->renderEncoder) return;
+
+    @try {
+        // Flush any remaining unified batch rendering (both text and images)
+        if (metal->textVertexCount > 0 && metal->currentTexture) {
+            [metal->renderEncoder setRenderPipelineState:metal->pipelineState];
+            [metal->renderEncoder setVertexBuffer:metal->textVertexBuffer offset:0 atIndex:0];
+            [metal->renderEncoder setFragmentTexture:metal->currentTexture atIndex:0];
+            [metal->renderEncoder setFragmentSamplerState:metal->samplerState atIndex:0];
+            [metal->renderEncoder drawPrimitives:MTLPrimitiveTypeTriangle
+                                      vertexStart:0
+                                      vertexCount:metal->textVertexCount];
+            metal->textVertexCount = 0;
+        }
+
+        // End encoding
+        [metal->renderEncoder endEncoding];
+        metal->renderEncoder = nil;
+
+        // Present drawable
+        static int present_count = 0;
+        if (present_count < 3 || present_count % 60 == 0) {
+            printf("DEBUG: Metal presenting drawable #%d\n", present_count);
+        }
+        present_count++;
+
+        [metal->commandBuffer presentDrawable:metal->currentDrawable];
+        [metal->commandBuffer commit];
+
+        metal->commandBuffer = nil;
+        metal->currentDrawable = nil;
+    }
+    @catch (NSException *exception) {
+        fprintf(stderr, "METAL ERROR in end_frame: %s - %s\n",
+                [[exception name] UTF8String],
+                [[exception reason] UTF8String]);
+    }
+}
+
+static void metal_present(SGContext* ctx) {
+    (void)ctx;
+    // Already presented in begin_frame
+}
+
+static void metal_set_clear_color(float r, float g, float b, float a) {
+    if (!g_ctx || !g_ctx->renderer) return;
+
+    MetalContext* metal = (MetalContext*)g_ctx->renderer->backend_data;
+    if (!metal) return;
+
+    metal->clearColor[0] = r;
+    metal->clearColor[1] = g;
+    metal->clearColor[2] = b;
+    metal->clearColor[3] = a;
+}
+
+static void metal_set_draw_color(float r, float g, float b, float a) {
+    if (!g_ctx || !g_ctx->renderer) return;
+
+    MetalContext* metal = (MetalContext*)g_ctx->renderer->backend_data;
+    if (!metal) return;
+
+    metal->drawColor[0] = r;
+    metal->drawColor[1] = g;
+    metal->drawColor[2] = b;
+    metal->drawColor[3] = a;
+}
+
+static void metal_set_viewport(int x, int y, int width, int height) {
+    (void)x; (void)y; (void)width; (void)height;
+    // TODO: Implement viewport
+}
+
+static void* metal_create_texture(int width, int height, const void* data) {
+    if (!g_ctx || !g_ctx->renderer) return NULL;
+
+    MetalContext* metal = (MetalContext*)g_ctx->renderer->backend_data;
+    if (!metal || !metal->device) return NULL;
+
+    // Determine pixel format based on data structure
+    // Heuristic: If data is provided and appears to be RGBA (4 bytes per pixel), use RGBA8Unorm
+    // Otherwise use R8Unorm for glyph atlas
+    MTLPixelFormat pixelFormat = MTLPixelFormatR8Unorm;
+    NSUInteger bytesPerRow = width;
+
+    // If we have data, check if it looks like RGBA (heuristic: width * height * 4 bytes)
+    // For actual images loaded via stb_image, we force RGBA format
+    // This is a simple heuristic - in production, you'd pass format explicitly
+    if (data) {
+        // Check if this is likely an RGBA texture by looking at typical image sizes
+        // Glyph atlas is always 1024x1024 with R8 format
+        // Images vary in size and use RGBA
+        if (width != 1024 || height != 1024) {
+            // Likely an image, not glyph atlas
+            pixelFormat = MTLPixelFormatRGBA8Unorm;
+            bytesPerRow = width * 4;
+            printf("Metal: Creating RGBA texture %dx%d\n", width, height);
+        } else {
+            printf("Metal: Creating R8 texture (glyph atlas) %dx%d\n", width, height);
+        }
+    }
+
+    // Create texture descriptor as texture2d_array with arrayLength=1
+    // This ensures all textures use the same shader code path
+    MTLTextureDescriptor* desc = [MTLTextureDescriptor new];
+    desc.textureType = MTLTextureType2DArray;  // Array type, even for single images
+    desc.width = width;
+    desc.height = height;
+    desc.arrayLength = 1;  // Single layer for non-array textures
+    desc.pixelFormat = pixelFormat;
+    desc.usage = MTLTextureUsageShaderRead;
+    desc.storageMode = MTLStorageModeManaged;
+    desc.mipmapLevelCount = 1;
+
+    // Create texture
+    id<MTLTexture> texture = [metal->device newTextureWithDescriptor:desc];
+    if (!texture) {
+        fprintf(stderr, "Metal: Failed to create texture array\n");
+        return NULL;
+    }
+
+    // Upload initial data if provided (to layer 0)
+    if (data) {
+        MTLRegion region = MTLRegionMake2D(0, 0, width, height);
+        NSUInteger bytesPerImage = bytesPerRow * height;
+        [texture replaceRegion:region
+                   mipmapLevel:0
+                         slice:0  // Layer 0
+                     withBytes:data
+                   bytesPerRow:bytesPerRow
+                 bytesPerImage:bytesPerImage];
+    }
+
+    // Retain the texture to keep it alive
+    return (__bridge_retained void*)texture;
+}
+
+static void* metal_create_compressed_texture(int width, int height, uint32_t format, const void* data, size_t dataSize) {
+    if (!g_ctx || !g_ctx->renderer) return NULL;
+
+    MetalContext* metal = (MetalContext*)g_ctx->renderer->backend_data;
+    if (!metal || !metal->device) return NULL;
+
+    // Map DDS/DXGI formats to Metal pixel formats
+    MTLPixelFormat pixelFormat;
+    switch (format) {
+        case 0x47:  // DXGI_FORMAT_BC1_UNORM
+            pixelFormat = MTLPixelFormatBC1_RGBA;
+            break;
+        case 0x62:  // DXGI_FORMAT_BC7_UNORM
+            pixelFormat = MTLPixelFormatBC7_RGBAUnorm;
+            break;
+        default:
+            fprintf(stderr, "Metal: Unsupported compressed format: 0x%X\n", format);
+            return NULL;
+    }
+
+    printf("Metal: Creating compressed texture array %dx%d, format=0x%X (MTL=%d), arrayLength=1\n",
+           width, height, format, (int)pixelFormat);
+
+    // Create texture descriptor as texture2d_array with arrayLength=1
+    MTLTextureDescriptor* desc = [MTLTextureDescriptor new];
+    desc.textureType = MTLTextureType2DArray;  // Array type for consistency
+    desc.width = width;
+    desc.height = height;
+    desc.arrayLength = 1;  // Single layer for non-array compressed textures
+    desc.pixelFormat = pixelFormat;
+    desc.usage = MTLTextureUsageShaderRead;
+    desc.storageMode = MTLStorageModeManaged;
+    desc.mipmapLevelCount = 1;
+
+    // Create texture
+    id<MTLTexture> texture = [metal->device newTextureWithDescriptor:desc];
+    if (!texture) {
+        fprintf(stderr, "Metal: Failed to create compressed texture array\n");
+        return NULL;
+    }
+
+    // Upload compressed data (to layer 0)
+    if (data && dataSize > 0) {
+        // Calculate bytes per row for compressed formats
+        // BC1: 8 bytes per 4x4 block
+        // BC7: 16 bytes per 4x4 block
+        int bytesPerBlock = (format == 0x47) ? 8 : 16;
+        int blocksWide = (width + 3) / 4;
+        int blocksHigh = (height + 3) / 4;
+        NSUInteger bytesPerRow = blocksWide * bytesPerBlock;
+        NSUInteger bytesPerImage = bytesPerRow * blocksHigh;
+
+        MTLRegion region = MTLRegionMake2D(0, 0, width, height);
+        [texture replaceRegion:region
+                   mipmapLevel:0
+                         slice:0  // Layer 0
+                     withBytes:data
+                   bytesPerRow:bytesPerRow
+                 bytesPerImage:bytesPerImage];
+
+        printf("Metal: Uploaded %zu bytes of compressed data to layer 0\n", dataSize);
+    }
+
+    // Retain the texture to keep it alive
+    return (__bridge_retained void*)texture;
+}
+
+static void* metal_create_compressed_texture_array(int width, int height, uint32_t format, const void* dds_tex_ptr, const void* decompressed_data_ptr) {
+    if (!g_ctx || !g_ctx->renderer) return NULL;
+    if (!dds_tex_ptr) return NULL;
+
+    const DDS_Texture* dds_tex = (const DDS_Texture*)dds_tex_ptr;
+
+    MetalContext* metal = (MetalContext*)g_ctx->renderer->backend_data;
+    if (!metal || !metal->device) return NULL;
+
+    uint32_t arraySize = dds_tex->arraySize;
+    if (arraySize == 0) {
+        fprintf(stderr, "Metal: Invalid arraySize=0 for texture array\n");
+        return NULL;
+    }
+
+    // Map DDS/DXGI formats to Metal pixel formats
+    MTLPixelFormat pixelFormat;
+    switch (format) {
+        case 0x47:  // DXGI_FORMAT_BC1_UNORM
+            pixelFormat = MTLPixelFormatBC1_RGBA;
+            break;
+        case 0x62:  // DXGI_FORMAT_BC7_UNORM
+            pixelFormat = MTLPixelFormatBC7_RGBAUnorm;
+            break;
+        default:
+            fprintf(stderr, "Metal: Unsupported compressed format for array: 0x%X\n", format);
+            return NULL;
+    }
+
+    printf("Metal: Creating compressed texture2d_array %dx%d, format=0x%X (MTL=%d), layers=%u\n",
+           width, height, format, (int)pixelFormat, arraySize);
+
+    // Create texture descriptor for 2D array
+    MTLTextureDescriptor* desc = [MTLTextureDescriptor new];
+    desc.textureType = MTLTextureType2DArray;  // CRITICAL: Type2DArray not Type2D
+    desc.width = width;
+    desc.height = height;
+    desc.arrayLength = arraySize;
+    desc.pixelFormat = pixelFormat;
+    desc.usage = MTLTextureUsageShaderRead;
+    desc.storageMode = MTLStorageModeManaged;
+    desc.mipmapLevelCount = 1;
+
+    // Create texture
+    id<MTLTexture> texture = [metal->device newTextureWithDescriptor:desc];
+    if (!texture) {
+        fprintf(stderr, "Metal: Failed to create compressed texture2d_array\n");
+        return NULL;
+    }
+
+    // Calculate bytes per row for compressed formats
+    // BC1: 8 bytes per 4x4 block
+    // BC7: 16 bytes per 4x4 block
+    int bytesPerBlock = (format == 0x47) ? 8 : 16;
+    int blocksWide = (width + 3) / 4;
+    int blocksHigh = (height + 3) / 4;
+    NSUInteger bytesPerRow = blocksWide * bytesPerBlock;
+    NSUInteger bytesPerImage = bytesPerRow * blocksHigh;
+
+    printf("Metal: Uploading %u layers, %lu bytes per layer\n", arraySize, (unsigned long)bytesPerImage);
+
+    // Upload each layer
+    MTLRegion region = MTLRegionMake2D(0, 0, width, height);
+    for (uint32_t layer = 0; layer < arraySize; layer++) {
+        const uint8_t* layer_data = dds_get_array_layer(dds_tex, layer);
+        if (!layer_data) {
+            fprintf(stderr, "Metal: Failed to get layer %u data\n", layer);
+            // Release texture and return NULL
+            texture = nil;
+            return NULL;
+        }
+
+        [texture replaceRegion:region
+                   mipmapLevel:0
+                         slice:layer  // CRITICAL: slice parameter for array layer
+                     withBytes:layer_data
+                   bytesPerRow:bytesPerRow
+                 bytesPerImage:bytesPerImage];
+    }
+
+    printf("Metal: Successfully created texture2d_array with %u layers\n", arraySize);
+
+    // Retain the texture to keep it alive
+    return (__bridge_retained void*)texture;
+}
+
+static void metal_destroy_texture(void* texture) {
+    if (!texture) return;
+
+    // Release the retained texture
+    id<MTLTexture> mtlTexture = (__bridge_transfer id<MTLTexture>)texture;
+    mtlTexture = nil;
+}
+
+static void metal_update_texture(void* texture, const void* data) {
+    if (!texture || !data) return;
+
+    id<MTLTexture> mtlTexture = (__bridge id<MTLTexture>)texture;
+
+    // Get texture dimensions and format
+    NSUInteger width = [mtlTexture width];
+    NSUInteger height = [mtlTexture height];
+    MTLPixelFormat format = [mtlTexture pixelFormat];
+
+    // Calculate bytesPerRow based on format
+    NSUInteger bytesPerRow = width;  // Default for R8
+    if (format == MTLPixelFormatRGBA8Unorm) {
+        bytesPerRow = width * 4;
+    }
+
+    // Calculate bytesPerImage (required for texture2d_array)
+    NSUInteger bytesPerImage = bytesPerRow * height;
+
+    // Update entire texture (texture2d_array requires slice and bytesPerImage)
+    MTLRegion region = MTLRegionMake2D(0, 0, width, height);
+    [mtlTexture replaceRegion:region
+                  mipmapLevel:0
+                        slice:0
+                    withBytes:data
+                  bytesPerRow:bytesPerRow
+                bytesPerImage:bytesPerImage];
+}
+
+static void metal_draw_glyph(void* texture, int x, int y, int width, int height,
+                             float u0, float v0, float u1, float v1,
+                             float r, float g, float b, float a) {
+    if (!g_ctx || !g_ctx->renderer || !texture) return;
+
+    MetalContext* metal = (MetalContext*)g_ctx->renderer->backend_data;
+    if (!metal || !metal->renderEncoder) return;
+
+    id<MTLTexture> atlasTexture = (__bridge id<MTLTexture>)texture;
+
+    // Flush batch if texture changed or buffer is full
+    bool needFlush = (metal->currentTexture && metal->currentTexture != atlasTexture);
+    bool bufferFull = (metal->textVertexCount + 6) * sizeof(TextVertex) > metal->textVertexBufferSize;
+
+    if (needFlush || bufferFull) {
+        if (metal->textVertexCount > 0 && metal->currentTexture) {
+            [metal->renderEncoder setRenderPipelineState:metal->pipelineState];
+            [metal->renderEncoder setVertexBuffer:metal->textVertexBuffer offset:0 atIndex:0];
+            [metal->renderEncoder setFragmentTexture:metal->currentTexture atIndex:0];
+            [metal->renderEncoder setFragmentSamplerState:metal->samplerState atIndex:0];
+            [metal->renderEncoder drawPrimitives:MTLPrimitiveTypeTriangle
+                                      vertexStart:0
+                                      vertexCount:metal->textVertexCount];
+        }
+        metal->textVertexCount = 0;
+        metal->currentTexture = atlasTexture;
+    }
+
+    if (!metal->currentTexture) {
+        metal->currentTexture = atlasTexture;
+    }
+
+    // Convert screen coordinates to NDC (normalized device coordinates)
+    // Screen space: (0,0) = top-left, (width, height) = bottom-right
+    // NDC: (-1, 1) = top-left, (1, -1) = bottom-right
+    float screen_w = (float)g_ctx->width;
+    float screen_h = (float)g_ctx->height;
+
+    float x0_ndc = (x / screen_w) * 2.0f - 1.0f;
+    float y0_ndc = 1.0f - (y / screen_h) * 2.0f;
+    float x1_ndc = ((x + width) / screen_w) * 2.0f - 1.0f;
+    float y1_ndc = 1.0f - ((y + height) / screen_h) * 2.0f;
+
+    // Get vertex buffer pointer
+    TextVertex* vertices = (TextVertex*)[metal->textVertexBuffer contents];
+    NSUInteger idx = metal->textVertexCount;
+
+    // Create two triangles for the quad
+    // Triangle 1: top-left, bottom-left, bottom-right
+    vertices[idx + 0].position[0] = x0_ndc;
+    vertices[idx + 0].position[1] = y0_ndc;
+    vertices[idx + 0].texCoord[0] = u0;
+    vertices[idx + 0].texCoord[1] = v0;
+    vertices[idx + 0].color[0] = r;
+    vertices[idx + 0].color[1] = g;
+    vertices[idx + 0].color[2] = b;
+    vertices[idx + 0].color[3] = a;
+    vertices[idx + 0].layerIndex = 0.0f;  // Glyph atlas is not an array
+
+    vertices[idx + 1].position[0] = x0_ndc;
+    vertices[idx + 1].position[1] = y1_ndc;
+    vertices[idx + 1].texCoord[0] = u0;
+    vertices[idx + 1].texCoord[1] = v1;
+    vertices[idx + 1].color[0] = r;
+    vertices[idx + 1].color[1] = g;
+    vertices[idx + 1].color[2] = b;
+    vertices[idx + 1].color[3] = a;
+    vertices[idx + 1].layerIndex = 0.0f;
+
+    vertices[idx + 2].position[0] = x1_ndc;
+    vertices[idx + 2].position[1] = y1_ndc;
+    vertices[idx + 2].texCoord[0] = u1;
+    vertices[idx + 2].texCoord[1] = v1;
+    vertices[idx + 2].color[0] = r;
+    vertices[idx + 2].color[1] = g;
+    vertices[idx + 2].color[2] = b;
+    vertices[idx + 2].color[3] = a;
+    vertices[idx + 2].layerIndex = 0.0f;
+
+    // Triangle 2: top-left, bottom-right, top-right
+    vertices[idx + 3].position[0] = x0_ndc;
+    vertices[idx + 3].position[1] = y0_ndc;
+    vertices[idx + 3].texCoord[0] = u0;
+    vertices[idx + 3].texCoord[1] = v0;
+    vertices[idx + 3].color[0] = r;
+    vertices[idx + 3].color[1] = g;
+    vertices[idx + 3].color[2] = b;
+    vertices[idx + 3].color[3] = a;
+    vertices[idx + 3].layerIndex = 0.0f;
+
+    vertices[idx + 4].position[0] = x1_ndc;
+    vertices[idx + 4].position[1] = y1_ndc;
+    vertices[idx + 4].texCoord[0] = u1;
+    vertices[idx + 4].texCoord[1] = v1;
+    vertices[idx + 4].color[0] = r;
+    vertices[idx + 4].color[1] = g;
+    vertices[idx + 4].color[2] = b;
+    vertices[idx + 4].color[3] = a;
+    vertices[idx + 4].layerIndex = 0.0f;
+
+    vertices[idx + 5].position[0] = x1_ndc;
+    vertices[idx + 5].position[1] = y0_ndc;
+    vertices[idx + 5].texCoord[0] = u1;
+    vertices[idx + 5].texCoord[1] = v0;
+    vertices[idx + 5].color[0] = r;
+    vertices[idx + 5].color[1] = g;
+    vertices[idx + 5].color[2] = b;
+    vertices[idx + 5].color[3] = a;
+    vertices[idx + 5].layerIndex = 0.0f;
+
+    // CRITICAL: Notify Metal that buffer contents were modified
+    // Only notify about the range that was actually modified (the 6 vertices we just added)
+    NSUInteger modifiedOffset = idx * sizeof(TextVertex);
+    NSUInteger modifiedSize = 6 * sizeof(TextVertex);
+    [metal->textVertexBuffer didModifyRange:NSMakeRange(modifiedOffset, modifiedSize)];
+
+    metal->textVertexCount += 6;
+}
+
+static void metal_draw_image(struct ImageHandle_s* handle, float left, float top,
+                             float width, float height,
+                             float tcLeft, float tcTop, float tcRight, float tcBottom) {
+    if (!g_ctx || !g_ctx->renderer) return;
+
+    MetalContext* metal = (MetalContext*)g_ctx->renderer->backend_data;
+    if (!metal || !metal->renderEncoder) {
+        static int warnCount = 0;
+        if (warnCount++ < 3) {
+            printf("WARNING: metal_draw_image called but renderEncoder is %s\n",
+                   !metal ? "NULL (no metal)" : "NULL (no encoder)");
+        }
+        return;
+    }
+
+    // Debug output
+    // Get texture if handle is provided, otherwise use dummy white texture
+    id<MTLTexture> texture = metal->dummyWhiteTexture;
+    bool usingDummyTexture = true;
+    if (handle && handle->texture) {
+        texture = (__bridge id<MTLTexture>)handle->texture;
+        usingDummyTexture = false;
+    }
+
+    // Debug output moved after texture coordinate fix
+
+    // Flush existing batch if texture changed or buffer is full
+    bool needFlush = (metal->currentTexture && metal->currentTexture != texture);
+    bool bufferFull = (metal->textVertexCount + 6) * sizeof(TextVertex) > metal->textVertexBufferSize;
+
+    if (needFlush || bufferFull) {
+        if (metal->textVertexCount > 0 && metal->currentTexture) {
+            [metal->renderEncoder setRenderPipelineState:metal->pipelineState];
+            [metal->renderEncoder setVertexBuffer:metal->textVertexBuffer offset:0 atIndex:0];
+            [metal->renderEncoder setFragmentTexture:metal->currentTexture atIndex:0];
+            [metal->renderEncoder setFragmentSamplerState:metal->samplerState atIndex:0];
+            [metal->renderEncoder drawPrimitives:MTLPrimitiveTypeTriangle
+                                      vertexStart:0
+                                      vertexCount:metal->textVertexCount];
+        }
+        metal->textVertexCount = 0;
+        metal->currentTexture = texture;  // Always update after flush
+    }
+
+    // Fallback for first draw call in frame
+    if (!metal->currentTexture) {
+        metal->currentTexture = texture;
+    }
+
+    // Get draw color
+    float r = metal->drawColor[0];
+    float g = metal->drawColor[1];
+    float b = metal->drawColor[2];
+    float a = metal->drawColor[3];
+
+    // FIX: BC7 textures don't tile well, so if tiling is detected (tc > 1.0),
+    // scale down the size instead of repeating the texture
+    float useTexCoordLeft = 0.0f;
+    float useTexCoordTop = 0.0f;
+    float useTexCoordRight = 1.0f;
+    float useTexCoordBottom = 1.0f;
+
+    // Calculate actual width/height to draw
+    float drawWidth = width;
+    float drawHeight = height;
+
+    // Detect tiling: if texture coordinates > 1.5, it's meant to tile
+    float tcWidth = tcRight - tcLeft;
+    float tcHeight = tcBottom - tcTop;
+    if (tcWidth > 1.5f || tcHeight > 1.5f) {
+        // Scale down size to match texture coordinate ratio
+        // Example: if tc is 32x32 and size is 2048x2048, draw at 64x64 instead
+        if (tcWidth > 1.5f) {
+            drawWidth = width / tcWidth;
+        }
+        if (tcHeight > 1.5f) {
+            drawHeight = height / tcHeight;
+        }
+    } else {
+        // Normal texture (tc <= 1.5), use as-is
+        useTexCoordLeft = tcLeft;
+        useTexCoordTop = tcTop;
+        useTexCoordRight = tcRight;
+        useTexCoordBottom = tcBottom;
+    }
+
+    // Convert screen coordinates to NDC using adjusted size
+    float screen_w = (float)g_ctx->width;  // framebuffer width
+    float screen_h = (float)g_ctx->height; // framebuffer height
+
+    float x0_ndc = (left / screen_w) * 2.0f - 1.0f;
+    float y0_ndc = 1.0f - (top / screen_h) * 2.0f;
+    float x1_ndc = ((left + drawWidth) / screen_w) * 2.0f - 1.0f;
+    float y1_ndc = 1.0f - ((top + drawHeight) / screen_h) * 2.0f;
+
+    static int drawImageCount = 0;
+    static int frameNum = 0;
+    static int lastLoggedFrame = -1;
+
+    // Log first 5 draws in detail, then log once per second
+    bool shouldLog = (drawImageCount < 5) || (frameNum != lastLoggedFrame && frameNum % 60 == 0);
+
+    if (shouldLog) {
+        printf("DEBUG: [Frame %d] metal_draw_image #%d - handle=%p, pos=(%.1f,%.1f), size_in=(%.1f,%.1f), size_draw=(%.1f,%.1f), tc_in=(%.3f,%.3f,%.3f,%.3f), tc_use=(%.3f,%.3f,%.3f,%.3f), color=(%.2f,%.2f,%.2f,%.2f), tex=%s\n",
+               frameNum, drawImageCount, handle, left, top,
+               width, height, drawWidth, drawHeight,
+               tcLeft, tcTop, tcRight, tcBottom,
+               useTexCoordLeft, useTexCoordTop, useTexCoordRight, useTexCoordBottom,
+               metal->drawColor[0], metal->drawColor[1], metal->drawColor[2], metal->drawColor[3],
+               usingDummyTexture ? "DUMMY" : "IMAGE");
+        lastLoggedFrame = frameNum;
+    }
+
+    drawImageCount++;
+    if (drawImageCount % 100 == 0) frameNum++;
+
+    // Get vertex buffer pointer
+    TextVertex* vertices = (TextVertex*)[metal->textVertexBuffer contents];
+    NSUInteger idx = metal->textVertexCount;
+
+    // Determine layer index
+    // Heuristic: If tcLeft looks like an integer layer index (0-based) and other coords are 0,
+    // treat it as layer index. Otherwise, use normal UV coordinates with layer 0.
+    float layerIdx = 0.0f;
+    if (handle && handle->isArray && handle->arraySize > 1) {
+        // Check if this is layer index style (tcLeft = layer, others = 0)
+        float tcLeft_floor = floorf(tcLeft);
+        bool looksLikeLayerIndex = (fabsf(tcLeft - tcLeft_floor) < 0.01f) &&
+                                   (tcTop == 0.0f && tcRight == 0.0f && tcBottom == 0.0f);
+        if (looksLikeLayerIndex && tcLeft >= 0.0f && tcLeft < (float)handle->arraySize) {
+            // Explicit floor and clamp to prevent precision issues
+            layerIdx = floorf(tcLeft);
+            if (layerIdx >= (float)handle->arraySize) {
+                printf("WARNING: Layer index %d exceeds arraySize %d, clamping to %d\n",
+                       (int)layerIdx, handle->arraySize, handle->arraySize - 1);
+                layerIdx = (float)(handle->arraySize - 1);
+            }
+
+            // Use full texture UV coordinates when layer index is specified
+            useTexCoordLeft = 0.0f;
+            useTexCoordTop = 0.0f;
+            useTexCoordRight = 1.0f;
+            useTexCoordBottom = 1.0f;
+            printf("Metal: Drawing array texture layer %d/%d\n", (int)layerIdx, handle->arraySize);
+        }
+    }
+
+    // Create two triangles for the quad
+    // Triangle 1: top-left, bottom-left, bottom-right
+    vertices[idx + 0].position[0] = x0_ndc;
+    vertices[idx + 0].position[1] = y0_ndc;
+    vertices[idx + 0].texCoord[0] = useTexCoordLeft;
+    vertices[idx + 0].texCoord[1] = useTexCoordTop;
+    vertices[idx + 0].color[0] = r;
+    vertices[idx + 0].color[1] = g;
+    vertices[idx + 0].color[2] = b;
+    vertices[idx + 0].color[3] = a;
+    vertices[idx + 0].layerIndex = layerIdx;
+
+    vertices[idx + 1].position[0] = x0_ndc;
+    vertices[idx + 1].position[1] = y1_ndc;
+    vertices[idx + 1].texCoord[0] = useTexCoordLeft;
+    vertices[idx + 1].texCoord[1] = useTexCoordBottom;
+    vertices[idx + 1].color[0] = r;
+    vertices[idx + 1].color[1] = g;
+    vertices[idx + 1].color[2] = b;
+    vertices[idx + 1].color[3] = a;
+    vertices[idx + 1].layerIndex = layerIdx;
+
+    vertices[idx + 2].position[0] = x1_ndc;
+    vertices[idx + 2].position[1] = y1_ndc;
+    vertices[idx + 2].texCoord[0] = useTexCoordRight;
+    vertices[idx + 2].texCoord[1] = useTexCoordBottom;
+    vertices[idx + 2].color[0] = r;
+    vertices[idx + 2].color[1] = g;
+    vertices[idx + 2].color[2] = b;
+    vertices[idx + 2].color[3] = a;
+    vertices[idx + 2].layerIndex = layerIdx;
+
+    // Triangle 2: top-left, bottom-right, top-right
+    vertices[idx + 3].position[0] = x0_ndc;
+    vertices[idx + 3].position[1] = y0_ndc;
+    vertices[idx + 3].texCoord[0] = useTexCoordLeft;
+    vertices[idx + 3].texCoord[1] = useTexCoordTop;
+    vertices[idx + 3].color[0] = r;
+    vertices[idx + 3].color[1] = g;
+    vertices[idx + 3].color[2] = b;
+    vertices[idx + 3].color[3] = a;
+    vertices[idx + 3].layerIndex = layerIdx;
+
+    vertices[idx + 4].position[0] = x1_ndc;
+    vertices[idx + 4].position[1] = y1_ndc;
+    vertices[idx + 4].texCoord[0] = useTexCoordRight;
+    vertices[idx + 4].texCoord[1] = useTexCoordBottom;
+    vertices[idx + 4].color[0] = r;
+    vertices[idx + 4].color[1] = g;
+    vertices[idx + 4].color[2] = b;
+    vertices[idx + 4].color[3] = a;
+    vertices[idx + 4].layerIndex = layerIdx;
+
+    vertices[idx + 5].position[0] = x1_ndc;
+    vertices[idx + 5].position[1] = y0_ndc;
+    vertices[idx + 5].texCoord[0] = useTexCoordRight;
+    vertices[idx + 5].texCoord[1] = useTexCoordTop;
+    vertices[idx + 5].color[0] = r;
+    vertices[idx + 5].color[1] = g;
+    vertices[idx + 5].color[2] = b;
+    vertices[idx + 5].color[3] = a;
+    vertices[idx + 5].layerIndex = layerIdx;
+
+    // CRITICAL: Notify Metal that buffer contents were modified
+    // This is required for MTLResourceStorageModeShared buffers
+    // Only notify about the range that was actually modified (the 6 vertices we just added)
+    NSUInteger modifiedOffset = idx * sizeof(TextVertex);
+    NSUInteger modifiedSize = 6 * sizeof(TextVertex);
+    [metal->textVertexBuffer didModifyRange:NSMakeRange(modifiedOffset, modifiedSize)];
+
+    metal->textVertexCount += 6;
+}
+
+static void metal_draw_quad(struct ImageHandle_s* handle,
+                           float x1, float y1, float x2, float y2,
+                           float x3, float y3, float x4, float y4,
+                           float s1, float t1, float s2, float t2,
+                           float s3, float t3, float s4, float t4) {
+    if (!g_ctx || !g_ctx->renderer) return;
+
+    MetalContext* metal = (MetalContext*)g_ctx->renderer->backend_data;
+    if (!metal || !metal->renderEncoder) return;
+
+    // Get texture if handle is provided, otherwise use dummy white texture
+    id<MTLTexture> texture = metal->dummyWhiteTexture;
+    if (handle && handle->texture) {
+        texture = (__bridge id<MTLTexture>)handle->texture;
+    }
+
+    // Flush existing batch if texture changed or buffer is full
+    bool needFlush = (metal->currentTexture && metal->currentTexture != texture);
+    bool bufferFull = (metal->textVertexCount + 6) * sizeof(TextVertex) > metal->textVertexBufferSize;
+
+    if (needFlush || bufferFull) {
+        if (metal->textVertexCount > 0 && metal->currentTexture) {
+            [metal->renderEncoder setRenderPipelineState:metal->pipelineState];
+            [metal->renderEncoder setVertexBuffer:metal->textVertexBuffer offset:0 atIndex:0];
+            [metal->renderEncoder setFragmentTexture:metal->currentTexture atIndex:0];
+            [metal->renderEncoder setFragmentSamplerState:metal->samplerState atIndex:0];
+            [metal->renderEncoder drawPrimitives:MTLPrimitiveTypeTriangle
+                                      vertexStart:0
+                                      vertexCount:metal->textVertexCount];
+        }
+        metal->textVertexCount = 0;
+        metal->currentTexture = texture;  // Always update after flush
+    }
+
+    // Fallback for first draw call in frame
+    if (!metal->currentTexture) {
+        metal->currentTexture = texture;
+    }
+
+    // Convert screen coordinates to NDC
+    // Note: coordinates are already in framebuffer pixels
+    float screen_w = (float)g_ctx->width;  // framebuffer width
+    float screen_h = (float)g_ctx->height; // framebuffer height
+
+    float x1_ndc = (x1 / screen_w) * 2.0f - 1.0f;
+    float y1_ndc = 1.0f - (y1 / screen_h) * 2.0f;
+    float x2_ndc = (x2 / screen_w) * 2.0f - 1.0f;
+    float y2_ndc = 1.0f - (y2 / screen_h) * 2.0f;
+    float x3_ndc = (x3 / screen_w) * 2.0f - 1.0f;
+    float y3_ndc = 1.0f - (y3 / screen_h) * 2.0f;
+    float x4_ndc = (x4 / screen_w) * 2.0f - 1.0f;
+    float y4_ndc = 1.0f - (y4 / screen_h) * 2.0f;
+
+    // Get draw color
+    float r = metal->drawColor[0];
+    float g = metal->drawColor[1];
+    float b = metal->drawColor[2];
+    float a = metal->drawColor[3];
+
+    // Get vertex buffer pointer
+    TextVertex* vertices = (TextVertex*)[metal->textVertexBuffer contents];
+    NSUInteger idx = metal->textVertexCount;
+
+    // Layer index (0 for non-arrays)
+    float layerIdx = 0.0f;
+
+    // Create two triangles for the quad
+    // Triangle 1: v1, v2, v3
+    vertices[idx + 0].position[0] = x1_ndc;
+    vertices[idx + 0].position[1] = y1_ndc;
+    vertices[idx + 0].texCoord[0] = s1;
+    vertices[idx + 0].texCoord[1] = t1;
+    vertices[idx + 0].color[0] = r;
+    vertices[idx + 0].color[1] = g;
+    vertices[idx + 0].color[2] = b;
+    vertices[idx + 0].color[3] = a;
+    vertices[idx + 0].layerIndex = layerIdx;
+
+    vertices[idx + 1].position[0] = x2_ndc;
+    vertices[idx + 1].position[1] = y2_ndc;
+    vertices[idx + 1].texCoord[0] = s2;
+    vertices[idx + 1].texCoord[1] = t2;
+    vertices[idx + 1].color[0] = r;
+    vertices[idx + 1].color[1] = g;
+    vertices[idx + 1].color[2] = b;
+    vertices[idx + 1].color[3] = a;
+    vertices[idx + 1].layerIndex = layerIdx;
+
+    vertices[idx + 2].position[0] = x3_ndc;
+    vertices[idx + 2].position[1] = y3_ndc;
+    vertices[idx + 2].texCoord[0] = s3;
+    vertices[idx + 2].texCoord[1] = t3;
+    vertices[idx + 2].color[0] = r;
+    vertices[idx + 2].color[1] = g;
+    vertices[idx + 2].color[2] = b;
+    vertices[idx + 2].color[3] = a;
+    vertices[idx + 2].layerIndex = layerIdx;
+
+    // Triangle 2: v1, v3, v4
+    vertices[idx + 3].position[0] = x1_ndc;
+    vertices[idx + 3].position[1] = y1_ndc;
+    vertices[idx + 3].texCoord[0] = s1;
+    vertices[idx + 3].texCoord[1] = t1;
+    vertices[idx + 3].color[0] = r;
+    vertices[idx + 3].color[1] = g;
+    vertices[idx + 3].color[2] = b;
+    vertices[idx + 3].color[3] = a;
+    vertices[idx + 3].layerIndex = layerIdx;
+
+    vertices[idx + 4].position[0] = x3_ndc;
+    vertices[idx + 4].position[1] = y3_ndc;
+    vertices[idx + 4].texCoord[0] = s3;
+    vertices[idx + 4].texCoord[1] = t3;
+    vertices[idx + 4].color[0] = r;
+    vertices[idx + 4].color[1] = g;
+    vertices[idx + 4].color[2] = b;
+    vertices[idx + 4].color[3] = a;
+    vertices[idx + 4].layerIndex = layerIdx;
+
+    vertices[idx + 5].position[0] = x4_ndc;
+    vertices[idx + 5].position[1] = y4_ndc;
+    vertices[idx + 5].texCoord[0] = s4;
+    vertices[idx + 5].texCoord[1] = t4;
+    vertices[idx + 5].color[0] = r;
+    vertices[idx + 5].color[1] = g;
+    vertices[idx + 5].color[2] = b;
+    vertices[idx + 5].color[3] = a;
+    vertices[idx + 5].layerIndex = layerIdx;
+
+    // CRITICAL: Notify Metal that buffer contents were modified
+    // Only notify about the range that was actually modified (the 6 vertices we just added)
+    NSUInteger modifiedOffset = idx * sizeof(TextVertex);
+    NSUInteger modifiedSize = 6 * sizeof(TextVertex);
+    [metal->textVertexBuffer didModifyRange:NSMakeRange(modifiedOffset, modifiedSize)];
+
+    metal->textVertexCount += 6;
+}
+
+/* ===== Renderer Creation ===== */
+
+SGRenderer* sg_create_metal_renderer(void) {
+    SGRenderer* renderer = (SGRenderer*)calloc(1, sizeof(SGRenderer));
+    if (!renderer) return NULL;
+
+    renderer->init = metal_init;
+    renderer->shutdown = metal_shutdown;
+    renderer->begin_frame = metal_begin_frame;
+    renderer->end_frame = metal_end_frame;
+    renderer->present = metal_present;
+    renderer->set_clear_color = metal_set_clear_color;
+    renderer->set_draw_color = metal_set_draw_color;
+    renderer->set_viewport = metal_set_viewport;
+    renderer->create_texture = metal_create_texture;
+    renderer->create_compressed_texture = metal_create_compressed_texture;
+    renderer->create_compressed_texture_array = metal_create_compressed_texture_array;
+    renderer->destroy_texture = metal_destroy_texture;
+    renderer->update_texture = metal_update_texture;
+    renderer->draw_glyph = metal_draw_glyph;
+    renderer->draw_image = metal_draw_image;
+    renderer->draw_quad = metal_draw_quad;
+
+    return renderer;
+}

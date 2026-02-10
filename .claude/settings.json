@@ -1,0 +1,15 @@
+{
+    "spinnerVerbs": {
+           "mode": "replace",
+           "verbs": [
+                    "かんがえています",
+                   "いっしょうけんめいかきこんでます",
+                  "せっけいちゅうです"
+             ]
+     },
+  "statusLine": {
+    "type": "command",
+    "command": "npx -y ccstatusline@latest",
+    "padding": 0
+  }
+ }
