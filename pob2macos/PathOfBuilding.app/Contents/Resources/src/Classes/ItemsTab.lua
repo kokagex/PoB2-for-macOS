@@ -1135,10 +1135,10 @@ function ItemsTabClass:Draw(viewPort, inputEvents)
 	end
 	self.x = self.x - self.controls.scrollBarH.offset
 	self.y = self.y - self.controls.scrollBarV.offset
-	
+	local textInputActive = main.textInputActive
 	for _, event in ipairs(inputEvents) do
 		if event.type == "KeyDown" then	
-			if event.key == "v" and IsKeyDown("CTRL") then
+			if event.key == "v" and IsKeyDown("CTRL") and not textInputActive then
 				local newItem = Paste()
 				if newItem then
 					if newItem:find("{ ", 0, true) then
@@ -1157,19 +1157,19 @@ function ItemsTabClass:Draw(viewPort, inputEvents)
 					-- Trigger itemList's double click procedure
 					self.controls.itemList:OnSelClick(0, mOverControl.selItemId, true)
 				end
-			elseif event.key == "z" and IsKeyDown("CTRL") then
+			elseif event.key == "z" and IsKeyDown("CTRL") and not textInputActive then
 				self:Undo()
 				self.build.buildFlag = true
-			elseif event.key == "y" and IsKeyDown("CTRL") then
+			elseif event.key == "y" and IsKeyDown("CTRL") and not textInputActive then
 				self:Redo()
 				self.build.buildFlag = true
-			elseif event.key == "f" and IsKeyDown("CTRL") then
+			elseif event.key == "f" and IsKeyDown("CTRL") and not textInputActive then
 				if self.selectedDB == "RARE" then
 					self:SelectControl(self.controls.rareDB.controls.search)
 				else
 					self:SelectControl(self.controls.uniqueDB.controls.search)
 				end
-			elseif event.key == "d" and IsKeyDown("CTRL") then
+			elseif event.key == "d" and IsKeyDown("CTRL") and not textInputActive then
 				self.showStatDifferences = not self.showStatDifferences
 				self.build.buildFlag = true
 			elseif self.displayItem and IsKeyDown("RETURN") then

@@ -36,6 +36,15 @@ local function newlineCount(str)
 	end
 end
 
+-- DEBUG: Text input diagnostics
+_edit_debug_file = io.open("/tmp/pob_edit_debug.txt", "w")
+function _edit_debug(msg)
+	if _edit_debug_file then
+		_edit_debug_file:write(msg .. "\n")
+		_edit_debug_file:flush()
+	end
+end
+
 local EditClass = newClass("EditControl", "ControlHost", "Control", "UndoHandler", "TooltipHost", function(self, anchor, rect, init, prompt, filter, limit, changeFunc, lineHeight, allowZoom, clearable)
 	self.ControlHost()
 	self.Control(anchor, rect)
@@ -91,6 +100,7 @@ local EditClass = newClass("EditControl", "ControlHost", "Control", "UndoHandler
 		self.controls.scrollBarV.shown = false
 	end
 	self.protected = false
+	self.ctrlDown = false
 end)
 
 function EditClass:SetText(text, notify)
@@ -315,6 +325,11 @@ function EditClass:Draw(viewPort, noTooltip)
 	if self.drag then
 		local cursorX, cursorY = GetCursorPos()
 		self.caret = DrawStringCursorIndex(textHeight, self.font, self.buf, cursorX - textX + self.controls.scrollBarH.offset, cursorY - textY + self.controls.scrollBarV.offset)
+		if self.caret < 1 then
+			self.caret = 1
+		elseif self.caret > #self.buf + 1 then
+			self.caret = #self.buf + 1
+		end
 		self.lastUndoState.caret = self.caret
 		self:ScrollCaretIntoView()
 	end
@@ -425,9 +440,21 @@ end
 
 function EditClass:OnFocusGained()
 	self.blinkStart = GetTime()
+	if main then
+		main.textInputActive = true
+		main.textInputControl = self
+	end
 	if not self.drag and not self.selControl and not self.lineHeight then
 		self:SelectAll()
 	end
+end
+
+function EditClass:OnFocusLost()
+	if main and main.textInputControl == self then
+		main.textInputControl = nil
+		main.textInputActive = false
+	end
+	self.ctrlDown = false
 end
 
 function EditClass:OnKeyDown(key, doubleClick)
@@ -441,8 +468,12 @@ function EditClass:OnKeyDown(key, doubleClick)
 	else
 		self.selControl = nil
 	end
+	if key == "CTRL" then
+		self.ctrlDown = true
+		return self
+	end
 	local shift = IsKeyDown("SHIFT")
-	local ctrl =  IsKeyDown("CTRL")
+	local ctrl = self.ctrlDown
 	if key == "LEFTBUTTON" then
 		if not self.Object:IsMouseOver() then
 			return
@@ -493,6 +524,11 @@ function EditClass:OnKeyDown(key, doubleClick)
 			end
 			local cursorX, cursorY = GetCursorPos()
 			self.caret = DrawStringCursorIndex(textHeight, self.font, self.buf, cursorX - textX + self.controls.scrollBarH.offset, cursorY - textY + self.controls.scrollBarV.offset)
+			if self.caret < 1 then
+				self.caret = 1
+			elseif self.caret > #self.buf + 1 then
+				self.caret = #self.buf + 1
+			end
 			self.sel = self.caret
 			self.lastUndoState.caret = self.caret
 			self:ScrollCaretIntoView()
@@ -600,11 +636,12 @@ function EditClass:OnKeyDown(key, doubleClick)
 		local width, height = self:GetSize()
 		self:MoveCaretVertically(height - 18)
 	elseif key == "BACK" then
+		_edit_debug(string.format("EDITCONTROL:OnKeyDown BACK buf_before='%s' caret=%s sel=%s", tostring(self.buf), tostring(self.caret), tostring(self.sel)))
 		if self.sel and self.sel ~= self.caret then
 			self:ReplaceSel("")
 		elseif self.caret > 1 then
 			local len = 1
-			if IsKeyDown("CTRL") then
+			if ctrl then
 				while self.caret - len > 1 and self.buf:sub(self.caret - len, self.caret - len):match("%s") and not self.buf:sub(self.caret - len - 1, self.caret - len - 1):match("\n") do
 					len = len + 1
 				end
@@ -623,13 +660,14 @@ function EditClass:OnKeyDown(key, doubleClick)
 				self.changeFunc(self.buf)
 			end
 			self:AddUndoState()
+			_edit_debug(string.format("EDITCONTROL:OnKeyDown BACK AFTER buf='%s' caret=%s", tostring(self.buf), tostring(self.caret)))
 		end
 	elseif key == "DELETE" then
 		if self.sel and self.sel ~= self.caret then
 			self:ReplaceSel("")
 		elseif self.caret <= #self.buf then
 			local len = 1
-			if IsKeyDown("CTRL") then
+			if ctrl then
 				while self.caret + len <= #self.buf and self.buf:sub(self.caret + len - 1, self.caret + len - 1):match("%s") and not self.buf:sub(self.caret + len, self.caret + len):match("\n") do
 					len = len + 1
 				end
@@ -659,6 +697,10 @@ function EditClass:OnKeyUp(key)
 	if not self:IsShown() or not self:IsEnabled() then
 		return
 	end
+	if key == "CTRL" then
+		self.ctrlDown = false
+		return self
+	end
 	if self.selControl then
 		local newSel = self.selControl:OnKeyUp(key)
 		if newSel then
@@ -668,7 +710,7 @@ function EditClass:OnKeyUp(key)
 		end
 	end
 
-	local ctrl = IsKeyDown("CTRL")
+	local ctrl = self.ctrlDown
 	if key == "LEFTBUTTON" then
 		if self.drag then
 			self.drag = false
@@ -720,6 +762,8 @@ function EditClass:OnChar(key)
 	if not self:IsShown() or not self:IsEnabled() then
 		return
 	end
+	_edit_debug(string.format("EDITCONTROL:OnChar key='%s' buf_before='%s' caret=%s sel=%s hasFocus=%s",
+		tostring(key), tostring(self.buf), tostring(self.caret), tostring(self.sel), tostring(self.hasFocus)))
 	if key ~= '\b' then
 		if self.sel and self.sel ~= self.caret then
 			self:ReplaceSel(key)
@@ -727,6 +771,7 @@ function EditClass:OnChar(key)
 			self:Insert(key)
 		end
 	end
+	_edit_debug(string.format("EDITCONTROL:OnChar AFTER buf='%s' caret=%s", tostring(self.buf), tostring(self.caret)))
 	return self
 end
 

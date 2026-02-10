@@ -70,6 +70,9 @@ ffi.cdef[[
     void SetCursorPos(int x, int y);
     void ShowCursor(int show);
 
+    // Internal (for CharInput extension)
+    void* sg_get_context(void);
+
     // Clipboard
     void Copy(const char* text);
     const char* Paste(void);
@@ -841,6 +844,35 @@ else
     print("WARNING: launch.OnInit not found")
 end
 
+-- Load CharInput extension for text field support
+local char_input_lib
+do
+    local ci_ok, ci = pcall(ffi.load, "runtime/CharInput.dylib")
+    if ci_ok then
+        ffi.cdef[[
+            void CharInput_Init(void* glfw_window);
+            int GetCharInput(void);
+        ]]
+        -- Get GLFW window from SimpleGraphic context
+        -- sg_get_context() returns SGContext*, first field is void* window
+        local ctx = sg.sg_get_context()
+        if ctx ~= nil then
+            local window = ffi.cast("void**", ctx)[0]
+            if window ~= nil then
+                ci.CharInput_Init(window)
+                char_input_lib = ci
+                print("CharInput extension loaded successfully")
+            else
+                print("WARNING: CharInput - window handle is NULL")
+            end
+        else
+            print("WARNING: CharInput - sg_get_context returned NULL")
+        end
+    else
+        print("WARNING: CharInput extension not found, text input disabled")
+    end
+end
+
 print("")
 print("=== Path of Building is running ===")
 print("")
@@ -872,14 +904,31 @@ for c = string.byte("0"), string.byte("9") do
     table.insert(input_keys, string.char(c))
 end
 
+-- Map GLFW key names to PoB key names
+local key_name_map = {
+    BACKSPACE = "BACK",
+}
+
+local debug_char_file = io.open("/tmp/pob_char_debug.txt", "w")
+local function debug_char(msg)
+    if debug_char_file then
+        debug_char_file:write(msg .. "\n")
+        debug_char_file:flush()
+    end
+end
+
 local function dispatch_key_event(key, is_down, double_click)
+    local mapped_key = key_name_map[key] or key
+    if mapped_key == "BACK" or mapped_key == "DELETE" or #key == 1 then
+        debug_char(string.format("DEBUG KEY: %s (%s) %s", mapped_key, key, is_down and "DOWN" or "UP"))
+    end
     if is_down then
         if launch and launch.OnKeyDown then
-            launch:OnKeyDown(key, double_click)
+            launch:OnKeyDown(mapped_key, double_click)
         end
     else
         if launch and launch.OnKeyUp then
-            launch:OnKeyUp(key)
+            launch:OnKeyUp(mapped_key)
         end
     end
 end
@@ -891,6 +940,7 @@ local function poll_input_events()
 
     local cursorX, cursorY = GetCursorPos()
 
+    -- Key events
     for _, key in ipairs(input_keys) do
         local down = IsKeyDown(key) == 1
         local was_down = input_prev[key] and true or false
@@ -914,7 +964,7 @@ local function poll_input_events()
         end
     end
 
-    -- Mouse wheel events are delivered as KeyUp (matching existing handlers)
+    -- Mouse wheel events
     wheel_accum = wheel_accum + GetMouseWheelDelta()
     if wheel_accum >= 1 then
         if launch and launch.OnKeyUp then
@@ -926,6 +976,33 @@ local function poll_input_events()
             launch:OnKeyUp("WHEELDOWN")
         end
         wheel_accum = wheel_accum + 1
+    end
+
+    -- Character input (only printable characters, filter control chars)
+    if char_input_lib then
+        while true do
+            local ch = char_input_lib.GetCharInput()
+            if ch == 0 then break end
+            debug_char(string.format("DEBUG CHAR: codepoint=%d (0x%02X)", ch, ch))
+            if ch >= 32 and ch ~= 127 then
+                local char_str
+                if ch < 128 then
+                    char_str = string.char(ch)
+                elseif ch < 2048 then
+                    char_str = string.char(192 + math.floor(ch / 64), 128 + (ch % 64))
+                elseif ch < 65536 then
+                    char_str = string.char(224 + math.floor(ch / 4096), 128 + math.floor((ch % 4096) / 64), 128 + (ch % 64))
+                else
+                    char_str = string.char(240 + math.floor(ch / 262144), 128 + math.floor((ch % 262144) / 4096), 128 + math.floor((ch % 4096) / 64), 128 + (ch % 64))
+                end
+                debug_char(string.format("DEBUG CHAR: dispatching OnChar('%s')", char_str))
+                if launch and launch.OnChar then
+                    launch:OnChar(char_str)
+                end
+            else
+                debug_char(string.format("DEBUG CHAR: FILTERED control char %d", ch))
+            end
+        end
     end
 end
 

@@ -348,15 +348,16 @@ function CalcsTabClass:Draw(viewPort, inputEvents)
 	
 	self.controls.search.y = 4 - self.controls.scrollBar.offset
 
+	local textInputActive = main.textInputActive
 	for _, event in ipairs(inputEvents) do
 		if event.type == "KeyDown" then
-			if event.key == "z" and IsKeyDown("CTRL") then
+			if event.key == "z" and IsKeyDown("CTRL") and not textInputActive then
 				self:Undo()
 				self.build.buildFlag = true
-			elseif event.key == "y" and IsKeyDown("CTRL") then
+			elseif event.key == "y" and IsKeyDown("CTRL") and not textInputActive then
 				self:Redo()
 				self.build.buildFlag = true
-			elseif event.key == "f" and IsKeyDown("CTRL") then
+			elseif event.key == "f" and IsKeyDown("CTRL") and not textInputActive then
 				self:SelectControl(self.controls.search)
 			end
 		end

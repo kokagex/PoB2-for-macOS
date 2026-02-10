@@ -382,6 +382,14 @@ function main:OnFrame()
 		self.popups[1]:ProcessInput(self.inputEvents, self.viewPort)
 		wipeTable(self.inputEvents)
 	else
+		if self.selControl and not self.selControl.OnChar then
+			for _, event in ipairs(self.inputEvents) do
+				if event.type == "KeyDown" and not event.key:match("BUTTON") then
+					self:SelectControl()
+					break
+				end
+			end
+		end
 		self:ProcessControlsInput(self.inputEvents, self.viewPort)
 	end
 

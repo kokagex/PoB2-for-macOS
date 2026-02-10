@@ -667,10 +667,11 @@ function PartyTabClass:Draw(viewPort, inputEvents)
 	self.y = viewPort.y
 	self.width = viewPort.width
 	self.height = viewPort.height
+	local textInputActive = main.textInputActive
 
 	for id, event in ipairs(inputEvents) do
 		if event.type == "KeyDown" then
-			if event.key == "z" and IsKeyDown("CTRL") then
+			if event.key == "z" and IsKeyDown("CTRL") and not textInputActive then
 				if self.controls.editAuras.hasFocus then
 					self.controls.editAuras:Undo()
 				elseif self.controls.editCurses.hasFocus then
@@ -680,7 +681,7 @@ function PartyTabClass:Draw(viewPort, inputEvents)
 				elseif self.controls.editPartyMemberStats.hasFocus then
 					self.controls.editPartyMemberStats:Undo()
 				end
-			elseif event.key == "y" and IsKeyDown("CTRL") then
+			elseif event.key == "y" and IsKeyDown("CTRL") and not textInputActive then
 				if self.controls.editAuras.hasFocus then
 					self.controls.editAuras:Redo()
 				elseif self.controls.editCurses.hasFocus then

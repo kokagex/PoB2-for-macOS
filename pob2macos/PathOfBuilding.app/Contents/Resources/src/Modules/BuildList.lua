@@ -136,9 +136,10 @@ function listMode:GetArgs()
 end
 
 function listMode:OnFrame(inputEvents)
+	local textInputActive = main.textInputActive or (self.selControl and self.selControl.OnChar and self.selControl.hasFocus)
 	for id, event in ipairs(inputEvents) do
 		if event.type == "KeyDown" then
-			if event.key == "v" and IsKeyDown("CTRL") then
+			if event.key == "v" and IsKeyDown("CTRL") and not textInputActive then
 				if self.controls.buildList.copyBuild then
 					local build = self.controls.buildList.copyBuild
 					if build.subPath ~= self.subPath then
@@ -164,7 +165,7 @@ function listMode:OnFrame(inputEvents)
 					end
 					self.controls.buildList.cutBuild = nil
 				end
-			elseif event.key == "n" and IsKeyDown("CTRL") then
+			elseif event.key == "n" and IsKeyDown("CTRL") and not textInputActive then
 				main:SetMode("BUILD", false, "Unnamed build")
 			elseif event.key == "MOUSE4" then
 				self.controls.buildList.controls.path:Undo()

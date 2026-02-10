@@ -73,9 +73,10 @@ function buildMode:OnFrameMinimal(inputEvents)
 	-- Input handling
 	for id, event in ipairs(inputEvents) do
 		if event.type == "KeyDown" then
+			local textInputActive = main.textInputActive or (self.selControl and self.selControl.OnChar and self.selControl.hasFocus)
 			if event.key == "ESCAPE" or event.key == "MOUSE4" then
 				main:SetMode("LIST")
-			elseif IsKeyDown("CTRL") then
+			elseif IsKeyDown("CTRL") and not textInputActive then
 				-- Ctrl+1-6 tab switching
 				for _, tab in ipairs(tabList) do
 					if event.key == tab.key then
@@ -1785,13 +1786,14 @@ function buildMode:OnFrame(inputEvents)
 
 	for id, event in ipairs(inputEvents) do
 		if event.type == "KeyDown" then
+			local textInputActive = main.textInputActive or (self.selControl and self.selControl.OnChar and self.selControl.hasFocus)
 			if event.key == "MOUSE4" then
 				if self.unsaved then
 					self:OpenSavePopup("LIST")
 				else
 					self:CloseBuild()
 				end
-		elseif IsKeyDown("CTRL") then
+		elseif IsKeyDown("CTRL") and not textInputActive then
 				if event.key == "i" and self.importTab then
 						self.viewMode = "IMPORT"
 					self.importTab:SelectControl(self.importTab.controls.importCodeIn)

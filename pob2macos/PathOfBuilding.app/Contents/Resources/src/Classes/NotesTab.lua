@@ -87,12 +87,13 @@ function NotesTabClass:Draw(viewPort, inputEvents)
 	self.y = viewPort.y
 	self.width = viewPort.width
 	self.height = viewPort.height
+	local textInputActive = main.textInputActive
 
 	for id, event in ipairs(inputEvents) do
 		if event.type == "KeyDown" then
-			if event.key == "z" and IsKeyDown("CTRL") then
+			if event.key == "z" and IsKeyDown("CTRL") and not textInputActive then
 				self.controls.edit:Undo()
-			elseif event.key == "y" and IsKeyDown("CTRL") then
+			elseif event.key == "y" and IsKeyDown("CTRL") and not textInputActive then
 				self.controls.edit:Redo()
 			end
 		end

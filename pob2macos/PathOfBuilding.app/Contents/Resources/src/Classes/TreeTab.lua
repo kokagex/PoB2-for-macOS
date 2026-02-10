@@ -299,14 +299,15 @@ end)
 function TreeTabClass:Draw(viewPort, inputEvents)
 	self.anchorControls.x = viewPort.x + 4
 	self.anchorControls.y = viewPort.y + viewPort.height - 24
+	local textInputActive = main.textInputActive
 
 	for id, event in ipairs(inputEvents) do
 		if event.type == "KeyDown" then
-			if event.key == "z" and IsKeyDown("CTRL") then
+			if event.key == "z" and IsKeyDown("CTRL") and not textInputActive then
 				self.build.spec:Undo()
 				self.build.buildFlag = true
 				inputEvents[id] = nil
-			elseif event.key == "y" and IsKeyDown("CTRL") then
+			elseif event.key == "y" and IsKeyDown("CTRL") and not textInputActive then
 				self.build.spec:Redo()
 				self.build.buildFlag = true
 				inputEvents[id] = nil
@@ -322,9 +323,9 @@ function TreeTabClass:Draw(viewPort, inputEvents)
 					self.build.modFlag = true
 					self:SetActiveSpec(index)
 				end
-			elseif event.key == "f" and IsKeyDown("CTRL") then
+			elseif event.key == "f" and IsKeyDown("CTRL") and not textInputActive then
 				self:SelectControl(self.controls.treeSearch)
-			elseif event.key == "m" and IsKeyDown("CTRL") then
+			elseif event.key == "m" and IsKeyDown("CTRL") and not textInputActive then
 				self:OpenSpecManagePopup()
 			end
 		end
@@ -401,6 +402,12 @@ function TreeTabClass:Draw(viewPort, inputEvents)
 	self.controls.specSelect.selIndex = self.activeSpec
 	self.controls.specSelect:SetList(newSpecList)
 
+	-- DEBUG: Track hasFocus and buf state
+	if _edit_debug then
+		local ts = self.controls.treeSearch
+		_edit_debug(string.format("TREETAB: hasFocus=%s buf='%s' searchStr='%s'",
+			tostring(ts.hasFocus), tostring(ts.buf), tostring(self.viewer.searchStr)))
+	end
 	if not self.controls.treeSearch.hasFocus then
 		self.controls.treeSearch:SetText(self.viewer.searchStr)
 	end

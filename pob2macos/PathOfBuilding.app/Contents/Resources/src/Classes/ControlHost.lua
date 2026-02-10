@@ -33,11 +33,31 @@ function ControlHostClass:GetMouseOverControl()
 end
 
 function ControlHostClass:ProcessControlsInput(inputEvents, viewPort)
-	for id, event in ipairs(inputEvents) do
+	local function handleEvent(id, event)
 		if event.type == "KeyDown" then
+			if not self.selControl and not event.key:match("BUTTON") then
+				local mOverControl = self:GetMouseOverControl()
+				if mOverControl and mOverControl.OnChar then
+					self:SelectControl(mOverControl)
+					if mOverControl.OnKeyDown then
+						self:SelectControl(mOverControl:OnKeyDown(event.key, event.doubleClick))
+					end
+					inputEvents[id] = nil
+					return
+				end
+			end
 			if self.selControl then
 				self:SelectControl(self.selControl:OnKeyDown(event.key, event.doubleClick))
 				inputEvents[id] = nil
+				if not self.selControl and event.key:match("BUTTON") then
+					self:SelectControl()
+					if isMouseInRegion(viewPort) then
+						local mOverControl = self:GetMouseOverControl()
+						if mOverControl and mOverControl.OnKeyDown then
+							self:SelectControl(mOverControl:OnKeyDown(event.key, event.doubleClick))
+						end
+					end
+				end
 			end
 			if not self.selControl and event.key:match("BUTTON") then
 				self:SelectControl()
@@ -75,6 +95,12 @@ function ControlHostClass:ProcessControlsInput(inputEvents, viewPort)
 				end
 			end
 		elseif event.type == "Char" then
+			if not self.selControl then
+				local mOverControl = self:GetMouseOverControl()
+				if mOverControl and mOverControl.OnChar then
+					self:SelectControl(mOverControl)
+				end
+			end
 			if self.selControl then
 				if self.selControl.OnChar then
 					self:SelectControl(self.selControl:OnChar(event.key))
@@ -82,7 +108,19 @@ function ControlHostClass:ProcessControlsInput(inputEvents, viewPort)
 				inputEvents[id] = nil
 			end
 		end
-	end	
+	end
+
+	-- Process mouse button downs first so focus is set before key events in the same frame.
+	for id, event in ipairs(inputEvents) do
+		if event and event.type == "KeyDown" and event.key:match("BUTTON") then
+			handleEvent(id, event)
+		end
+	end
+	for id, event in ipairs(inputEvents) do
+		if event and not (event.type == "KeyDown" and event.key:match("BUTTON")) then
+			handleEvent(id, event)
+		end
+	end
 end
 
 function ControlHostClass:DrawControls(viewPort, selControl)

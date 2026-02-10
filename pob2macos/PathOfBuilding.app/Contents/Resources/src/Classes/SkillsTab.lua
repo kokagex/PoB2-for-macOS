@@ -526,15 +526,16 @@ function SkillsTabClass:Draw(viewPort, inputEvents)
 	end
 	self.x = self.x - self.controls.scrollBarH.offset
 
+	local textInputActive = main.textInputActive
 	for _, event in ipairs(inputEvents) do
 		if event.type == "KeyDown" then
-			if event.key == "z" and IsKeyDown("CTRL") then
+			if event.key == "z" and IsKeyDown("CTRL") and not textInputActive then
 				self:Undo()
 				self.build.buildFlag = true
-			elseif event.key == "y" and IsKeyDown("CTRL") then
+			elseif event.key == "y" and IsKeyDown("CTRL") and not textInputActive then
 				self:Redo()
 				self.build.buildFlag = true
-			elseif event.key == "v" and IsKeyDown("CTRL") then
+			elseif event.key == "v" and IsKeyDown("CTRL") and not textInputActive then
 				self:PasteSocketGroup()
 			end
 		end
@@ -1362,4 +1363,3 @@ function SkillsTabClass:UpdateGlobalGemCountAssignments()
 	end
 	GlobalGemAssignments["GemGroupCount"] = countSocketGroups
 end
-
