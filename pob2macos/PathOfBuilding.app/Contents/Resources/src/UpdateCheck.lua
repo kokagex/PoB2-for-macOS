@@ -86,13 +86,72 @@ local function downloadFile(source, file, outName)
 	return true
 end
 
+local function normalizeRootPath(path)
+	path = tostring(path or "."):gsub("\\", "/")
+	path = path:gsub("/+$", "")
+	if path == "" then
+		return "/"
+	end
+	return path
+end
+
+local function normalizeManifestFileName(name)
+	if type(name) ~= "string" then
+		return nil
+	end
+	if name:find("%z", 1, true) then
+		return nil
+	end
+
+	local normalized = name:gsub("{space}", " "):gsub("\\", "/")
+	if normalized == "" then
+		return nil
+	end
+	if normalized:sub(1, 1) == "/" or normalized:match("^[A-Za-z]:") then
+		return nil
+	end
+	if normalized:find("[\r\n\"]") then
+		return nil
+	end
+
+	local parts = {}
+	for part in normalized:gmatch("[^/]+") do
+		if part == "." or part == ".." then
+			return nil
+		end
+		table.insert(parts, part)
+	end
+	if #parts == 0 then
+		return nil
+	end
+	return table.concat(parts, "/")
+end
+
+local function sanitizeSourceUrl(url)
+	if type(url) ~= "string" then
+		return nil
+	end
+	if url:find("[%z\r\n]") then
+		return nil
+	end
+	if not url:match("^https://") then
+		return nil
+	end
+	return url
+end
+
 ConPrintf("Checking for update...")
+
+if noSSL then
+	ConPrintf("Update check failed: SSL verification is disabled")
+	return nil, "Refusing update while SSL verification is disabled.\nRemove '--no-ssl' and retry."
+end
 
 -- Use built-in helpers to obtain absolute paths without spawning a shell.
 local scriptPath, scriptFallback = GetScriptPath()
-scriptPath = scriptPath or scriptFallback or "."
+scriptPath = normalizeRootPath(scriptPath or scriptFallback or ".")
 local runtimePath, runtimeFallback = GetRuntimePath()
-runtimePath = runtimePath or runtimeFallback or scriptPath
+runtimePath = normalizeRootPath(runtimePath or runtimeFallback or scriptPath)
 
 -- Load and process local manifest
 local localVer
@@ -110,18 +169,22 @@ if localManXML and localManXML[1].elem == "PoBVersion" then
 				localBranch = node.attrib.branch
 			elseif node.elem == "Source" then
 				if node.attrib.part == "default" then
-					localSource = node.attrib.url
+					localSource = sanitizeSourceUrl(node.attrib.url)
 				end
 			elseif node.elem == "File" then
-				local fullPath
-				node.attrib.name = node.attrib.name:gsub("{space}", " ")
-				if node.attrib.part == "runtime" then
-					fullPath = runtimePath .. "/" .. node.attrib.name
-				else
-					fullPath = scriptPath .. "/" .. node.attrib.name
+				local safeName = normalizeManifestFileName(node.attrib.name)
+				if not safeName then
+					ConPrintf("Update check failed: invalid local manifest path '%s'", tostring(node.attrib.name))
+					return nil, "Invalid local manifest"
 				end
-				localFiles[node.attrib.name] = { sha1 = node.attrib.sha1, part = node.attrib.part, platform = node.attrib.platform, fullPath = fullPath }
-				if node.attrib.part == "runtime" and node.attrib.name:match("Path of Building") then
+				local fullPath
+				if node.attrib.part == "runtime" then
+					fullPath = runtimePath .. "/" .. safeName
+				else
+					fullPath = scriptPath .. "/" .. safeName
+				end
+				localFiles[safeName] = { sha1 = node.attrib.sha1, part = node.attrib.part, platform = node.attrib.platform, fullPath = fullPath }
+				if node.attrib.part == "runtime" and safeName:match("Path of Building") then
 					runtimeExecutable = fullPath
 				end
 			end
@@ -133,6 +196,10 @@ if not localVer or not localSource or not localBranch or not next(localFiles) th
 	return nil, "Invalid local manifest"
 end
 localSource = localSource:gsub("{branch}", localBranch)
+if not sanitizeSourceUrl(localSource) then
+	ConPrintf("Update check failed: insecure local source URL")
+	return nil, "Invalid local manifest"
+end
 
 -- Download and process remote manifest
 local remoteVer
@@ -150,19 +217,29 @@ if remoteManXML and remoteManXML[1].elem == "PoBVersion" then
 			if node.elem == "Version" then
 				remoteVer = node.attrib.number
 			elseif node.elem == "Source" then
-				if not remoteSources[node.attrib.part] then
-					remoteSources[node.attrib.part] = { }
+				local safeUrl = sanitizeSourceUrl(node.attrib.url)
+				if safeUrl then
+					if not remoteSources[node.attrib.part] then
+						remoteSources[node.attrib.part] = { }
+					end
+					remoteSources[node.attrib.part][node.attrib.platform or "any"] = safeUrl
+				else
+					ConPrintf("Skipping insecure source URL for part '%s'", tostring(node.attrib.part))
 				end
-				remoteSources[node.attrib.part][node.attrib.platform or "any"] = node.attrib.url
 			elseif node.elem == "File" then
 				if not node.attrib.platform or node.attrib.platform == localPlatform then
-					local fullPath
-					if node.attrib.part == "runtime" then
-						fullPath = runtimePath .. "/" .. node.attrib.name
+					local safeName = normalizeManifestFileName(node.attrib.name)
+					if not safeName then
+						ConPrintf("Skipping unsafe remote manifest path '%s'", tostring(node.attrib.name))
 					else
-						fullPath = scriptPath .. "/" .. node.attrib.name
+						local fullPath
+						if node.attrib.part == "runtime" then
+							fullPath = runtimePath .. "/" .. safeName
+						else
+							fullPath = scriptPath .. "/" .. safeName
+						end
+						remoteFiles[safeName] = { sha1 = node.attrib.sha1, part = node.attrib.part, platform = node.attrib.platform, fullPath = fullPath }
 					end
-					remoteFiles[node.attrib.name] = { sha1 = node.attrib.sha1, part = node.attrib.part, platform = node.attrib.platform, fullPath = fullPath }
 				end
 			end
 		end
@@ -177,8 +254,7 @@ end
 local updateFiles = { }
 for name, data in pairs(remoteFiles) do
 	data.name = name
-	local sanitizedName = name:gsub("{space}", " ")
-	if (not localFiles[name] or localFiles[name].sha1 ~= data.sha1) and (not localFiles[sanitizedName] or localFiles[sanitizedName].sha1 ~= data.sha1) then
+	if not localFiles[name] or localFiles[name].sha1 ~= data.sha1 then
 		table.insert(updateFiles, data)
 	elseif localFiles[name] then
 		local file = io.open(localFiles[name].fullPath, "rb")
@@ -198,8 +274,7 @@ end
 local deleteFiles = { }
 for name, data in pairs(localFiles) do
 	data.name = name
-	local unSanitizedName = name:gsub(" ", "{space}")
-	if not remoteFiles[name] and not remoteFiles[unSanitizedName] then
+	if not remoteFiles[name] then
 		table.insert(deleteFiles, data)
 	end
 end
@@ -223,8 +298,23 @@ for index, data in ipairs(updateFiles) do
 		UpdateProgress("Downloading %d/%d", index, #updateFiles)
 	end
 	local partSources = remoteSources[data.part]
+	if not partSources then
+		ConPrintf("Missing source for part '%s'", tostring(data.part))
+		failedFile = true
+		break
+	end
 	local source = partSources[localPlatform] or partSources["any"]
+	if not source then
+		ConPrintf("No matching source for part '%s' platform '%s'", tostring(data.part), tostring(localPlatform))
+		failedFile = true
+		break
+	end
 	source = source:gsub("{branch}", localBranch)
+	if not sanitizeSourceUrl(source) then
+		ConPrintf("Refusing insecure download URL for '%s'", tostring(data.name))
+		failedFile = true
+		break
+	end
 	local fileName = scriptPath.."/Update/"..data.name:gsub("[\\/]","{slash}")
 	data.updateFileName = fileName
 	local zipName = source:match("/([^/]+%.zip)$")

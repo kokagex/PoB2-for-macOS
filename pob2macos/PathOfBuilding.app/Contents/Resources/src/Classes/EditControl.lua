@@ -37,9 +37,10 @@ local function newlineCount(str)
 end
 
 -- DEBUG: Text input diagnostics
-_edit_debug_file = io.open("/tmp/pob_edit_debug.txt", "w")
+local _edit_debug_enabled = os.getenv("POB_EDIT_DEBUG") == "1"
+_edit_debug_file = _edit_debug_enabled and io.open("/tmp/pob_edit_debug.txt", "w") or nil
 function _edit_debug(msg)
-	if _edit_debug_file then
+	if _edit_debug_enabled and _edit_debug_file then
 		_edit_debug_file:write(msg .. "\n")
 		_edit_debug_file:flush()
 	end

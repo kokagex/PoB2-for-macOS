@@ -158,6 +158,11 @@ end
 
 -- NewFileSearch: File search implementation using shell commands
 _G.NewFileSearch = function(pattern, foldersOnly)
+    local function shellQuote(value)
+        value = tostring(value or "")
+        return "'" .. value:gsub("'", "'\\''") .. "'"
+    end
+
     -- Parse the pattern to extract directory and file pattern
     -- Pattern format: "/path/to/dir/*.xml" or "/path/to/dir/*" (for folders)
     local dir = pattern:match("^(.*)/[^/]*$") or "."
@@ -171,10 +176,10 @@ _G.NewFileSearch = function(pattern, foldersOnly)
     local cmd
     if foldersOnly then
         -- Search for directories only
-        cmd = string.format('find "%s" -maxdepth 1 -type d -not -path "%s" 2>/dev/null', dir, dir)
+        cmd = string.format("find %s -maxdepth 1 -type d -not -path %s 2>/dev/null", shellQuote(dir), shellQuote(dir))
     else
         -- Search for files matching pattern
-        cmd = string.format('find "%s" -maxdepth 1 -type f 2>/dev/null', dir)
+        cmd = string.format("find %s -maxdepth 1 -type f 2>/dev/null", shellQuote(dir))
     end
 
     -- Execute command and collect results
@@ -220,7 +225,7 @@ _G.NewFileSearch = function(pattern, foldersOnly)
         end
 
         -- Get file modification time using stat
-        local cmd = string.format('stat -f "%%m" "%s" 2>/dev/null', self.currentFile.fullPath)
+        local cmd = string.format("stat -f '%%m' %s 2>/dev/null", shellQuote(self.currentFile.fullPath))
         local handle = io.popen(cmd)
         if handle then
             local result = handle:read("*l")
@@ -665,8 +670,39 @@ end
 _G.SetClipboard = sg.SetClipboard
 
 -- System integration
-_G.OpenURL = sg.OpenURL
-_G.SpawnProcess = sg.SpawnProcess
+_G.OpenURL = function(url)
+    if url == nil then
+        return
+    end
+    local text = tostring(url)
+    -- Prevent shell breakouts in C-side implementation that wraps URL in single quotes.
+    text = text:gsub("'", "%%27")
+    if text:find("[%z\r\n]") then
+        return
+    end
+    sg.OpenURL(text)
+end
+_G.SpawnProcess = function(command, ...)
+    if command == nil then
+        return -1
+    end
+
+    local function shellEscape(value)
+        local text = tostring(value or "")
+        return "'" .. text:gsub("'", "'\\''") .. "'"
+    end
+
+    local cmd = shellEscape(command)
+
+    local argCount = select("#", ...)
+    for i = 1, argCount do
+        local value = select(i, ...)
+        if value ~= nil then
+            cmd = cmd .. " " .. shellEscape(value)
+        end
+    end
+    return sg.SpawnProcess(cmd)
+end
 _G.TakeScreenshot = sg.TakeScreenshot
 
 -- Console

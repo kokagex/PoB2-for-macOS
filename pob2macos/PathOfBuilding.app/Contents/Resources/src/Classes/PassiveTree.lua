@@ -100,7 +100,12 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 		ConPrintf("ERROR: loadstring failed: %s", tostring(loadErr))
 		error("Failed to parse tree.lua: " .. tostring(loadErr))
 	end
-	local treeData = treeFunc()
+	setfenv(treeFunc, {})
+	local ok, treeData = pcall(treeFunc)
+	if not ok then
+		ConPrintf("ERROR: tree.lua execution failed: %s", tostring(treeData))
+		error("Failed to execute tree.lua safely: " .. tostring(treeData))
+	end
 
 	local treeKeyCount = 0
 	local hasNodes = false
