@@ -1509,7 +1509,8 @@ end
 
 function PassiveTreeViewClass:AddNodeName(tooltip, node, build)
 	local fontSizeBig = main.showFlavourText and 18 or 16
-	tooltip:SetRecipe(node.infoRecipe)
+	-- PoE2 UI: hide recipe/oil tags in passive node tooltips (user-facing noise).
+	tooltip:SetRecipe(nil)
 	local tooltipMap = {
 		Normal = "PASSIVE",
 		Notable = "NOTABLE",

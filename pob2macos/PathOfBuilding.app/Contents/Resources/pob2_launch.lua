@@ -344,6 +344,17 @@ end
 _G.SetDrawLayer = function(layer, subLayer)
     sg.SetDrawLayer(layer or 0, subLayer or 0)
 end
+
+local function normalizeTextArg(text)
+    if text == nil then
+        return ""
+    end
+    if type(text) ~= "string" then
+        return tostring(text)
+    end
+    return text
+end
+
 -- DrawString: Logical→Physical conversion + alignment mapping + viewport offset
 _G.DrawString = function(left, top, align, height, font, text)
     local alignMap = {
@@ -357,30 +368,20 @@ _G.DrawString = function(left, top, align, height, font, text)
     if type(align) == "string" then
         alignInt = alignMap[align:upper()] or 0
     end
+    text = normalizeTextArg(text)
     local scale = getDpiScale()
     sg.DrawString(math.floor((left + viewportOffX) * scale), math.floor((top + viewportOffY) * scale),
                   alignInt, math.floor(height * scale), font, text)
 end
 -- DrawStringWidth: Scale font height up, scale result back to logical
 _G.DrawStringWidth = function(height, font, text)
-    if type(text) ~= "string" then
-        local info = debug.getinfo(2, "Sl")
-        local src = info and (info.short_src .. ":" .. tostring(info.currentline)) or "unknown"
-        local f = io.open("/tmp/pob_error.txt", "w")
-        if f then
-            f:write("COMPLETE ERROR MESSAGE:\n")
-            f:write("DrawStringWidth bad text arg: type=" .. type(text) .. " value=" .. tostring(text) .. "\n")
-            f:write("Caller: " .. src .. "\n")
-            f:write("Traceback:\n" .. debug.traceback() .. "\n")
-            f:close()
-        end
-        error("DrawStringWidth: arg #3 (text) must be string, got " .. type(text) .. " value=" .. tostring(text) .. " from " .. src)
-    end
+    text = normalizeTextArg(text)
     local scale = getDpiScale()
     return math.floor(sg.DrawStringWidth(math.floor(height * scale), font, text) / scale)
 end
 -- DrawStringCursorIndex: Scale font height and cursor coords to physical (viewport-adjusted)
 _G.DrawStringCursorIndex = function(height, font, text, cursorX, cursorY)
+    text = normalizeTextArg(text)
     local scale = getDpiScale()
     return sg.DrawStringCursorIndex(math.floor(height * scale), font, text,
                                      math.floor((cursorX - viewportOffX) * scale), math.floor((cursorY - viewportOffY) * scale))
