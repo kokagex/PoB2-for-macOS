@@ -60,6 +60,48 @@ Whether this macOS port can keep up with the PoE2 0.5 update from the upstream P
 
 ---
 
+## 既知の不具合 / Known Issues
+
+- 一部のオイルアイテムのテクスチャが表示されない（DDS圧縮の互換性問題）
+- ジュエルソケットのサムネイルプレビューで、ツリーの描画が枠外にはみ出すことがある
+- ビルド計算の一部数値が本家と一致しない場合がある
+- Save/Load の XML 保存は未実装（インポートは動作します）
+
+---
+
+- Some oil item textures may not display (DDS compression compatibility issue)
+- Jewel socket thumbnail previews may overflow outside the frame
+- Some build calculation values may differ from the Windows version
+- XML save/load is not yet implemented (import works)
+
+---
+
+## バージョン履歴 / Version History
+
+### v1.0.0 (2026-02-11)
+
+初回リリース / Initial release
+
+- macOS ネイティブ動作（Metal / ARM64）
+- パッシブツリーの表示・ノード割り当て・ステータス反映
+- ビルド画面の全7タブ（Tree, Skills, Items, Calcs, Config, Notes, Import/Export）
+- PoB リンクからのビルドインポート
+- リアルタイムステータス再計算
+- ツールチップ表示（アイテム・ノード・スキル）
+- PoE2 武器タイプ対応（Spear, Flail, Crossbow, Talisman）
+
+---
+
+- Native macOS support (Metal / ARM64)
+- Passive tree display, node allocation, and stat reflection
+- All 7 build tabs (Tree, Skills, Items, Calcs, Config, Notes, Import/Export)
+- Build import via PoB links
+- Real-time stat recalculation
+- Tooltips for items, nodes, and skills
+- PoE2 weapon types supported (Spear, Flail, Crossbow, Talisman)
+
+---
+
 ## このプロジェクトについて / About This Project
 
 このプロジェクトはコーディング知識が一切ない作者が、Claude Code や Codex などの AI ツールを使い、バイブコーディングのみで移植作業を行いました。
