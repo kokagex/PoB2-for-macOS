@@ -65,18 +65,23 @@ Whether this macOS port can keep up with the PoE2 0.5 update from the upstream P
 - 一部のオイルアイテムのテクスチャが表示されない（DDS圧縮の互換性問題）
 - ジュエルソケットのサムネイルプレビューで、ツリーの描画が枠外にはみ出すことがある
 - ビルド計算の一部数値が本家と一致しない場合がある
-- Save/Load の XML 保存は未実装（インポートは動作します）
+- OAuth認証未実装のため、PoBサイトからの直接インポートは不可（リンク貼り付けは可能）
 
 ---
 
 - Some oil item textures may not display (DDS compression compatibility issue)
 - Jewel socket thumbnail previews may overflow outside the frame
 - Some build calculation values may differ from the Windows version
-- XML save/load is not yet implemented (import works)
+- OAuth authentication is not yet implemented; direct import from the PoB site is unavailable (link paste still works)
 
 ---
 
 ## バージョン履歴 / Version History
+
+### v0.1.1 (2026-02-11)
+
+- ビルドのセーブ/ロード機能を有効化（macOSパス設定修正）
+- Save/Load builds now works (fixed macOS path settings)
 
 ### v0.1.0 (2026-02-11)
 

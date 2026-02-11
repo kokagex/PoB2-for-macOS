@@ -641,12 +641,16 @@ _G.ConExecute = sg.ConExecute
 _G.ConPrintf = sg.ConPrintf
 _G.ConClear = sg.ConClear
 _G.GetScriptPath = function()
-    return ffi.string(sg.GetScriptPath())
+    return ffi.string(sg.GetWorkDir())
 end
 _G.GetRuntimePath = function()
     return ffi.string(sg.GetRuntimePath())
 end
 _G.GetUserPath = function()
+    local home = os.getenv("HOME")
+    if home then
+        return home .. "/Library/Application Support"
+    end
     return ffi.string(sg.GetUserPath())
 end
 _G.GetWorkDir = function()
@@ -981,7 +985,7 @@ print("")
 
 -- Stage 4: Define global constants required by Main.lua
 _G.APP_NAME = "Path of Building"
-_G.APP_VERSION = "PoE2-macOS-0.1.0"
+_G.APP_VERSION = "PoE2-macOS-0.1.1"
 
 -- Load and run Launch.lua
 print("Loading Launch.lua...")
