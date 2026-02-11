@@ -52,6 +52,14 @@ Whether this macOS port can keep up with the PoE2 0.5 update from the upstream P
 
 ---
 
+## このプロジェクトについて / About This Project
+
+このプロジェクトはコーディング知識が一切ない作者が、Claude Code や Codex などの AI ツールを使い、バイブコーディングのみで移植作業を行いました。
+
+This project was ported entirely through vibe coding by an author with zero coding knowledge, using AI tools such as Claude Code and Codex.
+
+---
+
 ## License
 
 This project is based on [Path of Building Community](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2) and follows its licensing terms.
