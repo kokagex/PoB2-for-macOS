@@ -125,9 +125,18 @@ end
 
 function ControlHostClass:DrawControls(viewPort, selControl)
 	local noTooltipArg
-	-- Pass 1: Draw all non-dropped controls first
+	-- Pass 1a: Draw section backgrounds first.
+	-- SetDrawLayer is a no-op in the Metal backend, so section fills can hide controls
+	-- if drawn later in an arbitrary table iteration order.
 	for _, control in pairs(self.controls) do
-		if control:IsShown() and control.Draw and not control.dropped then
+		if control:IsShown() and control.Draw and not control.dropped and control._className == "SectionControl" then
+			noTooltipArg = (self.selControl and self.selControl.hasFocus and self.selControl ~= control) or (selControl and selControl.hasFocus and selControl ~= control)
+			control:Draw(viewPort, noTooltipArg)
+		end
+	end
+	-- Pass 1b: Draw all other non-dropped controls
+	for _, control in pairs(self.controls) do
+		if control:IsShown() and control.Draw and not control.dropped and control._className ~= "SectionControl" then
 			noTooltipArg = (self.selControl and self.selControl.hasFocus and self.selControl ~= control) or (selControl and selControl.hasFocus and selControl ~= control)
 			control:Draw(viewPort, noTooltipArg)
 		end

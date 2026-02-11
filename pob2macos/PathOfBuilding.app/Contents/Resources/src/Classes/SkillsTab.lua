@@ -120,15 +120,16 @@ local SkillsTabClass = newClass("SkillsTab", "UndoHandler", "ControlHost", "Cont
 
 	-- Gem options
 	local optionInputsX = 170
-	local optionInputsY = 45
-	self.controls.optionSection = new("SectionControl", { "TOPLEFT", self.controls.groupList, "BOTTOMLEFT" }, { 0, optionInputsY + 50, 360, 130 }, "Gem Options")
-	self.controls.sortGemsByDPS = new("CheckBoxControl", { "TOPLEFT", self.controls.groupList, "BOTTOMLEFT" }, { optionInputsX, optionInputsY + 70, 20 }, "Sort gems by DPS:", function(state)
+	local optionSectionTop = 95
+	local optionControlTop = 20
+	self.controls.optionSection = new("SectionControl", { "TOPLEFT", self.controls.groupList, "BOTTOMLEFT" }, { 0, optionSectionTop, 360, 130 }, "Gem Options")
+	self.controls.sortGemsByDPS = new("CheckBoxControl", { "TOPLEFT", self.controls.optionSection, "TOPLEFT" }, { optionInputsX, optionControlTop, 20 }, "^7Sort gems by DPS:", function(state)
 		self.sortGemsByDPS = state
 	end, nil, true)
 	self.controls.sortGemsByDPSFieldControl = new("DropDownControl", { "LEFT", self.controls.sortGemsByDPS, "RIGHT" }, { 10, 0, 140, 20 }, sortGemTypeList, function(index, value)
 		self.sortGemsByDPSField = value.type
 	end)
-	self.controls.defaultLevel = new("DropDownControl", { "TOPLEFT", self.controls.groupList, "BOTTOMLEFT" }, { optionInputsX, optionInputsY + 94, 170, 20 }, defaultGemLevelList, function(index, value)
+	self.controls.defaultLevel = new("DropDownControl", { "TOPLEFT", self.controls.optionSection, "TOPLEFT" }, { optionInputsX, optionControlTop + 24, 170, 20 }, defaultGemLevelList, function(index, value)
 		self.defaultGemLevel = value.gemLevel
 	end)
 	self.controls.defaultLevel.tooltipFunc = function(tooltip, mode, index, value)
@@ -138,11 +139,11 @@ local SkillsTabClass = newClass("SkillsTab", "UndoHandler", "ControlHost", "Cont
 		end
 	end
 	self.controls.defaultLevelLabel = new("LabelControl", { "RIGHT", self.controls.defaultLevel, "LEFT" }, { -4, 0, 0, 16 }, "^7Default gem level:")
-	self.controls.defaultQuality = new("EditControl", { "TOPLEFT", self.controls.groupList, "BOTTOMLEFT" }, { optionInputsX, optionInputsY + 118, 60, 20 }, nil, nil, "%D", 2, function(buf)
+	self.controls.defaultQuality = new("EditControl", { "TOPLEFT", self.controls.optionSection, "TOPLEFT" }, { optionInputsX, optionControlTop + 48, 60, 20 }, nil, nil, "%D", 2, function(buf)
 		self.defaultGemQuality = m_min(tonumber(buf) or 0, 23)
 	end)
 	self.controls.defaultQualityLabel = new("LabelControl", { "RIGHT", self.controls.defaultQuality, "LEFT" }, { -4, 0, 0, 16 }, "^7Default gem quality:")
-	self.controls.showSupportGemTypes = new("DropDownControl", { "TOPLEFT", self.controls.groupList, "BOTTOMLEFT" }, { optionInputsX, optionInputsY + 142, 170, 20 }, showSupportGemTypeList, function(index, value)
+	self.controls.showSupportGemTypes = new("DropDownControl", { "TOPLEFT", self.controls.optionSection, "TOPLEFT" }, { optionInputsX, optionControlTop + 72, 170, 20 }, showSupportGemTypeList, function(index, value)
 		self.showSupportGemTypes = value.show
 	end)
 	self.controls.showSupportGemTypesLabel = new("LabelControl", { "RIGHT", self.controls.showSupportGemTypes, "LEFT" }, { -4, 0, 0, 16 }, "^7Show support gems:")
