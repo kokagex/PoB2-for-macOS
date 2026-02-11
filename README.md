@@ -78,7 +78,7 @@ Whether this macOS port can keep up with the PoE2 0.5 update from the upstream P
 
 ## バージョン履歴 / Version History
 
-### v1.0.0 (2026-02-11)
+### v0.1.0 (2026-02-11)
 
 初回リリース / Initial release
 
