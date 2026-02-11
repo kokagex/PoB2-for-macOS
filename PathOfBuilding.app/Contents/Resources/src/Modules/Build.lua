@@ -1262,11 +1262,16 @@ function buildMode:Init(dbFileName, buildName, buildXML, convertBuild, importLin
 			local width, height = control:GetSize()
 			DrawString(x, y + 2, "LEFT", 16, "FIXED", control.str)
 			if control:IsMouseInBounds() then
-				SetDrawLayer(nil, 10)
 				miscTooltip:Clear()
 				for k,v in pairs(self.controls.warnings.lines) do miscTooltip:AddLine(16, v) end
-				miscTooltip:Draw(x, y, width, height, main.viewPort)
-				SetDrawLayer(nil, 0)
+				if main.deferTooltips and main.tooltipQueue then
+					local drawX, drawY, drawW, drawH, drawVP = x, y, width, height, main.viewPort
+					t_insert(main.tooltipQueue, function()
+						miscTooltip:Draw(drawX, drawY, drawW, drawH, drawVP)
+					end)
+				else
+					miscTooltip:Draw(x, y, width, height, main.viewPort)
+				end
 			end
 		else
 			control.str = {}
@@ -1993,16 +1998,7 @@ function buildMode:OnFrame(inputEvents)
 		end
 	end
 
-	-- Flush queued hover tooltips (drawn LAST = on top of everything)
-	-- Copy queue to local and clear before flushing to avoid re-entrancy issues
-	local pendingTooltips = {}
-	for i, drawFunc in ipairs(main.tooltipQueue) do
-		pendingTooltips[i] = drawFunc
-	end
-	wipeTable(main.tooltipQueue)
-	for _, drawFunc in ipairs(pendingTooltips) do
-		drawFunc()
-	end
+	-- tooltipQueue is flushed in Main:OnFrame after all controls are drawn
 	main.deferTooltips = false
 end
 

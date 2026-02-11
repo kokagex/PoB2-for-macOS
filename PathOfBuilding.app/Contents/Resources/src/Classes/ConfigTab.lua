@@ -528,7 +528,8 @@ local ConfigTabClass = newClass("ConfigTab", "UndoHandler", "ControlHost", "Cont
 				t_insert(shownFuncs, listOrSingleIfOption(varData.ifSkillFlag, function(ifOption)
 					for _, activeSkill in ipairs(getMainEnv().player.activeSkillList) do
 						-- only checking flags of skill in main env. rework may be required
-						if activeSkill.activeEffect.statSet.skillFlags[ifOption] then
+						local statSet = activeSkill.activeEffect and activeSkill.activeEffect.statSet
+						if statSet and statSet.skillFlags and statSet.skillFlags[ifOption] then
 							return true
 						end
 					end
