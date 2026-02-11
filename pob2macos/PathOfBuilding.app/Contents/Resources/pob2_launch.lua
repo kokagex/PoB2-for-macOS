@@ -316,6 +316,10 @@ _G.ResetViewport = function()
     sg.GetScreenSize(sw, sh)
     sg.SetViewport(0, 0, sw[0], sh[0])
 end
+-- GetViewportOffset: Expose current viewport offset for deferred tooltip positioning
+_G.GetViewportOffset = function()
+    return viewportOffX, viewportOffY
+end
 -- SetDrawColor: Wrapper to handle type conversion and optional alpha argument
 _G.SetDrawColor = function(r, g, b, a)
     -- Handle PoB color code strings like "^xRRGGBB"
