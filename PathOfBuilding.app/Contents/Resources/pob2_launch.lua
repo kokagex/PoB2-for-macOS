@@ -384,6 +384,9 @@ local function normalizeTextArg(text)
     return text
 end
 
+-- Font scale factor for CJK font compatibility (Noto Sans CJK JP has wider metrics than LiberationSans)
+local fontScale = 0.93
+
 -- DrawString: Logical→Physical conversion + alignment mapping + viewport offset
 _G.DrawString = function(left, top, align, height, font, text)
     local alignMap = {
@@ -400,19 +403,19 @@ _G.DrawString = function(left, top, align, height, font, text)
     text = normalizeTextArg(text)
     local scale = getDpiScale()
     sg.DrawString(math.floor((left + viewportOffX) * scale), math.floor((top + viewportOffY) * scale),
-                  alignInt, math.floor(height * scale), font, text)
+                  alignInt, math.floor(height * scale * fontScale), font, text)
 end
 -- DrawStringWidth: Scale font height up, scale result back to logical
 _G.DrawStringWidth = function(height, font, text)
     text = normalizeTextArg(text)
     local scale = getDpiScale()
-    return math.floor(sg.DrawStringWidth(math.floor(height * scale), font, text) / scale)
+    return math.floor(sg.DrawStringWidth(math.floor(height * scale * fontScale), font, text) / scale)
 end
 -- DrawStringCursorIndex: Scale font height and cursor coords to physical (viewport-adjusted)
 _G.DrawStringCursorIndex = function(height, font, text, cursorX, cursorY)
     text = normalizeTextArg(text)
     local scale = getDpiScale()
-    return sg.DrawStringCursorIndex(math.floor(height * scale), font, text,
+    return sg.DrawStringCursorIndex(math.floor(height * scale * fontScale), font, text,
                                      math.floor((cursorX - viewportOffX) * scale), math.floor((cursorY - viewportOffY) * scale))
 end
 -- DrawImage: Wrapper to handle wrapped ImageHandle objects
