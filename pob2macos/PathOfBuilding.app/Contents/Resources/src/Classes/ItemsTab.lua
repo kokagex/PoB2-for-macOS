@@ -3362,7 +3362,7 @@ function ItemsTabClass:AddItemTooltip(tooltip, item, slot, dbMode)
 		end
 		local output = calcFunc({ toggleCharm = item })
 		local header
-		if self.build.calcsTab.mainEnv and self.build.calcsTab.mainEnv.charms and self.build.calcsTab.mainEnv.charms[item] then
+		if self.build.calcsTab and self.build.calcsTab.mainEnv and self.build.calcsTab.mainEnv.charms and self.build.calcsTab.mainEnv.charms[item] then
 			header = "^7Deactivating this charm will give you:"
 		else
 			header = "^7Activating this charm will give you:"
