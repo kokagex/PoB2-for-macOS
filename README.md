@@ -36,6 +36,14 @@ After the first time, it will open normally with a double-click.
 
 ---
 
+## 注意事項 / Notes
+
+現在 GGG に OAuth 認証の ID 取得を申請中のため、ご自身のキャラクター選択機能は未実装です。poe.ninja など外部サービスで PoB リンクがあれば、そちらからのインポートは可能です。
+
+Character import from your own account is not yet available, as we are currently in the process of obtaining an OAuth client ID from GGG. In the meantime, you can import builds via PoB links from external services such as poe.ninja.
+
+---
+
 ## バグ報告 / Bug Reports
 
 動作がおかしい箇所やクラッシュを見つけたら、[Issues](https://github.com/kokagex/PoB2-for-macOS/issues) に報告してもらえると助かります。スクリーンショットや再現手順があるとより対応しやすいです。
