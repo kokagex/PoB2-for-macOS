@@ -729,22 +729,130 @@ _G.LaunchSubScript = sg.LaunchSubScript
 _G.AbortSubScript = sg.AbortSubScript
 _G.IsSubScriptRunning = sg.IsSubScriptRunning
 
--- Compression
-_G.Inflate = function(data, dataLen)
-    local outLen = ffi.new("int[1]")
-    local result = sg.Inflate(data, dataLen or #data, outLen)
-    if result ~= nil then
-        return ffi.string(result, outLen[0])
+-- Compression (using macOS system zlib via FFI)
+do
+    local ok, err = pcall(function()
+    local zlib = ffi.load("z")
+    ffi.cdef[[
+        typedef unsigned long uLong;
+        typedef unsigned int uInt;
+        typedef unsigned char Byte;
+        typedef Byte* Bytef;
+        typedef void* voidpf;
+        typedef uLong uLongf;
+
+        typedef struct z_stream_s {
+            const Bytef* next_in;
+            uInt avail_in;
+            uLong total_in;
+            Bytef* next_out;
+            uInt avail_out;
+            uLong total_out;
+            const char* msg;
+            void* state;
+            voidpf zalloc;
+            voidpf zfree;
+            voidpf opaque;
+            int data_type;
+            uLong adler;
+            uLong reserved;
+        } z_stream;
+
+        int inflateInit2_(z_stream* strm, int windowBits, const char* version, int stream_size);
+        int inflate(z_stream* strm, int flush);
+        int inflateEnd(z_stream* strm);
+
+        int deflateInit2_(z_stream* strm, int level, int method, int windowBits, int memLevel, int strategy, const char* version, int stream_size);
+        int deflate(z_stream* strm, int flush);
+        int deflateEnd(z_stream* strm);
+
+        uLong compressBound(uLong sourceLen);
+        const char* zlibVersion(void);
+    ]]
+
+    local Z_OK = 0
+    local Z_STREAM_END = 1
+    local Z_NO_FLUSH = 0
+    local Z_FINISH = 4
+    local Z_DEFLATED = 8
+    local MAX_WBITS = 15
+
+    local zlibVer = zlib.zlibVersion()
+    local streamSize = ffi.sizeof("z_stream")
+
+    _G.Inflate = function(data, dataLen)
+        if not data then return nil end
+        dataLen = dataLen or #data
+        if dataLen == 0 then return nil end
+
+        local strm = ffi.new("z_stream")
+        ffi.fill(strm, streamSize)
+        strm.next_in = ffi.cast("const Bytef*", data)
+        strm.avail_in = dataLen
+
+        -- Auto-detect format (zlib/gzip/raw) with MAX_WBITS + 32
+        local ret = zlib.inflateInit2_(strm, MAX_WBITS + 32, zlibVer, streamSize)
+        if ret ~= Z_OK then return nil end
+
+        local bufSize = dataLen * 4
+        if bufSize < 1024 then bufSize = 1024 end
+        local buf = ffi.new("uint8_t[?]", bufSize)
+        local chunks = {}
+        local totalOut = 0
+
+        repeat
+            strm.next_out = ffi.cast("Bytef*", buf)
+            strm.avail_out = bufSize
+            ret = zlib.inflate(strm, Z_NO_FLUSH)
+            if ret ~= Z_OK and ret ~= Z_STREAM_END then
+                zlib.inflateEnd(strm)
+                return nil
+            end
+            local have = bufSize - strm.avail_out
+            if have > 0 then
+                chunks[#chunks + 1] = ffi.string(buf, have)
+                totalOut = totalOut + have
+            end
+        until ret == Z_STREAM_END
+
+        zlib.inflateEnd(strm)
+        return table.concat(chunks)
     end
-    return nil
-end
-_G.Deflate = function(data, dataLen)
-    local outLen = ffi.new("int[1]")
-    local result = sg.Deflate(data, dataLen or #data, outLen)
-    if result ~= nil then
-        return ffi.string(result, outLen[0])
+
+    _G.Deflate = function(data, dataLen)
+        if not data then return nil end
+        dataLen = dataLen or #data
+        if dataLen == 0 then return nil end
+
+        local strm = ffi.new("z_stream")
+        ffi.fill(strm, streamSize)
+        strm.next_in = ffi.cast("const Bytef*", data)
+        strm.avail_in = dataLen
+
+        -- Raw deflate (-MAX_WBITS) to match PoB format
+        local ret = zlib.deflateInit2_(strm, 6, Z_DEFLATED, -MAX_WBITS, 8, 0, zlibVer, streamSize)
+        if ret ~= Z_OK then return nil end
+
+        local bufSize = tonumber(zlib.compressBound(dataLen))
+        local buf = ffi.new("uint8_t[?]", bufSize)
+        strm.next_out = ffi.cast("Bytef*", buf)
+        strm.avail_out = bufSize
+
+        ret = zlib.deflate(strm, Z_FINISH)
+        if ret ~= Z_STREAM_END then
+            zlib.deflateEnd(strm)
+            return nil
+        end
+
+        local outLen = bufSize - strm.avail_out
+        zlib.deflateEnd(strm)
+        return ffi.string(buf, outLen)
     end
-    return nil
+    end) -- end pcall
+    if not ok then
+        _G.Inflate = function() return nil end
+        _G.Deflate = function() return nil end
+    end
 end
 
 -- Profiling
