@@ -297,6 +297,9 @@ function EditClass:Draw(viewPort, noTooltip)
 		SetDrawLayer(nil, 0)
 	end
 	self:UpdateScrollBars()
+	if not self.lineHeight then
+		self.controls.scrollBarH.offset = 0
+	end
 	local marginL = textX - x - 2
 	local marginR = self.controls.scrollBarV:IsShown() and 14 or 0
 	local marginB = self.controls.scrollBarH:IsShown() and 14 or 0
@@ -420,15 +423,15 @@ function EditClass:Draw(viewPort, noTooltip)
 		end
 	else
 		local pre = self.textCol .. self.buf:sub(1, self.caret - 1)
-		local post = self.buf:sub(self.caret)
+		local post = self.textCol .. self.buf:sub(self.caret)
 		if self.protected then
-			DrawString(textX, textY, "LEFT", textHeight, self.font, self.textCol .. string.rep(protected_replace, #pre-#self.textCol))
+			DrawString(textX, textY, "LEFT", textHeight, self.font, string.rep(protected_replace, #pre-#self.textCol))
 		else
 			DrawString(textX, textY, "LEFT", textHeight, self.font, pre)
 		end
 		textX = textX + DrawStringWidth(textHeight, self.font, pre)
 		if self.protected and #post > 0 then
-			DrawString(textX, textY, "LEFT", textHeight, self.font, string.rep(protected_replace, #post))
+			DrawString(textX, textY, "LEFT", textHeight, self.font, string.rep(protected_replace, #post-#self.textCol))
 		else
 			DrawString(textX, textY, "LEFT", textHeight, self.font, post)
 		end

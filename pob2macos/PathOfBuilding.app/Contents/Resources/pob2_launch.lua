@@ -328,6 +328,26 @@ _G.SetDrawColor = function(r, g, b, a)
             sg.SetDrawColor(ri, gi, bi, tonumber(g) or 1.0)
             return
         end
+        local idx = r:match("^%^(%d)")
+        if idx then
+            local colorTable = {
+                [0] = {0.0, 0.0, 0.0},
+                [1] = {1.0, 0.0, 0.0},
+                [2] = {0.0, 1.0, 0.0},
+                [3] = {0.0, 0.0, 1.0},
+                [4] = {1.0, 1.0, 0.0},
+                [5] = {1.0, 0.0, 1.0},
+                [6] = {0.0, 1.0, 1.0},
+                [7] = {1.0, 1.0, 1.0},
+                [8] = {0.75, 0.75, 0.75},
+                [9] = {0.6, 0.6, 0.6},
+            }
+            local c = colorTable[tonumber(idx)]
+            if c then
+                sg.SetDrawColor(c[1], c[2], c[3], tonumber(g) or 1.0)
+                return
+            end
+        end
         -- Fallback: try tonumber on the string
         r = tonumber(r) or 0.0
     end
