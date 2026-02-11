@@ -625,6 +625,7 @@ data.necropolisMods = LoadModule("Data/ModNecropolis")
 data.crucible = LoadModule("Data/Crucible")
 data.pantheons = LoadModule("Data/Pantheons")
 data.costs = LoadModule("Data/Costs")
+data.questRewards = LoadModule("Data/QuestRewards")
 
 do
 	local map = { }

@@ -563,14 +563,18 @@ function calcs.initEnv(build, mode, override, specEnv)
 		-- Add Pantheon mods
 		local parser = modLib.parseMod
 		-- Major Gods
-		if env.configInput.pantheonMajorGod ~= "None" then
+		if env.configInput.pantheonMajorGod ~= "None" and env.data.pantheons then
 			local majorGod = env.data.pantheons[env.configInput.pantheonMajorGod]
-			pantheon.applySoulMod(modDB, parser, majorGod)
+			if majorGod then
+				pantheon.applySoulMod(modDB, parser, majorGod)
+			end
 		end
 		-- Minor Gods
-		if env.configInput.pantheonMinorGod ~= "None" then
+		if env.configInput.pantheonMinorGod ~= "None" and env.data.pantheons then
 			local minorGod = env.data.pantheons[env.configInput.pantheonMinorGod]
-			pantheon.applySoulMod(modDB, parser, minorGod)
+			if minorGod then
+				pantheon.applySoulMod(modDB, parser, minorGod)
+			end
 		end
 
 		-- Initialise enemy modifier database
