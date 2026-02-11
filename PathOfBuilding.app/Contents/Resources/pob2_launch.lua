@@ -384,8 +384,31 @@ local function normalizeTextArg(text)
     return text
 end
 
--- Font scale factor for CJK font compatibility (Noto Sans CJK JP has wider metrics than LiberationSans)
-local fontScale = 0.93
+-- Font scale factor: 1.0 for LiberationSans (English), 0.93 for Noto Sans CJK JP (Japanese)
+local fontScale = 1.0
+
+-- Dynamic font scale control (called from Main.lua based on language setting)
+_G.SetFontScale = function(scale)
+	fontScale = scale
+end
+_G.GetFontScale = function()
+	return fontScale
+end
+
+-- Switch font file for next restart (copies appropriate .ttf to LiberationSans-Regular.ttf)
+_G.SwitchFontFile = function(langCode)
+	local fontDir = "runtime/fonts/"
+	local srcName = langCode == "ja" and "NotoSansCJKjp-Medium.ttf" or "LiberationSans-Original.ttf"
+	local inp = io.open(fontDir .. srcName, "rb")
+	if not inp then return false end
+	local data = inp:read("*a")
+	inp:close()
+	local out = io.open(fontDir .. "LiberationSans-Regular.ttf", "wb")
+	if not out then return false end
+	out:write(data)
+	out:close()
+	return true
+end
 
 -- DrawString: Logical→Physical conversion + alignment mapping + viewport offset
 _G.DrawString = function(left, top, align, height, font, text)
