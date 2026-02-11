@@ -39,7 +39,6 @@ function listMode:Init(selBuildName, subPath)
 	self.anchor.x = function()
 		-- Keep anchor at screen center for button positioning
 		local anchorX = main.screenW / 2
-		print(string.format("DEBUG: anchor.x = %s (main.screenW=%s)", tostring(anchorX), tostring(main.screenW)))
 		return anchorX
 	end
 

@@ -699,6 +699,10 @@ _G.OpenURL = function(url)
         return
     end
     local text = tostring(url)
+    -- Only allow http/https protocols to prevent file:// or other protocol injection
+    if not text:match("^https?://") then
+        return
+    end
     -- Prevent shell breakouts in C-side implementation that wraps URL in single quotes.
     text = text:gsub("'", "%%27")
     if text:find("[%z\r\n]") then
