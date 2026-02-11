@@ -2678,7 +2678,7 @@ function buildMode:LoadDB(xmlText, fileName)
 	elseif errMsg then
 		launch:ShowErrMsg("^1"..errMsg)
 		return true
-	elseif dbXML[1].elem ~= "PathOfBuilding" then
+	elseif dbXML[1].elem ~= "PathOfBuilding" and dbXML[1].elem ~= "PathOfBuilding2" then
 		launch:ShowErrMsg("^1Error parsing '%s': 'PathOfBuilding' root element missing", fileName)
 		return true
 	end

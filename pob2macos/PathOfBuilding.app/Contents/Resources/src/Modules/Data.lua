@@ -47,6 +47,15 @@ local itemTypes = {
 	"flask",
 	"tincture",
 	"graft",
+	"sceptre",
+	"focus",
+	"crossbow",
+	"flail",
+	"spear",
+	"soulcore",
+	"talisman",
+	"traptool",
+	"incursionlimb",
 }
 
 local function makeSkillMod(modName, modType, modVal, flags, keywordFlags, ...)
