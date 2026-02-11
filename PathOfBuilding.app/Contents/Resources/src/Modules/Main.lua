@@ -456,6 +456,14 @@ function main:OnFrame()
 	DrawImage(nil, 0, self.screenH - 54 * s, 308 * s, 54 * s)
 	self:DrawControls(self.viewPort)
 
+	-- Flush deferred tooltips AFTER all controls (Build + Main bottom bar) are drawn
+	if main.tooltipQueue then
+		for _, drawFunc in ipairs(main.tooltipQueue) do
+			drawFunc()
+		end
+		wipeTable(main.tooltipQueue)
+	end
+
 	if self.popups[1] then
 		SetDrawLayer(10)
 		SetDrawColor(0, 0, 0, 0.5)

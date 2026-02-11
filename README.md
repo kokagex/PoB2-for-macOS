@@ -78,6 +78,15 @@ Whether this macOS port can keep up with the PoE2 0.5 update from the upstream P
 
 ## バージョン履歴 / Version History
 
+### v0.1.2 (2026-02-11)
+
+- ConfigOptionsをPoE2上流版に差し替え（Quest Rewards追加、Bandit/Pantheon削除）
+- Warningsポップアップの表示順序修正（他のウィジェットの上に表示）
+- 旧セーブデータ互換性のためのnil安全性修正
+- Replaced ConfigOptions with PoE2 upstream (added Quest Rewards, removed Bandit/Pantheon)
+- Fixed Warnings popup z-order (now renders above other widgets)
+- Added nil-safety fixes for legacy save data compatibility
+
 ### v0.1.1 (2026-02-11)
 
 - ビルドのセーブ/ロード機能を有効化（macOSパス設定修正）
