@@ -283,10 +283,19 @@ function TooltipClass:Draw(x, y, w, h, viewPort)
 	-- This ensures tooltips render ABOVE all controls (since SetDrawLayer is a no-op in our Metal backend)
 	if main and main.deferTooltips and main.tooltipQueue then
 		local tt = self
+		-- Save viewport offset at queue time; it will be 0 when flushed after ResetViewport()
+		local savedOffX, savedOffY = GetViewportOffset()
 		t_insert(main.tooltipQueue, function()
 			-- Draw with deferral disabled to prevent infinite recursion
 			main.deferTooltips = false
+			-- Restore viewport offset from queue time for correct positioning
+			if savedOffX ~= 0 or savedOffY ~= 0 then
+				SetViewport(savedOffX, savedOffY, 99999, 99999)
+			end
 			tt:Draw(x, y, w, h, viewPort)
+			if savedOffX ~= 0 or savedOffY ~= 0 then
+				SetViewport()
+			end
 			main.deferTooltips = true
 		end)
 		return
@@ -347,7 +356,7 @@ function TooltipClass:Draw(x, y, w, h, viewPort)
 	local columns, maxColumnHeight, drawStack = self:CalculateColumns(ttY, ttX, ttH, ttW, viewPort)
 
 	-- background shading currently must be drawn before text lines.  API change will allow something like the commented lines below
-	SetDrawColor(0, 0, 0, .85)
+	SetDrawColor(0, 0, 0, 1)
 	--SetDrawLayer(nil, GetDrawLayer() - 5)
 	DrawImage(nil, ttX, ttY + BORDER_WIDTH, ttW * columns - BORDER_WIDTH, maxColumnHeight - 2 * BORDER_WIDTH)
 	--SetDrawLayer(nil, GetDrawLayer())
@@ -488,9 +497,14 @@ function TooltipClass:Draw(x, y, w, h, viewPort)
 				local y = line[2] - 1
 				local width = ttW - 8
 				local height = line[4] + 3
-				SetDrawColor(1,1,1,1)
-				DrawImage(bg, x + 4, y, width, height)
-				
+				-- Only draw background if the image loaded successfully.
+				-- On macOS, background assets (HoverModBgAbyss.png etc.) are unavailable;
+				-- drawing a missing texture with white color produces white rectangles.
+				if bg.IsValid and bg:IsValid() then
+					SetDrawColor(1,1,1,1)
+					DrawImage(bg, x + 4, y, width, height)
+				end
+
 				-- Restore color BEFORE DrawString
 				SetDrawColor(prevR, prevG, prevB, prevA)
 			end

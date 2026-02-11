@@ -381,6 +381,18 @@ function CalcsTabClass:Draw(viewPort, inputEvents)
 
 	self:DrawControls(viewPort, self.selControl)
 
+	-- Deferred: Redraw any dropped dropdown on top of all sections
+	-- (Metal backend: SetDrawLayer is NO-OP, so z-order = draw order)
+	for _, section in ipairs(self.sectionList) do
+		if section.controls then
+			for _, control in pairs(section.controls) do
+				if control.dropped and control.Draw then
+					control:Draw(viewPort)
+				end
+			end
+		end
+	end
+
 	if self.displayData then
 		if self.displayPinned and not self.selControl then
 			self:SelectControl(self.controls.breakdown)
