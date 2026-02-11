@@ -449,7 +449,7 @@ function buildMode:InitMinimal(dbFileName, buildName)
 	end
 	self.controls.pointDisplay.width = function(control)
 		control.str, control.req = self:EstimatePlayerProgress()
-		return DrawStringWidth(16, "FIXED", control.str) + 8
+		return DrawStringWidth(16, "FIXED", control.str) + 32
 	end
 	self.controls.pointDisplay.Draw = function(control)
 		local x, y = control:GetPos()
@@ -872,7 +872,7 @@ function buildMode:Init(dbFileName, buildName, buildXML, convertBuild, importLin
 	end
 	self.controls.pointDisplay.width = function(control)
 		control.str, control.req = self:EstimatePlayerProgress()
-		return DrawStringWidth(16, "FIXED", control.str) + 8
+		return DrawStringWidth(16, "FIXED", control.str) + 32
 	end
 	self.controls.pointDisplay.Draw = function(control)
 		local x, y = control:GetPos()
