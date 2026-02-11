@@ -2789,10 +2789,18 @@ function ItemsTabClass:AddItemTooltip(tooltip, item, slot, dbMode)
 	end
 
 	local base = item.base
+	if not base then
+		tooltip:AddLine(fontSizeBig, "^x7F7F7F(unknown base type)", "FONTIN SC")
+		return
+	end
 	local slotNum = slot and slot.slotNum or (IsKeyDown("SHIFT") and 2 or 1)
 	local modList = item.modList or item.slotModList[slotNum]
 
-	tooltip:AddLine(fontSizeBig, s_format("^x7F7F7F%s", base.weapon and self.build.data.weaponTypeInfo[base.type].label or base.type), "FONTIN SC")
+	local baseTypeLabel = base.type
+	if base.weapon and self.build.data.weaponTypeInfo[base.type] then
+		baseTypeLabel = self.build.data.weaponTypeInfo[base.type].label
+	end
+	tooltip:AddLine(fontSizeBig, s_format("^x7F7F7F%s", baseTypeLabel), "FONTIN SC")
 	if item.quality and item.quality > 0 then
 		tooltip:AddLine(fontSizeBig, s_format("^x7F7F7FQuality: "..colorCodes.MAGIC.."+%d%%", item.quality), "FONTIN SC")
 	end

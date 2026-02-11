@@ -495,6 +495,10 @@ data.weaponTypeInfo = {
 	["Two Handed Axe"] = { oneHand = false, melee = true, flag = "Axe" },
 	["Two Handed Mace"] = { oneHand = false, melee = true, flag = "Mace" },
 	["Two Handed Sword"] = { oneHand = false, melee = true, flag = "Sword" },
+	["Spear"] = { oneHand = true, melee = true, flag = "Spear" },
+	["Flail"] = { oneHand = true, melee = true, flag = "Flail" },
+	["Crossbow"] = { oneHand = false, melee = false, flag = "Crossbow" },
+	["Talisman"] = { oneHand = false, melee = true, flag = "Talisman" },
 }
 data.unarmedWeaponData = {
 	[0] = { type = "None", AttackRate = 1.2, CritChance = 0, PhysicalMin = 2, PhysicalMax = 6 }, -- Scion
