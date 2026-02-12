@@ -728,4 +728,52 @@ return {
 		TotalRadianceSentinelLife = "Radiance Sentinel HP",
 		TotalVaalRejuvenationTotemLife = "Vaal Rejuv Totem HP:",
 	},
+	tree = {
+		tooltip = {
+			-- Tip メッセージ
+			tipRightClickSocket = "ヒント: このソケットを右クリックしてアイテムページでジュエルを選択できます。",
+			tipHideShiftCtrl = "ヒント: ShiftまたはCtrlを押すとツールチップを非表示にできます。",
+			tipHideCtrl = "ヒント: Ctrlを押すとツールチップを非表示にできます。",
+			tipCopyText = "ヒント: Ctrl+Cでこのノードのテキストをコピーできます。",
+			tipDisableStatDiff = "ヒント: Ctrl+Dでステータス差分表示を無効にできます。",
+			tipEnableStatDiff = "ヒント: Ctrl+Dでステータス差分表示を有効にできます。",
+			tipTracePath = "ヒント: 別の経路でこのノードに到達するには、Shiftを押しながら経路をたどり、このノードをクリックしてください",
+			tipSwitchToMainToAlloc = "ヒント: メインツリーに切り替え（Alt+スクロール）して%{nodeType}を割り当て",
+			tipDeallocWeaponSetNodes = "ヒント: 接続経路上の武器セットノードを解除して割り当てを許可してください",
+			tipSwitchToMainToDealloc = "ヒント: メインツリーに切り替え（Alt+スクロール）して%{nodeType}を解除",
+			-- 割り当てメッセージ
+			reallocGives = "このノードを再割り当てすると:",
+			unallocGives = "このノードを解除すると:",
+			grantedItemRemoveGives = "このノードはアイテムにより付与されています。削除すると:",
+			allocGives = "このノードを割り当てると:",
+			unallocDependsGives = "このノードと依存ノードを解除すると:",
+			allocPathGives = "このノードと経路上のノードを割り当てると:",
+			grantedNoChanges = "このノードはアイテムにより付与されています。削除しても変化はありません",
+			noChanges = "%{action}しても変化はありません%{suffix}。",
+			noChangesUnalloc = "解除",
+			noChangesAlloc = "割り当て",
+			noChangesOrPath = "（経路上のノードを含む）",
+			statDiffNotAvailable = "ステータス差分はまだ利用できません。",
+			-- パス・距離情報
+			distanceToStart = "スタートまでの距離: %{dist}",
+			nodesInTracePath = "%{count}ノード（トレース経路）",
+			pointsToNode = "%{dist}ポイント",
+			canAllocWithoutPath = "（経路なしで割り当て可能）",
+			pointsFromUnalloc = "%{count}ポイント回収（ノード解除時）",
+			goldToUnallocMulti = "%{gold} Gold — これらのノードの解除に必要",
+			goldToUnallocSingle = "%{gold} Gold — このノードの解除に必要",
+			-- 武器セット警告
+			cannotAllocWeaponSet = "武器セット%{set}選択中は%{nodeType}を割り当てできません",
+			cannotAllocConnected = "%{nodeType}を割り当てできません — 武器セットノードに接続されています",
+			cannotDeallocGlobal = "武器セット%{set}からグローバル%{nodeType}を解除できません",
+			allocWeaponSetMode = "武器セット%{set}割り当てモード",
+			-- ノードタイプ
+			keystones = "キーストーン",
+			jewelSockets = "ジュエルソケット",
+			-- スレッショルドジュエル
+			canSupportThreshold = "%{attr}スレッショルドジュエルをサポート可能",
+			-- ノード制約警告
+			requiresAllocation = "ノードの割り当てが必要: %{name}",
+		},
+	},
 }
