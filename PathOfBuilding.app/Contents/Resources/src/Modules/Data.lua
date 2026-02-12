@@ -1022,11 +1022,18 @@ end
 -- Load minions
 data.minions = { }
 LoadModule("Data/Minions", data.minions, makeSkillMod, makeFlagMod)
+data._spectresLoaded = false
 data.spectres = { }
-LoadModule("Data/Spectres", data.spectres, makeSkillMod, makeFlagMod)
-for name, spectre in pairs(data.spectres) do
-	spectre.limit = "ActiveSpectreLimit"
-	data.minions[name] = spectre
+function data:getSpectres()
+	if not self._spectresLoaded then
+		LoadModule("Data/Spectres", self.spectres, makeSkillMod, makeFlagMod)
+		for name, spectre in pairs(self.spectres) do
+			spectre.limit = "ActiveSpectreLimit"
+			self.minions[name] = spectre
+		end
+		self._spectresLoaded = true
+	end
+	return self.spectres
 end
 for _, minion in pairs(data.minions) do
 	for _, mod in ipairs(minion.modList) do

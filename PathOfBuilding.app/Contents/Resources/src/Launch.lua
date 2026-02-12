@@ -13,6 +13,7 @@ ConExecute("set vid_mode 8")
 ConExecute("set vid_resizable 3")
 
 launch = { }
+launch.errorLogPath = os.tmpname()  -- Generate unique temp file path for error logging
 SetMainObject(launch)
 jit.opt.start('maxtrace=4000','maxmcode=8192')
 collectgarbage("setpause", 400)
@@ -111,7 +112,7 @@ function launch:OnFrame()
 			local errMsg = PCall(self.main.OnFrame, self.main)
 			if errMsg then
 				-- Write complete error to file
-				local f = io.open("/tmp/pob_error.txt", "w")
+				local f = io.open(self.errorLogPath, "w")
 				if f then
 					f:write("COMPLETE ERROR MESSAGE:\n")
 					f:write(errMsg)

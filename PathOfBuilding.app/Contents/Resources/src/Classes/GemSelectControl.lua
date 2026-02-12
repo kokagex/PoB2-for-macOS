@@ -709,9 +709,9 @@ function GemSelectClass:AddGrantedEffectInfo(gemInstance, grantedEffect, addReq)
 	else
 		if gemInstance.skillMinion then
 			if gemInstance.nameSpec:match("^Spectre:") then
-				grantedEffectLevel.spiritReservationFlat = data.spectres[gemInstance.skillMinion].spectreReservation
+				grantedEffectLevel.spiritReservationFlat = data:getSpectres()[gemInstance.skillMinion].spectreReservation
 			elseif gemInstance.nameSpec:match("^Companion:") then
-				grantedEffectLevel.spiritReservationPercent = data.spectres[gemInstance.skillMinion].companionReservation
+				grantedEffectLevel.spiritReservationPercent = data:getSpectres()[gemInstance.skillMinion].companionReservation
 			end
 		end
 		if grantedEffectLevel.spiritReservationFlat then

@@ -8,7 +8,7 @@ local i18n = {}
 local locales = {}
 local currentLocale = "en"
 local fallbackLocale = "en"
-local changeCallbacks = {}
+local changeCallbacks = setmetatable({}, { __mode = "v" })
 
 -- Load a locale file by code (e.g., "en", "ja")
 local function loadLocale(code)
@@ -87,11 +87,14 @@ function i18n.setLocale(localeCode)
 		end
 	end
 	currentLocale = localeCode
-	-- Fire change callbacks
-	for _, cb in ipairs(changeCallbacks) do
-		local ok, err = pcall(cb, localeCode)
-		if not ok then
-			ConPrintf("i18n: onChange callback error: %s", tostring(err))
+	-- Fire change callbacks (numeric loop to handle weak table nil entries)
+	for i = 1, #changeCallbacks do
+		local callback = changeCallbacks[i]
+		if callback then
+			local ok, err = pcall(callback, localeCode)
+			if not ok then
+				ConPrintf("i18n: onChange callback error: %s", tostring(err))
+			end
 		end
 	end
 end
@@ -105,6 +108,16 @@ end
 function i18n.onChange(callback)
 	if type(callback) == "function" then
 		table.insert(changeCallbacks, callback)
+	end
+end
+
+-- Remove a previously registered callback
+function i18n.removeOnChange(callback)
+	for i = #changeCallbacks, 1, -1 do
+		if changeCallbacks[i] == callback then
+			table.remove(changeCallbacks, i)
+			break
+		end
 	end
 end
 

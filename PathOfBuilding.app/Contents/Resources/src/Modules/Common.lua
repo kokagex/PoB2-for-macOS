@@ -584,7 +584,7 @@ function pairsYield(t)
 	local k
 	local start = GetTime()
 	return function() -- iterator function
-		if coroutine.running() and GetTime() - start > 20 then
+		if coroutine.running() and GetTime() - start > 5 then
 			coroutine.yield()
 			start = GetTime()
 		end

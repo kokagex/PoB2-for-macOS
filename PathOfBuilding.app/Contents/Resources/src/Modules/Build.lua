@@ -2115,7 +2115,7 @@ end
 function buildMode:OpenSpectreLibrary()
 	local destList = copyTable(self.spectreList)
 	local sourceList = { }
-	for id in pairs(self.data.spectres) do
+	for id in pairs(self.data:getSpectres()) do
 		t_insert(sourceList, id)
 	end
 	table.sort(sourceList, function(a,b) 

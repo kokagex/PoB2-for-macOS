@@ -123,6 +123,10 @@ local lib_path = "runtime/SimpleGraphic.dylib"
 local sg = ffi.load(lib_path)
 print("✓ SimpleGraphic loaded from: " .. lib_path)
 
+-- Incremental GC settings: reduce large GC pauses
+collectgarbage("setpause", 110)
+collectgarbage("setstepmul", 200)
+
 -- DPI scale cache (avoids repeated C calls per frame)
 local _dpi_scale = nil
 local function getDpiScale()
@@ -156,8 +160,18 @@ _G.GetVirtualScreenSize = function()
     return _G.GetScreenSize()
 end
 
+-- Path validation: reject null bytes, directory traversal, and shell metacharacters
+local function validatePath(path)
+    if type(path) ~= "string" then return false end
+    if path:find("\0") then return false end
+    if path:find("%.%.[\\/]") or path:find("[\\/]%.%.$") then return false end
+    if path:find("[;|&$%(%)%{%}%[%]`]") then return false end
+    return true
+end
+
 -- NewFileSearch: File search implementation using shell commands
 _G.NewFileSearch = function(pattern, foldersOnly)
+    if not validatePath(pattern) then return nil end
     local function shellQuote(value)
         value = tostring(value or "")
         return "'" .. value:gsub("'", "'\\''") .. "'"
@@ -221,6 +235,9 @@ _G.NewFileSearch = function(pattern, foldersOnly)
 
     function fileSearchHandle:GetFileModifiedTime()
         if not self.currentFile then
+            return 0
+        end
+        if not validatePath(self.currentFile.fullPath) then
             return 0
         end
 
@@ -846,6 +863,8 @@ do
         if not data then return nil end
         dataLen = dataLen or #data
         if dataLen == 0 then return nil end
+        -- Reject input larger than 10MB
+        if dataLen > 10485760 then return nil end
 
         local strm = ffi.new("z_stream")
         ffi.fill(strm, streamSize)
@@ -874,6 +893,11 @@ do
             if have > 0 then
                 chunks[#chunks + 1] = ffi.string(buf, have)
                 totalOut = totalOut + have
+                -- Reject decompressed output larger than 50MB
+                if totalOut > 52428800 then
+                    zlib.inflateEnd(strm)
+                    return nil
+                end
             end
         until ret == Z_STREAM_END
 
@@ -1134,7 +1158,10 @@ local key_name_map = {
     BACKSPACE = "BACK",
 }
 
-local debug_char_file = io.open("/tmp/pob_char_debug.txt", "w")
+local debug_char_file
+if launch and launch.devMode then
+    debug_char_file = io.open("/tmp/pob_char_debug.txt", "w")
+end
 local function debug_char(msg)
     if debug_char_file then
         debug_char_file:write(msg .. "\n")

@@ -45,6 +45,26 @@ if arg and isValueInTable(arg, "--no-ssl") then
 	ConPrintf("SSL verification disabled")
 end
 
+-- Event object pool to reduce GC pressure
+local eventPool = {}
+local function acquireEvent()
+	local n = #eventPool
+	if n > 0 then
+		local ev = eventPool[n]
+		eventPool[n] = nil
+		return ev
+	end
+	return {}
+end
+local function releaseEvent(ev)
+	ev.type = nil
+	ev.key = nil
+	ev.val = nil
+	ev.doubleClick = nil
+	ev.char = nil
+	eventPool[#eventPool + 1] = ev
+end
+
 local tempTable1 = { }
 local tempTable2 = { }
 
@@ -387,6 +407,9 @@ function main:OnFrame()
 
 	if self.popups[1] then
 		self.popups[1]:ProcessInput(self.inputEvents, self.viewPort)
+		for i = 1, #self.inputEvents do
+			releaseEvent(self.inputEvents[i])
+		end
 		wipeTable(self.inputEvents)
 	else
 		if self.selControl and not self.selControl.OnChar then
@@ -521,24 +544,38 @@ function main:OnFrame()
 	end
 	itemLib.wiki.triggered = false
 
+	for i = 1, #self.inputEvents do
+		releaseEvent(self.inputEvents[i])
+	end
 	wipeTable(self.inputEvents)
 
 	-- TODO: this pattern may pose memory management issues for classes that don't exist for the lifetime of the program
 	for _, onFrameFunc in pairs(self.onFrameFuncs) do
 		onFrameFunc()
 	end
+	collectgarbage("step", 10)
 end
 
 function main:OnKeyDown(key, doubleClick)
-	t_insert(self.inputEvents, { type = "KeyDown", key = key, doubleClick = doubleClick })
+	local ev = acquireEvent()
+	ev.type = "KeyDown"
+	ev.key = key
+	ev.doubleClick = doubleClick
+	t_insert(self.inputEvents, ev)
 end
 
 function main:OnKeyUp(key)
-	t_insert(self.inputEvents, { type = "KeyUp", key = key })
+	local ev = acquireEvent()
+	ev.type = "KeyUp"
+	ev.key = key
+	t_insert(self.inputEvents, ev)
 end
 
 function main:OnChar(key)
-	t_insert(self.inputEvents, { type = "Char", key = key })
+	local ev = acquireEvent()
+	ev.type = "Char"
+	ev.key = key
+	t_insert(self.inputEvents, ev)
 end
 
 function main:SetMode(newMode, ...)
