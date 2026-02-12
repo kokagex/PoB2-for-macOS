@@ -938,7 +938,7 @@ function TreeTabClass:BuildPowerReportList(currentStat)
 			end
 
 			t_insert(report, {
-				name = node.dn,
+				name = node.dn_display or node.dn,
 				power = nodePower,
 				powerStr = nodePowerStr,
 				pathPower = pathPower,
@@ -969,7 +969,7 @@ function TreeTabClass:BuildPowerReportList(currentStat)
 			end
 
 			t_insert(report, {
-				name = node.dn,
+				name = node.dn_display or node.dn,
 				power = nodePower,
 				powerStr = nodePowerStr,
 				pathPower = 0,

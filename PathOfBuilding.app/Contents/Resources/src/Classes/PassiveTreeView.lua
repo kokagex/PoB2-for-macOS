@@ -1457,6 +1457,15 @@ function PassiveTreeViewClass:DoesNodeMatchSearchParams(node)
 		return true
 	end
 
+	-- Check translated node name
+	if node.dn_display then
+		err, needMatches = PCall(search, node.dn_display:lower(), needMatches)
+		if err then return false end
+		if #needMatches == 0 then
+			return true
+		end
+	end
+
 	-- Check node description
 	if not node.sd then
 		ConPrintf("Node %d has no sd", node.id)
@@ -1467,6 +1476,14 @@ function PassiveTreeViewClass:DoesNodeMatchSearchParams(node)
 			if err then return false end
 			if #needMatches == 0 then
 				return true
+			end
+			-- Check translated stat text
+			if node.sd_display and node.sd_display[index] then
+				err, needMatches = PCall(search, node.sd_display[index]:lower(), needMatches)
+				if err then return false end
+				if #needMatches == 0 then
+					return true
+				end
 			end
 			if #needMatches > 0 and node.mods[index].list then
 				-- Then check modifiers
@@ -1526,9 +1543,9 @@ function PassiveTreeViewClass:AddNodeName(tooltip, node, build)
 	if node.unlockConstraint then
 		tooltip.tooltipHeader = "ORACLE_" .. tooltip.tooltipHeader
 	end
-	local nodeName = node.dn
+	local nodeName = node.dn_display or node.dn
 	if main.showFlavourText then
-		nodeName = "^xF8E6CA" .. node.dn
+		nodeName = "^xF8E6CA" .. (node.dn_display or node.dn)
 	end
 	tooltip.center = true
 	tooltip:AddLine(24, nodeName..(launch.devModeAlt and " ["..node.id.."]" or ""), "FONTIN")
@@ -1785,7 +1802,8 @@ function PassiveTreeViewClass:AddNodeTooltip(tooltip, node, build, incSmallPassi
 			localIncEffect = processTimeLostModsAndGetLocalEffect(mNode, build)
 		end
 		for i, line in ipairs(mNode.sd) do
-			addModInfoToTooltip(mNode, i, line, localIncEffect)
+			local displayLine = (mNode.sd_display and mNode.sd_display[i]) or line
+			addModInfoToTooltip(mNode, i, displayLine, localIncEffect)
 		end
 	end
 

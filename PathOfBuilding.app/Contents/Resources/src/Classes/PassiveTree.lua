@@ -434,6 +434,17 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 		self:ProcessNode(node)
 	end
 
+	-- Apply display translations for current locale
+	self:ApplyDisplayTranslations()
+
+	-- Re-apply translations when locale changes at runtime
+	if _G.i18n and _G.i18n.onChange then
+		local tree = self
+		_G.i18n.onChange(function()
+			tree:ApplyDisplayTranslations()
+		end)
+	end
+
 	-- Pregenerate the polygons for the node connector lines
 	self.connectors = { }
 	for _, node in pairs(self.nodes) do
@@ -1008,4 +1019,49 @@ function PassiveTreeClass:GetNodeTargetSize(node)
 	else
 		return { width = 0, height = 0 }
 	end
+end
+
+function PassiveTreeClass:ApplyDisplayTranslations()
+	local i18n = _G.i18n
+	if not i18n then return end
+	local locale = i18n.getLocale and i18n.getLocale() or "en"
+	if locale == "en" then
+		-- English: clear any display translations
+		for _, node in pairs(self.nodes) do
+			node.dn_display = nil
+			node.sd_display = nil
+		end
+		return
+	end
+	local ok, treeTrans = pcall(LoadModule, "Data/TreeTranslations/" .. locale)
+	if not ok or not treeTrans then
+		ConPrintf("TreeTranslations: Failed to load locale '%s'", tostring(locale))
+		return
+	end
+	local nameCount = 0
+	local statCount = 0
+	for _, node in pairs(self.nodes) do
+		if node.dn and treeTrans.names and treeTrans.names[node.dn] then
+			node.dn_display = treeTrans.names[node.dn]
+			nameCount = nameCount + 1
+		end
+		if node.sd and treeTrans.stats then
+			local translated = {}
+			local hasAny = false
+			for i, line in ipairs(node.sd) do
+				if treeTrans.stats[line] then
+					translated[i] = treeTrans.stats[line]
+					hasAny = true
+				else
+					translated[i] = line
+				end
+			end
+			if hasAny then
+				node.sd_display = translated
+				statCount = statCount + 1
+			end
+		end
+	end
+	ConPrintf("TreeTranslations: Applied %s name translations, %s stat translations for locale '%s'",
+		tostring(nameCount), tostring(statCount), tostring(locale))
 end
