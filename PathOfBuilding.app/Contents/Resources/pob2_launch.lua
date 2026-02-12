@@ -432,7 +432,11 @@ end
 _G.DrawStringWidth = function(height, font, text)
     text = normalizeTextArg(text)
     local scale = getDpiScale()
-    return math.floor(sg.DrawStringWidth(math.floor(height * scale * fontScale), font, text) / scale)
+    local w = sg.DrawStringWidth(math.floor(height * scale * fontScale), font, text)
+    if fontScale < 1.0 then
+        return math.floor(w / scale * 1.30)
+    end
+    return math.floor(w / scale)
 end
 -- DrawStringCursorIndex: Scale font height and cursor coords to physical (viewport-adjusted)
 _G.DrawStringCursorIndex = function(height, font, text, cursorX, cursorY)

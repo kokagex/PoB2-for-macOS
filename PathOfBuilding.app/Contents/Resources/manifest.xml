@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <PoBVersion>
-	<Version platform="macos" number="0.1.2" branch="master"/>
-	<Source url="https://raw.githubusercontent.com/kokagex/PoB2-for-macOS/{branch}/PathOfBuilding.app/Contents/Resources/" part="default"/>
-	<File name="manifest.xml" sha1="9f106ef85eedf47b23dbc3e2df50f545e13dc361" part="default"/>
+	<Version branch="master" platform="macos" number="0.1.2"/>
+	<Source part="default" url="https://raw.githubusercontent.com/kokagex/PoB2-for-macOS/{branch}/PathOfBuilding.app/Contents/Resources/"/>
+	<File part="default" name="manifest.xml" sha1="9f106ef85eedf47b23dbc3e2df50f545e13dc361"/>
 </PoBVersion>
