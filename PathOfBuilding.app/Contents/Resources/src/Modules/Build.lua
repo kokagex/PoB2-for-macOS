@@ -2624,7 +2624,7 @@ do
 	local req = { }
 	function buildMode:AddRequirementsToTooltip(tooltip, level, str, dex, int, strBase, dexBase, intBase)
 		if level and level > 0 then
-			t_insert(req, s_format("^x7F7F7FLevel %s%d", main:StatColor(level, nil, self.characterLevel), level))
+			t_insert(req, s_format("^x7F7F7F" .. i18n.t("gemTooltip.reqLevel"), main:StatColor(level, nil, self.characterLevel), tostring(level)))
 		end
 		local mainEnv = self.calcsTab and self.calcsTab.mainEnv
 		local mainOutput = self.calcsTab and self.calcsTab.mainOutput
@@ -2639,22 +2639,22 @@ do
 			end
 			local omni = math.floor(highestAttribute * (100/omniSatisfy))
 			if mainOutput and omni and (omni > 0 or omni > (mainOutput.Omni or 0)) then
-				t_insert(req, s_format("%s%d ^x7F7F7FOmni", main:StatColor(omni, 0, mainOutput.Omni or 0), omni))
+				t_insert(req, s_format(i18n.t("gemTooltip.reqOmni"), main:StatColor(omni, 0, mainOutput.Omni or 0), tostring(omni)))
 			end
 		elseif mainOutput then
 			if str and (str > 14 or str > (mainOutput.Str or 0)) then
-				t_insert(req, s_format("%s%d ^x7F7F7FStr", main:StatColor(str, strBase, mainOutput.Str or 0), str))
+				t_insert(req, s_format(i18n.t("gemTooltip.reqStr"), main:StatColor(str, strBase, mainOutput.Str or 0), tostring(str)))
 			end
 			if dex and (dex > 14 or dex > (mainOutput.Dex or 0)) then
-				t_insert(req, s_format("%s%d ^x7F7F7FDex", main:StatColor(dex, dexBase, mainOutput.Dex or 0), dex))
+				t_insert(req, s_format(i18n.t("gemTooltip.reqDex"), main:StatColor(dex, dexBase, mainOutput.Dex or 0), tostring(dex)))
 			end
 			if int and (int > 14 or int > (mainOutput.Int or 0)) then
-				t_insert(req, s_format("%s%d ^x7F7F7FInt", main:StatColor(int, intBase, mainOutput.Int or 0), int))
+				t_insert(req, s_format(i18n.t("gemTooltip.reqInt"), main:StatColor(int, intBase, mainOutput.Int or 0), tostring(int)))
 			end
 		end
 		if req[1] then
 			local fontSizeBig = main.showFlavourText and 18 or 16
-			tooltip:AddLine(fontSizeBig, "^x7F7F7FRequires "..table.concat(req, "^x7F7F7F, "), "FONTIN SC")
+			tooltip:AddLine(fontSizeBig, "^x7F7F7F" .. i18n.t("gemTooltip.reqRequires") .. table.concat(req, "^x7F7F7F, "), "FONTIN SC")
 			tooltip:AddSeparator(10)
 		end
 		wipeTable(req)

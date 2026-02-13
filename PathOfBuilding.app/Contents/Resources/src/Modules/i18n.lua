@@ -15,6 +15,15 @@ local function loadLocale(code)
 	local ok, data = pcall(LoadModule, "Locales/" .. code)
 	if ok and type(data) == "table" then
 		locales[code] = data
+		-- Load auxiliary files (gem descriptions, stat descriptions)
+		local ok2, gemDescs = pcall(LoadModule, "Locales/" .. code .. "_gem_descriptions")
+		if ok2 and type(gemDescs) == "table" then
+			data.gemDescriptions = gemDescs
+		end
+		local ok3, statDescs = pcall(LoadModule, "Locales/" .. code .. "_stat_descriptions")
+		if ok3 and type(statDescs) == "table" then
+			data.statDescriptions = statDescs
+		end
 		return true
 	end
 	ConPrintf("i18n: Failed to load locale '%s'", tostring(code))
@@ -76,6 +85,25 @@ function i18n.t(keyPath, vars)
 	end
 
 	return value
+end
+
+-- Direct table lookup for keys with special characters (spaces, etc.)
+-- Usage: i18n.lookup("gemDescriptions", "Frost Wall") → "ターゲットの前方に..."
+function i18n.lookup(section, key)
+	if not section or not key then return nil end
+	local sectionTbl = resolve(locales[currentLocale], section)
+	if sectionTbl and type(sectionTbl) == "table" then
+		local val = sectionTbl[key]
+		if val ~= nil then return val end
+	end
+	if currentLocale ~= fallbackLocale then
+		sectionTbl = resolve(locales[fallbackLocale], section)
+		if sectionTbl and type(sectionTbl) == "table" then
+			local val = sectionTbl[key]
+			if val ~= nil then return val end
+		end
+	end
+	return nil
 end
 
 -- Switch to a different locale at runtime
