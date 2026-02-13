@@ -7,12 +7,12 @@
 - [x] Step 4: Build.lua — AddRequirementsToTooltip内ラベルi18n化
 - [x] Step 5: i18n.lua — lookup()関数追加 + 補助ファイル読み込み
 - [x] 👁 視覚確認 #1
-- [ ] 📦 コミット Phase 1
+- [x] 📦 コミット Phase 1 (01c595b)
 
 ## Phase 2: メタデータ（~90値）
-- [ ] Step 6: ja.lua — gemTypes/tags/weaponRequirements/costResources テーブル追加
-- [ ] Step 7: GemSelectControl.lua — ヘルパー関数追加 + 表示箇所で翻訳適用
-- [ ] 👁 視覚確認 #2
+- [x] Step 6: ja.lua — gemTypes/tags/weaponRequirements/costResources テーブル追加
+- [x] Step 7: GemSelectControl.lua — ヘルパー関数追加 + 表示箇所で翻訳適用
+- [x] 👁 視覚確認 #2
 - [ ] 📦 コミット Phase 2
 
 ## Phase 3: ジェム説明文（~895件）

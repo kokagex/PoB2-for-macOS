@@ -20,6 +20,39 @@ local function gemDisplayName(gemData)
 	return val ~= key and val or gemData.name
 end
 
+-- Translate gemType (e.g., "Attack" → "攻撃")
+local function gemTypeDisplay(gemType)
+	if not gemType then return "" end
+	local translated = i18n.lookup("gemTooltip.gemTypes", gemType)
+	return translated or gemType
+end
+
+-- Translate tagString (e.g., "AoE, Cold, Nova" → "範囲, 冷気, ノヴァ")
+local function tagStringDisplay(tagString)
+	if not tagString or tagString == "" then return "" end
+	local parts = {}
+	for tag in tagString:gmatch("[^,]+") do
+		tag = tag:match("^%s*(.-)%s*$")  -- trim whitespace
+		local translated = i18n.lookup("gemTooltip.tags", tag)
+		table.insert(parts, translated or tag)
+	end
+	return table.concat(parts, ", ")
+end
+
+-- Translate weapon requirements (e.g., "Bow" → "弓")
+local function weaponReqDisplay(weaponReq)
+	if not weaponReq then return "" end
+	local translated = i18n.lookup("gemTooltip.weaponRequirements", weaponReq)
+	return translated or weaponReq
+end
+
+-- Translate cost resource string (e.g., "{0} Mana" → "{0} マナ")
+local function costResourceDisplay(resourceString)
+	if not resourceString then return resourceString end
+	local translated = i18n.lookup("gemTooltip.costResources", resourceString)
+	return translated or resourceString
+end
+
 local GemSelectClass = newClass("GemSelectControl", "EditControl", function(self, anchor, rect, skillsTab, index, changeFunc, forceTooltip)
 	self.EditControl(anchor, rect, nil, nil, "^ %a':-")
 	self.controls.scrollBar = new("ScrollBarControl", { "TOPRIGHT", self, "TOPRIGHT" }, {-1, 0, 18, 0}, (self.height - 4) * 4)
@@ -639,9 +672,9 @@ function GemSelectClass:AddGemTooltip(gemInstance)
 		self.tooltip:AddLine(fontSizeTitle, colorCodes.GEM .. gemDisplayName(gemInstance.gemData), "FONTIN SC")
 	end
 	self.tooltip:AddSeparator(10)
-	self.tooltip:AddLine(fontSizeBig, colorCodes.NORMAL .. gemInstance.gemData.gemType, "FONTIN SC")
+	self.tooltip:AddLine(fontSizeBig, colorCodes.NORMAL .. gemTypeDisplay(gemInstance.gemData.gemType), "FONTIN SC")
 	if gemInstance.gemData.tagString ~= "" then
-		self.tooltip:AddLine(fontSizeBig, "^x7F7F7F" .. gemInstance.gemData.tagString, "FONTIN SC")
+		self.tooltip:AddLine(fontSizeBig, "^x7F7F7F" .. tagStringDisplay(gemInstance.gemData.tagString), "FONTIN SC")
 	end
 	if gemInstance.gemData.gemFamily then
 		self.tooltip:AddLine(fontSizeBig, "^x7F7F7F" .. i18n.t("gemTooltip.category") .. " ^7" .. gemInstance.gemData.gemFamily, "FONTIN SC")
@@ -730,7 +763,7 @@ function GemSelectClass:AddGrantedEffectInfo(gemInstance, grantedEffect, addReq)
 		local cost
 		for _, res in ipairs(self.costs) do
 			if grantedEffectLevel.cost and grantedEffectLevel.cost[res.Resource] then
-				cost = (cost and (cost..", ") or "") .. res.ResourceString:gsub("{0}", string.format("%g", round(grantedEffectLevel.cost[res.Resource] / res.Divisor, 2)))
+				cost = (cost and (cost..", ") or "") .. costResourceDisplay(res.ResourceString):gsub("{0}", string.format("%g", round(grantedEffectLevel.cost[res.Resource] / res.Divisor, 2)))
 			end
 		end
 		if cost then
@@ -770,7 +803,7 @@ function GemSelectClass:AddGrantedEffectInfo(gemInstance, grantedEffect, addReq)
 			self.tooltip:AddLine(fontSizeBig, "^x7F7F7F" .. i18n.t("gemTooltip.criticalHitChance") .. " ^7" .. string.format("%.2f%%", grantedEffectLevel.critChance), "FONTIN SC")
 		end
 		if gemInstance.gemData.weaponRequirements and not grantedEffect.hidden then
-			self.tooltip:AddLine(fontSizeBig, "^x7F7F7F " .. i18n.t("gemTooltip.requires") .. " ^7" .. gemInstance.gemData.weaponRequirements, "FONTIN SC")
+			self.tooltip:AddLine(fontSizeBig, "^x7F7F7F " .. i18n.t("gemTooltip.requires") .. " ^7" .. weaponReqDisplay(gemInstance.gemData.weaponRequirements), "FONTIN SC")
 		end
 	end
 	if addReq and displayInstance.quality > 0 then

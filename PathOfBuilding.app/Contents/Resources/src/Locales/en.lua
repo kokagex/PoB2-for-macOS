@@ -324,5 +324,18 @@ return {
 		reqInt = "%s%s Int",
 		reqRequires = "Requires ",
 		-- AddStatSetInfo labels (same keys reused)
+		-- Gem type display names (identity mapping for English)
+		gemTypes = {
+			["Attack"] = "Attack",
+			["Banner"] = "Banner",
+			["Buff"] = "Buff",
+			["Mark"] = "Mark",
+			["Minion"] = "Minion",
+			["Shapeshift"] = "Shapeshift",
+			["Spell"] = "Spell",
+			["Support"] = "Support",
+			["Totem"] = "Totem",
+			["Warcry"] = "Warcry",
+		},
 	},
 }
