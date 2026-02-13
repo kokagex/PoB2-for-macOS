@@ -29,15 +29,15 @@ local slot_map = {
 local SkillListClass = newClass("SkillListControl", "ListControl", function(self, anchor, rect, skillsTab)
 	self.ListControl(anchor, rect, 16, "VERTICAL", true, skillsTab.socketGroupList)
 	self.skillsTab = skillsTab
-	self.label = "^7Socket Groups:"
-	self.controls.delete = new("ButtonControl", {"BOTTOMRIGHT",self,"TOPRIGHT"}, {0, -2, 60, 18}, "Delete", function()
+	self.label = "^7" .. i18n.t("skills.ui.socketGroups")
+	self.controls.delete = new("ButtonControl", {"BOTTOMRIGHT",self,"TOPRIGHT"}, {0, -2, 60, 18}, i18n.t("skills.buttons.delete"), function()
 		self:OnSelDelete(self.selIndex, self.selValue)
 	end)
 	self.controls.delete.enabled = function()
 		return self.selValue ~= nil and self.selValue.source == nil
 	end
-	self.controls.deleteAll = new("ButtonControl", {"RIGHT",self.controls.delete,"LEFT"}, {-4, 0, 70, 18}, "Delete All", function()
-		main:OpenConfirmPopup("Delete All", "Are you sure you want to delete all socket groups in this build?", "Delete", function()
+	self.controls.deleteAll = new("ButtonControl", {"RIGHT",self.controls.delete,"LEFT"}, {-4, 0, 70, 18}, i18n.t("skills.buttons.deleteAll"), function()
+		main:OpenConfirmPopup(i18n.t("skills.popups.deleteAllTitle"), i18n.t("skills.popups.deleteAllMsg"), i18n.t("skills.buttons.delete"), function()
 			wipeTable(self.list)
 			skillsTab:SetDisplayGroup()
 			skillsTab:AddUndoState()
@@ -49,7 +49,7 @@ local SkillListClass = newClass("SkillListControl", "ListControl", function(self
 	self.controls.deleteAll.enabled = function()
 		return #self.list > 0 
 	end
-	self.controls.new = new("ButtonControl", {"RIGHT",self.controls.deleteAll,"LEFT"}, {-4, 0, 60, 18}, "New", function()
+	self.controls.new = new("ButtonControl", {"RIGHT",self.controls.deleteAll,"LEFT"}, {-4, 0, 60, 18}, i18n.t("skills.buttons.new"), function()
 		local newGroup = { 
 			label = "", 
 			enabled = true, 
@@ -75,14 +75,14 @@ function SkillListClass:GetRowValue(column, index, socketGroup)
 		local disabled = not socketGroup.enabled or not socketGroup.slotEnabled
 		if disabled then
 			local colour = currentMainSkill and "" or "^x7F7F7F"
-			label = colour .. label .. " (Disabled)"
+			label = colour .. label .. i18n.t("skills.status.disabled")
 		end
 		if currentMainSkill then 
-			local activeLabel = disabled and " (Forced Active)" or " (Active)"
+			local activeLabel = disabled and i18n.t("skills.status.forcedActive") or i18n.t("skills.status.active")
 			label = label .. colorCodes.RELIC .. activeLabel
 		end
 		if socketGroup.includeInFullDPS then 
-			label = label .. colorCodes.CUSTOM .. " (FullDPS)"
+			label = label .. colorCodes.CUSTOM .. i18n.t("skills.status.fullDPS")
 		end
 		return label
 	end
@@ -141,7 +141,7 @@ function SkillListClass:OnSelDelete(index, socketGroup)
 		end
 	end
 	if socketGroup.source then
-		main:OpenMessagePopup("Delete Socket Group", "This socket group cannot be deleted as it is created by an equipped item.")
+		main:OpenMessagePopup(i18n.t("skills.popups.deleteGroupTitle"), i18n.t("skills.popups.cannotDelete"))
 	elseif not socketGroup.gemList[1] then
 		t_remove(self.list, index)
 		if self.skillsTab.displayGroup == socketGroup then
@@ -152,7 +152,7 @@ function SkillListClass:OnSelDelete(index, socketGroup)
 		self.skillsTab.build.buildFlag = true
 		self.selValue = nil
 	else
-		main:OpenConfirmPopup("Delete Socket Group", "Are you sure you want to delete '"..socketGroup.displayLabel.."'?", "Delete", function()
+		main:OpenConfirmPopup(i18n.t("skills.popups.deleteGroupTitle"), string.format(i18n.t("skills.popups.confirmDelete"), socketGroup.displayLabel), i18n.t("skills.buttons.delete"), function()
 			t_remove(self.list, index)
 			if self.skillsTab.displayGroup == socketGroup then
 				self.skillsTab:SetDisplayGroup()
