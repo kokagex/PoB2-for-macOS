@@ -142,6 +142,7 @@ return {
 		cloudErrorStatus = "\nステータス: ",
 		aboutVersion = "^7Path of Building Community Fork v",
 		aboutCredit = "^7OpenarlのPath of Buildingを基にしています",
+		aboutCreditPoe2db = "^8日本語訳のテキストはPoE2DBの情報を参考にさせていただきました",
 	},
 	build = {
 		tabLabel = "タブ",

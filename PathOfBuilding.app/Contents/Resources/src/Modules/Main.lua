@@ -1449,20 +1449,21 @@ function main:OpenAboutPopup(helpSectionIndex)
 	controls.close = new("ButtonControl", {"TOPRIGHT",nil,"TOPRIGHT"}, {-10 * s, 10 * s, 50 * s, 20 * s}, i18n.t("general.close"), function()
 		self:ClosePopup()
 	end)
-	controls.version = new("LabelControl", nil, {0, 18 * s, 0, 18 * s}, i18n.t("general.aboutVersion")..launch.versionNumber)
-	controls.forum = new("LabelControl", nil, {0, 36 * s, 0, 18 * s}, i18n.t("general.aboutCredit"))
-	controls.github = new("ButtonControl", nil, {0, 62 * s, 438 * s, 18 * s}, "^7" .. i18n.t("general.githubPage") .. " ^x4040FFhttps://github.com/kokagex/PoB2-for-macOS", function(control)
+	controls.version = new("LabelControl", nil, {0, 20 * s, 0, 18 * s}, i18n.t("general.aboutVersion")..launch.versionNumber)
+	controls.forum = new("LabelControl", nil, {0, 40 * s, 0, 18 * s}, i18n.t("general.aboutCredit"))
+	controls.poe2db = new("LabelControl", nil, {0, 56 * s, 0, 14 * s}, i18n.t("general.aboutCreditPoe2db"))
+	controls.github = new("ButtonControl", nil, {0, 78 * s, 438 * s, 18 * s}, "^7" .. i18n.t("general.githubPage") .. " ^x4040FFhttps://github.com/kokagex/PoB2-for-macOS", function(control)
 		OpenURL("https://github.com/kokagex/PoB2-for-macOS")
 	end)
-	controls.verLabel = new("ButtonControl", {"TOPLEFT", nil, "TOPLEFT"}, {10 * s, 85 * s, 100 * s, 18 * s}, "^7" .. i18n.t("general.versionHistory"), function()
+	controls.verLabel = new("ButtonControl", {"TOPLEFT", nil, "TOPLEFT"}, {10 * s, 102 * s, 100 * s, 18 * s}, "^7" .. i18n.t("general.versionHistory"), function()
 		controls.changelog.list = changeList
 		controls.changelog.sectionHeights = changeVersionHeights
 	end)
-	controls.helpLabel = new("ButtonControl", {"TOPRIGHT", nil, "TOPRIGHT"}, {-10 * s, 85 * s, 40 * s, 18 * s}, "^7" .. i18n.t("general.help"), function()
+	controls.helpLabel = new("ButtonControl", {"TOPRIGHT", nil, "TOPRIGHT"}, {-10 * s, 102 * s, 40 * s, 18 * s}, "^7" .. i18n.t("general.help"), function()
 		controls.changelog.list = helpList
 		controls.changelog.sectionHeights = helpSectionHeights
 	end)
-	controls.changelog = new("TextListControl", nil, {0, 103 * s, popupWidth - 20 * s, 515 * s}, {{ x = 1, align = "LEFT" }, { x = 135 * s, align = "LEFT" }}, helpSectionIndex and helpList or changeList, helpSectionIndex and helpSectionHeights or changeVersionHeights)
+	controls.changelog = new("TextListControl", nil, {0, 120 * s, popupWidth - 20 * s, 498 * s}, {{ x = 1, align = "LEFT" }, { x = 135 * s, align = "LEFT" }}, helpSectionIndex and helpList or changeList, helpSectionIndex and helpSectionHeights or changeVersionHeights)
 	if helpSectionIndex then
 		controls.changelog.controls.scrollBar.offset = helpSections[helpSectionIndex].height * textSize
 	end
