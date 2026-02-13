@@ -663,6 +663,7 @@ function GemSelectClass:AddGemTooltip(gemInstance)
 	local fontSizeTitle = main.showFlavourText and 24 or 20
 	self.tooltip.center = true
 	self.tooltip.color = colorCodes.GEM
+	self.tooltip.maxWidth = 500
 	local grantedEffect = gemInstance.gemData.grantedEffect
 	local additionalEffects = gemInstance.gemData.additionalGrantedEffects
 	self.tooltip.tooltipHeader = "GEM"
@@ -820,11 +821,43 @@ function GemSelectClass:AddGrantedEffectInfo(gemInstance, grantedEffect, addReq)
 		local reqInt = calcLib.getGemStatRequirement(reqLevel, grantedEffect.support, gemInstance.gemData.reqInt)
 		self.skillsTab.build:AddRequirementsToTooltip(self.tooltip, reqLevel, reqStr, reqDex, reqInt)
 	end
-	if grantedEffect.description then
-		local wrap = main:WrapString(grantedEffect.description, 16, m_max(DrawStringWidth(fontSizeBig, "VAR", gemInstance.gemData.tagString), 400))
-		for _, line in ipairs(wrap) do
-			self.tooltip:AddLine(fontSizeBig, colorCodes.GEMDESCRIPTION..line, "FONTIN ITALIC")
+	local descText = i18n.lookup("gemDescriptions", gemInstance.gemData.name) or grantedEffect.description
+	if descText then
+		local wrapWidth = (self.tooltip.maxWidth and (self.tooltip.maxWidth - 34)) or 466
+		-- Split on 。 (U+3002, UTF-8: E3 80 82) for natural Japanese sentence breaks
+		-- Use string.find with plain=true for byte-safe matching (Lua patterns are byte-based)
+		local kuten = "\227\128\130"
+		local sentences = {}
+		local searchStart = 1
+		while true do
+			local p = descText:find(kuten, searchStart, true)
+			if p then
+				sentences[#sentences + 1] = descText:sub(searchStart, p + 2)
+				searchStart = p + 3
+			else
+				if searchStart <= #descText then
+					sentences[#sentences + 1] = descText:sub(searchStart)
+				end
+				break
+			end
 		end
+		-- Wrap each sentence and collect lines
+		local descLines = {}
+		for _, sentence in ipairs(sentences) do
+			local wrap = main:WrapString(sentence, fontSizeBig, wrapWidth)
+			for i = 1, #wrap do
+				descLines[#descLines + 1] = wrap[i]
+			end
+		end
+		-- Calculate max pixel width of wrapped lines for frame sizing
+		local fontToUse = main.showFlavourText and "FONTIN ITALIC" or "VAR"
+		local maxLineWidth = 0
+		for _, line in ipairs(descLines) do
+			local w = DrawStringWidth(fontSizeBig, fontToUse, line)
+			if w > maxLineWidth then maxLineWidth = w end
+		end
+		-- Add as framed description block (centered frame, left-aligned text)
+		self.tooltip:AddDescriptionBlock(descLines, fontSizeBig, fontToUse, colorCodes.GEMDESCRIPTION, maxLineWidth)
 	end
 end
 function GemSelectClass:AddStatSetInfo(gemInstance, grantedEffect, statSet, noLabel, index)

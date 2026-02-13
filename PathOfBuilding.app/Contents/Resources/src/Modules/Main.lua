@@ -1781,25 +1781,94 @@ end
 
 do
 	local wrapTable = { }
+	-- Check if string contains CJK characters (Hiragana, Katakana, Kanji, CJK Symbols)
+	-- These are 3-byte UTF-8 sequences starting with bytes 0xE3-0xE9
+	local function hasCJK(str)
+		return str:find("[\227-\233][\128-\191][\128-\191]") ~= nil
+	end
+	-- Get UTF-8 character byte length from first byte
+	local function utf8charLen(byte)
+		if byte < 128 then return 1
+		elseif byte < 224 then return 2
+		elseif byte < 240 then return 3
+		else return 4 end
+	end
 	function main:WrapString(str, height, width)
 		wipeTable(wrapTable)
-		local lineStart = 1
-		local lastSpace, lastBreak
-		while true do
-			local s, e = str:find("%s+", lastSpace)
-			if not s then
-				s = #str + 1
-				e = #str + 1
+		if not hasCJK(str) then
+			-- Original space-based wrapping for non-CJK text
+			local lineStart = 1
+			local lastSpace, lastBreak
+			while true do
+				local s, e = str:find("%s+", lastSpace)
+				if not s then
+					s = #str + 1
+					e = #str + 1
+				end
+				if s > #str then
+					t_insert(wrapTable, str:sub(lineStart, -1))
+					break
+				end
+				lastBreak = s - 1
+				lastSpace = e + 1
+				if DrawStringWidth(height, "VAR", str:sub(lineStart, s - 1)) > width then
+					t_insert(wrapTable, str:sub(lineStart, lastBreak))
+					lineStart = lastSpace
+				end
 			end
-			if s > #str then
-				t_insert(wrapTable, str:sub(lineStart, -1))
-				break
+		else
+			-- CJK-aware wrapping: break at character boundaries
+			local lineStart = 1
+			local len = #str
+			local pos = 1
+			local lastBreakPos = nil
+			local safetyLimit = len * 3
+			local iter = 0
+			while pos <= len do
+				iter = iter + 1
+				if iter > safetyLimit then break end
+				local b = str:byte(pos)
+				local cLen = utf8charLen(b)
+				local nextPos = pos + cLen
+				-- Check if current character is a valid break point
+				-- CJK characters, spaces, and punctuation are valid break points
+				if b == 32 or b >= 227 then -- space or CJK 3-byte start
+					lastBreakPos = pos
+				end
+				-- Measure width of current line up to next character
+				if nextPos <= len + 1 and DrawStringWidth(height, "VAR", str:sub(lineStart, nextPos - 1)) > width then
+					if lastBreakPos and lastBreakPos > lineStart then
+						-- Break at last valid break point
+						if str:byte(lastBreakPos) == 32 then
+							-- Break at space: don't include space in output
+							t_insert(wrapTable, str:sub(lineStart, lastBreakPos - 1))
+							lineStart = lastBreakPos + 1
+						else
+							-- Break before CJK character
+							t_insert(wrapTable, str:sub(lineStart, lastBreakPos - 1))
+							lineStart = lastBreakPos
+						end
+						lastBreakPos = nil
+						-- Don't advance pos; re-measure from new lineStart
+					elseif pos > lineStart then
+						-- No break point found, force break before current char
+						t_insert(wrapTable, str:sub(lineStart, pos - 1))
+						lineStart = pos
+						lastBreakPos = nil
+					else
+						-- Single character exceeds width, include it anyway
+						t_insert(wrapTable, str:sub(lineStart, nextPos - 1))
+						lineStart = nextPos
+						pos = nextPos
+						lastBreakPos = nil
+					end
+				else
+					pos = nextPos
+				end
 			end
-			lastBreak = s - 1
-			lastSpace = e + 1
-			if DrawStringWidth(height, "VAR", str:sub(lineStart, s - 1)) > width then
-				t_insert(wrapTable, str:sub(lineStart, lastBreak))
-				lineStart = lastSpace
+			-- Add remaining text
+			if lineStart <= len then
+				t_insert(wrapTable, str:sub(lineStart))
 			end
 		end
 		return wrapTable

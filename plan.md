@@ -13,16 +13,16 @@
 - [x] Step 6: ja.lua — gemTypes/tags/weaponRequirements/costResources テーブル追加
 - [x] Step 7: GemSelectControl.lua — ヘルパー関数追加 + 表示箇所で翻訳適用
 - [x] 👁 視覚確認 #2
-- [ ] 📦 コミット Phase 2
+- [x] 📦 コミット Phase 2 (574948e)
 
 ## Phase 3: ジェム説明文（~895件）
-- [ ] Step 8: ja_gem_descriptions.lua — 新規作成（PoE2DBデータ）
-- [ ] Step 9: GemSelectControl.lua — 行790で説明文翻訳適用
-- [ ] 👁 視覚確認 #3
+- [x] Step 8: ja_gem_descriptions.lua — 新規作成（906/915件取得）
+- [x] Step 9: GemSelectControl.lua — 説明文翻訳適用 + フレーム表示 + CJK折り返し + 。改行
+- [x] 👁 視覚確認 #3
 - [ ] 📦 コミット Phase 3
 
 ## Phase 4: Stat Description基盤
-- [ ] Step 10: StatDescriber.lua — locale-awareオーバーレイ注入
+- [x] Step 10: StatDescriber.lua — locale-awareオーバーレイ注入
 - [ ] 👁 視覚確認 #4（Phase 5データと合わせて）
 
 ## Phase 5: Stat Descriptionデータ（~20,143件）
