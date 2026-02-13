@@ -546,7 +546,7 @@ function GemSelectClass:Draw(viewPort, noTooltip)
 				self.tooltip:Clear()
 				local gemData = self.gems[self.list[self.hoverSel]]
 				if gemData then
-					self.tooltip:AddLine(16, colorCodes.GEM .. gemData.name)
+					self.tooltip:AddLine(16, colorCodes.GEM .. gemDisplayName(gemData))
 				end
 				self.tooltip:Draw(x, y + height + 2 + (self.hoverSel - 1) * (height - 4) - scrollBar.offset, width, height - 4, viewPort)
 			end
@@ -634,9 +634,9 @@ function GemSelectClass:AddGemTooltip(gemInstance)
 	local additionalEffects = gemInstance.gemData.additionalGrantedEffects
 	self.tooltip.tooltipHeader = "GEM"
 	if grantedEffect.name:match("^Spectre:") or grantedEffect.name:match("^Companion:") then
-		self.tooltip:AddLine(fontSizeTitle, colorCodes.GEM .. (gemInstance.displayEffect and gemInstance.displayEffect.nameSpec or gemInstance.gemData.name), "FONTIN SC")	
+		self.tooltip:AddLine(fontSizeTitle, colorCodes.GEM .. (gemInstance.displayEffect and gemInstance.displayEffect.nameSpec or gemDisplayName(gemInstance.gemData)), "FONTIN SC")
 	else
-		self.tooltip:AddLine(fontSizeTitle, colorCodes.GEM .. gemInstance.gemData.name, "FONTIN SC")
+		self.tooltip:AddLine(fontSizeTitle, colorCodes.GEM .. gemDisplayName(gemInstance.gemData), "FONTIN SC")
 	end
 	self.tooltip:AddSeparator(10)
 	self.tooltip:AddLine(fontSizeBig, colorCodes.NORMAL .. gemInstance.gemData.gemType, "FONTIN SC")

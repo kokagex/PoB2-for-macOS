@@ -85,6 +85,13 @@ local function getAlternateGemQualityList()
 	}
 end
 
+local function translateGemName(name)
+	if not name then return name end
+	local key = "gems." .. name
+	local val = i18n.t(key)
+	return val ~= key and val or name
+end
+
 local SkillsTabClass = newClass("SkillsTab", "UndoHandler", "ControlHost", "Control", function(self, build)
 	self.UndoHandler()
 	self.ControlHost()
@@ -634,7 +641,7 @@ function SkillsTabClass:CreateGemSlot(index)
 		for index2 = index, #self.displayGroup.gemList do
 			-- Update the other gem slot controls
 			local gemInstance = self.displayGroup.gemList[index2]
-			self.gemSlots[index2].nameSpec:SetText(gemInstance.nameSpec)
+			self.gemSlots[index2].nameSpec:SetText(translateGemName(gemInstance.nameSpec))
 			self.gemSlots[index2].level:SetText(gemInstance.level)
 			self.gemSlots[index2].quality:SetText(gemInstance.quality)
 			self.gemSlots[index2].enabled.state = gemInstance.enabled
@@ -1135,7 +1142,7 @@ function SkillsTabClass:SetDisplayGroup(socketGroup)
 		-- Update the gem slot controls
 		self:UpdateGemSlots()
 		for index, gemInstance in pairs(socketGroup.gemList) do
-			self.gemSlots[index].nameSpec:SetText(gemInstance.nameSpec)
+			self.gemSlots[index].nameSpec:SetText(translateGemName(gemInstance.nameSpec))
 			self.gemSlots[index].level:SetText(gemInstance.level)
 			self.gemSlots[index].quality:SetText(gemInstance.quality)
 			self.gemSlots[index].enabled.state = gemInstance.enabled
@@ -1170,7 +1177,7 @@ function SkillsTabClass:AddSocketGroupTooltip(tooltip, socketGroup)
 		for _, skillEffect in ipairs(activeSkill.effectList) do
 			tooltip:AddLine(20, string.format("%s%s ^7%d%s/%d%s",
 				data.skillColorMap[skillEffect.grantedEffect.color or skillEffect.gemData and skillEffect.gemData.grantedEffect.color],
-				skillEffect.srcInstance.nameSpec or skillEffect.grantedEffect.name,
+				translateGemName(skillEffect.srcInstance and skillEffect.srcInstance.nameSpec or skillEffect.grantedEffect.name),
 				skillEffect.srcInstance and skillEffect.srcInstance.level or skillEffect.level,
 				(skillEffect.srcInstance and skillEffect.level > skillEffect.srcInstance.level) and colorCodes.MAGIC.."+"..(skillEffect.level - skillEffect.srcInstance.level).."^7" or "",
 				skillEffect.srcInstance and skillEffect.srcInstance.quality or skillEffect.quality,
@@ -1186,7 +1193,7 @@ function SkillsTabClass:AddSocketGroupTooltip(tooltip, socketGroup)
 			local activeEffect = activeSkill.minion.mainSkill.effectList[1]
 			tooltip:AddLine(20, string.format("%s%s ^7%d/%d",
 				data.skillColorMap[activeEffect.grantedEffect.color] or colorCodes.NORMAL,
-				activeEffect.grantedEffect.name,
+				translateGemName(activeEffect.grantedEffect.name),
 				activeEffect.level,
 				activeEffect.quality
 			))
@@ -1220,7 +1227,7 @@ function SkillsTabClass:AddSocketGroupTooltip(tooltip, socketGroup)
 			end
 			tooltip:AddLine(20, string.format("%s%s ^7%d%s/%d%s %s",
 				gemInstance.color,
-				(gemInstance.grantedEffect and gemInstance.grantedEffect.name) or (gemInstance.gemData and gemInstance.gemData.name) or gemInstance.nameSpec,
+				translateGemName((gemInstance.grantedEffect and gemInstance.grantedEffect.name) or (gemInstance.gemData and gemInstance.gemData.name) or gemInstance.nameSpec),
 				displayEffect.srcInstance and displayEffect.srcInstance.level or displayEffect.level,
 				displayEffect.level > gemInstance.level and colorCodes.MAGIC .. "+" .. (displayEffect.level - gemInstance.level) .. "^7" or "",
 				displayEffect.srcInstance and displayEffect.srcInstance.quality or displayEffect.quality,
