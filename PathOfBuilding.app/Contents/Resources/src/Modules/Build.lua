@@ -74,7 +74,7 @@ function buildMode:OnFrameMinimal(inputEvents)
 	for id, event in ipairs(inputEvents) do
 		if event.type == "KeyDown" then
 			local textInputActive = main.textInputActive or (self.selControl and self.selControl.OnChar and self.selControl.hasFocus)
-			if event.key == "ESCAPE" or event.key == "MOUSE4" then
+			if (event.key == "ESCAPE" and not textInputActive) or event.key == "MOUSE4" then
 				main:SetMode("LIST")
 			elseif IsKeyDown("CTRL") and not textInputActive then
 				-- Ctrl+1-6 tab switching

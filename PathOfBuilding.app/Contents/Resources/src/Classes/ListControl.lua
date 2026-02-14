@@ -324,6 +324,15 @@ function ListClass:Draw(viewPort, noTooltip)
 	end
 end
 
+function ListClass:OnChar(key)
+	local mOverControl = self:GetMouseOverControl()
+	if mOverControl and mOverControl.OnChar then
+		mOverControl:OnChar(key)
+		return self
+	end
+	return self
+end
+
 function ListClass:OnKeyDown(key, doubleClick)
 	if not self:IsShown() or not self:IsEnabled() then
 		return

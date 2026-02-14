@@ -1137,7 +1137,7 @@ function ItemsTabClass:Draw(viewPort, inputEvents)
 	self.y = self.y - self.controls.scrollBarV.offset
 	local textInputActive = main.textInputActive
 	for _, event in ipairs(inputEvents) do
-		if event.type == "KeyDown" then	
+		if not event.consumed and event.type == "KeyDown" then	
 			if event.key == "v" and IsKeyDown("CTRL") and not textInputActive then
 				local newItem = Paste()
 				if newItem then
@@ -1151,7 +1151,7 @@ function ItemsTabClass:Draw(viewPort, inputEvents)
 				if self.displayItem and IsKeyDown("SHIFT") then
 					self:AddDisplayItem()
 				end
-			elseif event.key == "e" then
+			elseif event.key == "e" and not textInputActive then
 				local mOverControl = self:GetMouseOverControl()
 				if mOverControl and mOverControl._className == "ItemSlotControl" and mOverControl.selItemId ~= 0 then
 					-- Trigger itemList's double click procedure
@@ -2754,10 +2754,15 @@ function ItemsTabClass:AddItemTooltip(tooltip, item, slot, dbMode)
 	self:SetTooltipHeaderInfluence(tooltip, item)
 	-- Item name
 	if item.title then
-		tooltip:AddLine(fontSizeTitle, rarityCode..item.title, "FONTIN SC")
-		tooltip:AddLine(fontSizeTitle, rarityCode..item.baseName:gsub(" %(.+%)",""), "FONTIN SC")
+		local displayTitle = (i18n and i18n.lookup("uniqueNames", item.title)) or item.title
+		tooltip:AddLine(fontSizeTitle, rarityCode..displayTitle, "FONTIN SC")
+		local cleanBase = item.baseName:gsub(" %(.+%)","")
+		local displayBase = (i18n and i18n.lookup("baseNames", cleanBase)) or cleanBase
+		tooltip:AddLine(fontSizeTitle, rarityCode..displayBase, "FONTIN SC")
 	else
-		tooltip:AddLine(fontSizeTitle, rarityCode..item.namePrefix..item.baseName:gsub(" %(.+%)","")..item.nameSuffix, "FONTIN SC")
+		local cleanBase = item.baseName:gsub(" %(.+%)","")
+		local displayBase = (i18n and i18n.lookup("baseNames", cleanBase)) or cleanBase
+		tooltip:AddLine(fontSizeTitle, rarityCode..item.namePrefix..displayBase..item.nameSuffix, "FONTIN SC")
 	end
 
 	tooltip:AddSeparator(10)
