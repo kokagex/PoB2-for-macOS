@@ -64,7 +64,7 @@ local TreeTabClass = newClass("TreeTab", "ControlHost", function(self, build)
 					local calcFunc, calcBase = self.build.calcsTab:GetMiscCalculator()
 					if calcFunc then
 						local output = calcFunc({ spec = spec })
-						self.build:AddStatComparesToTooltip(tooltip, calcBase, output, "^7Switching to this tree will give you:")
+						self.build:AddStatComparesToTooltip(tooltip, calcBase, output, "^7" .. i18n.t("statCompare.switchingTree"))
 					end
 					if spec.curClassId == self.build.spec.curClassId then
 						local respec = 0

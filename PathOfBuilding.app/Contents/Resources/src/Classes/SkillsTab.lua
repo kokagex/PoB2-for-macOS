@@ -826,7 +826,7 @@ function SkillsTabClass:CreateGemSlot(index)
 				local output = calcFunc()
 				self.displayGroup.gemList[index].quality = storedQuality
 				tooltip:AddSeparator(10)
-				self.build:AddStatComparesToTooltip(tooltip, calcBase, output, "^7Setting to 20 quality will give you:")
+				self.build:AddStatComparesToTooltip(tooltip, calcBase, output, "^7" .. i18n.t("statCompare.settingQuality"))
 			end
 		end
 	end

@@ -54,7 +54,7 @@ local function costResourceDisplay(resourceString)
 end
 
 local GemSelectClass = newClass("GemSelectControl", "EditControl", function(self, anchor, rect, skillsTab, index, changeFunc, forceTooltip)
-	self.EditControl(anchor, rect, nil, nil, "^ %a':-")
+	self.EditControl(anchor, rect, nil, nil, nil)
 	self.controls.scrollBar = new("ScrollBarControl", { "TOPRIGHT", self, "TOPRIGHT" }, {-1, 0, 18, 0}, (self.height - 4) * 4)
 	self.controls.scrollBar.y = function()
 		local width, height = self:GetSize()
@@ -200,7 +200,14 @@ function GemSelectClass:BuildList(buf)
 		for i, pattern in ipairs(patternList) do
 			local matchList = { }
 			for gemId, gemData in pairs(self.gems) do
-				if self:FilterSupport(gemId, gemData) and not added[gemId] and not (gemData.grantedEffect.support and (usedSupports[gemId:gsub("^%w+:", "")] or (gemData.gemFamily and usedFamilies[gemData.gemFamily]))) and ((" "..gemData.name:lower()):match(pattern)) then
+				local nameMatch = (" "..gemData.name:lower()):match(pattern)
+				if not nameMatch then
+					local dispName = gemDisplayName(gemData)
+					if dispName ~= gemData.name then
+						nameMatch = (" "..dispName:lower()):match(pattern)
+					end
+				end
+				if self:FilterSupport(gemId, gemData) and not added[gemId] and not (gemData.grantedEffect.support and (usedSupports[gemId:gsub("^%w+:", "")] or (gemData.gemFamily and usedFamilies[gemData.gemFamily]))) and nameMatch then
 					addThisGem = true
 					if #tagsList > 0 then
 						for _, tag in ipairs(tagsList) do
@@ -447,7 +454,7 @@ function GemSelectClass:UpdateGem(setText, addUndo)
 	else
 		self.gemId = nil
 	end
-	self.gemName = self.gemId and self.gems[self.gemId].name or ""
+	self.gemName = self.gemId and gemDisplayName(self.gems[self.gemId]) or ""
 	if setText then
 		self:SetText(self.gemName)
 	end
@@ -570,7 +577,7 @@ function GemSelectClass:Draw(viewPort, noTooltip)
 						}
 					self:AddGemTooltip(gemInstance)
 					self.tooltip:AddSeparator(10)
-					self.skillsTab.build:AddStatComparesToTooltip(self.tooltip, calcBase, output, "^7Selecting this gem will give you:")
+					self.skillsTab.build:AddStatComparesToTooltip(self.tooltip, calcBase, output, "^7" .. i18n.t("statCompare.selectingGem"))
 					self.tooltip:Draw(x, y + height + 2 + (self.hoverSel - 1) * (height - 4) - scrollBar.offset, width, height - 4, viewPort)
 				end
 			end)
@@ -621,11 +628,11 @@ function GemSelectClass:Draw(viewPort, noTooltip)
 			if cursorX > (x + width - 18) then
 				colorS = 1
 				self.tooltip:Clear()
-				self.tooltip:AddLine(16, "Only show Support gems")
+				self.tooltip:AddLine(16, i18n.t("statCompare.onlyShowSupport"))
 			elseif (cursorX > (x + width - 40) and cursorX < (x + width - 18)) then
 				colorA = 1
 				self.tooltip:Clear()
-				self.tooltip:AddLine(16, "Only show Active gems")
+				self.tooltip:AddLine(16, i18n.t("statCompare.onlyShowActive"))
 			end
 
 			-- support shortcut
@@ -925,7 +932,7 @@ function GemSelectClass:OnFocusGained()
 	self:UpdateSortCache()
 	self:BuildList("")
 	for index, gemId in pairs(self.list) do
-		if self.gems[gemId].name == self.buf then
+		if self.gems[gemId].name == self.buf or gemDisplayName(self.gems[gemId]) == self.buf then
 			self.selIndex = index
 			self:ScrollSelIntoView()
 			break
@@ -987,7 +994,7 @@ function GemSelectClass:OnKeyDown(key, doubleClick)
 			if self.hoverSel and self.gems[self.list[self.hoverSel]] then
 				self.dropped = false
 				self.selIndex = self.hoverSel
-				self:SetText(self.gems[self.list[self.selIndex]].name)
+				self:SetText(gemDisplayName(self.gems[self.list[self.selIndex]]))
 				self:UpdateGem(false, true)
 				return
 			end
@@ -1013,7 +1020,7 @@ function GemSelectClass:OnKeyDown(key, doubleClick)
 		elseif key == "DOWN" then
 			if self.selIndex < #self.list and not self.noMatches then
 				self.selIndex = self.selIndex + 1
-				self:SetText(self.gems[self.list[self.selIndex]].name)
+				self:SetText(gemDisplayName(self.gems[self.list[self.selIndex]]))
 				self:UpdateGem()
 				self:ScrollSelIntoView()
 			end
@@ -1023,7 +1030,7 @@ function GemSelectClass:OnKeyDown(key, doubleClick)
 				if self.selIndex == 0 then
 					self:SetText(self.searchStr)
 				else
-					self:SetText(self.gems[self.list[self.selIndex]].name)
+					self:SetText(gemDisplayName(self.gems[self.list[self.selIndex]]))
 				end
 				self:UpdateGem()
 				self:ScrollSelIntoView()

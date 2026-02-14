@@ -1869,7 +1869,7 @@ function ItemsTabClass:AddModComparisonTooltip(tooltip, mod)
 	local calcFunc = self.build.calcsTab:GetMiscCalculator()
 	local outputBase = calcFunc({ repSlotName = slotName, repItem = self.displayItem })
 	local outputNew = calcFunc({ repSlotName = slotName, repItem = newItem })
-	self.build:AddStatComparesToTooltip(tooltip, outputBase, outputNew, "\nAdding this mod will give: ")	
+	self.build:AddStatComparesToTooltip(tooltip, outputBase, outputNew, "\n" .. i18n.t("statCompare.addingMod"))
 end
 
 -- Returns the first slot in which the given item is equipped
@@ -2252,9 +2252,9 @@ end
 function ItemsTabClass:AppendAddedNotableTooltip(tooltip, node)
 	local calcFunc, calcBase = self.build.calcsTab:GetMiscCalculator()
 	local outputNew = calcFunc({ addNodes = { [node] = true } })
-	local numChanges = self.build:AddStatComparesToTooltip(tooltip, calcBase, outputNew, "^7Allocating "..node.dn.." will give you: ")
+	local numChanges = self.build:AddStatComparesToTooltip(tooltip, calcBase, outputNew, s_format("^7" .. i18n.t("statCompare.allocatingNode"), node.dn))
 	if numChanges == 0 then
-		tooltip:AddLine(14, "^7Allocating "..node.dn.." changes nothing.")
+		tooltip:AddLine(14, s_format("^7" .. i18n.t("statCompare.allocatingNodeNoChange"), node.dn))
 	end
 end
 
@@ -3336,9 +3336,9 @@ function ItemsTabClass:AddItemTooltip(tooltip, item, slot, dbMode)
 		local output = calcFunc({ toggleFlask = item })
 		local header
 		if self.build.calcsTab.mainEnv.flasks[item] then
-			header = "^7Deactivating this flask will give you:"
+			header = "^7" .. i18n.t("statCompare.deactivatingFlask")
 		else
-			header = "^7Activating this flask will give you:"
+			header = "^7" .. i18n.t("statCompare.activatingFlask")
 		end
 		self.build:AddStatComparesToTooltip(tooltip, calcBase, output, header)
 	elseif base.charm then
@@ -3363,7 +3363,7 @@ function ItemsTabClass:AddItemTooltip(tooltip, item, slot, dbMode)
 		end
 
 		if stats[1] then
-			tooltip:AddLine(14, "^7Effective charm stats:")
+			tooltip:AddLine(14, "^7" .. i18n.t("statCompare.effectiveCharmStats"))
 			for _, stat in ipairs(stats) do
 				tooltip:AddLine(14, stat)
 			end
@@ -3371,9 +3371,9 @@ function ItemsTabClass:AddItemTooltip(tooltip, item, slot, dbMode)
 		local output = calcFunc({ toggleCharm = item })
 		local header
 		if self.build.calcsTab and self.build.calcsTab.mainEnv and self.build.calcsTab.mainEnv.charms and self.build.calcsTab.mainEnv.charms[item] then
-			header = "^7Deactivating this charm will give you:"
+			header = "^7" .. i18n.t("statCompare.deactivatingCharm")
 		else
-			header = "^7Activating this charm will give you:"
+			header = "^7" .. i18n.t("statCompare.activatingCharm")
 		end
 		self.build:AddStatComparesToTooltip(tooltip, calcBase, output, header)
 	else
@@ -3418,15 +3418,15 @@ function ItemsTabClass:AddItemTooltip(tooltip, item, slot, dbMode)
 				local output = calcFunc({ repSlotName = compareSlot.slotName, repItem = item ~= selItem and item or nil})
 				local header
 				if item == selItem then
-					header = "^7Removing this item from "..compareSlot.label.." will give you:"
+					header = s_format("^7" .. i18n.t("statCompare.removingItem"), compareSlot.label)
 				else
-					header = string.format("^7Equipping this item in %s will give you:%s", compareSlot.label, selItem and "\n(replacing "..colorCodes[selItem.rarity]..selItem.name.."^7)" or "")
+					header = s_format("^7" .. i18n.t("statCompare.equippingItemInSlot"), compareSlot.label, selItem and "\n(replacing "..colorCodes[selItem.rarity]..selItem.name.."^7)" or "")
 				end
 				self.build:AddStatComparesToTooltip(tooltip, calcBase, output, header)
 			end
 		end
 	end
-	tooltip:AddLine(14, colorCodes.TIP.."Tip: Press Ctrl+D to disable the display of stat differences.", "VAR")
+	tooltip:AddLine(14, colorCodes.TIP..i18n.t("statCompare.tipDisableStatDiff"), "VAR")
 
 	if launch.devModeAlt then
 		-- Modifier debugging info

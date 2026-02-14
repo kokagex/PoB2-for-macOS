@@ -2405,7 +2405,7 @@ function buildMode:AddDisplayStatList(statList, actor)
 								t_insert(statBoxList, {
 									height = 14,
 									align = "CENTER_X", x = 140,
-									colorCodes.WARNING.."from " ..skillData.source,
+									colorCodes.WARNING..i18n.t("statCompare.from").." " ..skillData.source,
 								})
 							end
 						end
@@ -2415,9 +2415,10 @@ function buildMode:AddDisplayStatList(statList, actor)
 						if actor.output[statData.stat.."Warning"] or (statData.warnFunc and statData.warnFunc(statVal, actor.output) and statData.warnColor) then
 							colorOverride = colorCodes.NEGATIVE
 						end
+						local translatedLabel = i18n.lookup("statCompare.labels", statData.label) or statData.label
 						t_insert(statBoxList, {
 							height = 16,
-							labelColor..statData.label..":",
+							labelColor..translatedLabel..":",
 							self:FormatStat(statData, statVal, overCapStatVal, colorOverride),
 						})
 					end
@@ -2429,8 +2430,9 @@ function buildMode:AddDisplayStatList(statList, actor)
 					end
 				end
 			elseif statData.label and statData.condFunc and statData.condFunc(actor.output) then
-				t_insert(statBoxList, { 
-					height = 16, labelColor..statData.label..":", 
+				local translatedLabel = i18n.lookup("statCompare.labels", statData.label) or statData.label
+				t_insert(statBoxList, {
+					height = 16, labelColor..translatedLabel..":",
 					"^7"..actor.output[statData.labelStat].."%^x808080" .. " (" .. statData.val  .. ")",})
 			elseif not statBoxList[#statBoxList] or statBoxList[#statBoxList][1] then
 				t_insert(statBoxList, { height = 6 })
@@ -2525,7 +2527,7 @@ function buildMode:RefreshStatList()
 		end
 	end
 	if mainEnv.minion then
-		t_insert(statBoxList, { height = 18, "^7Minion:" })
+		t_insert(statBoxList, { height = 18, "^7"..i18n.t("statCompare.minion") })
 		if mainEnv.minion.mainSkill and mainEnv.minion.mainSkill.infoMessage then
 			if #mainEnv.minion.mainSkill.infoMessage > 40 then
 				for line in string.gmatch(mainEnv.minion.mainSkill.infoMessage, "([^:]+)") do
@@ -2540,7 +2542,7 @@ function buildMode:RefreshStatList()
 		end
 		self:AddDisplayStatList(self.minionDisplayStats, mainEnv.minion)
 		t_insert(statBoxList, { height = 10 })
-		t_insert(statBoxList, { height = 18, "^7Player:" })
+		t_insert(statBoxList, { height = 18, "^7"..i18n.t("statCompare.player") })
 	end
 	if mainEnv.player.mainSkill and mainEnv.player.mainSkill.skillFlags and mainEnv.player.mainSkill.skillFlags.disable then
 		t_insert(statBoxList, { height = 16, "^7Skill disabled:" })
@@ -2578,7 +2580,8 @@ function buildMode:CompareStatList(tooltip, statList, actor, baseOutput, compare
 
 				valStr = formatNumSep(valStr)
 
-				local line = s_format("%s%s %s", color, valStr, statData.label)
+				local translatedLabel = i18n.lookup("statCompare.labels", statData.label) or statData.label
+				local line = s_format("%s%s %s", color, valStr, translatedLabel)
 				local pcPerPt = ""
 				if statData.compPercent and statVal1 ~= 0 and statVal2 ~= 0 then
 					local pc = statVal1 / statVal2 * 100 - 100
@@ -2588,7 +2591,8 @@ function buildMode:CompareStatList(tooltip, statList, actor, baseOutput, compare
 					end
 				end
 				if nodeCount then
-					line = line .. s_format(" ^8[%+"..statData.fmt.."%s per point]", diff * ((statData.pc or statData.mod) and 100 or 1) / nodeCount, pcPerPt)
+					local perPointLabel = i18n.t("statCompare.perPoint")
+					line = line .. s_format(" ^8[%+"..statData.fmt.."%s "..perPointLabel.."]", diff * ((statData.pc or statData.mod) and 100 or 1) / nodeCount, pcPerPt)
 				end
 				tooltip:AddLine(14, line)
 				count = count + 1
@@ -2608,11 +2612,13 @@ function buildMode:AddStatComparesToTooltip(tooltip, baseOutput, compareOutput, 
 		return 0
 	end
 	if mainEnv.player.mainSkill.minion and baseOutput.Minion and compareOutput.Minion then
-		count = count + self:CompareStatList(tooltip, self.minionDisplayStats, mainEnv.minion, baseOutput.Minion, compareOutput.Minion, header.."\n^7Minion:", nodeCount)
+		local minionLabel = i18n.t("statCompare.minion")
+		local playerLabel = i18n.t("statCompare.player")
+		count = count + self:CompareStatList(tooltip, self.minionDisplayStats, mainEnv.minion, baseOutput.Minion, compareOutput.Minion, header.."\n^7"..minionLabel, nodeCount)
 		if count > 0 then
-			header = "^7Player:"
+			header = "^7"..playerLabel
 		else
-			header = header.."\n^7Player:"
+			header = header.."\n^7"..playerLabel
 		end
 	end
 	count = count + self:CompareStatList(tooltip, self.displayStats, mainEnv.player, baseOutput, compareOutput, header, nodeCount)
