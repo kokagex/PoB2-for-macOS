@@ -85,7 +85,7 @@ function buildMode:OnFrameMinimal(inputEvents)
 				end
 				if event.key == "s" then
 					self:SaveDBFile()
-					inputEvents[id] = nil
+					event.consumed = true
 				end
 			end
 		end
@@ -1611,15 +1611,26 @@ function buildMode:Shutdown()
 	if launch.devMode and (not main.disableDevAutoSave) and self.targetVersion and not self.abortSave then
 		if self.dbFileName then
 			self:SaveDBFile()
-		elseif self.unsaved then		
+		elseif self.unsaved then
 			self.dbFileName = main.buildPath.."~~temp~~.xml"
 			self.buildName = "~~temp~~"
 			self.dbFileSubPath = ""
 			self:SaveDBFile()
 		end
 	end
-	self.abortSave = nil
 
+	-- Clean up onFrameFuncs registered by TradeQuery
+	if main.onFrameFuncs then
+		main.onFrameFuncs["TradeQueryRequests"] = nil
+		main.onFrameFuncs["TradeQueryGenerator"] = nil
+	end
+
+	-- Cancel PowerBuilder coroutine
+	if self.calcsTab and self.calcsTab.powerBuilder then
+		self.calcsTab.powerBuilder = nil
+	end
+
+	self.abortSave = nil
 	self.savers = nil
 end
 
@@ -1804,7 +1815,7 @@ function buildMode:OnFrame(inputEvents)
 					self.importTab:SelectControl(self.importTab.controls.importCodeIn)
 				elseif event.key == "s" then
 					self:SaveDBFile()
-					inputEvents[id] = nil
+					event.consumed = true
 				elseif event.key == "w" then
 					if self.unsaved then
 						self:OpenSavePopup("LIST")

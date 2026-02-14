@@ -5,6 +5,8 @@
 --
 
 local dkjson = require "dkjson"
+local m_min = math.min
+local m_max = math.max
 
 ---@class TradeQueryRequests
 local TradeQueryRequestsClass = newClass("TradeQueryRequests", function(self, rateLimiter)
@@ -30,22 +32,34 @@ function TradeQueryRequestsClass:ProcessQueue()
 					local request = table.remove(queue, 1)
 					local requestId = self.rateLimiter:InsertRequest(policy)
 					local onComplete = function(response, errMsg)
-						self.rateLimiter:FinishRequest(policy, requestId)
-						self.rateLimiter:UpdateFromHeader(response.header)
-						if response.header:match("HTTP/[%d%.]+ (%d+)") == "429" then
+						-- Check 429 before FinishRequest (T-4: correct ordering)
+						if response.header and response.header:match("HTTP/[%d%.]+ (%d+)") == "429" then
+							self.rateLimiter:FinishRequest(policy, requestId)
 							request.attempts = (request.attempts or 0) + 1
+							-- Retry limit to prevent infinite loops (T-3)
+							if request.attempts > 5 then
+								if request.callback then
+									request.callback(nil, "Rate limited after 5 retries")
+								end
+								return
+							end
 							local backoff = m_min(2 ^ request.attempts, 60)
 							request.retryTime = os.time() + backoff
 							table.insert(queue, 1, request)
 							return
 						end
-						-- if limit rules don't return account then the POESESSID is invalid.
-						if response.header:match("[xX]%-[rR]ate%-[lL]imit%-[rR]ules: (.-)\n"):match("Account") == nil and main.POESESSID ~= "" then
-							main.POESESSID = ""
-							if errMsg then
-								errMsg = errMsg .. "\nPOESESSID is invalid. Please Re-Log and reset"
-							else
-								errMsg = "POESESSID is invalid. Please Re-Log and reset"
+						self.rateLimiter:FinishRequest(policy, requestId)
+						-- Nil-safe header parsing (T-2, T-14)
+						if response.header then
+							self.rateLimiter:UpdateFromHeader(response.header)
+							local rules = response.header:match("[xX]%-[rR]ate%-[lL]imit%-[rR]ules: (.-)\n")
+							if rules and rules:match("Account") == nil and main.POESESSID ~= "" then
+								main.POESESSID = ""
+								if errMsg then
+									errMsg = errMsg .. "\nPOESESSID is invalid. Please Re-Log and reset"
+								else
+									errMsg = "POESESSID is invalid. Please Re-Log and reset"
+								end
 							end
 						end
 						request.callback(response.body, errMsg, unpack(request.callbackParams or {}))
@@ -176,6 +190,9 @@ function TradeQueryRequestsClass:SearchWithQueryWeightAdjusted(realm, league, qu
 						return callback(nil, errMsg)
 					end
 					previousSearchItems = items
+					if not items[1] then
+						return callback(nil, "No items returned for weight adjustment")
+					end
 					local highestWeight = items[1].weight
 					local queryJson = dkjson.decode(query)
 					queryJson.query.stats[1].value.min = (tonumber(highestWeight) + queryJson.query.stats[1].value.min) / 2
@@ -243,19 +260,24 @@ function TradeQueryRequestsClass:FetchResults(itemHashes, queryId, callback)
 	local quantity_found = math.min(#itemHashes, self.maxFetchPerSearch)
 	local max_block_size = 10
 	local items = {}
+	local callbackFired = false
+	local blocksRemaining = math.ceil(quantity_found / max_block_size)
 	for fetch_block_start = 1, quantity_found, max_block_size do
 		local fetch_block_end = math.min(fetch_block_start + max_block_size - 1, quantity_found)
 		local param_item_hashes = table.concat({unpack(itemHashes, fetch_block_start, fetch_block_end)}, ",")
 		local fetch_url = self.hostName .. "api/trade2/fetch/"..param_item_hashes.."?query="..queryId
 		self:FetchResultBlock(fetch_url, function(itemBlock, errMsg)
+			if callbackFired then return end
 			if errMsg then
+				callbackFired = true
 				return callback(nil, errMsg)
 			end
 			for _, item in pairs(itemBlock) do
 				table.insert(items, item)
 			end
-			-- finished fetching item blocks
-			if #items >= quantity_found then
+			blocksRemaining = blocksRemaining - 1
+			if blocksRemaining <= 0 or #items >= quantity_found then
+				callbackFired = true
 				callback(items)
 			end
 		end)
@@ -435,6 +457,9 @@ end
 ---@param callback fun(items:table, errMsg:string)
 function TradeQueryRequestsClass:SearchWithURL(url, callback)
 	local subpath = url:match(self.hostName .. "trade2/search/(.+)$")
+	if not subpath then
+		return callback(nil, "Invalid trade search URL")
+	end
 	local paths = {}
 	for path in subpath:gmatch("[^/]+") do
 		table.insert(paths, path)

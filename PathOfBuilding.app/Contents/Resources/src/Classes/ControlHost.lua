@@ -34,6 +34,7 @@ end
 
 function ControlHostClass:ProcessControlsInput(inputEvents, viewPort)
 	local function handleEvent(id, event)
+		if event.consumed then return end
 		if event.type == "KeyDown" then
 			if not self.selControl and not event.key:match("BUTTON") then
 				local mOverControl = self:GetMouseOverControl()
@@ -42,13 +43,13 @@ function ControlHostClass:ProcessControlsInput(inputEvents, viewPort)
 					if mOverControl.OnKeyDown then
 						self:SelectControl(mOverControl:OnKeyDown(event.key, event.doubleClick))
 					end
-					inputEvents[id] = nil
+					event.consumed = true
 					return
 				end
 			end
 			if self.selControl then
 				self:SelectControl(self.selControl:OnKeyDown(event.key, event.doubleClick))
-				inputEvents[id] = nil
+				event.consumed = true
 				if not self.selControl and event.key:match("BUTTON") then
 					self:SelectControl()
 					if isMouseInRegion(viewPort) then
@@ -65,7 +66,7 @@ function ControlHostClass:ProcessControlsInput(inputEvents, viewPort)
 					local mOverControl = self:GetMouseOverControl()
 					if mOverControl and mOverControl.OnKeyDown then
 						self:SelectControl(mOverControl:OnKeyDown(event.key, event.doubleClick))
-						inputEvents[id] = nil
+						event.consumed = true
 					end
 				end
 			end
@@ -77,7 +78,7 @@ function ControlHostClass:ProcessControlsInput(inputEvents, viewPort)
 					self:SelectControl(selControl:OnKeyUp(event.key))
 				end
 				
-				inputEvents[id] = nil
+				event.consumed = true
 			end
 
 			local mOverControl = self:GetMouseOverControl(viewPort)
@@ -86,7 +87,7 @@ function ControlHostClass:ProcessControlsInput(inputEvents, viewPort)
 			if mOverControl and (not selControl or mOverControl.OnHoverKeyUp) then
 				if isMouseInRegion(viewPort) then
 					if not selControl and mOverControl.OnKeyUp and mOverControl:OnKeyUp(event.key) then
-						inputEvents[id] = nil
+						event.consumed = true
 					end
 	
 					if mOverControl.OnHoverKeyUp then
@@ -105,7 +106,7 @@ function ControlHostClass:ProcessControlsInput(inputEvents, viewPort)
 				if self.selControl.OnChar then
 					self:SelectControl(self.selControl:OnChar(event.key))
 				end
-				inputEvents[id] = nil
+				event.consumed = true
 			end
 		end
 	end

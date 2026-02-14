@@ -302,15 +302,16 @@ function TreeTabClass:Draw(viewPort, inputEvents)
 	local textInputActive = main.textInputActive
 
 	for id, event in ipairs(inputEvents) do
-		if event.type == "KeyDown" then
-			if event.key == "z" and IsKeyDown("CTRL") and not textInputActive then
-				self.build.spec:Undo()
-				self.build.buildFlag = true
-				inputEvents[id] = nil
-			elseif event.key == "y" and IsKeyDown("CTRL") and not textInputActive then
-				self.build.spec:Redo()
-				self.build.buildFlag = true
-				inputEvents[id] = nil
+		if not event.consumed then
+			if event.type == "KeyDown" then
+				if event.key == "z" and IsKeyDown("CTRL") and not textInputActive then
+					self.build.spec:Undo()
+					self.build.buildFlag = true
+					event.consumed = true
+				elseif event.key == "y" and IsKeyDown("CTRL") and not textInputActive then
+					self.build.spec:Redo()
+					self.build.buildFlag = true
+					event.consumed = true
 			elseif event.key == "UP" then
 				local index = self.activeSpec - 1
 				if self.specList[index] and not self.controls.specSelect:IsMouseOver() and not self.controls.specSelect.dropped then
@@ -328,6 +329,7 @@ function TreeTabClass:Draw(viewPort, inputEvents)
 			elseif event.key == "m" and IsKeyDown("CTRL") and not textInputActive then
 				self:OpenSpecManagePopup()
 			end
+		end
 		end
 	end
 	self:ProcessControlsInput(inputEvents, viewPort)

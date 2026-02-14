@@ -62,6 +62,7 @@ local function releaseEvent(ev)
 	ev.val = nil
 	ev.doubleClick = nil
 	ev.char = nil
+	ev.consumed = nil
 	eventPool[#eventPool + 1] = ev
 end
 
