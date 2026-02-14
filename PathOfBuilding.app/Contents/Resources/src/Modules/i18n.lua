@@ -24,6 +24,10 @@ local function loadLocale(code)
 		if ok3 and type(statDescs) == "table" then
 			data.statDescriptions = statDescs
 		end
+		local ok4, flavourText = pcall(LoadModule, "Locales/" .. code .. "_gem_flavourtext")
+		if ok4 and type(flavourText) == "table" then
+			data.gemFlavourText = flavourText
+		end
 		return true
 	end
 	ConPrintf("i18n: Failed to load locale '%s'", tostring(code))

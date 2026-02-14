@@ -705,8 +705,15 @@ function GemSelectClass:AddGemTooltip(gemInstance)
 	end
 	if grantedEffect.flavourText and main.showFlavourText then
 		self.tooltip:AddSeparator(10)
-		for _, line in ipairs(grantedEffect.flavourText) do
-			self.tooltip:AddLine(fontSizeBig, colorCodes.UNIQUE .. line, "FONTIN SC ITALIC")
+		local translatedFlavour = i18n.lookup("gemFlavourText", grantedEffect.name)
+		if translatedFlavour then
+			for line in translatedFlavour:gmatch("[^\n]+") do
+				self.tooltip:AddLine(fontSizeBig, colorCodes.UNIQUE .. line, "FONTIN SC ITALIC")
+			end
+		else
+			for _, line in ipairs(grantedEffect.flavourText) do
+				self.tooltip:AddLine(fontSizeBig, colorCodes.UNIQUE .. line, "FONTIN SC ITALIC")
+			end
 		end
 	end
 end

@@ -661,6 +661,7 @@ function main:LoadSettings(ignoreBuild)
 					self.language = node.attrib.language
 					if i18n and i18n.setLocale then
 						i18n.setLocale(self.language)
+						self.notSupportedTooltipText = i18n.t("general.notSupportedTooltip")
 					end
 					if SetFontScale then
 						SetFontScale(self.language == "ja" and 0.93 or 1.0)
@@ -971,6 +972,7 @@ function main:OpenOptionsPopup()
 		self.language = value.code
 		if i18n and i18n.setLocale then
 			i18n.setLocale(value.code)
+			self.notSupportedTooltipText = i18n.t("general.notSupportedTooltip")
 		end
 		if SetFontScale then
 			SetFontScale(value.code == "ja" and 0.93 or 1.0)
@@ -1261,6 +1263,7 @@ function main:OpenOptionsPopup()
 		self.language = initialLanguage
 		if i18n and i18n.setLocale then
 			i18n.setLocale(self.language)
+			self.notSupportedTooltipText = i18n.t("general.notSupportedTooltip")
 		end
 		if SetFontScale then
 			SetFontScale(self.language == "ja" and 0.93 or 1.0)

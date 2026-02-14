@@ -55,7 +55,7 @@ return {
 			tooltipShowAllAffixes = "全アイテムAffixスロットをドロップダウンの代わりにリスト表示します",
 			tooltipGemQuality = "デフォルトのジェム品質を設定します。スキルパネルのビルド固有品質設定で上書き可能です。",
 			tooltipCharLevel = "ビルドのデフォルトレベルを設定します。1より大きい場合、新しいビルドで手動レベルモードが有効になります。",
-			tooltipNotSupportedMod = "未サポートModの横に ^8(Not supported in PoB yet) ^7を表示",
+			tooltipNotSupportedMod = "未サポートModの横に ^8(PoBでは未サポート) ^7を表示",
 			tooltipInvertSlider = "デフォルトのスクロール方向:\nスクロールアップ = 右に移動\nスクロールダウン = 左に移動",
 		},
 	},
