@@ -92,6 +92,19 @@ local function translateGemName(name)
 	return val ~= key and val or name
 end
 
+local function translateItemName(source)
+	if not source then return "???" end
+	local name = source.name or source.dn or "???"
+	if source.rarity == "UNIQUE" and source.title and i18n and i18n.lookup then
+		local translated = i18n.lookup("uniqueNames", source.title)
+		if translated and type(translated) == "string" and #translated > 0 then
+			local baseName = source.baseName and source.baseName:gsub(" %(.+%)","") or ""
+			name = translated .. (baseName ~= "" and ", " .. baseName or "")
+		end
+	end
+	return name
+end
+
 local SkillsTabClass = newClass("SkillsTab", "UndoHandler", "ControlHost", "Control", function(self, build)
 	self.UndoHandler()
 	self.ControlHost()
@@ -1156,7 +1169,7 @@ end
 function SkillsTabClass:AddSocketGroupTooltip(tooltip, socketGroup)
 	if socketGroup.explodeSources then
 		for _, source in ipairs(socketGroup.explodeSources) do
-			tooltip:AddLine(18, "^7" .. i18n.t("skills.tooltips.source") .. colorCodes[source.rarity or "NORMAL"] .. (source.name or source.dn or "???"))
+			tooltip:AddLine(18, "^7" .. i18n.t("skills.tooltips.source") .. colorCodes[source.rarity or "NORMAL"] .. translateItemName(source))
 		end
 		return
 	end
@@ -1165,7 +1178,7 @@ function SkillsTabClass:AddSocketGroupTooltip(tooltip, socketGroup)
 	end
 	local sourceSingle = socketGroup.sourceItem or socketGroup.sourceNode
 	if sourceSingle then
-		tooltip:AddLine(18, "^7" .. i18n.t("skills.tooltips.source") .. colorCodes[sourceSingle.rarity or "NORMAL"] .. sourceSingle.name)
+		tooltip:AddLine(18, "^7" .. i18n.t("skills.tooltips.source") .. colorCodes[sourceSingle.rarity or "NORMAL"] .. translateItemName(sourceSingle))
 		tooltip:AddSeparator(10)
 	end
 	local gemShown = { }
