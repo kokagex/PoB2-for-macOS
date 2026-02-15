@@ -2,7 +2,7 @@
 .claude/
 doc/
 skills/
-src/
+/src/
 installed-skills/
 claude-code-insights-日本語版.md
 .worktrees/
