@@ -2844,10 +2844,10 @@ function ItemsTabClass:AddItemTooltip(tooltip, item, slot, dbMode)
 	end
 
 	if item.charmLimit then
-		tooltip:AddLine(fontSizeBig, s_format("^x7F7F7FCharm Slots: "..main:StatColor(item.charmLimit, base.charmLimit).."%d", item.charmLimit), "FONTIN SC")
+		tooltip:AddLine(fontSizeBig, s_format("^x7F7F7F" .. i18n.t("items.tooltip.charmSlots")..main:StatColor(item.charmLimit, base.charmLimit).."%d", item.charmLimit), "FONTIN SC")
 	end
 	if item.spiritValue then
-		tooltip:AddLine(fontSizeBig, s_format("^x7F7F7FSpirit: "..main:StatColor(item.spiritValue, base.spirit).."%d", item.spiritValue), "FONTIN SC")
+		tooltip:AddLine(fontSizeBig, s_format("^x7F7F7F" .. i18n.t("items.tooltip.spirit")..main:StatColor(item.spiritValue, base.spirit).."%d", item.spiritValue), "FONTIN SC")
 	end
 
 	if base.weapon then
@@ -2855,41 +2855,41 @@ function ItemsTabClass:AddItemTooltip(tooltip, item, slot, dbMode)
 		local weaponData = item.weaponData[slotNum]
 		local totalDamageTypes = 0
 		if weaponData.PhysicalDPS then
-			tooltip:AddLine(fontSizeBig, s_format("^x7F7F7FPhysical Damage: "..colorCodes.MAGIC.."%d-%d (%.1f DPS)", weaponData.PhysicalMin, weaponData.PhysicalMax, weaponData.PhysicalDPS), "FONTIN SC")
+			tooltip:AddLine(fontSizeBig, s_format("^x7F7F7F" .. i18n.t("items.tooltip.physicalDamage")..colorCodes.MAGIC.."%d-%d (%.1f DPS)", weaponData.PhysicalMin, weaponData.PhysicalMax, weaponData.PhysicalDPS), "FONTIN SC")
 			totalDamageTypes = totalDamageTypes + 1
 		end
 		if weaponData.ElementalDPS then
 			local elemLine
 			for _, var in ipairs({"Fire","Cold","Lightning"}) do
 				if weaponData[var.."DPS"] then
-					elemLine = elemLine and elemLine.."^x7F7F7F, " or "^x7F7F7FElemental Damage: "
+					elemLine = elemLine and elemLine.."^x7F7F7F, " or "^x7F7F7F" .. i18n.t("items.tooltip.elementalDamage")
 					elemLine = elemLine..s_format("%s%d-%d", colorCodes[var:upper()], weaponData[var.."Min"], weaponData[var.."Max"], "FONTIN SC")
 				end
 			end
 			tooltip:AddLine(fontSizeBig, elemLine, "FONTIN SC")
-			tooltip:AddLine(fontSizeBig, s_format("^x7F7F7FElemental DPS: "..colorCodes.MAGIC.."%.1f", weaponData.ElementalDPS), "FONTIN SC")
+			tooltip:AddLine(fontSizeBig, s_format("^x7F7F7F" .. i18n.t("items.tooltip.elementalDPS")..colorCodes.MAGIC.."%.1f", weaponData.ElementalDPS), "FONTIN SC")
 			totalDamageTypes = totalDamageTypes + 1	
 		end
 		if weaponData.ChaosDPS then
-			tooltip:AddLine(fontSizeBig, s_format("^x7F7F7FChaos Damage: "..colorCodes.CHAOS.."%d-%d "..colorCodes.MAGIC.."(%.1f DPS)", weaponData.ChaosMin, weaponData.ChaosMax, weaponData.ChaosDPS), "FONTIN SC")
+			tooltip:AddLine(fontSizeBig, s_format("^x7F7F7F" .. i18n.t("items.tooltip.chaosDamage")..colorCodes.CHAOS.."%d-%d "..colorCodes.MAGIC.."(%.1f DPS)", weaponData.ChaosMin, weaponData.ChaosMax, weaponData.ChaosDPS), "FONTIN SC")
 			totalDamageTypes = totalDamageTypes + 1
 		end
 		if totalDamageTypes > 1 then
-			tooltip:AddLine(fontSizeBig, s_format("^x7F7F7FTotal DPS: "..colorCodes.MAGIC.."%.1f", weaponData.TotalDPS), "FONTIN SC")
+			tooltip:AddLine(fontSizeBig, s_format("^x7F7F7F" .. i18n.t("items.tooltip.totalDPS")..colorCodes.MAGIC.."%.1f", weaponData.TotalDPS), "FONTIN SC")
 		end
-		tooltip:AddLine(fontSizeBig, s_format("^x7F7F7FCritical Hit Chance: %s%.2f%%", main:StatColor(weaponData.CritChance, base.weapon.CritChanceBase), weaponData.CritChance), "FONTIN SC")
-		tooltip:AddLine(fontSizeBig, s_format("^x7F7F7FAttacks per Second: %s%.2f", main:StatColor(weaponData.AttackRate, base.weapon.AttackRateBase), weaponData.AttackRate), "FONTIN SC")
+		tooltip:AddLine(fontSizeBig, s_format("^x7F7F7F" .. i18n.t("items.tooltip.criticalHitChance") .. "%s%.2f%%", main:StatColor(weaponData.CritChance, base.weapon.CritChanceBase), weaponData.CritChance), "FONTIN SC")
+		tooltip:AddLine(fontSizeBig, s_format("^x7F7F7F" .. i18n.t("items.tooltip.attacksPerSecond") .. "%s%.2f", main:StatColor(weaponData.AttackRate, base.weapon.AttackRateBase), weaponData.AttackRate), "FONTIN SC")
 		if weaponData.ReloadTime then
-			tooltip:AddLine(fontSizeBig, s_format("^x7F7F7FReload Time: %s%.2f", main:StatColor(weaponData.ReloadTime, base.weapon.ReloadTimeBase), weaponData.ReloadTime), "FONTIN SC")
+			tooltip:AddLine(fontSizeBig, s_format("^x7F7F7F" .. i18n.t("items.tooltip.reloadTime") .. "%s%.2f", main:StatColor(weaponData.ReloadTime, base.weapon.ReloadTimeBase), weaponData.ReloadTime), "FONTIN SC")
 		end
 		if weaponData.range < 120 then
-			tooltip:AddLine(fontSizeBig, s_format("^x7F7F7FWeapon Range: %s%.1f ^x7F7F7Fmetres", main:StatColor(weaponData.range, base.weapon.Range), weaponData.range / 10), "FONTIN SC")
+			tooltip:AddLine(fontSizeBig, s_format("^x7F7F7F" .. i18n.t("items.tooltip.weaponRange") .. "%s%.1f ^x7F7F7F" .. i18n.t("items.tooltip.metres"), main:StatColor(weaponData.range, base.weapon.Range), weaponData.range / 10), "FONTIN SC")
 		end
 	elseif base.armour then
 		-- Armour-specific info
 		local armourData = item.armourData
 		if base.armour.BlockChance and armourData.BlockChance > 0 then
-			tooltip:AddLine(fontSizeBig, s_format("^x7F7F7FChance to Block: %s%d%%", main:StatColor(armourData.BlockChance, base.armour.BlockChance), armourData.BlockChance), "FONTIN SC")
+			tooltip:AddLine(fontSizeBig, s_format("^x7F7F7F" .. i18n.t("items.tooltip.chanceToBlock") .. "%s%d%%", main:StatColor(armourData.BlockChance, base.armour.BlockChance), armourData.BlockChance), "FONTIN SC")
 		end
 		if armourData.Armour > 0 then
 			tooltip:AddLine(fontSizeBig, s_format("^x7F7F7F" .. i18n.t("items.tooltip.armour") .. "%s%d", main:StatColor(armourData.Armour, base.armour.ArmourBase), armourData.Armour), "FONTIN SC")
