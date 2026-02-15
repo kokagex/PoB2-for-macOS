@@ -517,7 +517,7 @@ Lose all Endurance Charges on use
 Gain 1 Endurance Charge per Second during Effect
 ]],[[
 Olroth's Resolve
-Iron Flask
+Ultimate Life Flask
 Variant: Pre 3.25.0
 Variant: Current
 League: Expedition

@@ -101,15 +101,15 @@ function launch:CanExit()
 end
 
 function launch:OnExit()
-	-- Clean up running sub-scripts
+	-- Let modules clean up their own SubScripts first
+	if self.main and self.main.Shutdown then
+		PCall(self.main.Shutdown, self.main)
+	end
+	-- Abort any remaining SubScripts
 	for id, _ in pairs(self.subScripts) do
 		AbortSubScript(id)
 	end
 	wipeTable(self.subScripts)
-
-	if self.main and self.main.Shutdown then
-		PCall(self.main.Shutdown, self.main)
-	end
 end
 
 function launch:OnFrame()
@@ -272,6 +272,14 @@ function launch:RegisterSubScript(id, callback)
 			type = "CUSTOM",
 			callback = callback,
 		}
+	end
+end
+
+--- SubScriptを安全に解除する（Abort + レジストリ削除）
+function launch:UnregisterSubScript(id)
+	if id and self.subScripts[id] then
+		AbortSubScript(id)
+		self.subScripts[id] = nil
 	end
 end
 

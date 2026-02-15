@@ -104,7 +104,7 @@ Adds 6 to 10 Physical Damage to Attacks with Bows
 50% chance to double Stun Duration
 ]],[[
 Drillneck
-Penetrating Arrow Quiver
+Penetrating Quiver
 Requires Level 36
 Implicits: 1
 Arrows Pierce an additional Target

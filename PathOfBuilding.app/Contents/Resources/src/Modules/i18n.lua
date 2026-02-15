@@ -28,6 +28,18 @@ local function loadLocale(code)
 		if ok4 and type(flavourText) == "table" then
 			data.gemFlavourText = flavourText
 		end
+		local ok5, uniqueNames = pcall(LoadModule, "Locales/" .. code .. "_unique_names")
+		if ok5 and type(uniqueNames) == "table" then
+			data.uniqueNames = uniqueNames
+		end
+		local ok6, baseNames = pcall(LoadModule, "Locales/" .. code .. "_base_names")
+		if ok6 and type(baseNames) == "table" then
+			data.baseNames = baseNames
+		end
+		local ok7, modStatLines = pcall(LoadModule, "Locales/" .. code .. "_mod_stat_lines")
+		if ok7 and type(modStatLines) == "table" then
+			data.modStatLines = modStatLines
+		end
 		return true
 	end
 	ConPrintf("i18n: Failed to load locale '%s'", tostring(code))
@@ -151,6 +163,49 @@ function i18n.removeOnChange(callback)
 			break
 		end
 	end
+end
+
+-- Translate a mod stat line from English to current locale
+-- Replaces numeric values with placeholders, looks up translation, restores values
+function i18n.translateModLine(line)
+	if not line or currentLocale == "en" then return line end
+	local data = locales[currentLocale]
+	if not data or not data.modStatLines then return line end
+
+	local captures = {}
+	local PH = "\1"
+
+	local tmpl = line
+	-- Step 1: Replace (X-Y) ranges with placeholder
+	tmpl = tmpl:gsub("%(%-?[%d%.]+%-%-?[%d%.]+%)", function(r)
+		captures[#captures+1] = r
+		return PH
+	end)
+	-- Step 2: Replace # placeholders
+	tmpl = tmpl:gsub("#", function()
+		captures[#captures+1] = "#"
+		return PH
+	end)
+	-- Step 3: Replace bare numbers
+	tmpl = tmpl:gsub("%-?%d+%.?%d*", function(n)
+		captures[#captures+1] = n
+		return PH
+	end)
+	-- Step 4: Convert all PH chars to {N} in order
+	local idx = 0
+	tmpl = tmpl:gsub(PH, function()
+		local result = "{" .. idx .. "}"
+		idx = idx + 1
+		return result
+	end)
+
+	local translated = data.modStatLines[tmpl]
+	if not translated then return line end
+
+	-- Restore captured values into translated template
+	return (translated:gsub("{(%d+)}", function(n)
+		return captures[tonumber(n)+1] or ("{" .. n .. "}")
+	end))
 end
 
 -- Register globally

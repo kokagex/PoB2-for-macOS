@@ -169,7 +169,7 @@ Requires Level 37, 67 Str
 {variant:2}Totems Reflect 100% of their maximum Life as Fire Damage to nearby Enemies when Hit
 ]],[[
 Windscream
-Reinforced Greaves
+Feathered Sandals
 Variant: Pre 2.6.0
 Variant: Pre 3.19.0
 Variant: Current
@@ -222,7 +222,7 @@ When you Kill an Ignited Enemy, inflict an equivalent Ignite on each nearby Enem
 Burning Hoofprints
 ]],[[
 Atziri's Step
-Slink Boots
+Cinched Boots
 Source: Drops from unique{Atziri, Queen of the Vaal} in normal{The Apex of Sacrifice}
 Variant: Pre 3.16.0
 Variant: Current
@@ -588,7 +588,7 @@ Regenerate 2% of Life per second on Chilled Ground
 Unaffected by Desecrated Ground
 ]],[[
 Wanderlust
-Wool Shoes
+Wrapped Sandals
 +5 to Dexterity
 (20-40)% increased Mana Regeneration Rate
 +(10-20) to maximum Energy Shield
@@ -596,7 +596,7 @@ Wool Shoes
 Cannot be Frozen
 ]],[[
 Wondertrap
-Velvet Slippers
+Silk Slippers
 Variant: Pre 1.0.0
 Variant: Pre 3.19.0
 Variant: Current
@@ -744,7 +744,7 @@ Gain Adrenaline when you become Flame-Touched
 Lose Adrenaline when you cease to be Flame-Touched
 ]],[[
 Gamblesprint
-Hydrascale Boots
+Embossed Boots
 League: Affliction
 Requires Level 59, 56 Str, 56 Dex
 +(30-40) to Dexterity
@@ -906,7 +906,7 @@ Requires Level 36, 35 Str, 35 Int
 {variant:7}Count as having maximum number of Power Charges
 ]],[[
 Wake of Destruction
-Mesh Boots
+Secured Leggings
 Variant: Pre 2.6.0
 Variant: Pre 3.11.0
 Variant: Current

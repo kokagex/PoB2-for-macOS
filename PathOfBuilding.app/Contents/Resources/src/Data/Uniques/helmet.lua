@@ -46,7 +46,7 @@ Half of your Strength is added to your Minions
 {variant:2}With 1000 or more Strength (1.5-2)% of Damage dealt by your Zombies is Leeched to you as Life
 ]],[[
 Ezomyte Peak
-Iron Hat
+Soldier Greathelm
 Variant: Pre 3.19.0
 Variant: Current
 {variant:1}20% increased Global Physical Damage
@@ -152,11 +152,11 @@ Bleeding you inflict deals Damage 4% faster per Frenzy Charge
 (20-30)% chance to gain a Frenzy Charge on Critical Strike at Close Range
 ]],[[
 Thrillsteel
-Barbute Helmet
+Spired Greathelm
 Onslaught
 ]],[[
 Blood Price
-Reaver Helmet
+Fierce Greathelm
 24% reduced maximum Life
 Regenerate (200-250) Life per second
 100% increased Stun and Block Recovery
@@ -176,7 +176,7 @@ Warcry Skills have (15-25)% increased Area of Effect
 -- Helmet: Evasion
 [[
 Alpha's Howl
-Sinner Tricorne
+Armoured Cap
 Requires Level 64, 138 Dex
 +2 to Level of Socketed Aura Gems
 (80-100)% increased Evasion Rating
@@ -198,7 +198,7 @@ Requires Level 64, 138 Dex
 You cannot be Hindered
 ]],[[
 Assailum
-Sinner Tricorne
+Closed Helm
 Variant: Pre 3.21.0
 Variant: Current
 Requires Level 64, 138 Dex
@@ -226,14 +226,14 @@ Cannot be Shocked
 {variant:2}You can be Touched by Tormented Spirits
 ]],[[
 Goldrim
-Leather Cap
+Felt Cap
 +(30-50) to Evasion Rating
 10% increased Rarity of Items found
 +(30-40)% to all Elemental Resistances
 Reflects 4 Physical Damage to Melee Attackers
 ]],[[
 Heatshiver
-Leather Hood
+Velvet Cap
 Variant: Pre 3.0.0
 Variant: Pre 3.19.0
 Variant: Pre 3.23.0
@@ -286,7 +286,7 @@ Requires Level 70, 150 Dex
 1% increased Projectile Attack Damage per 200 Accuracy Rating
 ]],[[
 Elevore
-Wolf Pelt
+Hunter Hood
 +(20-25)% chance to Suppress Spell Damage
 (60-100)% increased Evasion Rating
 (20-25)% chance to Avoid Elemental Ailments
@@ -314,7 +314,7 @@ Trigger Level 20 Twister when you gain Avian's Might or Avian's Flight
 (10-15)% increased Movement Speed
 ]],[[
 Starkonja's Head
-Silken Hood
+Leatherbound Hood
 Variant: Pre 2.6.0
 Variant: Current
 Requires Level 60, 138 Dex
@@ -410,7 +410,7 @@ Requires Level 54, 112 Int
 (10-20)% increased Elemental Damage
 ]],[[
 Crown of Eyes
-Hubris Circlet
+Vermeil Circlet
 Variant: Pre 3.7.0
 Variant: Current
 Requires Level 69, 154 Int
@@ -423,7 +423,7 @@ Requires Level 69, 154 Int
 Increases and Reductions to Spell Damage also apply to Attacks at 150% of their value
 ]],[[
 Crown of Thorns
-Vine Circlet
+Twig Circlet
 Variant: Pre 1.2.0
 Variant: Pre 3.19.0
 Variant: Current
@@ -448,7 +448,7 @@ Take 5 Physical Damage when hit by Attacks
 Pain Attunement
 ]],[[
 The Devouring Diadem
-Necromancer Circlet
+Wicker Tiara
 League: Betrayal
 Source: Drops from unique{Catarina, Master of Undeath}
 Requires Level 54, 112 Int
@@ -591,7 +591,7 @@ Adds (16-21) to (31-36) Chaos Damage to Spells
 Aspect of the Spider inflicts Spider's Webs and Hinder every 0.5 Seconds instead
 ]],[[
 Sandstorm Visage
-Necromancer Circlet
+Chain Tiara
 League: Sanctum
 Source: Drops from unique{Lycia, Herald of the Scourge} in normal{The Beyond}
 (8-10)% increased Cast Speed
@@ -643,7 +643,7 @@ Recover (2-3)% of Life when you lose a Spirit Charge
 Recover (2-3)% of Energy Shield when you lose a Spirit Charge
 ]],[[
 Indigon
-Hubris Circlet
+Magus Tiara
 Shaper Item
 Elder Item
 Source: Drops from unique{The Elder} (Uber)
@@ -720,7 +720,7 @@ Requires Level 65, 138 Int
 {variant:6}+(25-75) to maximum Mana
 ]],[[
 Scold's Bridle
-Mind Cage
+Jade Tiara
 League: Torment
 Requires Level 65, 138 Int
 (80-100)% increased Spell Damage
@@ -846,7 +846,7 @@ Requires Level 80, 224 Int
 -- Helmet: Armour/Evasion
 [[
 Black Sun Crest
-Lacquered Helmet
+Wrapped Greathelm
 Requires Level 51, 57 Str, 57 Dex
 +1 to Level of Socketed Gems
 (100-150)% increased Armour
@@ -856,7 +856,7 @@ Requires Level 51, 57 Str, 57 Dex
 (5-15)% increased Intelligence
 ]],[[
 The Bringer of Rain
-Nightmare Bascinet
+Decorated Helm
 Variant: Pre 1.1.0
 Variant: Pre 1.3.0
 Variant: Pre 3.5.0
@@ -895,7 +895,7 @@ Socketed Skills deal Double Damage
 (100-150)% increased Armour and Evasion
 ]],[[
 Deidbell
-Gilded Sallet
+Elite Greathelm
 Variant: Pre 2.6.0
 Variant: Pre 3.19.0
 Variant: Current
@@ -1226,7 +1226,7 @@ Regenerate 150 Life per second if you have at least 1500 Maximum Energy Shield
 Your Energy Shield starts at zero
 ]],[[
 Mask of the Stitched Demon
-Magistrate Crown
+Feathered Tiara
 League: Incursion
 Source: Upgraded from unique{Mask of the Spirit Drinker} via currency{Vial of Summoning}
 Requires Level 58, 64 Str, 64 Int
@@ -1320,7 +1320,7 @@ Requires Level 63, 85 Str, 62 Int
 Minions' Hits can only Kill Ignited Enemies
 ]],[[
 Veil of the Night
-Great Helmet
+Martyr Crown
 Requires Level 22, 27 Str, 27 Int
 (20-22)% increased Stun and Block Recovery
 40% reduced Light Radius
@@ -1362,7 +1362,7 @@ Life Leech from Exerted Attacks is instant
 Non-Exerted Attacks deal no Damage
 ]],[[
 Crown of the Pale King
-Regicide Mask
+Cultist Crown
 League: Tempest
 Variant: Pre 2.6.0
 Variant: Pre 3.19.0
@@ -1417,7 +1417,7 @@ Requires Level: 62, 79 Dex, 72 Int
 +2 to Maximum Life per 10 Intelligence
 ]],[[
 Glimpse of Chaos
-Vaal Mask
+Tribal Mask
 League: Ultimatum
 Source: Drops from unique{The Trialmaster}
 Requires Level 62, 79 Dex, 72 Int
@@ -1501,7 +1501,7 @@ Socketed Curse Gems are Supported by Level 22 Blasphemy
 Socketed Curse Gems have 30% increased Reservation Efficiency
 ]],[[
 Leer Cast
-Festival Mask
+Hooded Mask
 Variant: Pre 3.19.0
 Variant: Current
 +(20-30) to Dexterity
@@ -1564,7 +1564,7 @@ Blood Magic
 {variant:2}Mortal Conviction
 ]],[[
 Mind of the Council
-Harlequin Mask
+Death Mask
 Variant: Pre 3.10.0
 Variant: Current
 Requires Level 57, 64 Dex, 64 Int
@@ -1606,7 +1606,7 @@ Grants Summon Greater Harbinger of Storms Skill
 +(10-15)% to all Elemental Resistances
 ]],[[
 The Three Dragons
-Golden Mask
+Solid Mask
 Requires Level 35, 40 Dex, 40 Int
 +(26-30)% to all Elemental Resistances
 Your Fire Damage can Shock but not Ignite
@@ -1614,7 +1614,7 @@ Your Cold Damage can Ignite but not Freeze or Chill
 Your Lightning Damage can Freeze but not Shock
 ]],[[
 The Vertex
-Vaal Mask
+Tribal Mask
 Source: Drops from unique{Atziri, Queen of the Vaal} in normal{The Alluring Abyss}
 Requires Level 62, 79 Dex, 72 Int
 +1 to Level of Socketed Gems

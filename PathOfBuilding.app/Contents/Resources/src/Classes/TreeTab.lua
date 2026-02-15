@@ -720,6 +720,7 @@ function TreeTabClass:OpenImportPopup()
 		if #treeLink == 0 then
 			return
 		end
+		local pendingSubScriptId
 		-- EG: http://poeurl.com/dABz
 		if treeLink:match("poeurl%.com/") then
 			controls.import.enabled = false
@@ -741,7 +742,9 @@ function TreeTabClass:OpenImportPopup()
 				return redirect
 			]], "", "", treeLink)
 			if id then
+				pendingSubScriptId = id
 				launch:RegisterSubScript(id, function(treeLink, errMsg)
+					pendingSubScriptId = nil
 					if errMsg then
 						controls.msg.label = "^1"..errMsg.."^7"
 						controls.import.enabled = true
@@ -766,6 +769,10 @@ function TreeTabClass:OpenImportPopup()
 	end)
 	controls.import.enabled = false
 	controls.cancel = new("ButtonControl", nil, {45, 85, 80, 20}, "Cancel", function()
+		if pendingSubScriptId then
+			launch:UnregisterSubScript(pendingSubScriptId)
+			pendingSubScriptId = nil
+		end
 		main:ClosePopup()
 	end)
 	main:OpenPopup(580, 115, "Import Tree", controls, "import", "name")

@@ -38,7 +38,7 @@ Implicits: 1
 Permanently Intimidate Enemies on Block
 ]],[[
 The Surrender
-Ezomyte Tower Shield
+Vaal Tower Shield
 League: Breach
 Source: Upgraded from unique{The Anticipation} using currency{Blessing of Uul-Netol}
 Variant: Pre 3.0.0
@@ -57,7 +57,7 @@ Implicits: 1
 {variant:1,2}+1500 Armour if you've Blocked Recently
 ]],[[
 Chernobog's Pillar
-Ebony Tower Shield
+Blacksteel Tower Shield
 Variant: Pre 2.0.0
 Variant: Pre 2.6.0
 Variant: Pre 3.0.0
@@ -105,7 +105,7 @@ Implicits: 1
 +5% Chance to Block
 ]],[[
 Lycosidae
-Rawhide Tower Shield
+Rampart Tower Shield
 Variant: Pre 3.0.0
 Variant: Pre 3.25.0
 Variant: Current
@@ -154,7 +154,7 @@ Implicits: 1
 {variant:4}Warcries have infinite Power
 ]],[[
 Svalinn
-Girded Tower Shield
+Crucible Tower Shield
 League: Settlers of Kalguur
 Requires Level 51, 123 Str
 Implicits: 1
@@ -446,7 +446,7 @@ Implicits: 1
 Poisons on you expire 50% slower
 ]],[[
 Apep's Supremacy
-Vaal Spirit Shield
+Voodoo Focus
 League: Incursion
 Source: Upgraded from unique{Apep's Slumber} via currency{Vial of Awakening}
 Implicits: 1
@@ -700,7 +700,7 @@ Spreads Tar when you Block
 If you have Blocked Recently, you and nearby Allies Regenerate 5% of Life per second
 ]],[[
 Rathpith Globe
-Titanium Spirit Shield
+Sacred Focus
 League: Legion
 Variant: Pre 3.4.0
 Variant: Pre 3.7.0
@@ -930,7 +930,7 @@ Triggers Level 20 Fire Aegis when Equipped
 Cannot be Ignited
 ]],[[
 Prism Guardian
-Archon Kite Shield
+Intricate Crest Shield
 Variant: Pre 1.1.0
 Variant: Pre 2.0.0
 Variant: Pre 3.16.0
@@ -946,7 +946,7 @@ Socketed Gems have 30% increased Reservation Efficiency
 +25% to all Elemental Resistances
 ]],[[
 Mahuxotl's Machination
-Steel Kite Shield
+Omen Crest Shield
 League: Ultimatum
 Source: Drops from unique{The Trialmaster}
 Implicits: 0
@@ -958,7 +958,7 @@ Immortal Ambition
 Vaal Pact
 ]],[[
 Rise of the Phoenix
-Mosaic Kite Shield
+Omen Crest Shield
 Variant: Pre 1.1.0
 Variant: Pre 3.1.0
 Variant: Pre 3.19.0
@@ -980,7 +980,7 @@ Implicits: 2
 Cannot be Ignited while on Low Life
 ]],[[
 Saffell's Frame
-Branded Kite Shield
+Emblem Crest Shield
 Variant: Pre 1.1.0
 Variant: Pre 3.4.0
 Variant: Pre 3.19.0

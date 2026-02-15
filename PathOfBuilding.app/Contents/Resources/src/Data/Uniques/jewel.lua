@@ -209,7 +209,7 @@ Source: Drops from unique Delirium bosses in maps
 Adds Veteran's Awareness
 ]],[[
 Grand Spectrum
-Cobalt Jewel
+Sapphire
 Source: Drops in The Lord's Labyrinth
 Limited to: 3
 Variant: Pre 3.0.0
@@ -224,7 +224,7 @@ Variant: Current - Min Power Charge
 {variant:5}+1 to Minimum Power Charges per Grand Spectrum
 ]],[[
 Grand Spectrum
-Crimson Jewel
+Ruby
 Source: Drops in The Lord's Labyrinth
 Limited to: 3
 Variant: Pre 3.0.0
@@ -239,7 +239,7 @@ Variant: Current - Min Endurance Charge
 {variant:5}+1 to Minimum Endurance Charges per Grand Spectrum
 ]],[[
 Grand Spectrum
-Viridian Jewel
+Emerald
 Source: Drops in The Lord's Labyrinth
 Limited to: 3
 Variant: Pre 2.5.0
@@ -1773,7 +1773,7 @@ Limited to: 1
 {variant:2}+0.2 metres to Melee Strike Range
 ]],[[
 The Adorned
-Crimson Jewel
+Diamond
 Variant: Pre 3.25.0
 Variant: Current
 League: Affliction

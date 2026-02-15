@@ -38,7 +38,7 @@ local ItemSlotClass = newClass("ItemSlotControl", "DropDownControl", function(se
 		self.controls.activate.enabled = function()
 			return self.selItemId ~= 0
 		end
-		self.controls.activate.tooltipText = "Activate this flask."
+		self.controls.activate.tooltipText = i18n.t("items.tooltips.activateFlask")
 		self.labelOffset = -24
 	elseif slotName:match("Charm") then
 		self.controls.activate = new("CheckBoxControl", {"RIGHT",self,"LEFT"}, {-2, 0, 20}, nil, function(state)
@@ -50,7 +50,7 @@ local ItemSlotClass = newClass("ItemSlotControl", "DropDownControl", function(se
 		self.controls.activate.enabled = function()
 			return self.selItemId ~= 0
 		end
-		self.controls.activate.tooltipText = "Activate this charm."
+		self.controls.activate.tooltipText = i18n.t("items.tooltips.activateCharm")
 		self.labelOffset = -24
 	else
 		self.labelOffset = -2
@@ -87,7 +87,7 @@ function ItemSlotClass:Populate()
 	wipeTable(self.items)
 	wipeTable(self.list)
 	self.items[1] = 0
-	self.list[1] = "None"
+	self.list[1] = i18n.lookup("items.slots", "None") or "None"
 	self.selIndex = 1
 	for _, item in pairs(self.itemsTab.items) do
 		if self.itemsTab:IsItemValidForSlot(item, self.slotName) then
@@ -124,7 +124,8 @@ end
 function ItemSlotClass:Draw(viewPort)
 	local x, y = self:GetPos()
 	local width, height = self:GetSize()
-	DrawString(x + self.labelOffset, y + 2, "RIGHT_X", height - 4, "VAR", "^7"..self.label..":")
+	local displayLabel = i18n.lookup("items.slots", self.label) or self.label
+	DrawString(x + self.labelOffset, y + 2, "RIGHT_X", height - 4, "VAR", "^7"..displayLabel..":")
 	self.DropDownControl:Draw(viewPort)
 	self:DrawControls(viewPort)
 	if not main.popups[1] and self.nodeId and (self.dropped or (self:IsMouseOver() and (self.otherDragSource or not self.itemsTab.selControl))) then

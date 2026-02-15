@@ -89,7 +89,7 @@ Implicits: 1
 +(20-30)% to Quality of all Skill Gems
 ]],[[
 Astramentis
-Onyx Amulet
+Stellar Amulet
 Requires Level 20
 Implicits: 1
 {tags:jewellery_attribute}+(10-16) to all Attributes
@@ -300,7 +300,7 @@ Implicits: 2
 Moving while Bleeding doesn't cause you to take extra Damage
 ]],[[
 Carnage Heart
-Onyx Amulet
+Amber Amulet
 Variant: Pre 2.6.0
 Variant: Current
 Requires Level 20
@@ -340,7 +340,7 @@ Implicits: 1
 {tags:attack}60% increased Melee Damage when on Full Life
 ]],[[
 Defiance of Destiny
-Paua Amulet
+Jade Amulet
 Variant: Pre 3.25.0
 Variant: Current
 LevelReq: 49
@@ -402,7 +402,7 @@ Implicits: 1
 {tags:life}Recover 1% of Life on Kill
 ]],[[
 Eye of Chayula
-Onyx Amulet
+Gold Amulet
 Upgrade: Upgrades to unique{Presence of Chayula} using currency{Blessing of Chayula}
 Requires Level 20
 Implicits: 1
@@ -581,7 +581,7 @@ Blind Chilled Enemies on Hit
 {tags:jewellery_elemental}Damage Penetrates 20% Cold Resistance against Chilled Enemies
 ]],[[
 Hinekora's Sight
-Onyx Amulet
+Stellar Amulet
 Requires Level 20
 Variant: Pre 3.16.0
 Variant: Pre 3.37.0
@@ -1109,7 +1109,7 @@ Grants Level 10 Purity of Elements Skill
 {variant:3}{tags:jewellery_resistance}+(5-10)% to all Elemental Resistances
 ]],[[
 Ungil's Harmony
-Turquoise Amulet
+Azure Amulet
 Variant: Pre 3.11.0
 Variant: Current
 Requires Level 23
@@ -1306,7 +1306,7 @@ Cover Enemies in Ash when they Hit you
 Avatar of Fire
 ]],[[
 Yoke of Suffering
-Onyx Amulet
+Bloodstone Amulet
 Variant: Pre 3.24.0
 Variant: Current
 Requires Level 70

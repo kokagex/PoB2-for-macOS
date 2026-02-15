@@ -269,8 +269,51 @@ function sanitiseText(text)
 		:gsub("\151", "-") -- U+2014 EM DASH
 		:gsub("\228", "a") -- U+00E4 LATIN SMALL LETTER A WITH DIAERESIS
 		:gsub("\246", "o") -- U+00F6 LATIN SMALL LETTER O WITH DIAERESIS
-		-- unsupported
-		:gsub("[\128-\255]", "?")
+		-- Replace only invalid/unsupported high bytes, preserving valid UTF-8 sequences
+		:gsub("[\128-\255]+", function(s)
+			local result = {}
+			local i = 1
+			local len = #s
+			while i <= len do
+				local b = s:byte(i)
+				if b >= 194 and b <= 223 then
+					-- 2-byte UTF-8 sequence
+					if i + 1 <= len and s:byte(i+1) >= 128 and s:byte(i+1) <= 191 then
+						result[#result+1] = s:sub(i, i+1)
+						i = i + 2
+					else
+						result[#result+1] = "?"
+						i = i + 1
+					end
+				elseif b >= 224 and b <= 239 then
+					-- 3-byte UTF-8 sequence
+					if i + 2 <= len and s:byte(i+1) >= 128 and s:byte(i+1) <= 191
+					   and s:byte(i+2) >= 128 and s:byte(i+2) <= 191 then
+						result[#result+1] = s:sub(i, i+2)
+						i = i + 3
+					else
+						result[#result+1] = "?"
+						i = i + 1
+					end
+				elseif b >= 240 and b <= 247 then
+					-- 4-byte UTF-8 sequence
+					if i + 3 <= len and s:byte(i+1) >= 128 and s:byte(i+1) <= 191
+					   and s:byte(i+2) >= 128 and s:byte(i+2) <= 191
+					   and s:byte(i+3) >= 128 and s:byte(i+3) <= 191 then
+						result[#result+1] = s:sub(i, i+3)
+						i = i + 4
+					else
+						result[#result+1] = "?"
+						i = i + 1
+					end
+				else
+					-- Continuation byte (128-191) or invalid start byte
+					result[#result+1] = "?"
+					i = i + 1
+				end
+			end
+			return table.concat(result)
+		end)
 		or text
 end
 

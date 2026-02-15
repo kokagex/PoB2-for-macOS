@@ -128,7 +128,7 @@ Implicits: 1
 +1 to number of Sacred Wisps Summoned
 ]],[[
 Lifesprig
-Driftwood Wand
+Attuned Wand
 Implicits: 1
 (8-12)% increased Spell Damage
 +1 to Level of Socketed Spell Gems

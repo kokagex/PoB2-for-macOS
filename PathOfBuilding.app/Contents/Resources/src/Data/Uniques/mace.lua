@@ -95,7 +95,7 @@ Adds 10 to 15 Physical Damage
 {variant:2}3% of Attack Damage leeched as Life against Bleeding Enemies
 ]],[[
 Frostbreath
-Ornate Mace
+Slim Mace
 Variant: Pre 2.6.0
 Variant: Pre 3.0.0
 Variant: Current
@@ -162,7 +162,7 @@ Implicits: 2
 {variant:3}(10-20)% increased Area Damage
 ]],[[
 Mjölner
-Gavel
+Torment Club
 Variant: Pre 2.0.0
 Variant: Pre 2.4.0
 Variant: Pre 2.6.0
@@ -214,7 +214,7 @@ Implicits: 1
 {variant:2}(10-15)% increased Elemental Damage per 1% Missing Fire, Cold, or Lightning Resistance, up to a maximum of 450%
 ]],[[
 Nebuloch
-Nightmare Mace
+Execratus Hammer
 Elder Item
 Source: Drops from unique{The Elder}
 Variant: Pre 3.4.0
@@ -614,7 +614,7 @@ Battlemage
 -- Weapon: Two Handed Mace
 [[
 Brain Rattler
-Meatgrinder
+Studded Greatclub
 Variant: Pre 2.6.0
 Variant: Pre 3.11.0
 Variant: Pre 3.26.0
@@ -636,7 +636,7 @@ Enemies you Shock have 20% reduced Movement Speed
 {variant:3,4}Hits with this Weapon Shock Enemies as though dealing 300% more Damage
 ]],[[
 Chober Chaber
-Great Mallet
+Leaden Greathammer
 Variant: Pre 2.6.0
 Variant: Pre 3.0.0
 Variant: Current
@@ -699,7 +699,7 @@ Adds 11 to 23 Cold Damage
 Never deal Critical Strikes
 ]],[[
 Hrimnor's Hymn
-Sledgehammer
+Oak Greathammer
 Variant: Pre 2.6.0
 Variant: Current
 Requires Level 17, 62 Str
@@ -780,7 +780,7 @@ Your Critical Strikes do not deal extra Damage
 Regenerate 20% of Energy Shield per second if you've dealt a Critical Strike with this weapon Recently
 ]],[[
 Marohi Erqi
-Karui Maul
+Totemic Greatclub
 League: Legion
 Variant: Pre 2.6.0
 Variant: Pre 3.7.0
@@ -809,7 +809,7 @@ Implicits: 3
 {variant:5,6}-500 to Accuracy Rating
 ]],[[
 Quecholli
-Jagged Maul
+Crumbling Maul
 Variant: Pre 2.6.0
 Variant: Current
 Requires Level 22, 77 Str
@@ -860,7 +860,7 @@ Trigger Level 20 Tawhoa's Chosen when you Attack with a Non-Vaal Slam or Strike 
 (20-30)% reduced Enemy Stun Threshold with this Weapon
 ]],[[
 Tidebreaker
-Imperial Maul
+Pointed Maul
 Variant: Pre 3.5.0
 Variant: Pre 3.11.0
 Variant: Current

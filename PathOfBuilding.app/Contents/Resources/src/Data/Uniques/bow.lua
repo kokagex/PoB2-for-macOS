@@ -170,7 +170,7 @@ Implicits: 2
 {variant:5,6,7}20% chance for Poisons inflicted with this Weapon to deal 300% more Damage
 ]],[[
 Death's Harp
-Death Bow
+Dualstring Bow
 Variant: Pre 1.2.0
 Variant: Pre 2.2.0
 Variant: Pre 3.0.0
@@ -212,7 +212,7 @@ Adds (10-20) to (30-35) Physical Damage
 Bow Attacks fire 2 additional Arrows
 ]],[[
 Doomfletch
-Royal Bow
+Composite Bow
 Variant: Pre 2.0.0
 Variant: Pre 2.6.0
 Variant: Pre 3.1.0
@@ -345,7 +345,7 @@ Shrapnel Ballista has +1 to maximum number of Summoned Totems per 200 Strength
 Adds 1 to 3 Physical Damage to Attacks per 25 Strength
 ]],[[
 Lioneye's Glare
-Imperial Bow
+Heavy Bow
 Variant: Pre 2.0.0
 Variant: Pre 2.6.0
 Variant: Pre 3.0.0
@@ -401,7 +401,7 @@ Create Consecrated Ground when you Shatter an Enemy
 {variant:3}(30-50)% increased Effect of Consecrated Ground
 ]],[[
 Quill Rain
-Short Bow
+Shortbow
 Variant: Pre 2.6.0
 Variant: Pre 3.9.0
 Variant: Current
@@ -498,7 +498,7 @@ Crude Bow
 (150-250)% increased bonuses gained from Equipped Quiver
 ]],[[
 Slivertongue
-Harbinger Bow
+Zealot Bow
 Variant: Pre 3.5.0
 Variant: Pre 3.17.0
 Variant: Current
@@ -535,7 +535,7 @@ Adds 1 to 85 Lightning Damage
 (36-50)% increased Attack Speed
 ]],[[
 Voltaxic Rift
-Spine Bow
+Fanatic Bow
 Variant: Pre 3.9.0
 Variant: Pre 3.20.0
 Variant: Current

@@ -205,7 +205,7 @@ Has 1 Socket
 {variant:1}Socketed Gems are Supported by Level 15 Increased Minion Life
 ]],[[
 Call of the Brotherhood
-Two-Stone Ring
+Topaz Ring
 Variant: Pre 2.6.0
 Variant: Current
 Requires Level 20
@@ -433,7 +433,7 @@ Implicits: 1
 {variant:3}Gain Adrenaline for 3 seconds on kill
 ]],[[
 Doedre's Damning
-Paua Ring
+Lazuli Ring
 Variant: Pre 3.19.0
 Variant: Current
 Implicits: 1
@@ -537,7 +537,7 @@ Non-Aura Hexes expire upon reaching (180-220)% of base Effect
 Non-Aura Hexes gain 20% increased Effect per second
 ]],[[
 Gifts from Above
-Diamond Ring
+Prismatic Ring
 League: Anarchy
 Variant: Pre 2.6.0
 Variant: Current
@@ -578,7 +578,7 @@ Grants Level 20 Penance Mark
 {tags:jewellery_resistance}+(7-19)% to Chaos Resistance
 ]],[[
 Heartbound Loop
-Moonstone Ring
+Pearl Ring
 Requires Level 20
 Implicits: 1
 {tags:jewellery_defense}+(15-25) to maximum Energy Shield

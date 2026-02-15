@@ -15,7 +15,7 @@ You have Lesser Brutal Shrine Buff
 You have Lesser Massive Shrine Buff
 ]],[[
 Bramblejack
-Plate Vest
+Rusted Cuirass
 Variant: Pre 3.19.0
 Variant: Current
 Implicits: 0
@@ -39,7 +39,7 @@ Adds 2 to 4 Physical Damage to Attacks
 40% of Melee Physical Damage taken reflected to Attacker
 ]],[[
 The Brass Dome
-Gladiator Plate
+Champion Cuirass
 Variant: Pre 3.16.0
 Variant: Current
 Implicits: 0
@@ -100,7 +100,7 @@ Enemies Killed by your Hits are destroyed while Insane
 Regenerate 10% Life over one second when Hit while Sane
 ]],[[
 Greed's Embrace
-Golden Plate
+Vaal Cuirass
 Variant: Pre 3.25.0
 Variant: Current
 Implicits: 0
@@ -217,7 +217,7 @@ Recover (1-3)% of Life on Kill
 -- Body: Evasion
 [[
 Ashrend
-Buckskin Tunic
+Pathfinder Coat
 Variant: Pre 2.6.0
 Variant: Pre 3.19.0
 Variant: Current
@@ -281,7 +281,7 @@ Implicits: 0
 {variant:3}15% increased Attack and Cast Speed if you've used a Movement Skill Recently
 ]],[[
 Cospri's Will
-Assassin's Garb
+Assassin Garb
 Variant: Pre 3.0.0
 Variant: Pre 3.20.0
 Variant: Current
@@ -297,7 +297,7 @@ Your Hexes can affect Hexproof Enemies
 {variant:2}60% chance to Poison on Hit against Cursed Enemies
 ]],[[
 Foxshade
-Wild Leather
+Quilted Vest
 Variant: Pre 2.6.0
 Variant: Pre 3.19.0
 Variant: Current
@@ -325,7 +325,7 @@ Adds 5 to 12 Physical Damage to Attacks
 Enemies are Unlucky when Damaging you while you are on Full Life
 ]],[[
 Hyrri's Ire
-Zodiac Leather
+Armoured Vest
 Variant: Pre 1.0.0
 Variant: Pre 2.0.0
 Variant: Pre 2.6.0
@@ -372,7 +372,7 @@ Implicits: 0
 {variant:2,3}100% increased Evasion Rating if you have been Hit Recently
 ]],[[
 Queen of the Forest
-Destiny Leather
+Smuggler Coat
 Variant: Pre 3.1.0
 Variant: Current
 Implicits: 0
@@ -387,7 +387,7 @@ Implicits: 0
 -(50-40) Physical Damage taken from Hits by Animals
 ]],[[
 The Rat Cage
-Sharkskin Tunic
+Scout's Vest
 League: Torment
 Variant: Pre 2.6.0
 Variant: 3.19.0
@@ -473,7 +473,7 @@ Implicits: 0
 {variant:4}Versatile Combatant
 ]],[[
 Yriel's Fostering
-Exquisite Leather
+Strider Vest
 Variant: Rhoa Pre 3.26
 Variant: Snake Pre 3.26
 Variant: Ursa Pre 3.26
@@ -529,7 +529,7 @@ Implicits: 0
 {variant:3}10% increased Damage taken
 ]],[[
 Cloak of Flame
-Scholar's Robe
+Silk Robe
 Variant: Pre 3.19.0
 Variant: Current
 Implicits: 0
@@ -557,7 +557,7 @@ Minions have 15% chance to Blind Enemies on hit
 Found Magic Items drop Identified
 ]],[[
 The Coming Calamity
-Destroyer Regalia
+Heroic Armour
 Implicits: 0
 +2 to Level of Socketed Herald Gems
 (80-100)% increased Energy Shield
@@ -565,7 +565,7 @@ Implicits: 0
 Mana Reservation of Herald Skills is always 45%
 ]],[[
 The Covenant
-Spidersilk Robe
+Altar Robe
 Variant: Pre 1.0.0
 Variant: Pre 2.0.0
 Variant: Pre 2.6.0
@@ -699,7 +699,7 @@ Reflects 1 to 250 Lightning Damage to Melee Attackers
 Chaos Damage does not bypass Energy Shield
 ]],[[
 Skin of the Loyal
-Simple Robe
+Garment
 League: Breach
 Source: Drops in Chayula Breach or from unique{Chayula, Who Dreamt}
 Upgrade: Upgrades to unique{Skin of the Lords} using currency{Blessing of Chayula}
@@ -709,7 +709,7 @@ Sockets cannot be modified
 100% increased Global Defences
 ]],[[
 Soul Mantle
-Spidersilk Robe
+Sacrificial Mantle
 Variant: Pre 1.2.0
 Variant: Pre 2.6.0
 Variant: Pre 3.16.0
@@ -727,7 +727,7 @@ Implicits: 0
 Inflicts a random Hex on you when your Totems die
 ]],[[
 Tabula Rasa
-Simple Robe
+Garment
 Sockets: W-W-W-W-W-W
 ]],[[
 Thousand Ribbons
@@ -759,7 +759,7 @@ Socketed Gems are Supported by Level 5 Elemental Proliferation
 {variant:3}+(15-30)% to Lightning Resistance
 ]],[[
 Vis Mortis
-Necromancer Silks
+Plated Raiment
 Variant: Pre 2.6.0
 Variant: Pre 3.8.0
 Variant: Current
@@ -793,7 +793,7 @@ Implicits: 0
 {variant:3,4}100% chance to create Consecrated Ground when you Block
 ]],[[
 Ghostwrithe
-Silken Vest
+Tattered Robe
 +(100-200) to maximum Energy Shield
 +(50-100) to maximum Life
 +50% to Chaos Resistance
@@ -802,7 +802,7 @@ Silken Vest
 -- Body: Armour/Evasion
 [[
 Belly of the Beast
-Full Wyrmscale
+Explorer Armour
 Implicits: 0
 (150-200)% increased Armour
 (30-40)% increased maximum Life
@@ -892,7 +892,7 @@ Spell Skills deal no Damage
 Your Spells are disabled
 ]],[[
 Lightning Coil
-Desert Brigandine
+Ancestral Mail
 Variant: Pre 1.3.0
 Variant: Pre 3.19.0
 Variant: Current
@@ -964,7 +964,7 @@ Animated Minions' Melee Attacks deal 50% less Damage to surrounding targets
 You cannot have Non-Animated, Non-Manifested Minions
 ]],[[
 Doryani's Prototype
-Saint's Hauberk
+Scale Mail
 League: Harvest
 Implicits: 0
 (150-200)% increased Armour and Energy Shield
@@ -998,7 +998,7 @@ Implicits: 0
 Zealot's Oath
 ]],[[
 Icetomb
-Latticed Ringmail
+Mail Vestments
 Variant: Pre 2.0.0
 Variant: Pre 3.19.0
 Variant: Current
@@ -1053,7 +1053,7 @@ Regenerate 2% of Energy Shield per second
 Chaos Damage is taken from Mana before Life
 ]],[[
 Kingsguard
-Conquest Chainmail
+Full Plate
 Implicits: 0
 (150-170)% increased Armour and Energy Shield
 +(60-90) to maximum Life
@@ -1142,7 +1142,7 @@ You have Fungal Ground around you while stationary
 This item can be anointed by Cassia
 ]],[[
 Voll's Protector
-Holy Chainmail
+Plated Vestments
 League: Legion
 Variant: Pre 3.7.0
 Variant: Current
@@ -1184,7 +1184,7 @@ Implicits: 0
 Extra gore
 ]],[[
 Cloak of Defiance
-Lacquered Garb
+Havoc Raiment
 Variant: Pre 1.3.0
 Variant: Pre 3.0.0
 Variant: Pre 3.5.0
@@ -1419,7 +1419,7 @@ Implicits: 0
 Elemental Damage you Deal with Hits is Resisted by lowest Elemental Resistance instead
 ]],[[
 Atziri's Splendour
-Sacrificial Garb
+Sacrificial Regalia
 Source: Drops from unique{Atziri, Queen of the Vaal} in normal{The Alluring Abyss}
 Variant: Pre 3.0.0 (Armour)
 Variant: Pre 3.0.0 (Armour/Evasion)

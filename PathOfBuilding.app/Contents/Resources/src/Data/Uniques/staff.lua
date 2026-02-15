@@ -88,7 +88,7 @@ Implicits: 2
 Deal Triple Damage with Elemental Skills
 ]],[[
 Atziri's Rule
-Judgement Staff
+Reflecting Staff
 Variant: Pre 3.25.0
 Variant: Current
 Source: Drops from unique{Atziri, Queen of the Vaal} in normal{The Alluring Abyss}
@@ -121,7 +121,7 @@ Maximum Critical Strike Chance is 50%
 Non-Critical Strikes deal no Damage
 ]],[[
 The Blood Thorn
-Gnarled Branch
+Wrapped Quarterstaff
 Variant: Pre 2.6.0
 Variant: Pre 3.25.0
 Variant: Current
@@ -341,7 +341,7 @@ Socketed Gems are Supported by Level 1 Multiple Totems
 (10-20)% increased maximum Mana
 ]],[[
 The Burden of Shadows
-Primordial Staff
+Chiming Staff
 Variant: Pre 3.25.0
 Variant: Current
 League: Affliction
@@ -449,7 +449,7 @@ Immune to Freeze and Chill while Ignited
 Damage Penetrates 15% of Fire Resistance if you have Blocked Recently
 ]],[[
 Pillar of the Caged God
-Iron Staff
+Long Quarterstaff
 Variant: Pre 2.6.0
 Variant: Pre 3.25.0
 Variant: Current
@@ -540,7 +540,7 @@ Implicits: 3
 {variant:1,2,3,4}70% increased Burning Damage
 ]],[[
 Sire of Shards
-Serpentine Staff
+Chiming Staff
 Variant: Pre 2.6.0
 Variant: Pre 3.25.0
 Variant: Current
@@ -614,7 +614,7 @@ Cannot be Shocked while Chilled
 (30-40)% chance to Shock Attackers for 4 seconds on Block
 ]],[[
 Taryn's Shiver
-Maelström Staff
+Gelid Staff
 Variant: Pre 2.0.0
 Variant: Pre 2.6.0
 Variant: Pre 3.11.0
@@ -654,7 +654,7 @@ Implicits: 3
 Mines can be Detonated an additional time
 ]],[[
 The Whispering Ice
-Vile Staff
+Permafrost Staff
 Variant: Pre 2.6.0
 Variant: Pre 3.25.0
 Variant: Current

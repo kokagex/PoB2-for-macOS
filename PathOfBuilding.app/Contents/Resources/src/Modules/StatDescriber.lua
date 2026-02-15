@@ -250,6 +250,9 @@ return function(stats, scopeName)
 			local textToUse = desc.text
 			if i18n and i18n.getLocale and i18n.getLocale() ~= "en" then
 				local translated = i18n.lookup("statDescriptions", desc.text)
+				if not translated and desc.text:find("\n") then
+					translated = i18n.lookup("statDescriptions", desc.text:gsub("\n", " "))
+				end
 				if translated then
 					textToUse = translated
 				end

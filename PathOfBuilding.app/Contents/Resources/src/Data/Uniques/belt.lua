@@ -188,7 +188,7 @@ Damage from Enemies Hitting you is Unlucky while you are Cursed with Vulnerabili
 {tags:caster}You are cursed with Vulnerability
 ]],[[
 Coward's Legacy
-Chain Belt
+Mail Belt
 League: Incursion
 Source: Upgraded from unique{Coward's Chains} via currency{Vial of Consequence}
 LevelReq: 52
@@ -215,7 +215,7 @@ Cannot be Shocked if Intelligence is higher than Strength
 1% increased Damage per 5 of your lowest Attribute
 ]],[[
 Darkness Enthroned
-Stygian Vise
+Fine Belt
 League: Abyss
 Source: Drops from unique{Amanamu, Liege of the Lightless} or unique{Ulaman, Sovereign of the Well}
 Variant: Pre 3.11.0
@@ -386,7 +386,7 @@ Maximum Absorption Charges is equal to Maximum Power Charges
 Gain Absorption Charges instead of Power Charges
 ]],[[
 Headhunter
-Leather Belt
+Heavy Belt
 League: Nemesis
 LevelReq: 40
 Implicits: 1
@@ -734,7 +734,7 @@ Implicits: 1
 {tags:speed}15% increased Movement Speed during any Flask Effect
 ]],[[
 Ryslatha's Coil
-Studded Belt
+Ornate Belt
 Variant: Pre 3.5.0
 Variant: Current
 LevelReq: 20
@@ -774,7 +774,7 @@ Implicits: 1
 {tags:attack}Minions have 5% chance to Maim Enemies on Hit with Attacks
 ]],[[
 Soul Tether
-Cloth Belt
+Long Belt
 LevelReq: 48
 Implicits: 1
 (15-25)% increased Stun and Block Recovery
@@ -905,7 +905,7 @@ Mana Flasks gain (0-3) charges every 3 seconds
 Utility Flasks gain (0-3) charges every 3 seconds
 ]],[[
 Umbilicus Immortalis
-Leather Belt
+Linen Belt
 League: Perandus
 LevelReq: 30
 Implicits: 1

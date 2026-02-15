@@ -73,7 +73,13 @@ function PoBArchivesProviderClass:GetRecommendations(buildCode, postURL)
 	]], "", "", buildCode, launch.connectionProtocol, launch.proxyURL)
 
 	if id then
+		-- Cancel previous request if still pending
+		if self.pendingSubScriptId then
+			launch:UnregisterSubScript(self.pendingSubScriptId)
+		end
+		self.pendingSubScriptId = id
 		launch:RegisterSubScript(id, function(response, errMsg)
+			self.pendingSubScriptId = nil
 			if errMsg == 200 then
 				self.statusMsg = nil
 				self:ParseBuilds(response)

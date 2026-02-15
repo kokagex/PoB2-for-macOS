@@ -13,7 +13,7 @@ Requires Level 39, 58 Str
 +(1-3) to Level of all Melee Skill Gems
 ]],[[
 Atziri's Acuity
-Vaal Gauntlets
+Moulded Mitts
 Source: Drops from unique{Atziri, Queen of the Vaal} in normal{The Alluring Abyss}
 Variant: Pre 3.1.0
 Variant: Pre 3.16.0
@@ -106,7 +106,7 @@ Requires Level 63, 100 Str
 {variant:4}30% increased Effect of Lightning Ailments
 ]],[[
 Hateforge
-Ancient Gauntlets
+Moulded Mitts
 League: Ultimatum
 Source: Drops from unique{The Trialmaster}
 Requires Level 47, 68 Str
@@ -117,7 +117,7 @@ Vaal Attack Skills Cost Rage instead of requiring Souls to Use
 You cannot gain Rage during Soul Gain Prevention
 ]],[[
 Empire's Grasp
-Goliath Gauntlets
+Titan Mitts
 Requires Level 53, 76 Str
 +(400-600) to Armour
 Knockback direction is reversed
@@ -137,7 +137,7 @@ Requires Level: 23, 36 Str
 Iron Grip
 ]],[[
 Lochtonial Caress
-Iron Gauntlets
+Tempered Mitts
 Variant: Pre 2.6.0
 Variant: Pre 3.19.0
 Variant: Current
@@ -247,7 +247,7 @@ Reflects 10 Cold Damage to Melee Attackers
 Your Cold Damage can Ignite
 ]],[[
 Maligaro's Virtuosity
-Deerskin Gloves
+Fine Bracers
 League: Legion
 Variant: Pre 1.1.0
 Variant: Pre 3.0.0
@@ -363,7 +363,7 @@ Socketed Projectile Spells have 80% less Skill Effect Duration
 (140-180)% increased Energy Shield
 ]],[[
 Demon Stitcher
-Satin Gloves
+Intricate Gloves
 Variant: Pre 3.19.0
 Variant: Current
 League: Delve
@@ -377,7 +377,7 @@ Requires Level 41, 60 Int
 {variant:2}Sacrifice (5-25)% of Life to gain that much Energy Shield when you Cast a Spell
 ]],[[
 Doedre's Tenure
-Velvet Gloves
+Stitched Gloves
 Variant: Pre 2.6.0
 Variant: Pre 3.19.0
 Variant: Current
@@ -484,7 +484,7 @@ Gain (15-20) Energy Shield per Enemy Killed
 -- Gloves: Armour/Evasion
 [[
 Aurseize
-Steelscale Gauntlets
+Layered Gauntlets
 Requires Level 36, 29 Str, 29 Dex
 (40-60)% increased Armour and Evasion
 +15% to all Elemental Resistances
@@ -527,7 +527,7 @@ Kills grant an additional Vaal Soul if you have Rampaged Recently
 Rampage
 ]],[[
 Gravebind
-Hydrascale Gauntlets
+Rope Cuffs
 Requires Level 59, 45 Str, 45 Dex
 Implicits: 0
 (100-150)% increased Armour and Evasion
@@ -751,7 +751,7 @@ Adds (20-25) to (37-40) Cold Damage while you have Avian's Might
 Adds (1-3) to (55-62) Lightning Damage while you have Avian's Might
 ]],[[
 Shackles of the Wretched
-Chain Gloves
+Aged Cuffs
 Variant: Pre 1.2.0
 Variant: Current
 Requires Level 7, 17 Dex
@@ -1046,7 +1046,7 @@ Gain Unholy Might for 3 seconds on Rampage
 Rampage
 ]],[[
 Snakebite
-Assassin's Mitts
+Spined Bracers
 Variant: Pre 3.0.0
 Variant: Pre 3.9.0
 Variant: Current
@@ -1071,7 +1071,7 @@ Enemies you kill are Shocked
 Shocks you inflict spread to other Enemies within 1.5 metres
 ]],[[
 Thunderfist
-Murder Mitts
+Utility Wraps
 Variant: Pre 1.0.0
 Variant: Pre 2.6.0
 Variant: Pre 3.19.0

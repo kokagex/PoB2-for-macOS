@@ -180,7 +180,7 @@ Implicits: 3
 {variant:4,5}5% increased Critical Strike Chance per 25 Intelligence
 ]],[[
 Hand of Wisdom and Action
-Imperial Claw
+Spiral Wraps
 League: Breach
 Source: Upgraded from unique{Hand of Thought and Motion} using currency{Blessing of Esh}
 Variant: Pre 2.6.0

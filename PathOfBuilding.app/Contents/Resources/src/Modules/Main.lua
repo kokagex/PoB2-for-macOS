@@ -79,6 +79,7 @@ function main:Init()
 	-- i18n initialization
 	self.language = "en"
 	if i18n and i18n.init then i18n.init("en") end
+	if data and data.rebuildItemListLabels then data.rebuildItemListLabels() end
 	if SetFontScale then SetFontScale(1.0) end
 
 	self:DetectUnicodeSupport()
@@ -183,11 +184,18 @@ function main:Init()
 	local function loadItemDBs()
 		for type, typeList in pairsYield(data.uniques) do
 			for _, raw in pairs(typeList) do
-				newItem = new("Item", raw, "UNIQUE", true)
-				if newItem.base then
-					self.uniqueDB.list[newItem.name] = newItem
-				elseif launch.devMode then
-					ConPrintf("Unique DB unrecognised item of type '%s':\n%s", type, raw)
+				local ok, result = pcall(new, "Item", raw, "UNIQUE", true)
+				if ok then
+					newItem = result
+					if newItem.base then
+						self.uniqueDB.list[newItem.name] = newItem
+					elseif launch.devMode then
+						ConPrintf("Unique DB unrecognised item of type '%s':\n%s", type, raw)
+					end
+				else
+					ConPrintf("Unique DB error loading item of type '%s': %s", type, tostring(result))
+					local ef = io.open("/tmp/pob_unique_errors.txt", "a")
+					if ef then ef:write(type .. ": " .. tostring(result) .. "\n") ef:close() end
 				end
 			end
 		end
@@ -319,6 +327,10 @@ end
 function main:DetectUnicodeSupport()
 	-- PoeCharm has utf8 global that normal PoB doesn't have
 	self.unicode = type(_G.utf8) == "table"
+	-- Enable unicode for CJK locales (Japanese font + CharInput.dylib provide full support)
+	if not self.unicode and i18n and i18n.getLocale() ~= "en" then
+		self.unicode = true
+	end
 	if self.unicode then
 		ConPrintf("Unicode support detected")
 	end
@@ -664,6 +676,7 @@ function main:LoadSettings(ignoreBuild)
 						i18n.setLocale(self.language)
 						self.notSupportedTooltipText = i18n.t("general.notSupportedTooltip")
 					end
+					if data and data.rebuildItemListLabels then data.rebuildItemListLabels() end
 					if SetFontScale then
 						SetFontScale(self.language == "ja" and 0.93 or 1.0)
 					end
