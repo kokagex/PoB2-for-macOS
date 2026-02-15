@@ -3099,4 +3099,52 @@ return {
 		["Weapon Range"] = "武器レンジ",
 		["Wither Effect"] = "ウィザー効果",
 	},
+	party = {
+		ui = {
+			importCodeHeader = "^7以下にビルドコード/URLを入力:",
+		},
+		destinations = {
+			["All"] = "すべて",
+			["Party Member Stats"] = "パーティーメンバーステータス",
+			["Aura"] = "オーラ",
+			["Curse"] = "カース",
+			["Warcry Skills"] = "ウォークライスキル",
+			["Link Skills"] = "リンクスキル",
+			["EnemyConditions"] = "敵のコンディション",
+			["EnemyMods"] = "敵のModifier",
+		},
+		headers = {
+			auras = "^7オーラ",
+			warcries = "^7ウォークライスキル",
+			linkSkills = "^7リンクスキル",
+			partyMemberStats = "^7パーティーメンバーステータス",
+			enemyConditions = "^7敵のコンディション",
+			enemyModifiers = "^7敵のModifier",
+			curses = "^7カース",
+		},
+		buttons = {
+			import = "インポート",
+			append = "追加",
+			clear = "クリア",
+			disablePartyEffects = "パーティー効果を無効化",
+			rebuildAll = "^7全て再構築",
+			showAdvancedInfo = "^7詳細情報を表示",
+		},
+		messages = {
+			invalidInput = "無効な入力",
+			urlValid = "URLは有効です (",
+			codeValid = "コードは有効です",
+		},
+		tooltips = {
+			destination = "インポート/クリアの対象\n現在リンクスキルはエクスポートされません",
+			append = "インポートボタンを既存のパーティーリストに追加するモードに設定します（カースは置換されます）",
+			clear = "^7パーティータブのインポートデータを全てクリアします",
+			advancedInfo = "各オーラ/カース等が追加するステータスの詳細情報を表示し、再エクスポートなしで編集可能にします\n内容を理解していない場合は編集しないでください。コピー/ペーストまたはインポートを使用してください",
+			disableEffects = "^7サポートの効果をデータを削除せずに無効化します\n効果を再適用するには「全て再構築」を使用してください",
+			rebuild = "^7無効化された入力や、ビルド読み込み/インポート後に変更された入力を全て再解析します",
+		},
+		help = {
+			notes = "^7ビルドをインポートするには、インポート/エクスポートタブで「エクスポートサポート」を有効にしてエクスポートする必要があります\n\t最も効果の高いオーラが優先され、あなたのカースがサポートのカースより優先されます\n\t\n\tこれらの効果はすべてCalcsタブで確認できます",
+		},
+	},
 }

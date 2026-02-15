@@ -1298,4 +1298,52 @@ return {
 		["Weapon Range"] = "Weapon Range",
 		["Wither Effect"] = "Wither Effect",
 	},
+	party = {
+		ui = {
+			importCodeHeader = "^7Enter a build code/URL below:",
+		},
+		destinations = {
+			["All"] = "All",
+			["Party Member Stats"] = "Party Member Stats",
+			["Aura"] = "Aura",
+			["Curse"] = "Curse",
+			["Warcry Skills"] = "Warcry Skills",
+			["Link Skills"] = "Link Skills",
+			["EnemyConditions"] = "EnemyConditions",
+			["EnemyMods"] = "EnemyMods",
+		},
+		headers = {
+			auras = "^7Auras",
+			warcries = "^7Warcry Skills",
+			linkSkills = "^7Link Skills",
+			partyMemberStats = "^7Party Member Stats",
+			enemyConditions = "^7Enemy Conditions",
+			enemyModifiers = "^7Enemy Modifiers",
+			curses = "^7Curses",
+		},
+		buttons = {
+			import = "Import",
+			append = "Append",
+			clear = "Clear",
+			disablePartyEffects = "Disable Party Effects",
+			rebuildAll = "^7Rebuild All",
+			showAdvancedInfo = "^7Show Advanced Info",
+		},
+		messages = {
+			invalidInput = "Invalid input",
+			urlValid = "URL is valid (",
+			codeValid = "Code is valid",
+		},
+		tooltips = {
+			destination = "Destination for Import/clear\nCurrently Links Skills do not export",
+			append = "This sets the import button to append to the current party lists instead of replacing them (curses will still replace)",
+			clear = "^7Clears all the party tab imported data",
+			advancedInfo = "This shows the advanced info like what stats each aura/curse etc are adding, as well as enables the ability to edit them without a re-export\nDo not edit any boxes unless you know what you are doing, use copy/paste or import instead",
+			disableEffects = "^7Removes the effects of the supports, without removing the data\nUse \"rebuild all\" to apply the effects again",
+			rebuild = "^7Reparse all the inputs incase they have been disabled or they have changed since loading the build or importing",
+		},
+		help = {
+			notes = "^7To import a build it must be exported with \"Export support\" enabled in the import/export tab\n\tAuras with the highest effect will take priority, your curses will take priority over a support's\n\t\n\tAll of these effects can be found in the Calcs tab",
+		},
+	},
 }
