@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "fetch": {
+      "command": "npx",
+      "args": ["-y", "fetch-mcp"]
+    },
+    "eco-translator": {
+      "command": "node",
+      "args": ["tools/eco-translator/dist/index.js"]
+    }
+  }
+}
