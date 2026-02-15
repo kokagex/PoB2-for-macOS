@@ -61,24 +61,24 @@ export type Contradiction = z.infer<typeof ContradictionSchema>;
 // ── Action Record ────────────────────────────────────────────────────────
 
 export const ActionRecordSchema = z.object({
-  id: z.string().uuid(),
-  intent: z.string().min(10, "intent must be at least 10 characters"),
-  rationale: z.string().min(10, "rationale must be at least 10 characters"),
-  timestamp: z.string().datetime(),
-  outcome: z.string().optional(),
-});
+  id: z.string(),
+  timestamp: z.string(),
+  actionType: z.enum(["search", "edit", "read", "write", "verify", "plan", "ask"]),
+  target: z.string().min(1),
+  intent: z.string().min(10),
+  rationale: z.string().min(10),
+}).strict();
 
 export type ActionRecord = z.infer<typeof ActionRecordSchema>;
 
 // ── Drift Warning ────────────────────────────────────────────────────────
 
 export const DriftWarningSchema = z.object({
-  id: z.string().uuid(),
-  description: z.string().min(1),
-  severity: z.enum(["low", "medium", "high"]),
-  detectedAt: z.string().datetime(),
-  acknowledged: z.boolean(),
-});
+  timestamp: z.string(),
+  entropy: z.number().min(0).max(1),
+  message: z.string(),
+  severity: z.enum(["WARNING", "HARD_STOP"]),
+}).strict();
 
 export type DriftWarning = z.infer<typeof DriftWarningSchema>;
 
