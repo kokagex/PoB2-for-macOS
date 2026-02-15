@@ -2810,7 +2810,11 @@ function ItemsTabClass:AddItemTooltip(tooltip, item, slot, dbMode)
 			end
 		end
 		if item.league then
-			tooltip:AddLine(fontSizeBig, "^xFF5555" .. i18n.t("items.tooltip.exclusiveTo") .. item.league, "FONTIN SC")
+			local translatedLeague = item.league:gsub("([%w ]+)", function(name)
+				name = name:match("^%s*(.-)%s*$")
+				return i18n.lookup("items.leagueNames", name) or name
+			end)
+			tooltip:AddLine(fontSizeBig, "^xFF5555" .. i18n.t("items.tooltip.exclusiveTo") .. translatedLeague, "FONTIN SC")
 		end
 		if item.unreleased then
 			tooltip:AddLine(fontSizeBig, colorCodes.NEGATIVE .. i18n.t("items.tooltip.notYetAvailable"), "FONTIN SC")
