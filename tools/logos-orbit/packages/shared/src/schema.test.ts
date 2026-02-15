@@ -11,7 +11,7 @@ import {
 describe("PropositionSchema", () => {
   const valid = {
     statement: "The sky is blue",
-    source: "observation",
+    source: "observed",
     timestamp: new Date().toISOString(),
   };
 

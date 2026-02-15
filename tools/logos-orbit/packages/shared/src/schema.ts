@@ -5,7 +5,7 @@ import { z } from "zod";
 export const PropositionSchema = z
   .object({
     statement: z.string().min(1, "statement must not be empty"),
-    source: z.enum(["observation", "inference", "premise", "user"]),
+    source: z.enum(["observed", "assumed", "derived"]),
     timestamp: z.string().datetime(),
   })
   .strict(); // rejects confidence, certainty, belief, etc.
@@ -138,6 +138,7 @@ export const LogosStatusSchema = z.object({
     lastCheck: z.string().datetime(),
   }),
   orbit: z.object({
+    consensusState: z.enum(["ALIGNED", "DIVERGENT", "HALTED"]),
     alerts: z.array(AlertSchema),
     lastSync: z.string().datetime(),
   }),
@@ -167,6 +168,7 @@ export function createEmptyStatus(): LogosStatus {
       lastCheck: now,
     },
     orbit: {
+      consensusState: "ALIGNED",
       alerts: [],
       lastSync: now,
     },
