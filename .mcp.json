@@ -7,6 +7,18 @@
     "eco-translator": {
       "command": "node",
       "args": ["tools/eco-translator/dist/index.js"]
+    },
+    "logos-integrity": {
+      "command": "node",
+      "args": ["tools/logos-orbit/packages/integrity/dist/index.js"]
+    },
+    "logos-chronos": {
+      "command": "node",
+      "args": ["tools/logos-orbit/packages/chronos/dist/index.js"]
+    },
+    "logos-nomos": {
+      "command": "node",
+      "args": ["tools/logos-orbit/packages/nomos/dist/index.js"]
     }
   }
 }
