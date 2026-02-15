@@ -60,7 +60,7 @@ describe("StatusStore", () => {
           ...current,
           nomos: {
             ...current.nomos,
-            lastCheck: "2099-01-01T00:00:00.000Z",
+            totalRulesGenerated: 999,
           },
         })),
       (err: Error) => {

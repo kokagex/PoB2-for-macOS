@@ -86,11 +86,14 @@ export type DriftWarning = z.infer<typeof DriftWarningSchema>;
 
 export const RuleSchema = z.object({
   id: z.string(),
-  text: z.string().min(1),
-  source: z.string().min(1),
-  addedAt: z.string().datetime(),
-  active: z.boolean(),
-});
+  createdAt: z.string(),
+  createdFrom: z.string().min(1),
+  condition: z.string().min(1),
+  severity: z.enum(["error", "warning"]),
+  message: z.string().min(1),
+  evidence: z.string(),
+  tags: z.array(z.string()),
+}).strict();
 
 export type Rule = z.infer<typeof RuleSchema>;
 
@@ -98,10 +101,13 @@ export type Rule = z.infer<typeof RuleSchema>;
 
 export const TattooSchema = z.object({
   id: z.string(),
+  targetFile: z.string().min(1),
   content: z.string().min(1),
-  appliedAt: z.string().datetime(),
-  appliedBy: z.enum(["integrity", "chronos", "nomos"]),
-});
+  position: z.enum(["append", "section"]),
+  sectionName: z.string().optional(),
+  justification: z.string().min(1),
+  createdAt: z.string(),
+}).strict();
 
 export type Tattoo = z.infer<typeof TattooSchema>;
 
@@ -133,9 +139,14 @@ export const LogosStatusSchema = z.object({
     lastCheck: z.string().datetime(),
   }),
   nomos: z.object({
-    rules: z.array(RuleSchema),
-    tattoos: z.array(TattooSchema),
-    lastCheck: z.string().datetime(),
+    activeRules: z.array(RuleSchema),
+    pendingTattoos: z.array(TattooSchema),
+    totalRulesGenerated: z.number().int().min(0),
+    lastFailureAnalysis: z.object({
+      timestamp: z.string(),
+      failureType: z.string(),
+      generatedRule: z.string(),
+    }).nullable(),
   }),
   orbit: z.object({
     consensusState: z.enum(["ALIGNED", "DIVERGENT", "HALTED"]),
@@ -163,9 +174,10 @@ export function createEmptyStatus(): LogosStatus {
       lastCheck: now,
     },
     nomos: {
-      rules: [],
-      tattoos: [],
-      lastCheck: now,
+      activeRules: [],
+      pendingTattoos: [],
+      totalRulesGenerated: 0,
+      lastFailureAnalysis: null,
     },
     orbit: {
       consensusState: "ALIGNED",
