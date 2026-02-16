@@ -1567,13 +1567,13 @@ function PassiveTreeViewClass:AddNodeName(tooltip, node, build)
 			end
 		end
 		if attribTotals["Str"] >= 40 then
-			tooltip:AddLine(fontSizeBig, "^7"..i18n.t("tree.tooltip.canSupportThreshold", {attr = colorCodes.STRENGTH.."Strength ^7"}), "FONTIN SC")
+			tooltip:AddLine(fontSizeBig, "^7"..i18n.t("tree.tooltip.canSupportThreshold", {attr = colorCodes.STRENGTH..i18n.t("stats.str").." ^7"}), "FONTIN SC")
 		end
 		if attribTotals["Dex"] >= 40 then
-			tooltip:AddLine(fontSizeBig, "^7"..i18n.t("tree.tooltip.canSupportThreshold", {attr = colorCodes.DEXTERITY.."Dexterity ^7"}), "FONTIN SC")
+			tooltip:AddLine(fontSizeBig, "^7"..i18n.t("tree.tooltip.canSupportThreshold", {attr = colorCodes.DEXTERITY..i18n.t("stats.dex").." ^7"}), "FONTIN SC")
 		end
 		if attribTotals["Int"] >= 40 then
-			tooltip:AddLine(fontSizeBig, "^7"..i18n.t("tree.tooltip.canSupportThreshold", {attr = colorCodes.INTELLIGENCE.."Intelligence ^7"}), "FONTIN SC")
+			tooltip:AddLine(fontSizeBig, "^7"..i18n.t("tree.tooltip.canSupportThreshold", {attr = colorCodes.INTELLIGENCE..i18n.t("stats.int").." ^7"}), "FONTIN SC")
 		end
 	end
 	if node.type == "Socket" and node.alloc then

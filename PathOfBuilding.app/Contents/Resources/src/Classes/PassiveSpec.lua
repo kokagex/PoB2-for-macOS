@@ -90,7 +90,6 @@ function PassiveSpecClass:Init(treeVersion, convert)
 		end
 	end
 
-
 	-- Verification: Test pairs() iteration
 	local verifyCount = 0
 	for _ in pairs(self.nodes) do
@@ -451,7 +450,7 @@ function PassiveSpecClass:AllocateMasteryEffects(masteryEffects, endian)
 		if effect then
 			self.allocNodes[id].sd = effect.sd
 			self.allocNodes[id].allMasteryOptions = false
-			self.allocNodes[id].reminderText = { "Tip: Right click to select a different effect" }
+			self.allocNodes[id].reminderText = { i18n.t("tree.tooltip.tipMasteryRightClick") }
 			self.tree:ProcessStats(self.allocNodes[id])
 			self.masterySelections[id] = effectId
 			self.allocatedMasteryCount = self.allocatedMasteryCount + 1
@@ -1587,7 +1586,7 @@ function PassiveSpecClass:BuildAllDependsAndPaths()
 					node.sd = effect.sd
 					node.sd_display = nil
 					node.allMasteryOptions = false
-					node.reminderText = { "Tip: Right click to select a different effect" }
+					node.reminderText = { i18n.t("tree.tooltip.tipMasteryRightClick") }
 					self.tree:ProcessStats(node)
 					self.allocatedMasteryCount = self.allocatedMasteryCount + 1
 					if not self.allocatedMasteryTypes[self.allocNodes[id].name] then

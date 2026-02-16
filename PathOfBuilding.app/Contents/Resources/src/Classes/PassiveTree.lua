@@ -438,11 +438,13 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 	self:ApplyDisplayTranslations()
 
 	-- Re-apply translations when locale changes at runtime
+	-- Store callback strongly on self to prevent weak-table GC collection
 	if _G.i18n and _G.i18n.onChange then
 		local tree = self
-		_G.i18n.onChange(function()
+		self._i18nCallback = function()
 			tree:ApplyDisplayTranslations()
-		end)
+		end
+		_G.i18n.onChange(self._i18nCallback)
 	end
 
 	-- Pregenerate the polygons for the node connector lines
@@ -1031,6 +1033,13 @@ function PassiveTreeClass:ApplyDisplayTranslations()
 			node.dn_display = nil
 			node.sd_display = nil
 		end
+		-- Also clear spec.nodes copies
+		if main and main.build and main.build.spec then
+			for _, node in pairs(main.build.spec.nodes) do
+				node.dn_display = nil
+				node.sd_display = nil
+			end
+		end
 		return
 	end
 	local ok, treeTrans = pcall(LoadModule, "Data/TreeTranslations/" .. locale)
@@ -1040,7 +1049,8 @@ function PassiveTreeClass:ApplyDisplayTranslations()
 	end
 	local nameCount = 0
 	local statCount = 0
-	for _, node in pairs(self.nodes) do
+	-- Build a lookup of translated dn and sd for each node id
+	for id, node in pairs(self.nodes) do
 		if node.dn and treeTrans.names and treeTrans.names[node.dn] then
 			node.dn_display = treeTrans.names[node.dn]
 			nameCount = nameCount + 1
@@ -1059,6 +1069,16 @@ function PassiveTreeClass:ApplyDisplayTranslations()
 			if hasAny then
 				node.sd_display = translated
 				statCount = statCount + 1
+			end
+		end
+	end
+	-- Propagate dn_display and sd_display to spec.nodes (which are copies of tree.nodes)
+	if main and main.build and main.build.spec then
+		for id, specNode in pairs(main.build.spec.nodes) do
+			local treeNode = self.nodes[id]
+			if treeNode then
+				specNode.dn_display = treeNode.dn_display
+				specNode.sd_display = treeNode.sd_display
 			end
 		end
 	end

@@ -775,6 +775,8 @@ return {
 			canSupportThreshold = "%{attr}スレッショルドジュエルをサポート可能",
 			-- ノード制約警告
 			requiresAllocation = "ノードの割り当てが必要: %{name}",
+			-- マスタリーリマインダー
+			tipMasteryRightClick = "ヒント: 右クリックで別の効果を選択",
 		},
 	},
 	skills = {
