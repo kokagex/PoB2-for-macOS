@@ -590,6 +590,7 @@ data.itemMods = {
 	JewelCluster = LoadModule("Data/ModJewelCluster"),
 	JewelCharm = LoadModule("Data/ModJewelCharm"),
 	Runes = LoadModule("Data/ModRunes"),
+	Exclusive = LoadModule("Data/ModItemExclusive"),
 }
 data.masterMods = LoadModule("Data/ModMaster")
 data.enchantments = {
