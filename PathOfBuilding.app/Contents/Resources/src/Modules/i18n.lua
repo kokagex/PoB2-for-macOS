@@ -10,40 +10,40 @@ local currentLocale = "en"
 local fallbackLocale = "en"
 local changeCallbacks = setmetatable({}, { __mode = "v" })
 
+-- Auxiliary file mapping: section name → file suffix
+-- These files are lazy-loaded on first access instead of at startup
+local auxiliaryFiles = {
+	gemDescriptions = "_gem_descriptions",
+	statDescriptions = "_stat_descriptions",
+	gemFlavourText = "_gem_flavourtext",
+	uniqueNames = "_unique_names",
+	baseNames = "_base_names",
+	modStatLines = "_mod_stat_lines",
+	uniqueFlavourText = "_unique_flavourtext",
+}
+
+-- Track which auxiliary files have been loaded per locale
+local auxLoaded = {}
+
+-- Load a single auxiliary file for a locale if not already loaded
+local function ensureAuxLoaded(localeCode, section)
+	if not localeCode or not auxiliaryFiles[section] then return end
+	if not locales[localeCode] then return end
+	local key = localeCode .. ":" .. section
+	if auxLoaded[key] then return end
+	auxLoaded[key] = true
+	local suffix = auxiliaryFiles[section]
+	local ok, data = pcall(LoadModule, "Locales/" .. localeCode .. suffix)
+	if ok and type(data) == "table" then
+		locales[localeCode][section] = data
+	end
+end
+
 -- Load a locale file by code (e.g., "en", "ja")
 local function loadLocale(code)
 	local ok, data = pcall(LoadModule, "Locales/" .. code)
 	if ok and type(data) == "table" then
 		locales[code] = data
-		-- Load auxiliary files (gem descriptions, stat descriptions)
-		local ok2, gemDescs = pcall(LoadModule, "Locales/" .. code .. "_gem_descriptions")
-		if ok2 and type(gemDescs) == "table" then
-			data.gemDescriptions = gemDescs
-		end
-		local ok3, statDescs = pcall(LoadModule, "Locales/" .. code .. "_stat_descriptions")
-		if ok3 and type(statDescs) == "table" then
-			data.statDescriptions = statDescs
-		end
-		local ok4, flavourText = pcall(LoadModule, "Locales/" .. code .. "_gem_flavourtext")
-		if ok4 and type(flavourText) == "table" then
-			data.gemFlavourText = flavourText
-		end
-		local ok5, uniqueNames = pcall(LoadModule, "Locales/" .. code .. "_unique_names")
-		if ok5 and type(uniqueNames) == "table" then
-			data.uniqueNames = uniqueNames
-		end
-		local ok6, baseNames = pcall(LoadModule, "Locales/" .. code .. "_base_names")
-		if ok6 and type(baseNames) == "table" then
-			data.baseNames = baseNames
-		end
-		local ok7, modStatLines = pcall(LoadModule, "Locales/" .. code .. "_mod_stat_lines")
-		if ok7 and type(modStatLines) == "table" then
-			data.modStatLines = modStatLines
-		end
-		local ok8, uniqueFlavourText = pcall(LoadModule, "Locales/" .. code .. "_unique_flavourtext")
-		if ok8 and type(uniqueFlavourText) == "table" then
-			data.uniqueFlavourText = uniqueFlavourText
-		end
 		return true
 	end
 	ConPrintf("i18n: Failed to load locale '%s'", tostring(code))
@@ -111,12 +111,20 @@ end
 -- Usage: i18n.lookup("gemDescriptions", "Frost Wall") → "ターゲットの前方に..."
 function i18n.lookup(section, key)
 	if not section or not key then return nil end
+	-- Lazy-load auxiliary file if needed
+	if auxiliaryFiles[section] then
+		ensureAuxLoaded(currentLocale, section)
+	end
 	local sectionTbl = resolve(locales[currentLocale], section)
 	if sectionTbl and type(sectionTbl) == "table" then
 		local val = sectionTbl[key]
 		if val ~= nil then return val end
 	end
 	if currentLocale ~= fallbackLocale then
+		-- Lazy-load fallback auxiliary file if needed
+		if auxiliaryFiles[section] then
+			ensureAuxLoaded(fallbackLocale, section)
+		end
 		sectionTbl = resolve(locales[fallbackLocale], section)
 		if sectionTbl and type(sectionTbl) == "table" then
 			local val = sectionTbl[key]
@@ -173,6 +181,8 @@ end
 -- Replaces numeric values with placeholders, looks up translation, restores values
 function i18n.translateModLine(line)
 	if not line or currentLocale == "en" then return line end
+	-- Lazy-load modStatLines if needed
+	ensureAuxLoaded(currentLocale, "modStatLines")
 	local data = locales[currentLocale]
 	if not data or not data.modStatLines then return line end
 
