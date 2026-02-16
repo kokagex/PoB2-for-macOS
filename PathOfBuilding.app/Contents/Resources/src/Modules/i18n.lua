@@ -40,6 +40,10 @@ local function loadLocale(code)
 		if ok7 and type(modStatLines) == "table" then
 			data.modStatLines = modStatLines
 		end
+		local ok8, uniqueFlavourText = pcall(LoadModule, "Locales/" .. code .. "_unique_flavourtext")
+		if ok8 and type(uniqueFlavourText) == "table" then
+			data.uniqueFlavourText = uniqueFlavourText
+		end
 		return true
 	end
 	ConPrintf("i18n: Failed to load locale '%s'", tostring(code))

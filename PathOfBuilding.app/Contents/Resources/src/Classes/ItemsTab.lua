@@ -3177,7 +3177,9 @@ function ItemsTabClass:AddItemTooltip(tooltip, item, slot, dbMode)
 			end
 
 			if flavour then
-				for _, line in ipairs(flavour) do
+				local jpFlavour = i18n and i18n.lookup("uniqueFlavourText", item.title)
+				local displayFlavour = jpFlavour or flavour
+				for _, line in ipairs(displayFlavour) do
 					tooltip:AddLine(fontSizeBig, colorCodes.UNIQUE .. line, "FONTIN SC ITALIC")
 				end
 				tooltip:AddSeparator(14)
