@@ -513,6 +513,13 @@ function main:OnFrame()
 		DrawImage(nil, 0, 0, self.screenW, self.screenH)
 		self.popups[1]:Draw(self.viewPort)
 		SetDrawLayer(0)
+		-- Flush tooltip queue again for overlays added during popup draw (e.g. dropdown backgrounds)
+		if main.tooltipQueue then
+			for _, drawFunc in ipairs(main.tooltipQueue) do
+				drawFunc()
+			end
+			wipeTable(main.tooltipQueue)
+		end
 	end
 
 	if self.showDragText then

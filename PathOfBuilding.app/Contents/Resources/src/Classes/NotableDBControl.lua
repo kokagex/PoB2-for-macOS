@@ -148,10 +148,12 @@ end
 
 function NotableDBClass:BuildSortOrder()
 	wipeTable(self.sortDropList)
+	local sortPrefix = i18n.t("items.sort.prefix")
 	for id,stat in pairs(data.powerStatList) do
 		if not stat.ignoreForItems then
+			local translatedLabel = i18n.lookup("items.sort.stats", stat.label) or stat.label
 			t_insert(self.sortDropList, {
-				label="Sort by "..stat.label,
+				label=sortPrefix..translatedLabel,
 				sortMode=stat.itemField or stat.stat,
 				itemField=stat.itemField,
 				stat=stat.stat,
