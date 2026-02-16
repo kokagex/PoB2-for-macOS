@@ -591,6 +591,7 @@ data.itemMods = {
 	JewelCharm = LoadModule("Data/ModJewelCharm"),
 	Runes = LoadModule("Data/ModRunes"),
 	Exclusive = LoadModule("Data/ModItemExclusive"),
+	Corruption = LoadModule("Data/ModCorrupted"),
 }
 data.masterMods = LoadModule("Data/ModMaster")
 data.enchantments = {

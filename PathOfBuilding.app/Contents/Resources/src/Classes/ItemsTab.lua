@@ -2343,7 +2343,7 @@ function ItemsTabClass:CorruptDisplayItem() -- todo implement vaal orb new outco
 			return
 		end
 		enchantList[modType] = {}
-		for modId, mod in pairs(data.itemMods.Corruption or {}) do
+		for modId, mod in pairs(data.itemMods.Corruption) do
 			if mod.type == modType and self.displayItem:GetModSpawnWeight(mod) > 0 then
 				t_insert(enchantList[modType], mod)
 			end
@@ -2373,7 +2373,16 @@ function ItemsTabClass:CorruptDisplayItem() -- todo implement vaal orb new outco
 				end
 			end
 			if not alreadySelected then
-				t_insert(control.list, { label = table.concat(mod, "/"), mod = mod })
+				local modString = table.concat(mod, "/")
+				local label = modString
+				if i18n and i18n.translateModLine then
+					local parts = {}
+					for part in modString:gmatch("[^/]+") do
+						t_insert(parts, i18n.translateModLine(part))
+					end
+					label = table.concat(parts, "/")
+				end
+				t_insert(control.list, { label = label, mod = mod })
 			end
 		end
 		control:SelByValue(selfMod, "mod")
