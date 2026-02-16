@@ -107,6 +107,9 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 	-- (per-frame debug removed)
 	local cursorX, cursorY = GetCursorPos()
 	local mOver = cursorX >= viewPort.x and cursorX < viewPort.x + viewPort.width and cursorY >= viewPort.y and cursorY < viewPort.y + viewPort.height
+	if self.suppressTooltip then
+		mOver = false
+	end
 
 	-- Process input events
 	local treeClick
@@ -235,6 +238,7 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 	end
 
 	local hoverNode
+	local pendingTooltipNode, pendingTooltipScrX, pendingTooltipScrY, pendingTooltipScale
 	local nearestNode, nearestDistSq
 	local nearestNodePx, nearestDistPxSq
 	-- (per-frame hover debug removed)

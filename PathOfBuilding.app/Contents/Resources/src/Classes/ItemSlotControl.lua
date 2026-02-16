@@ -92,7 +92,28 @@ function ItemSlotClass:Populate()
 	for _, item in pairs(self.itemsTab.items) do
 		if self.itemsTab:IsItemValidForSlot(item, self.slotName) then
 			t_insert(self.items, item.id)
-			t_insert(self.list, colorCodes[item.rarity]..item.name)
+			local displayName = item.name
+			if i18n and item.title then
+				local jTitle = i18n.lookup("uniqueNames", item.title)
+				if jTitle and type(jTitle) == "string" and #jTitle > 0 then
+					local cleanBase = item.baseName:gsub(" %(.+%)","")
+					local jBase = i18n.lookup("baseNames", cleanBase) or cleanBase
+					displayName = jTitle .. ", " .. jBase
+				else
+					local cleanBase = item.baseName:gsub(" %(.+%)","")
+					local jBase = i18n.lookup("baseNames", cleanBase)
+					if jBase then
+						displayName = item.title .. ", " .. jBase
+					end
+				end
+			elseif i18n and item.baseName then
+				local cleanBase = item.baseName:gsub(" %(.+%)","")
+				local jBase = i18n.lookup("baseNames", cleanBase)
+				if jBase then
+					displayName = jBase
+				end
+			end
+			t_insert(self.list, colorCodes[item.rarity]..displayName)
 			if item.id == self.selItemId then
 				self.selIndex = #self.list
 			end
@@ -162,7 +183,9 @@ function ItemSlotClass:DrawJewelThumbnail(viewPort)
 	viewer.zoomX = -node.x / scale
 	viewer.zoomY = -node.y / scale
 	SetViewport(viewerX + 2, viewerY + 2, 300, 300)
+	viewer.suppressTooltip = true
 	viewer:Draw(self.itemsTab.build, { x = 0, y = 0, width = 300, height = 300 }, { })
+	viewer.suppressTooltip = false
 	SetDrawLayer(nil, 30)
 	SetDrawColor(1, 1, 1, 0.2)
 	DrawImage(nil, 149, 0, 2, 300)
