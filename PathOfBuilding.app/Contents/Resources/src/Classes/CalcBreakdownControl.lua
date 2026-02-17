@@ -413,7 +413,7 @@ function CalcBreakdownClass:AddModSection(sectionData, modList)
 			if nodeId then
 				local nodeIdNumber = tonumber(nodeId)
 				local node = build.spec.nodes[nodeIdNumber] or build.spec.switchableNodes[nodeIdNumber] or build.spec.tree.nodes[nodeIdNumber]
-				row.sourceName = node.dn
+				row.sourceName = node.dn_display or node.dn
 				row.sourceNameNode = node
 			end
 		elseif sourceType == "Many Sources" then

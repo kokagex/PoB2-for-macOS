@@ -7,12 +7,18 @@ local pairs = pairs
 local ipairs = ipairs
 local t_insert = table.insert
 
-local buildSortDropList = {
-	{ label = "Sort by Name", sortMode = "NAME" },
-	{ label = "Sort by Class", sortMode = "CLASS" },
-	{ label = "Sort by Last Edited", sortMode = "EDITED"},
-	{ label = "Sort by Level", sortMode = "LEVEL"},
-}
+local buildSortDropList
+local function getBuildSortDropList()
+	if not buildSortDropList then
+		buildSortDropList = {
+			{ label = i18n.t("buildList.sortByName"), sortMode = "NAME" },
+			{ label = i18n.t("buildList.sortByClass"), sortMode = "CLASS" },
+			{ label = i18n.t("buildList.sortByLastEdited"), sortMode = "EDITED"},
+			{ label = i18n.t("buildList.sortByLevel"), sortMode = "LEVEL"},
+		}
+	end
+	return buildSortDropList
+end
 
 local listMode = new("ControlHost")
 
@@ -45,29 +51,29 @@ function listMode:Init(selBuildName, subPath)
 	self.subPath = subPath or ""
 	self.list = { }
 
-	self.controls.new = new("ButtonControl", {"TOP",self.anchor,"TOP"}, {-259 * s, 0, 60 * s, 20 * s}, "New", function()
+	self.controls.new = new("ButtonControl", {"TOP",self.anchor,"TOP"}, {-259 * s, 0, 60 * s, 20 * s}, i18n.t("buildList.newBuild"), function()
 		main:SetMode("BUILD", false, "Unnamed build")
 	end)
-	self.controls.newFolder = new("ButtonControl", {"LEFT",self.controls.new,"RIGHT"}, {8 * s, 0, 90 * s, 20 * s}, "New Folder", function()
+	self.controls.newFolder = new("ButtonControl", {"LEFT",self.controls.new,"RIGHT"}, {8 * s, 0, 90 * s, 20 * s}, i18n.t("buildList.newFolder"), function()
 		self.controls.buildList:NewFolder()
 	end)
-	self.controls.open = new("ButtonControl", {"LEFT",self.controls.newFolder,"RIGHT"}, {8 * s, 0, 60 * s, 20 * s}, "Open", function()
+	self.controls.open = new("ButtonControl", {"LEFT",self.controls.newFolder,"RIGHT"}, {8 * s, 0, 60 * s, 20 * s}, i18n.t("buildList.openBuild"), function()
 		self.controls.buildList:LoadBuild(self.controls.buildList.selValue)
 	end)
 	self.controls.open.enabled = function() return self.controls.buildList.selValue ~= nil end
-	self.controls.copy = new("ButtonControl", {"LEFT",self.controls.open,"RIGHT"}, {8 * s, 0, 60 * s, 20 * s}, "Copy", function()
+	self.controls.copy = new("ButtonControl", {"LEFT",self.controls.open,"RIGHT"}, {8 * s, 0, 60 * s, 20 * s}, i18n.t("buildList.copyBuild"), function()
 		self.controls.buildList:RenameBuild(self.controls.buildList.selValue, true)
 	end)
 	self.controls.copy.enabled = function() return self.controls.buildList.selValue ~= nil end
-	self.controls.rename = new("ButtonControl", {"LEFT",self.controls.copy,"RIGHT"}, {8 * s, 0, 60 * s, 20 * s}, "Rename", function()
+	self.controls.rename = new("ButtonControl", {"LEFT",self.controls.copy,"RIGHT"}, {8 * s, 0, 60 * s, 20 * s}, i18n.t("buildList.renameBuild"), function()
 		self.controls.buildList:RenameBuild(self.controls.buildList.selValue)
 	end)
 	self.controls.rename.enabled = function() return self.controls.buildList.selValue ~= nil end
-	self.controls.delete = new("ButtonControl", {"LEFT",self.controls.rename,"RIGHT"}, {8 * s, 0, 60 * s, 20 * s}, "Delete", function()
+	self.controls.delete = new("ButtonControl", {"LEFT",self.controls.rename,"RIGHT"}, {8 * s, 0, 60 * s, 20 * s}, i18n.t("buildList.deleteBuild"), function()
 		self.controls.buildList:DeleteBuild(self.controls.buildList.selValue)
 	end)
 	self.controls.delete.enabled = function() return self.controls.buildList.selValue ~= nil end
-	self.controls.sort = new("DropDownControl", {"LEFT",self.controls.delete,"RIGHT"}, {8 * s, 0, 140 * s, 20 * s}, buildSortDropList, function(index, value)
+	self.controls.sort = new("DropDownControl", {"LEFT",self.controls.delete,"RIGHT"}, {8 * s, 0, 140 * s, 20 * s}, getBuildSortDropList(), function(index, value)
 		main.buildSortMode = value.sortMode
 		self:SortList()
 	end)

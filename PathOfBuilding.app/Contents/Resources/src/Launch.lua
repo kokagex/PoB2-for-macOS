@@ -13,6 +13,7 @@ ConExecute("set vid_mode 8")
 ConExecute("set vid_resizable 3")
 
 launch = { }
+launch.errorLogPath = os.tmpname()  -- Generate unique temp file path for error logging
 SetMainObject(launch)
 jit.opt.start('maxtrace=4000','maxmcode=8192')
 collectgarbage("setpause", 400)
@@ -100,9 +101,16 @@ function launch:CanExit()
 end
 
 function launch:OnExit()
+	self._shuttingDown = true
+	-- Let modules clean up their own SubScripts first
 	if self.main and self.main.Shutdown then
 		PCall(self.main.Shutdown, self.main)
 	end
+	-- Abort any remaining SubScripts
+	for id, _ in pairs(self.subScripts) do
+		AbortSubScript(id)
+	end
+	wipeTable(self.subScripts)
 end
 
 function launch:OnFrame()
@@ -111,7 +119,7 @@ function launch:OnFrame()
 			local errMsg = PCall(self.main.OnFrame, self.main)
 			if errMsg then
 				-- Write complete error to file
-				local f = io.open("/tmp/pob_error.txt", "w")
+				local f = io.open(self.errorLogPath, "w")
 				if f then
 					f:write("COMPLETE ERROR MESSAGE:\n")
 					f:write(errMsg)
@@ -204,42 +212,59 @@ end
 function launch:OnSubCall(func, ...)
 	if func == "UpdateProgress" then
 		self.updateProgress = string.format(...)
+		return
 	end
-	if _G[func] then
+	-- Whitelist of allowed global functions callable from sub-scripts
+	local allowedFuncs = {
+		ConPrintf = true,
+		GetScriptPath = true,
+		GetRuntimePath = true,
+		GetWorkDir = true,
+		MakeDir = true,
+	}
+	if allowedFuncs[func] and _G[func] then
 		return _G[func](...)
 	end
 end
 
 function launch:OnSubError(id, errMsg)
-	if self.subScripts[id].type == "UPDATE" then
+	local sub = self.subScripts[id]
+	if not sub then return end
+	if sub.type == "UPDATE" then
 		self:ShowErrMsg("In update thread: %s", errMsg)
 		self.updateCheckRunning = false
-	elseif self.subScripts[id].type == "DOWNLOAD" then
-		local errMsg = PCall(self.subScripts[id].callback, nil, errMsg)
-		if errMsg then
-			self:ShowErrMsg("In download callback: %s", errMsg)
+	elseif sub.type == "DOWNLOAD" then
+		local callbackErr = PCall(sub.callback, nil, errMsg)
+		if callbackErr then
+			self:ShowErrMsg("In download callback: %s", callbackErr)
 		end
 	end
 	self.subScripts[id] = nil
 end
 
 function launch:OnSubFinished(id, ...)
-	if self.subScripts[id].type == "UPDATE" then
+	if self._shuttingDown then
+		self.subScripts[id] = nil
+		return
+	end
+	local sub = self.subScripts[id]
+	if not sub then return end
+	if sub.type == "UPDATE" then
 		self.updateAvailable, self.updateErrMsg = ...
 		self.updateCheckRunning = false
 		if self.updateCheckBackground and self.updateAvailable == "none" then
 			self.updateAvailable = nil
 		end
-	elseif self.subScripts[id].type == "DOWNLOAD" then
-		local errMsg = PCall(self.subScripts[id].callback, ...)
-		if errMsg then
-			self:ShowErrMsg("In download callback: %s", errMsg)
+	elseif sub.type == "DOWNLOAD" then
+		local callbackErr = PCall(sub.callback, ...)
+		if callbackErr then
+			self:ShowErrMsg("In download callback: %s", callbackErr)
 		end
-	elseif self.subScripts[id].type == "CUSTOM" then
-		if self.subScripts[id].callback then
-			local errMsg = PCall(self.subScripts[id].callback, ...)
-			if errMsg then
-				self:ShowErrMsg("In subscript callback: %s", errMsg)
+	elseif sub.type == "CUSTOM" then
+		if sub.callback then
+			local callbackErr = PCall(sub.callback, ...)
+			if callbackErr then
+				self:ShowErrMsg("In subscript callback: %s", callbackErr)
 			end
 		end
 	end
@@ -252,6 +277,14 @@ function launch:RegisterSubScript(id, callback)
 			type = "CUSTOM",
 			callback = callback,
 		}
+	end
+end
+
+--- SubScriptを安全に解除する（Abort + レジストリ削除）
+function launch:UnregisterSubScript(id)
+	if id and self.subScripts[id] then
+		AbortSubScript(id)
+		self.subScripts[id] = nil
 	end
 end
 
@@ -323,7 +356,11 @@ function launch:DownloadPage(url, callback, params)
 				callback({header=responseHeader, body=responseBody}, errMsg)
 			end
 		}
+	else
+		-- SubScript launch failed, notify callback (S-8)
+		PCall(callback, {header="", body=""}, "Failed to launch download")
 	end
+	return id
 end
 
 function launch:ApplyUpdate(mode)

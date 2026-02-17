@@ -75,8 +75,9 @@ function TradeQueryRateLimiterClass:ParsePolicy(headerString)
 	local policies = {}
 	local headers = self:ParseHeader(headerString)
 	local policyName = headers["x-rate-limit-policy"]
+	if not policyName then return policies end
 	policies[policyName] = {}
-	local retryAfter = headers["retry-after"]
+	local retryAfter = tonumber(headers["retry-after"])
 	if retryAfter then
 		policies[policyName].retryAfter = os.time() + retryAfter
 	end
@@ -240,27 +241,24 @@ function TradeQueryRateLimiterClass:AgeOutRequests(policy, time)
 	if (requestHistory.lastCheck == now) then
 		return
 	end
-	for i = #requestHistory.timestamps, 1 , -1 do
-		local timestamp = requestHistory.timestamps[i]
-		for _, rule in pairs(self.policies[policy]) do
-			for window, windowValue in pairs(rule.state) do
-				if timestamp >= (requestHistory.lastCheck - window) and timestamp < (now - window) then
-					-- timestamp that used to be in the window on last check
-					if not windowValue.decremented then
-						windowValue.request = math.max(windowValue.request - 1, 0)
-						windowValue.decremented = true
-					end
-				end
-			end
-		end
-		if timestamp < now - requestHistory.maxWindow then
-			table.remove(requestHistory.timestamps, i)
-		end
-	end
-	-- Reset flags after processing
+	-- Count aged-out timestamps per window, then decrement accordingly
 	for _, rule in pairs(self.policies[policy]) do
 		for window, windowValue in pairs(rule.state) do
-			windowValue.decremented = nil
+			local agedCount = 0
+			for _, timestamp in ipairs(requestHistory.timestamps) do
+				if timestamp >= (requestHistory.lastCheck - window) and timestamp < (now - window) then
+					agedCount = agedCount + 1
+				end
+			end
+			if agedCount > 0 then
+				windowValue.request = math.max(windowValue.request - agedCount, 0)
+			end
+		end
+	end
+	-- Remove timestamps older than maxWindow
+	for i = #requestHistory.timestamps, 1, -1 do
+		if requestHistory.timestamps[i] < now - requestHistory.maxWindow then
+			table.remove(requestHistory.timestamps, i)
 		end
 	end
 	requestHistory.lastCheck = now

@@ -10,10 +10,10 @@ local t_remove = table.remove
 local SharedItemListClass = newClass("SharedItemListControl", "ListControl", function(self, anchor, rect, itemsTab, forceTooltip)
 	self.ListControl(anchor, rect, 16, "VERTICAL", true, main.sharedItemList, forceTooltip)
 	self.itemsTab = itemsTab
-	self.label = "^7Shared items:"
-	self.defaultText = "^x7F7F7FThis is a list of items that will be shared between all of\nyour builds.\nYou can add items to this list by dragging them from\none of the other lists."
+	self.label = "^7"..i18n.t("items.sharedItems.title")
+	self.defaultText = "^x7F7F7F"..i18n.t("items.sharedItems.helpText")
 	self.dragTargetList = { }
-	self.controls.delete = new("ButtonControl", {"BOTTOMRIGHT",self,"TOPRIGHT"}, {0, -2, 60, 18}, "Delete", function()
+	self.controls.delete = new("ButtonControl", {"BOTTOMRIGHT",self,"TOPRIGHT"}, {0, -2, 60, 18}, i18n.t("items.buttons.delete"), function()
 		self:OnSelDelete(self.selIndex, self.selValue)
 	end)
 	self.controls.delete.enabled = function()
@@ -23,7 +23,22 @@ end)
 
 function SharedItemListClass:GetRowValue(column, index, item)
 	if column == 1 then
-		return colorCodes[item.rarity] .. item.name
+		local displayName = item.name
+		if item.title and i18n then
+			local jTitle = i18n.lookup("uniqueNames", item.title)
+			local cleanBase = item.baseName and item.baseName:gsub(" %(.+%)","") or ""
+			local jBase = i18n.lookup("baseNames", cleanBase)
+			if jTitle or jBase then
+				displayName = (jTitle or item.title) .. ", " .. (jBase or cleanBase)
+			end
+		elseif not item.title and item.baseName and i18n then
+			local cleanBase = item.baseName:gsub(" %(.+%)","")
+			local jBase = i18n.lookup("baseNames", cleanBase)
+			if jBase then
+				displayName = item.namePrefix .. jBase .. item.nameSuffix
+			end
+		end
+		return colorCodes[item.rarity] .. displayName
 	end
 end
 
@@ -64,7 +79,7 @@ function SharedItemListClass:OnSelCopy(index, item)
 end
 
 function SharedItemListClass:OnSelDelete(index, item)
-	main:OpenConfirmPopup("Delete Item", "Are you sure you want to remove '"..item.name.."' from the shared item list?", "Delete", function()
+	main:OpenConfirmPopup(i18n.t("items.popups.deleteItemTitle"), "Are you sure you want to remove '"..item.name.."' from the shared item list?", i18n.t("items.buttons.delete"), function()
 		t_remove(self.list, index)
 		self.selIndex = nil
 		self.selValue = nil

@@ -1840,6 +1840,7 @@ function ItemClass:BuildModList()
 
 	if #self.grantedSkills >= 1 then
 		local skillDef = data.skills[self.grantedSkills[1].skillId]
+		if skillDef then
 		local gemId = data.gemForSkill[skillDef]
 		local gem = data.gems[gemId]
 
@@ -1857,6 +1858,7 @@ function ItemClass:BuildModList()
 			self.requirements.int = calcLib.getGemStatRequirement(attrLevel, gem.reqInt)
 			self.requirements.dex = calcLib.getGemStatRequirement(attrLevel, gem.reqDex)
 			self.requirements.str = calcLib.getGemStatRequirement(attrLevel, gem.reqStr)
+		end
 		end
 	else
 		-- If no granted skills, we want to use the "Requires Level" from the unique instead of the base armour type level requirement.

@@ -166,6 +166,7 @@ local ImportTabClass = newClass("ImportTab", "ControlHost", "Control", function(
 			self.controls.generateCodeOut:SetText("")
 			self.controls.generateCodeByLink.label = "Creating link..."
 			launch:RegisterSubScript(subScriptId, function(pasteLink, errMsg)
+				if not self.controls then return end
 				self.controls.generateCodeByLink.label = "Share"
 				if errMsg then
 					main:OpenMessagePopup(exportWebsite.id, "Error creating link:\n"..errMsg)
@@ -790,7 +791,7 @@ function ImportTabClass:ImportItemsAndSkills(charData)
 			local gemInstance = { level = 20, quality = 0, enabled = true, enableGlobal1 = true, enableGlobal2 = true, count = 1,  gemId = gemId }
 			gemInstance.support = skillData.support
 
-			local spectreList = data.spectres
+			local spectreList = data:getSpectres()
 			if typeLine:sub(1, 8) == "Spectre:" then
 				local spectreName = typeLine:sub(10) -- gets monster name after "Spectre: "
 				for _, property in pairs(skillData.properties) do

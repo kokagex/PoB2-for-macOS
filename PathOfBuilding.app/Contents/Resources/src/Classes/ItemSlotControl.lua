@@ -38,7 +38,7 @@ local ItemSlotClass = newClass("ItemSlotControl", "DropDownControl", function(se
 		self.controls.activate.enabled = function()
 			return self.selItemId ~= 0
 		end
-		self.controls.activate.tooltipText = "Activate this flask."
+		self.controls.activate.tooltipText = i18n.t("items.tooltips.activateFlask")
 		self.labelOffset = -24
 	elseif slotName:match("Charm") then
 		self.controls.activate = new("CheckBoxControl", {"RIGHT",self,"LEFT"}, {-2, 0, 20}, nil, function(state)
@@ -50,7 +50,7 @@ local ItemSlotClass = newClass("ItemSlotControl", "DropDownControl", function(se
 		self.controls.activate.enabled = function()
 			return self.selItemId ~= 0
 		end
-		self.controls.activate.tooltipText = "Activate this charm."
+		self.controls.activate.tooltipText = i18n.t("items.tooltips.activateCharm")
 		self.labelOffset = -24
 	else
 		self.labelOffset = -2
@@ -87,12 +87,33 @@ function ItemSlotClass:Populate()
 	wipeTable(self.items)
 	wipeTable(self.list)
 	self.items[1] = 0
-	self.list[1] = "None"
+	self.list[1] = i18n.lookup("items.slots", "None") or "None"
 	self.selIndex = 1
 	for _, item in pairs(self.itemsTab.items) do
 		if self.itemsTab:IsItemValidForSlot(item, self.slotName) then
 			t_insert(self.items, item.id)
-			t_insert(self.list, colorCodes[item.rarity]..item.name)
+			local displayName = item.name
+			if i18n and item.title then
+				local jTitle = i18n.lookup("uniqueNames", item.title)
+				if jTitle and type(jTitle) == "string" and #jTitle > 0 then
+					local cleanBase = item.baseName:gsub(" %(.+%)","")
+					local jBase = i18n.lookup("baseNames", cleanBase) or cleanBase
+					displayName = jTitle .. ", " .. jBase
+				else
+					local cleanBase = item.baseName:gsub(" %(.+%)","")
+					local jBase = i18n.lookup("baseNames", cleanBase)
+					if jBase then
+						displayName = item.title .. ", " .. jBase
+					end
+				end
+			elseif i18n and item.baseName then
+				local cleanBase = item.baseName:gsub(" %(.+%)","")
+				local jBase = i18n.lookup("baseNames", cleanBase)
+				if jBase then
+					displayName = jBase
+				end
+			end
+			t_insert(self.list, colorCodes[item.rarity]..displayName)
 			if item.id == self.selItemId then
 				self.selIndex = #self.list
 			end
@@ -124,7 +145,8 @@ end
 function ItemSlotClass:Draw(viewPort)
 	local x, y = self:GetPos()
 	local width, height = self:GetSize()
-	DrawString(x + self.labelOffset, y + 2, "RIGHT_X", height - 4, "VAR", "^7"..self.label..":")
+	local displayLabel = i18n.lookup("items.slots", self.label) or self.label
+	DrawString(x + self.labelOffset, y + 2, "RIGHT_X", height - 4, "VAR", "^7"..displayLabel..":")
 	self.DropDownControl:Draw(viewPort)
 	self:DrawControls(viewPort)
 	if not main.popups[1] and self.nodeId and (self.dropped or (self:IsMouseOver() and (self.otherDragSource or not self.itemsTab.selControl))) then
@@ -161,7 +183,9 @@ function ItemSlotClass:DrawJewelThumbnail(viewPort)
 	viewer.zoomX = -node.x / scale
 	viewer.zoomY = -node.y / scale
 	SetViewport(viewerX + 2, viewerY + 2, 300, 300)
+	viewer.suppressTooltip = true
 	viewer:Draw(self.itemsTab.build, { x = 0, y = 0, width = 300, height = 300 }, { })
+	viewer.suppressTooltip = false
 	SetDrawLayer(nil, 30)
 	SetDrawColor(1, 1, 1, 0.2)
 	DrawImage(nil, 149, 0, 2, 300)

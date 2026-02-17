@@ -24,9 +24,13 @@ local ItemDBClass = newClass("ItemDBControl", "ListControl", function(self, anch
 	self.sortOrder = { }
 	self.sortMode = "NAME"
 	self.leaguesAndTypesLoaded = false
-	self.leagueList = { "Any league", "No league" }
-	self.typeList = { "Any type", "Armour", "Jewellery", "One Handed Melee", "Two Handed Melee" }
-	self.slotList = { "Any slot", "Weapon 1", "Weapon 2", "Helmet", "Body Armour", "Gloves", "Boots", "Amulet", "Ring", "Belt", "Jewel" }
+	self.leagueList = { i18n.t("items.filter.anyLeague"), i18n.t("items.filter.noLeague") }
+	self.typeList = { i18n.t("items.filter.anyType"), i18n.t("items.filter.armour"), i18n.t("items.filter.jewellery"), i18n.t("items.filter.oneHandedMelee"), i18n.t("items.filter.twoHandedMelee") }
+	local slotNames = { "Weapon 1", "Weapon 2", "Helmet", "Body Armour", "Gloves", "Boots", "Amulet", "Ring", "Belt", "Jewel" }
+	self.slotList = { i18n.t("items.filter.anySlot") }
+	for _, name in ipairs(slotNames) do
+		table.insert(self.slotList, { label = i18n.lookup("items.slots", name) or name, slotName = name })
+	end
 	local baseY = dbType == "RARE" and -22 or -62
 	self.controls.slot = new("DropDownControl", {"BOTTOMLEFT",self,"TOPLEFT"}, {0, baseY, 179, 18}, self.slotList, function(index, value)
 		self.listBuildFlag = true
@@ -37,21 +41,22 @@ local ItemDBClass = newClass("ItemDBControl", "ListControl", function(self, anch
 	if dbType == "UNIQUE" then
 		self.controls.sort = new("DropDownControl", {"BOTTOMLEFT",self,"TOPLEFT"}, {0, baseY + 20, 179, 18}, self.sortDropList, function(index, value)
 			self:SetSortMode(value.sortMode)
+			self.listBuildFlag = true
 		end)
 		self.controls.league = new("DropDownControl", {"LEFT",self.controls.sort,"RIGHT"}, {2, 0, 179, 18}, self.leagueList, function(index, value)
 			self.listBuildFlag = true
 		end)
-		self.controls.requirement = new("DropDownControl", {"LEFT",self.controls.sort,"BOTTOMLEFT"}, {0, 11, 179, 18}, { "Any requirements", "Current level", "Current attributes", "Current useable" }, function(index, value)
+		self.controls.requirement = new("DropDownControl", {"LEFT",self.controls.sort,"BOTTOMLEFT"}, {0, 11, 179, 18}, { i18n.t("items.filter.anyRequirements"), i18n.t("items.filter.currentLevel"), i18n.t("items.filter.currentAttributes"), i18n.t("items.filter.currentUseable") }, function(index, value)
 			self.listBuildFlag = true
 		end)
-		self.controls.obtainable = new("DropDownControl", {"LEFT",self.controls.requirement,"RIGHT"}, {2, 0, 179, 18}, { "Obtainable", "Any source", "Unobtainable", "Vendor Recipe", "Upgraded", "Boss Item", "Corruption"}, function(index, value)
+		self.controls.obtainable = new("DropDownControl", {"LEFT",self.controls.requirement,"RIGHT"}, {2, 0, 179, 18}, { i18n.t("items.filter.obtainable"), i18n.t("items.filter.anySource"), i18n.t("items.filter.unobtainable"), i18n.t("items.filter.vendorRecipe"), i18n.t("items.filter.upgraded"), i18n.t("items.filter.bossItem"), i18n.t("items.filter.corruption")}, function(index, value)
 			self.listBuildFlag = true
 		end)
 	end
 	self.controls.search = new("EditControl", {"BOTTOMLEFT",self,"TOPLEFT"}, {0, -2, 258, 18}, "", "Search", "%c", 100, function()
 		self.listBuildFlag = true
 	end, nil, nil, true)
-	self.controls.searchMode = new("DropDownControl", {"LEFT",self.controls.search,"RIGHT"}, {2, 0, 100, 18}, { "Anywhere", "Names", "Modifiers" }, function(index, value)
+	self.controls.searchMode = new("DropDownControl", {"LEFT",self.controls.search,"RIGHT"}, {2, 0, 100, 18}, { i18n.t("items.filter.anywhere"), i18n.t("items.filter.names"), i18n.t("items.filter.modifiers") }, function(index, value)
 		self.listBuildFlag = true
 	end)
 	self:BuildSortOrder()
@@ -70,10 +75,11 @@ function ItemDBClass:LoadLeaguesAndTypes()
 		typeFlag[item.type] = true
 	end
 	for leagueName in pairsSortByKey(leagueFlag) do
-		t_insert(self.leagueList, leagueName)
+		t_insert(self.leagueList, { label = i18n.lookup("items.leagueNames", leagueName) or leagueName, leagueName = leagueName })
 	end
-	for type in pairsSortByKey(typeFlag) do
-		t_insert(self.typeList, type)
+	for typeName in pairsSortByKey(typeFlag) do
+		local translated = i18n.lookup("items.typeNames", typeName)
+		t_insert(self.typeList, { label = translated or typeName, typeName = typeName })
 	end
 	self.leaguesAndTypesLoaded = true
 end
@@ -81,7 +87,9 @@ end
 function ItemDBClass:DoesItemMatchFilters(item)
 	if self.controls.slot.selIndex > 1 then
 		local primarySlot = item:GetPrimarySlot()
-		if primarySlot ~= self.slotList[self.controls.slot.selIndex] and primarySlot:gsub(" %d","") ~= self.slotList[self.controls.slot.selIndex] then
+		local selSlot = self.slotList[self.controls.slot.selIndex]
+		local slotName = type(selSlot) == "table" and selSlot.slotName or selSlot
+		if primarySlot ~= slotName and primarySlot:gsub(" %d","") ~= slotName then
 			return false
 		end
 	end
@@ -105,12 +113,12 @@ function ItemDBClass:DoesItemMatchFilters(item)
 					return false
 				end
 			end
-		elseif item.type ~= self.typeList[typeSel] then
+		elseif item.type ~= (type(self.typeList[typeSel]) == "table" and self.typeList[typeSel].typeName or self.typeList[typeSel]) then
 			return false
 		end
 	end
 	if self.dbType == "UNIQUE" and self.controls.league.selIndex > 1 then
-		if (self.controls.league.selIndex == 2 and item.league) or (self.controls.league.selIndex > 2 and (not item.league or not item.league:match(self.leagueList[self.controls.league.selIndex]))) then
+		if (self.controls.league.selIndex == 2 and item.league) or (self.controls.league.selIndex > 2 and (not item.league or not item.league:match((type(self.leagueList[self.controls.league.selIndex]) == "table" and self.leagueList[self.controls.league.selIndex].leagueName or self.leagueList[self.controls.league.selIndex])))) then
 			return false
 		end
 	end
@@ -145,6 +153,29 @@ function ItemDBClass:DoesItemMatchFilters(item)
 			local err, match = PCall(string.matchOrPattern, item.name:lower(), searchStr)
 			if not err and match then
 				found = true
+			end
+			if not found and i18n then
+				local jName
+				if item.title then
+					local jTitle = i18n.lookup("uniqueNames", item.title)
+					local cleanBase = item.baseName and item.baseName:gsub(" %(.+%)","") or ""
+					local jBase = i18n.lookup("baseNames", cleanBase)
+					if jTitle or jBase then
+						jName = (jTitle or item.title) .. ", " .. (jBase or cleanBase)
+					end
+				elseif item.baseName then
+					local cleanBase = item.baseName:gsub(" %(.+%)","")
+					local jBase = i18n.lookup("baseNames", cleanBase)
+					if jBase then
+						jName = item.namePrefix .. jBase .. item.nameSuffix
+					end
+				end
+				if jName then
+					local err2, match2 = PCall(string.matchOrPattern, jName:lower(), searchStr)
+					if not err2 and match2 then
+						found = true
+					end
+				end
 			end
 		end
 		if mode == 1 or mode == 3 then
@@ -205,7 +236,7 @@ function ItemDBClass:BuildSortOrder()
 	for id,stat in pairs(data.powerStatList) do
 		if not stat.ignoreForItems then
 			t_insert(self.sortDropList, {
-				label="Sort by "..stat.label,
+				label=i18n.t("items.sort.prefix")..(i18n.lookup("items.sort.stats", stat.label) or stat.label),
 				sortMode=stat.itemField or stat.stat,
 				itemField=stat.itemField,
 				stat=stat.stat,
@@ -252,7 +283,7 @@ function ItemDBClass:ListBuilder()
 			end
 			local now = GetTime()
 			if now - start > 50 then
-				self.defaultText = "^7Sorting... ("..m_floor(itemIndex/#list*100).."%)"
+				self.defaultText = "^7" .. i18n.t("items.filter.sorting", {pct = m_floor(itemIndex/#list*100)})
 				coroutine.yield()
 				start = now
 			end
@@ -282,7 +313,7 @@ function ItemDBClass:ListBuilder()
 	end)
 
 	self.list = list
-	self.defaultText = "^7No items found that match those filters."
+	self.defaultText = "^7" .. i18n.t("items.filter.noItemsFound")
 end
 
 function ItemDBClass:Draw(viewPort)
@@ -305,7 +336,7 @@ function ItemDBClass:Draw(viewPort)
 		end
 	end
 	if self.db.loading then
-		self.defaultText = "^7Loading..."
+		self.defaultText = "^7" .. i18n.t("items.filter.loading")
 	elseif not self.leaguesAndTypesLoaded then
 		self:LoadLeaguesAndTypes()
 	end
@@ -314,7 +345,22 @@ end
 
 function ItemDBClass:GetRowValue(column, index, item)
 	if column == 1 then
-		return colorCodes[item.rarity] .. item.name
+		local displayName = item.name
+		if item.title and i18n then
+			local jTitle = i18n.lookup("uniqueNames", item.title)
+			local cleanBase = item.baseName and item.baseName:gsub(" %(.+%)","") or ""
+			local jBase = i18n.lookup("baseNames", cleanBase)
+			if jTitle or jBase then
+				displayName = (jTitle or item.title) .. ", " .. (jBase or cleanBase)
+			end
+		elseif not item.title and item.baseName and i18n then
+			local cleanBase = item.baseName:gsub(" %(.+%)","")
+			local jBase = i18n.lookup("baseNames", cleanBase)
+			if jBase then
+				displayName = item.namePrefix .. jBase .. item.nameSuffix
+			end
+		end
+		return colorCodes[item.rarity] .. displayName
 	end
 end
 

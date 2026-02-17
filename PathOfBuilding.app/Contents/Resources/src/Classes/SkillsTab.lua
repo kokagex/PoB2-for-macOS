@@ -10,72 +10,100 @@ local t_remove = table.remove
 local m_min = math.min
 local m_max = math.max
 
-local groupSlotDropList = {
-	{ label = "None" },
-	{ label = "Weapon 1", slotName = "Weapon 1" },
-	{ label = "Weapon 2", slotName = "Weapon 2" },
-	{ label = "Weapon 1 (Swap)", slotName = "Weapon 1 Swap" },
-	{ label = "Weapon 2 (Swap)", slotName = "Weapon 2 Swap" },
-	{ label = "Helmet", slotName = "Helmet" },
-	{ label = "Body Armour", slotName = "Body Armour" },
-	{ label = "Gloves", slotName = "Gloves" },
-	{ label = "Boots", slotName = "Boots" }, 
-	{ label = "Amulet", slotName = "Amulet" },
-	{ label = "Ring 1", slotName = "Ring 1" },
-	{ label = "Ring 2", slotName = "Ring 2" },
-	{ label = "Ring 3", slotName = "Ring 3" },
-	{ label = "Belt", slotName = "Belt" },
-}
+local function getGroupSlotDropList()
+	return {
+		{ label = i18n.t("skills.slots.none") },
+		{ label = i18n.t("skills.slots.weapon1"), slotName = "Weapon 1" },
+		{ label = i18n.t("skills.slots.weapon2"), slotName = "Weapon 2" },
+		{ label = i18n.t("skills.slots.weapon1Swap"), slotName = "Weapon 1 Swap" },
+		{ label = i18n.t("skills.slots.weapon2Swap"), slotName = "Weapon 2 Swap" },
+		{ label = i18n.t("skills.slots.helmet"), slotName = "Helmet" },
+		{ label = i18n.t("skills.slots.bodyArmour"), slotName = "Body Armour" },
+		{ label = i18n.t("skills.slots.gloves"), slotName = "Gloves" },
+		{ label = i18n.t("skills.slots.boots"), slotName = "Boots" },
+		{ label = i18n.t("skills.slots.amulet"), slotName = "Amulet" },
+		{ label = i18n.t("skills.slots.ring1"), slotName = "Ring 1" },
+		{ label = i18n.t("skills.slots.ring2"), slotName = "Ring 2" },
+		{ label = i18n.t("skills.slots.ring3"), slotName = "Ring 3" },
+		{ label = i18n.t("skills.slots.belt"), slotName = "Belt" },
+	}
+end
 
-local defaultGemLevelList = {
-	{
-		label = "Normal Maximum",
-		description = "All gems default to their highest valid non-corrupted gem level.",
-		gemLevel = "normalMaximum",
-	},
-	{
-		label = "Corrupted Maximum",
-		description = [[Normal gems default to their highest valid corrupted gem level.
-Awakened gems default to their highest valid non-corrupted gem level.]],
-		gemLevel = "corruptedMaximum",
-	},
-	{
-		label = "Awakened Maximum",
-		description = "All gems default to their highest valid corrupted gem level.",
-		gemLevel = "awakenedMaximum",
-	},
-	{
-		label = "Match Character Level",
-		description = [[All gems default to their highest valid non-corrupted gem level that your character meets the level requirement for.
-This hides gems with a minimum level requirement above your character level, preventing them from showing up in the dropdown list.]],
-		gemLevel = "characterLevel",
-	},
-}
+local function getDefaultGemLevelList()
+	return {
+		{
+			label = i18n.t("skills.gemLevel.normalMax"),
+			description = i18n.t("skills.gemLevel.descNormal"),
+			gemLevel = "normalMaximum",
+		},
+		{
+			label = i18n.t("skills.gemLevel.corruptedMax"),
+			description = i18n.t("skills.gemLevel.descCorrupted"),
+			gemLevel = "corruptedMaximum",
+		},
+		{
+			label = i18n.t("skills.gemLevel.awakenedMax"),
+			description = i18n.t("skills.gemLevel.descAwakened"),
+			gemLevel = "awakenedMaximum",
+		},
+		{
+			label = i18n.t("skills.gemLevel.matchCharLevel"),
+			description = i18n.t("skills.gemLevel.descCharacter"),
+			gemLevel = "characterLevel",
+		},
+	}
+end
 
-local showSupportGemTypeList = {
-	{ label = "All", show = "ALL" },
-	{ label = "Non-Awakened", show = "NORMAL" },
-	{ label = "Awakened", show = "AWAKENED" },
-}
+local function getShowSupportGemTypeList()
+	return {
+		{ label = i18n.t("skills.supportGems.all"), show = "ALL" },
+		{ label = i18n.t("skills.supportGems.nonAwakened"), show = "NORMAL" },
+		{ label = i18n.t("skills.supportGems.awakened"), show = "AWAKENED" },
+	}
+end
 
-local sortGemTypeList = {
-	{ label = "Full DPS", type = "FullDPS" },
-	{ label = "Combined DPS", type = "CombinedDPS" },
-	{ label = "Hit DPS", type = "TotalDPS" },
-	{ label = "Average Hit", type = "AverageDamage" },
-	{ label = "DoT DPS", type = "TotalDot" },
-	{ label = "Bleed DPS", type = "BleedDPS" },
-	{ label = "Ignite DPS", type = "IgniteDPS" },
-	{ label = "Poison DPS", type = "TotalPoisonDPS" },
-	{ label = "Effective Hit Pool", type = "TotalEHP" },
-}
+local function getSortGemTypeList()
+	return {
+		{ label = i18n.t("skills.dpsSort.fullDPS"), type = "FullDPS" },
+		{ label = i18n.t("skills.dpsSort.combinedDPS"), type = "CombinedDPS" },
+		{ label = i18n.t("skills.dpsSort.hitDPS"), type = "TotalDPS" },
+		{ label = i18n.t("skills.dpsSort.averageHit"), type = "AverageDamage" },
+		{ label = i18n.t("skills.dpsSort.dotDPS"), type = "TotalDot" },
+		{ label = i18n.t("skills.dpsSort.bleedDPS"), type = "BleedDPS" },
+		{ label = i18n.t("skills.dpsSort.igniteDPS"), type = "IgniteDPS" },
+		{ label = i18n.t("skills.dpsSort.poisonDPS"), type = "TotalPoisonDPS" },
+		{ label = i18n.t("skills.dpsSort.effectiveHitPool"), type = "TotalEHP" },
+	}
+end
 
-local alternateGemQualityList ={
-	{ label = "Default", type = "Default" },
-	{ label = "Anomalous", type = "Alternate1" },
-	{ label = "Divergent", type = "Alternate2" },
-	{ label = "Phantasmal", type = "Alternate3" },
-}
+local function getAlternateGemQualityList()
+	return {
+		{ label = i18n.t("skills.gemQuality.default"), type = "Default" },
+		{ label = i18n.t("skills.gemQuality.anomalous"), type = "Alternate1" },
+		{ label = i18n.t("skills.gemQuality.divergent"), type = "Alternate2" },
+		{ label = i18n.t("skills.gemQuality.phantasmal"), type = "Alternate3" },
+	}
+end
+
+local function translateGemName(name)
+	if not name then return name end
+	local key = "gems." .. name
+	local val = i18n.t(key)
+	return val ~= key and val or name
+end
+
+local function translateItemName(source)
+	if not source then return "???" end
+	local name = source.name or source.dn or "???"
+	if source.rarity == "UNIQUE" and source.title and i18n and i18n.lookup then
+		local translated = i18n.lookup("uniqueNames", source.title)
+		if translated and type(translated) == "string" and #translated > 0 then
+			local baseName = source.baseName and source.baseName:gsub(" %(.+%)","") or ""
+			name = translated .. (baseName ~= "" and ", " .. baseName or "")
+		end
+	end
+	return name
+end
 
 local SkillsTabClass = newClass("SkillsTab", "UndoHandler", "ControlHost", "Control", function(self, build)
 	self.UndoHandler()
@@ -101,35 +129,27 @@ local SkillsTabClass = newClass("SkillsTab", "UndoHandler", "ControlHost", "Cont
 	self.controls.setSelect.enabled = function()
 		return #self.skillSetOrderList > 1
 	end
-	self.controls.setLabel = new("LabelControl", { "RIGHT", self.controls.setSelect, "LEFT" }, { -2, 0, 0, 16 }, "^7Skill set:")
-	self.controls.setManage = new("ButtonControl", { "LEFT", self.controls.setSelect, "RIGHT" }, { 4, 0, 90, 20 }, "Manage...", function()
+	self.controls.setLabel = new("LabelControl", { "RIGHT", self.controls.setSelect, "LEFT" }, { -2, 0, 0, 16 }, "^7" .. i18n.t("skills.ui.skillSet"))
+	self.controls.setManage = new("ButtonControl", { "LEFT", self.controls.setSelect, "RIGHT" }, { 4, 0, 90, 20 }, i18n.t("skills.ui.manage"), function()
 		self:OpenSkillSetManagePopup()
 	end)
 
 	-- Socket group list
 	self.controls.groupList = new("SkillListControl", { "TOPLEFT", self, "TOPLEFT" }, { 20, 54, 360, 300 }, self)
-	self.controls.groupTip = new("LabelControl", { "TOPLEFT", self.controls.groupList, "BOTTOMLEFT" }, { 0, 8, 0, 14 }, 
-[[
-^7Usage Tips:
-- You can copy/paste socket groups using Ctrl+C and Ctrl+V.
-- Ctrl + Click to enable/disable socket groups.
-- Ctrl + Right click to include/exclude in FullDPS calculations.
-- Right click to set as the Main skill group.
-]]
-	)
+	self.controls.groupTip = new("LabelControl", { "TOPLEFT", self.controls.groupList, "BOTTOMLEFT" }, { 0, 8, 0, 14 }, i18n.t("skills.usageTips"))
 
 	-- Gem options
 	local optionInputsX = 170
 	local optionSectionTop = 95
 	local optionControlTop = 20
-	self.controls.optionSection = new("SectionControl", { "TOPLEFT", self.controls.groupList, "BOTTOMLEFT" }, { 0, optionSectionTop, 360, 130 }, "Gem Options")
-	self.controls.sortGemsByDPS = new("CheckBoxControl", { "TOPLEFT", self.controls.optionSection, "TOPLEFT" }, { optionInputsX, optionControlTop, 20 }, "^7Sort gems by DPS:", function(state)
+	self.controls.optionSection = new("SectionControl", { "TOPLEFT", self.controls.groupList, "BOTTOMLEFT" }, { 0, optionSectionTop, 360, 130 }, i18n.t("skills.ui.gemOptions"))
+	self.controls.sortGemsByDPS = new("CheckBoxControl", { "TOPLEFT", self.controls.optionSection, "TOPLEFT" }, { optionInputsX, optionControlTop, 20 }, "^7" .. i18n.t("skills.ui.sortByDPS"), function(state)
 		self.sortGemsByDPS = state
 	end, nil, true)
-	self.controls.sortGemsByDPSFieldControl = new("DropDownControl", { "LEFT", self.controls.sortGemsByDPS, "RIGHT" }, { 10, 0, 140, 20 }, sortGemTypeList, function(index, value)
+	self.controls.sortGemsByDPSFieldControl = new("DropDownControl", { "LEFT", self.controls.sortGemsByDPS, "RIGHT" }, { 10, 0, 140, 20 }, getSortGemTypeList(), function(index, value)
 		self.sortGemsByDPSField = value.type
 	end)
-	self.controls.defaultLevel = new("DropDownControl", { "TOPLEFT", self.controls.optionSection, "TOPLEFT" }, { optionInputsX, optionControlTop + 24, 170, 20 }, defaultGemLevelList, function(index, value)
+	self.controls.defaultLevel = new("DropDownControl", { "TOPLEFT", self.controls.optionSection, "TOPLEFT" }, { optionInputsX, optionControlTop + 24, 170, 20 }, getDefaultGemLevelList(), function(index, value)
 		self.defaultGemLevel = value.gemLevel
 	end)
 	self.controls.defaultLevel.tooltipFunc = function(tooltip, mode, index, value)
@@ -138,15 +158,15 @@ local SkillsTabClass = newClass("SkillsTab", "UndoHandler", "ControlHost", "Cont
 			tooltip:AddLine(16, "^7" .. value.description)
 		end
 	end
-	self.controls.defaultLevelLabel = new("LabelControl", { "RIGHT", self.controls.defaultLevel, "LEFT" }, { -4, 0, 0, 16 }, "^7Default gem level:")
+	self.controls.defaultLevelLabel = new("LabelControl", { "RIGHT", self.controls.defaultLevel, "LEFT" }, { -4, 0, 0, 16 }, "^7" .. i18n.t("skills.ui.defaultLevel"))
 	self.controls.defaultQuality = new("EditControl", { "TOPLEFT", self.controls.optionSection, "TOPLEFT" }, { optionInputsX, optionControlTop + 48, 60, 20 }, nil, nil, "%D", 2, function(buf)
 		self.defaultGemQuality = m_min(tonumber(buf) or 0, 23)
 	end)
-	self.controls.defaultQualityLabel = new("LabelControl", { "RIGHT", self.controls.defaultQuality, "LEFT" }, { -4, 0, 0, 16 }, "^7Default gem quality:")
-	self.controls.showSupportGemTypes = new("DropDownControl", { "TOPLEFT", self.controls.optionSection, "TOPLEFT" }, { optionInputsX, optionControlTop + 72, 170, 20 }, showSupportGemTypeList, function(index, value)
+	self.controls.defaultQualityLabel = new("LabelControl", { "RIGHT", self.controls.defaultQuality, "LEFT" }, { -4, 0, 0, 16 }, "^7" .. i18n.t("skills.ui.defaultQuality"))
+	self.controls.showSupportGemTypes = new("DropDownControl", { "TOPLEFT", self.controls.optionSection, "TOPLEFT" }, { optionInputsX, optionControlTop + 72, 170, 20 }, getShowSupportGemTypeList(), function(index, value)
 		self.showSupportGemTypes = value.show
 	end)
-	self.controls.showSupportGemTypesLabel = new("LabelControl", { "RIGHT", self.controls.showSupportGemTypes, "LEFT" }, { -4, 0, 0, 16 }, "^7Show support gems:")
+	self.controls.showSupportGemTypesLabel = new("LabelControl", { "RIGHT", self.controls.showSupportGemTypes, "LEFT" }, { -4, 0, 0, 16 }, "^7" .. i18n.t("skills.ui.showSupport"))
 
 	-- Socket group details
 	if main.portraitMode then
@@ -157,14 +177,14 @@ local SkillsTabClass = newClass("SkillsTab", "UndoHandler", "ControlHost", "Cont
 	self.anchorGroupDetail.shown = function()
 		return self.displayGroup ~= nil
 	end
-	self.controls.groupLabel = new("EditControl", { "TOPLEFT", self.anchorGroupDetail, "TOPLEFT" }, { 0, 0, 380, 20 }, nil, "Label", "%c", 50, function(buf)
+	self.controls.groupLabel = new("EditControl", { "TOPLEFT", self.anchorGroupDetail, "TOPLEFT" }, { 0, 0, 380, 20 }, nil, i18n.t("skills.ui.label"), "%c", 50, function(buf)
 		self.displayGroup.label = buf
 		self:ProcessSocketGroup(self.displayGroup)
 		self:AddUndoState()
 		self.build.buildFlag = true
 	end)
-	self.controls.groupSlotLabel = new("LabelControl", { "TOPLEFT", self.anchorGroupDetail, "TOPLEFT" }, { 0, 30, 0, 16 }, "^7Socketed in:")
-	self.controls.groupSlot = new("DropDownControl", { "TOPLEFT", self.anchorGroupDetail, "TOPLEFT" }, { 85, 28, 130, 20 }, groupSlotDropList, function(index, value)
+	self.controls.groupSlotLabel = new("LabelControl", { "TOPLEFT", self.anchorGroupDetail, "TOPLEFT" }, { 0, 30, 0, 16 }, "^7" .. i18n.t("skills.ui.socketedIn"))
+	self.controls.groupSlot = new("DropDownControl", { "TOPLEFT", self.anchorGroupDetail, "TOPLEFT" }, { 85, 28, 130, 20 }, getGroupSlotDropList(), function(index, value)
 		self.displayGroup.slot = value.slotName
 		self:AddUndoState()
 		self.build.buildFlag = true
@@ -172,8 +192,8 @@ local SkillsTabClass = newClass("SkillsTab", "UndoHandler", "ControlHost", "Cont
 	self.controls.groupSlot.tooltipFunc = function(tooltip, mode, index, value)
 		tooltip:Clear()
 		if mode == "OUT" or index == 1 then
-			tooltip:AddLine(16, "Select the item in which this skill is socketed.")
-			tooltip:AddLine(16, "This will allow the skill to benefit from modifiers on the item that affect socketed gems.")
+			tooltip:AddLine(16, i18n.t("skills.tooltips.selectSlot"))
+			tooltip:AddLine(16, i18n.t("skills.tooltips.slotBenefit"))
 		elseif self.build.itemsTab and self.build.itemsTab.slots then
 			local slot = self.build.itemsTab.slots[value.slotName]
 			if slot then
@@ -181,29 +201,29 @@ local SkillsTabClass = newClass("SkillsTab", "UndoHandler", "ControlHost", "Cont
 				if ttItem then
 					self.build.itemsTab:AddItemTooltip(tooltip, ttItem, slot)
 				else
-					tooltip:AddLine(16, "No item is equipped in this slot.")
+					tooltip:AddLine(16, i18n.t("skills.tooltips.noItem"))
 				end
 			else
-				tooltip:AddLine(16, "No item is equipped in this slot.")
+				tooltip:AddLine(16, i18n.t("skills.tooltips.noItem"))
 			end
 		else
-			tooltip:AddLine(16, "No item is equipped in this slot.")
+			tooltip:AddLine(16, i18n.t("skills.tooltips.noItem"))
 		end
 	end
 	self.controls.groupSlot.enabled = function()
 		return self.displayGroup.source == nil
 	end
-	self.controls.groupEnabled = new("CheckBoxControl", { "LEFT", self.controls.groupSlot, "RIGHT" }, { 70, 0, 20 }, "Enabled:", function(state)
+	self.controls.groupEnabled = new("CheckBoxControl", { "LEFT", self.controls.groupSlot, "RIGHT" }, { 70, 0, 20 }, i18n.t("skills.ui.enabled"), function(state)
 		self.displayGroup.enabled = state
 		self:AddUndoState()
 		self.build.buildFlag = true
 	end)
-	self.controls.includeInFullDPS = new("CheckBoxControl", { "LEFT", self.controls.groupEnabled, "RIGHT" }, { 145, 0, 20 }, "Include in Full DPS:", function(state)
+	self.controls.includeInFullDPS = new("CheckBoxControl", { "LEFT", self.controls.groupEnabled, "RIGHT" }, { 145, 0, 20 }, i18n.t("skills.ui.includeFullDPS"), function(state)
 		self.displayGroup.includeInFullDPS = state
 		self:AddUndoState()
 		self.build.buildFlag = true
 	end)
-	self.controls.groupCountLabel = new("LabelControl", { "LEFT", self.controls.includeInFullDPS, "RIGHT" }, { 16, 0, 0, 16 }, "Count:")
+	self.controls.groupCountLabel = new("LabelControl", { "LEFT", self.controls.includeInFullDPS, "RIGHT" }, { 16, 0, 0, 16 }, i18n.t("skills.ui.count"))
 	self.controls.groupCountLabel.shown = function()
 		return self.displayGroup.source ~= nil
 	end
@@ -264,11 +284,11 @@ will automatically apply to the skill.]]
 	self.anchorGemSlots = new("Control", {"TOPLEFT",self.anchorGroupDetail,"TOPLEFT"}, {0, 28 + 28 + 16, 0, 0})
 	self.gemSlots = { }
 	self:CreateGemSlot(1)
-	self.controls.gemNameHeader = new("LabelControl", {"BOTTOMLEFT", self.gemSlots[1].nameSpec, "TOPLEFT"}, {0, -2, 0, 16}, "^7Gem name:")
-	self.controls.gemLevelHeader = new("LabelControl", {"BOTTOMLEFT", self.gemSlots[1].level, "TOPLEFT"}, {0, -2, 0, 16}, "^7Level:")
-	self.controls.gemQualityHeader = new("LabelControl", {"BOTTOMLEFT", self.gemSlots[1].quality, "TOPLEFT"}, {0, -2, 0, 16}, "^7Quality:")
-	self.controls.gemEnableHeader = new("LabelControl", {"BOTTOMLEFT", self.gemSlots[1].enabled, "TOPLEFT"}, {-16, -2, 0, 16}, "^7Enabled:")
-	self.controls.gemCountHeader = new("LabelControl", {"BOTTOMLEFT", self.gemSlots[1].count, "TOPLEFT"}, {8, -2, 0, 16}, "^7Count:")
+	self.controls.gemNameHeader = new("LabelControl", {"BOTTOMLEFT", self.gemSlots[1].nameSpec, "TOPLEFT"}, {0, -2, 0, 16}, "^7" .. i18n.t("skills.ui.gemName"))
+	self.controls.gemLevelHeader = new("LabelControl", {"BOTTOMLEFT", self.gemSlots[1].level, "TOPLEFT"}, {0, -2, 0, 16}, "^7" .. i18n.t("skills.ui.level"))
+	self.controls.gemQualityHeader = new("LabelControl", {"BOTTOMLEFT", self.gemSlots[1].quality, "TOPLEFT"}, {0, -2, 0, 16}, "^7" .. i18n.t("skills.ui.quality"))
+	self.controls.gemEnableHeader = new("LabelControl", {"BOTTOMLEFT", self.gemSlots[1].enabled, "TOPLEFT"}, {-16, -2, 0, 16}, "^7" .. i18n.t("skills.ui.enabled"))
+	self.controls.gemCountHeader = new("LabelControl", {"BOTTOMLEFT", self.gemSlots[1].count, "TOPLEFT"}, {8, -2, 0, 16}, "^7" .. i18n.t("skills.ui.count"))
 
 end)
 
@@ -634,7 +654,7 @@ function SkillsTabClass:CreateGemSlot(index)
 		for index2 = index, #self.displayGroup.gemList do
 			-- Update the other gem slot controls
 			local gemInstance = self.displayGroup.gemList[index2]
-			self.gemSlots[index2].nameSpec:SetText(gemInstance.nameSpec)
+			self.gemSlots[index2].nameSpec:SetText(translateGemName(gemInstance.nameSpec))
 			self.gemSlots[index2].level:SetText(gemInstance.level)
 			self.gemSlots[index2].quality:SetText(gemInstance.quality)
 			self.gemSlots[index2].enabled.state = gemInstance.enabled
@@ -659,7 +679,7 @@ function SkillsTabClass:CreateGemSlot(index)
 	slot.delete.enabled = function()
 		return index <= #self.displayGroup.gemList
 	end
-	slot.delete.tooltipText = "Remove this gem."
+	slot.delete.tooltipText = i18n.t("skills.tooltips.removeGem")
 	self.controls["gemSlot"..index.."Delete"] = slot.delete
 
 	-- Gem name specification
@@ -772,7 +792,7 @@ function SkillsTabClass:CreateGemSlot(index)
 					tooltip:AddLine(18, colorCodes.GEM..grantedEffect.name)
 				end
 				-- Hardcoded to use 20% quality instead of grabbing from gem, this is for consistency and so we always show something
-				tooltip:AddLine(16, colorCodes.NORMAL.."At +20% Quality:")
+				tooltip:AddLine(16, colorCodes.NORMAL .. i18n.t("skills.tooltips.atQuality"))
 				for k, qual in pairs(qualityList) do
 					-- Do the stats one at a time because we're not guaranteed to get the descriptions in the same order we look at them here
 					local stats = { }
@@ -819,7 +839,7 @@ function SkillsTabClass:CreateGemSlot(index)
 				local output = calcFunc()
 				self.displayGroup.gemList[index].quality = storedQuality
 				tooltip:AddSeparator(10)
-				self.build:AddStatComparesToTooltip(tooltip, calcBase, output, "^7Setting to 20 quality will give you:")
+				self.build:AddStatComparesToTooltip(tooltip, calcBase, output, "^7" .. i18n.t("statCompare.settingQuality"))
 			end
 		end
 	end
@@ -858,7 +878,7 @@ function SkillsTabClass:CreateGemSlot(index)
 					self.displayGroup.gemList[index].enabled = not self.displayGroup.gemList[index].enabled
 					local output = calcFunc()
 					self.displayGroup.gemList[index].enabled = not self.displayGroup.gemList[index].enabled
-					self.build:AddStatComparesToTooltip(tooltip, calcBase, output, self.displayGroup.gemList[index].enabled and "^7Disabling this gem will give you:" or "^7Enabling this gem will give you:")
+					self.build:AddStatComparesToTooltip(tooltip, calcBase, output, self.displayGroup.gemList[index].enabled and ("^7" .. i18n.t("skills.tooltips.disableGem")) or ("^7" .. i18n.t("skills.tooltips.enableGem")))
 				end
 			end
 		end
@@ -899,9 +919,9 @@ function SkillsTabClass:CreateGemSlot(index)
 	end
 	slot.count.tooltipFunc = function(tooltip)
 		if tooltip:CheckForUpdate(self.build.outputRevision, self.displayGroup) then
-			tooltip:AddLine(16, "^8Note: `count` integer value scales the DPS of associated skill by a scalar.")
-			tooltip:AddLine(16, "^8To be used with totems, minions, shot-gunning of projectiles (e.g., VD, magma-orbs),")
-			tooltip:AddLine(16, "^8multi-hit projectiles (e.g. ball-lightning), traps, mines.")
+			tooltip:AddLine(16, "^8" .. i18n.t("skills.tooltips.countNote"))
+			tooltip:AddLine(16, "^8" .. i18n.t("skills.tooltips.countUsage1"))
+			tooltip:AddLine(16, "^8" .. i18n.t("skills.tooltips.countUsage2"))
 		end
 	end
 	slot.count.enabled = function()
@@ -1135,7 +1155,7 @@ function SkillsTabClass:SetDisplayGroup(socketGroup)
 		-- Update the gem slot controls
 		self:UpdateGemSlots()
 		for index, gemInstance in pairs(socketGroup.gemList) do
-			self.gemSlots[index].nameSpec:SetText(gemInstance.nameSpec)
+			self.gemSlots[index].nameSpec:SetText(translateGemName(gemInstance.nameSpec))
 			self.gemSlots[index].level:SetText(gemInstance.level)
 			self.gemSlots[index].quality:SetText(gemInstance.quality)
 			self.gemSlots[index].enabled.state = gemInstance.enabled
@@ -1149,16 +1169,16 @@ end
 function SkillsTabClass:AddSocketGroupTooltip(tooltip, socketGroup)
 	if socketGroup.explodeSources then
 		for _, source in ipairs(socketGroup.explodeSources) do
-			tooltip:AddLine(18, "^7Source: " .. colorCodes[source.rarity or "NORMAL"] .. (source.name or source.dn or "???"))
+			tooltip:AddLine(18, "^7" .. i18n.t("skills.tooltips.source") .. colorCodes[source.rarity or "NORMAL"] .. translateItemName(source))
 		end
 		return
 	end
 	if socketGroup.enabled and not socketGroup.slotEnabled then
-		tooltip:AddLine(16, "^7Note: this group is disabled because it is socketed in the inactive weapon set.")
+		tooltip:AddLine(16, "^7" .. i18n.t("skills.tooltips.inactiveWeapon"))
 	end
 	local sourceSingle = socketGroup.sourceItem or socketGroup.sourceNode
 	if sourceSingle then
-		tooltip:AddLine(18, "^7Source: " .. colorCodes[sourceSingle.rarity or "NORMAL"] .. sourceSingle.name)
+		tooltip:AddLine(18, "^7" .. i18n.t("skills.tooltips.source") .. colorCodes[sourceSingle.rarity or "NORMAL"] .. translateItemName(sourceSingle))
 		tooltip:AddSeparator(10)
 	end
 	local gemShown = { }
@@ -1166,11 +1186,11 @@ function SkillsTabClass:AddSocketGroupTooltip(tooltip, socketGroup)
 		if index > 1 then
 			tooltip:AddSeparator(10)
 		end
-		tooltip:AddLine(16, "^7Active Skill #"..index..":")
+		tooltip:AddLine(16, "^7" .. string.format(i18n.t("skills.tooltips.activeSkill"), index))
 		for _, skillEffect in ipairs(activeSkill.effectList) do
 			tooltip:AddLine(20, string.format("%s%s ^7%d%s/%d%s",
 				data.skillColorMap[skillEffect.grantedEffect.color or skillEffect.gemData and skillEffect.gemData.grantedEffect.color],
-				skillEffect.srcInstance.nameSpec or skillEffect.grantedEffect.name,
+				translateGemName(skillEffect.srcInstance and skillEffect.srcInstance.nameSpec or skillEffect.grantedEffect.name),
 				skillEffect.srcInstance and skillEffect.srcInstance.level or skillEffect.level,
 				(skillEffect.srcInstance and skillEffect.level > skillEffect.srcInstance.level) and colorCodes.MAGIC.."+"..(skillEffect.level - skillEffect.srcInstance.level).."^7" or "",
 				skillEffect.srcInstance and skillEffect.srcInstance.quality or skillEffect.quality,
@@ -1182,11 +1202,11 @@ function SkillsTabClass:AddSocketGroupTooltip(tooltip, socketGroup)
 		end
 		if activeSkill.minion then
 			tooltip:AddSeparator(10)
-			tooltip:AddLine(16, "^7Active Skill #" .. index .. "'s Main Minion Skill:")
+			tooltip:AddLine(16, "^7" .. string.format(i18n.t("skills.tooltips.minionSkill"), index))
 			local activeEffect = activeSkill.minion.mainSkill.effectList[1]
 			tooltip:AddLine(20, string.format("%s%s ^7%d/%d",
 				data.skillColorMap[activeEffect.grantedEffect.color] or colorCodes.NORMAL,
-				activeEffect.grantedEffect.name,
+				translateGemName(activeEffect.grantedEffect.name),
 				activeEffect.level,
 				activeEffect.quality
 			))
@@ -1201,7 +1221,7 @@ function SkillsTabClass:AddSocketGroupTooltip(tooltip, socketGroup)
 			if showOtherHeader then
 				showOtherHeader = false
 				tooltip:AddSeparator(10)
-				tooltip:AddLine(16, "^7Inactive Gems:")
+				tooltip:AddLine(16, "^7" .. i18n.t("skills.tooltips.inactiveGems"))
 			end
 			local reason = ""
 			local displayEffect = gemInstance.displayEffect or gemInstance
@@ -1220,7 +1240,7 @@ function SkillsTabClass:AddSocketGroupTooltip(tooltip, socketGroup)
 			end
 			tooltip:AddLine(20, string.format("%s%s ^7%d%s/%d%s %s",
 				gemInstance.color,
-				(gemInstance.grantedEffect and gemInstance.grantedEffect.name) or (gemInstance.gemData and gemInstance.gemData.name) or gemInstance.nameSpec,
+				translateGemName((gemInstance.grantedEffect and gemInstance.grantedEffect.name) or (gemInstance.gemData and gemInstance.gemData.name) or gemInstance.nameSpec),
 				displayEffect.srcInstance and displayEffect.srcInstance.level or displayEffect.level,
 				displayEffect.level > gemInstance.level and colorCodes.MAGIC .. "+" .. (displayEffect.level - gemInstance.level) .. "^7" or "",
 				displayEffect.srcInstance and displayEffect.srcInstance.quality or displayEffect.quality,

@@ -33,6 +33,7 @@ function TooltipClass:Clear(clearUpdateParams)
 	self.center = false
 	self.maxWidth = nil
 	self.color = { 0.5, 0.3, 0 }
+	self._descFrameInfo = nil
 	t_insert(self.blocks, { height = 0 })
 end
 
@@ -78,6 +79,31 @@ function TooltipClass:AddLine(size, text, font, background)
 				t_insert(self.lines, { size = size, text = line, block = #self.blocks, font = fontToUse, center = self.center, background = background })
 			end
 		end
+	end
+end
+
+function TooltipClass:AddDescriptionBlock(lines, size, font, color, maxPixelWidth)
+	local framePad = 12
+	self._descFrameInfo = {
+		maxWidth = 475,
+		pad = framePad,
+	}
+	local fontToUse
+	if main.showFlavourText then
+		fontToUse = font or "VAR"
+	else
+		fontToUse = "VAR"
+	end
+	for _, line in ipairs(lines) do
+		self.blocks[#self.blocks].height = self.blocks[#self.blocks].height + size + 2
+		t_insert(self.lines, {
+			size = size,
+			text = color .. line,
+			block = #self.blocks,
+			font = fontToUse,
+			center = false,
+			_descFrame = true,
+		})
 	end
 end
 
@@ -155,6 +181,9 @@ function TooltipClass:GetSize()
 		ttW = m_max(ttW, imageX)
 	end
 
+	if self.maxWidth and ttW + H_PAD > self.maxWidth then
+		ttW = self.maxWidth - H_PAD
+	end
 	return ttW + H_PAD, ttH + V_PAD
 end
 
@@ -176,6 +205,11 @@ function TooltipClass:CalculateColumns(ttY, ttX, ttH, ttW, viewPort)
 	local currentBlock = 1
 	local maxColumnHeight = 0
 	local drawStack = {}
+	local descFrameStackStart = nil
+	local descFrameYStart = nil
+	local descFrameYEnd = nil
+	local descFrameX = nil
+	local descFrameW = nil
 	local font
 
 	for i, data in ipairs(self.lines) do
@@ -242,15 +276,32 @@ function TooltipClass:CalculateColumns(ttY, ttX, ttH, ttW, viewPort)
 			end
 			currentBlock = data.block
 
-			local lineCentered = data.center
-			if lineCentered == nil then
-				lineCentered = self.center
-			end
-			local lineX = lineCentered and (x + ttW / 2) or (x + 6)
-			local lineAlign = lineCentered and "CENTER_X" or "LEFT"
+			if data._descFrame and self._descFrameInfo then
+				-- Description frame: left-align within centered frame
+				local frameInfo = self._descFrameInfo
+				local frameW = ttW - 10
+				local frameInset = 5
+				if not descFrameStackStart then
+					descFrameStackStart = #drawStack + 1
+					descFrameYStart = y
+					descFrameX = x + frameInset
+					descFrameW = frameW
+				end
+				descFrameYEnd = y + data.size + 2
+				local lineX = x + frameInset + frameInfo.pad
+				t_insert(drawStack, {lineX, y, "LEFT", data.size, font, data.text, background = data.background})
+				y = y + data.size + 2
+			else
+				local lineCentered = data.center
+				if lineCentered == nil then
+					lineCentered = self.center
+				end
+				local lineX = lineCentered and (x + ttW / 2) or (x + 6)
+				local lineAlign = lineCentered and "CENTER_X" or "LEFT"
 
-			t_insert(drawStack, {lineX, y, lineAlign, data.size, font, data.text, background = data.background})
-			y = y + data.size + 2
+				t_insert(drawStack, {lineX, y, lineAlign, data.size, font, data.text, background = data.background})
+				y = y + data.size + 2
+			end
 
 		elseif data.separatorImage and main.showFlavourText then
 			local sepSize = data.size or 10
@@ -269,6 +320,29 @@ function TooltipClass:CalculateColumns(ttY, ttX, ttH, ttW, viewPort)
 		end
 
 		maxColumnHeight = m_max(y - ttY + 2 * BORDER_WIDTH, maxColumnHeight)
+	end
+
+	-- Add description frame visuals
+	if descFrameStackStart and descFrameYStart and descFrameYEnd then
+		local pad = 4
+		local fx = descFrameX - pad
+		local fy = descFrameYStart - pad
+		local fw = descFrameW + pad * 2
+		local fh = descFrameYEnd - descFrameYStart + pad
+		-- Background (very dark, slightly lighter than tooltip)
+		local bg = {nil, fx + 1, fy + 1, fw - 2, fh - 2}
+		bg._frameColor = {0.06, 0.05, 0.03}
+		table.insert(drawStack, descFrameStackStart, bg)
+		-- Border lines (muted amber to match tooltip theme)
+		local borderColor = {0.25, 0.2, 0.1}
+		local topB = {nil, fx, fy, fw, 1}; topB._frameColor = borderColor
+		local botB = {nil, fx, fy + fh, fw, 1}; botB._frameColor = borderColor
+		local lftB = {nil, fx, fy, 1, fh}; lftB._frameColor = borderColor
+		local rgtB = {nil, fx + fw - 1, fy, 1, fh + 1}; rgtB._frameColor = borderColor
+		t_insert(drawStack, topB)
+		t_insert(drawStack, botB)
+		t_insert(drawStack, lftB)
+		t_insert(drawStack, rgtB)
 	end
 
 	return columns, maxColumnHeight, drawStack
@@ -457,6 +531,8 @@ function TooltipClass:Draw(x, y, w, h, viewPort)
 				else
 					SetDrawColor(1, 1, 1)
 				end
+			elseif line._frameColor then
+				SetDrawColor(unpack(line._frameColor))
 			elseif type(self.color) == "string" then
 				SetDrawColor(self.color)
 			else

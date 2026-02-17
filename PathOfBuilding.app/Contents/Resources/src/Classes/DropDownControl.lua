@@ -254,7 +254,7 @@ function DropDownClass:Draw(viewPort, noTooltip)
 		SetDrawColor(0.5, 0.5, 0.5)
 	end
 	DrawImage(nil, x, y, width, height)
-	if self.dropped then
+	if self.dropped and not (main.deferTooltips and main.tooltipQueue) then
 		SetDrawLayer(nil, 5)
 		DrawImage(nil, x, dropY, self.droppedWidth, dropExtra)
 		SetDrawLayer(nil, 0)
@@ -275,7 +275,7 @@ function DropDownClass:Draw(viewPort, noTooltip)
 		SetDrawColor(0.5, 0.5, 0.5)
 	end
 	main:DrawArrow(x + width - height/2, y + height/2, height/2, height/2, "DOWN")
-	if self.dropped then
+	if self.dropped and not (main.deferTooltips and main.tooltipQueue) then
 		SetDrawLayer(nil, 5)
 		SetDrawColor(0, 0, 0)
 		DrawImage(nil, x + 1, dropY + 1, self.droppedWidth - 2, dropExtra - 2)
@@ -305,7 +305,7 @@ function DropDownClass:Draw(viewPort, noTooltip)
 	local selLabel = nil
 	local selDetail = nil
 	if self:IsSearchActive() then
-		selLabel = "Search: " .. self:GetSearchTermPretty()
+		selLabel = i18n.t("items.filter.search") .. self:GetSearchTermPretty()
 	else
 		local selItem = self.list[self.selIndex]
 		if type(selItem) == "table" then
@@ -325,78 +325,90 @@ function DropDownClass:Draw(viewPort, noTooltip)
 
 	-- draw dropped down part with items
 	if self.dropped then
-		SetDrawLayer(nil, 5)
-		self:DrawControls(viewPort)
+		-- Mouse detection must run every frame (not deferred)
 		width = self.droppedWidth
+		local cursorX, cursorY = GetCursorPos()
+		self.hoverSelDrop = mOver and not scrollBar:IsMouseOver() and math.floor((cursorY - dropY + scrollBar.offset) / lineHeight) + 1
+		self.hoverSel = self:DropIndexToListIndex(self.hoverSelDrop)
+		if self.hoverSel and not self.list[self.hoverSel] then
+			self.hoverSel = nil
+		end
 
-		-- draw tooltip for hovered item
-		local cursorX, cursorY = GetCursorPos()
-		self.hoverSelDrop = mOver and not scrollBar:IsMouseOver() and math.floor((cursorY - dropY + scrollBar.offset) / lineHeight) + 1
-		self.hoverSel = self:DropIndexToListIndex(self.hoverSelDrop)
-		if self.hoverSel and not self.list[self.hoverSel] then
-			self.hoverSel = nil
-		end
-		-- draw dropdown items first (so tooltips render on top)
-		SetViewport(x + 2, dropY + 2, scrollBar.enabled and width - 22 or width - 4, self.dropHeight)
-		local cursorX, cursorY = GetCursorPos()
-		self.hoverSelDrop = mOver and not scrollBar:IsMouseOver() and math.floor((cursorY - dropY + scrollBar.offset) / lineHeight) + 1
-		self.hoverSel = self:DropIndexToListIndex(self.hoverSelDrop)
-		if self.hoverSel and not self.list[self.hoverSel] then
-			self.hoverSel = nil
-		end
-		local dropIndex = 0
-		for index, listVal in ipairs(self.list) do
-			local searchInfo = self.searchInfos[index]
-			-- skip filtered out items if search is active
-			if not self:IsSearchActive() or searchInfo and searchInfo.matches then
-				dropIndex = dropIndex + 1
-				local y = (dropIndex - 1) * lineHeight - scrollBar.offset
-				-- highlight background if hovered
-				if index == self.hoverSel then
-					SetDrawColor(0.33, 0.33, 0.33)
-					DrawImage(nil, 0, y, width - 4, lineHeight)
+		-- Capture locals for deferred rendering
+		local _self = self
+		local _x, _dropY, _width, _dropExtra = x, dropY, self.droppedWidth, dropExtra
+		local _viewPort = viewPort
+		local _scrollBar = scrollBar
+		local _lineHeight = lineHeight
+		local _mOver = mOver
+		local _noTooltip = noTooltip
+		local _hoverSel = self.hoverSel
+		local _hoverSelDrop = self.hoverSelDrop
+		local _selIndex = self.selIndex
+
+		local function drawDropdownOverlay()
+			-- Border (white)
+			SetDrawColor(1, 1, 1)
+			DrawImage(nil, _x, _dropY, _width, _dropExtra)
+			-- Background (black)
+			SetDrawColor(0, 0, 0)
+			DrawImage(nil, _x + 1, _dropY + 1, _width - 2, _dropExtra - 2)
+			-- Scrollbar
+			_self:DrawControls(_viewPort)
+			-- Items
+			SetViewport(_x + 2, _dropY + 2, _scrollBar.enabled and _width - 22 or _width - 4, _self.dropHeight)
+			local dropIndex = 0
+			for index, listVal in ipairs(_self.list) do
+				local searchInfo = _self.searchInfos[index]
+				if not _self:IsSearchActive() or searchInfo and searchInfo.matches then
+					dropIndex = dropIndex + 1
+					local y = (dropIndex - 1) * _lineHeight - _scrollBar.offset
+					if index == _hoverSel then
+						SetDrawColor(0.33, 0.33, 0.33)
+						DrawImage(nil, 0, y, _width - 4, _lineHeight)
+					end
+					if index == _hoverSel or index == _selIndex then
+						SetDrawColor(1, 1, 1)
+					else
+						SetDrawColor(0.66, 0.66, 0.66)
+					end
+					local label = nil
+					local detail = nil
+					if type(listVal) == "table" then
+						label = listVal.label
+						detail = listVal.detail
+					else
+						label = listVal
+					end
+					DrawString(0, y, "LEFT", _lineHeight, "VAR", label)
+					if detail ~= nil then
+						local detail = listVal.detail
+						local dx = DrawStringWidth(_lineHeight, "VAR", detail)
+						DrawString(_width - dx - 4 - 22, y, "LEFT", _lineHeight, "VAR", detail)
+					end
+					_self:DrawSearchHighlights(label, searchInfo, 0, y, _width - 4, _lineHeight)
 				end
-				-- highlight font color if hovered or selected
-				if index == self.hoverSel or index == self.selIndex then
-					SetDrawColor(1, 1, 1)
-				else
-					SetDrawColor(0.66, 0.66, 0.66)
-				end
-				-- draw actual item label with search match highlight if available
-				local label = nil
-				local detail = nil
-				if type(listVal) == "table" then
-					label = listVal.label
-					detail = listVal.detail
-				else
-					label = listVal
-				end
-				DrawString(0, y, "LEFT", lineHeight, "VAR", label)
-				if detail ~= nil then
-					local detail = listVal.detail
-					dx = DrawStringWidth(lineHeight, "VAR", detail)
-					DrawString(width - dx - 4 - 22, y, "LEFT", lineHeight, "VAR", detail)
-				end
-				self:DrawSearchHighlights(label, searchInfo, 0, y, width - 4, lineHeight)
+			end
+			SetDrawColor(1, 1, 1)
+			if _self:IsSearchActive() and _self:GetMatchCount() == 0 then
+				DrawString(0, 0, "LEFT", _lineHeight, "VAR", "<No matches>")
+			end
+			SetViewport()
+			-- Tooltip for hovered item
+			if _hoverSel and not _noTooltip then
+				_self:DrawTooltip(
+					_x, _dropY + 2 + (_hoverSelDrop - 1) * _lineHeight - _scrollBar.offset,
+					_width, _lineHeight,
+					_viewPort,
+					"HOVER", _hoverSel, _self.list[_hoverSel])
 			end
 		end
-		SetDrawColor(1, 1, 1)
-		if self:IsSearchActive() and self:GetMatchCount() == 0 then
-			DrawString(0, 0 , "LEFT", lineHeight, "VAR", "<No matches>")
-		end
-		SetViewport()
 
-		-- draw tooltip for hovered item (AFTER items so it renders on top)
-		if self.hoverSel and not noTooltip then
-			SetDrawLayer(nil, 100)
-			self:DrawTooltip(
-				x, dropY + 2 + (self.hoverSelDrop - 1) * lineHeight - scrollBar.offset,
-				width, lineHeight,
-				viewPort,
-				"HOVER", self.hoverSel, self.list[self.hoverSel])
-			SetDrawLayer(nil, 5)
+		if main.deferTooltips and main.tooltipQueue then
+			table.insert(main.tooltipQueue, drawDropdownOverlay)
+		else
+			drawDropdownOverlay()
 		end
-		SetDrawLayer(nil, 0)
 	end
 end
 

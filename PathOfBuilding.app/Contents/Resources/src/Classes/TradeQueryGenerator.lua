@@ -375,7 +375,9 @@ function TradeQueryGeneratorClass:InitMods()
 	end
 
 	self:GenerateModData(data.itemMods.Item, tradeQueryStatsParsed, regularItemMask)
-	self:GenerateModData(data.itemMods.Corruption, tradeQueryStatsParsed, regularItemMask)
+	if data.itemMods.Corruption then
+		self:GenerateModData(data.itemMods.Corruption, tradeQueryStatsParsed, regularItemMask)
+	end
 	self:GenerateModData(data.itemMods.Jewel, tradeQueryStatsParsed, { ["BaseJewel"] = true, ["AnyJewel"] = true, ["RadiusJewel"] = true })
 	self:GenerateModData(data.itemMods.Flask, tradeQueryStatsParsed, { ["LifeFlask"] = true, ["ManaFlask"] = true })
 	self:GenerateModData(data.itemMods.Charm, tradeQueryStatsParsed, { ["Charm"] = true })

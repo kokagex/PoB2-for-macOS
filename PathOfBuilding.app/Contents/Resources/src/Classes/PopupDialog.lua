@@ -61,8 +61,20 @@ function PopupDialogClass:Draw(viewPort)
 	if self.resizeFunc then
 		self.resizeFunc()
 	end
+	-- Enable deferred drawing for dropdown overlays within popup
+	-- (Metal backend: SetDrawLayer is no-op, so draw order = z-order)
+	local savedDefer = main.deferTooltips
+	main.deferTooltips = true
+	main.tooltipQueue = main.tooltipQueue or {}
 	-- Draw controls
 	self:DrawControls(viewPort)
+	-- Flush deferred dropdown overlays so they render on top of all controls
+	main.deferTooltips = false
+	for _, drawFunc in ipairs(main.tooltipQueue) do
+		drawFunc()
+	end
+	wipeTable(main.tooltipQueue)
+	main.deferTooltips = savedDefer
 end
 
 function PopupDialogClass:ProcessInput(inputEvents, viewPort)

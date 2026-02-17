@@ -13,8 +13,48 @@ local m_floor = math.floor
 
 local toolTipText = "Prefix tag searches with a colon and exclude tags with a dash. e.g. :fire:lightning:-cold:area"
 
+local function gemDisplayName(gemData)
+	if not gemData then return nil end
+	local key = "gems." .. gemData.name
+	local val = i18n.t(key)
+	return val ~= key and val or gemData.name
+end
+
+-- Translate gemType (e.g., "Attack" → "攻撃")
+local function gemTypeDisplay(gemType)
+	if not gemType then return "" end
+	local translated = i18n.lookup("gemTooltip.gemTypes", gemType)
+	return translated or gemType
+end
+
+-- Translate tagString (e.g., "AoE, Cold, Nova" → "範囲, 冷気, ノヴァ")
+local function tagStringDisplay(tagString)
+	if not tagString or tagString == "" then return "" end
+	local parts = {}
+	for tag in tagString:gmatch("[^,]+") do
+		tag = tag:match("^%s*(.-)%s*$")  -- trim whitespace
+		local translated = i18n.lookup("gemTooltip.tags", tag)
+		table.insert(parts, translated or tag)
+	end
+	return table.concat(parts, ", ")
+end
+
+-- Translate weapon requirements (e.g., "Bow" → "弓")
+local function weaponReqDisplay(weaponReq)
+	if not weaponReq then return "" end
+	local translated = i18n.lookup("gemTooltip.weaponRequirements", weaponReq)
+	return translated or weaponReq
+end
+
+-- Translate cost resource string (e.g., "{0} Mana" → "{0} マナ")
+local function costResourceDisplay(resourceString)
+	if not resourceString then return resourceString end
+	local translated = i18n.lookup("gemTooltip.costResources", resourceString)
+	return translated or resourceString
+end
+
 local GemSelectClass = newClass("GemSelectControl", "EditControl", function(self, anchor, rect, skillsTab, index, changeFunc, forceTooltip)
-	self.EditControl(anchor, rect, nil, nil, "^ %a':-")
+	self.EditControl(anchor, rect, nil, nil, nil)
 	self.controls.scrollBar = new("ScrollBarControl", { "TOPRIGHT", self, "TOPRIGHT" }, {-1, 0, 18, 0}, (self.height - 4) * 4)
 	self.controls.scrollBar.y = function()
 		local width, height = self:GetSize()
@@ -160,7 +200,14 @@ function GemSelectClass:BuildList(buf)
 		for i, pattern in ipairs(patternList) do
 			local matchList = { }
 			for gemId, gemData in pairs(self.gems) do
-				if self:FilterSupport(gemId, gemData) and not added[gemId] and not (gemData.grantedEffect.support and (usedSupports[gemId:gsub("^%w+:", "")] or (gemData.gemFamily and usedFamilies[gemData.gemFamily]))) and ((" "..gemData.name:lower()):match(pattern)) then
+				local nameMatch = (" "..gemData.name:lower()):match(pattern)
+				if not nameMatch then
+					local dispName = gemDisplayName(gemData)
+					if dispName ~= gemData.name then
+						nameMatch = (" "..dispName:lower()):match(pattern)
+					end
+				end
+				if self:FilterSupport(gemId, gemData) and not added[gemId] and not (gemData.grantedEffect.support and (usedSupports[gemId:gsub("^%w+:", "")] or (gemData.gemFamily and usedFamilies[gemData.gemFamily]))) and nameMatch then
 					addThisGem = true
 					if #tagsList > 0 then
 						for _, tag in ipairs(tagsList) do
@@ -407,7 +454,7 @@ function GemSelectClass:UpdateGem(setText, addUndo)
 	else
 		self.gemId = nil
 	end
-	self.gemName = self.gemId and self.gems[self.gemId].name or ""
+	self.gemName = self.gemId and gemDisplayName(self.gems[self.gemId]) or ""
 	if setText then
 		self:SetText(self.gemName)
 	end
@@ -490,7 +537,7 @@ function GemSelectClass:Draw(viewPort, noTooltip)
 					SetDrawColor(colorCodes.INTELLIGENCE)
 				end
 			end
-			local gemText = gemData and gemData.name or "<No matches>"
+			local gemText = gemData and gemDisplayName(gemData) or "<No matches>"
 			DrawString(0, y, "LEFT", height - 4, "VAR", gemText)
 			if gemData then
 				if gemData.grantedEffect.support and self.sortCache.canSupport[gemId] then
@@ -530,7 +577,7 @@ function GemSelectClass:Draw(viewPort, noTooltip)
 						}
 					self:AddGemTooltip(gemInstance)
 					self.tooltip:AddSeparator(10)
-					self.skillsTab.build:AddStatComparesToTooltip(self.tooltip, calcBase, output, "^7Selecting this gem will give you:")
+					self.skillsTab.build:AddStatComparesToTooltip(self.tooltip, calcBase, output, "^7" .. i18n.t("statCompare.selectingGem"))
 					self.tooltip:Draw(x, y + height + 2 + (self.hoverSel - 1) * (height - 4) - scrollBar.offset, width, height - 4, viewPort)
 				end
 			end)
@@ -539,7 +586,7 @@ function GemSelectClass:Draw(viewPort, noTooltip)
 				self.tooltip:Clear()
 				local gemData = self.gems[self.list[self.hoverSel]]
 				if gemData then
-					self.tooltip:AddLine(16, colorCodes.GEM .. gemData.name)
+					self.tooltip:AddLine(16, colorCodes.GEM .. gemDisplayName(gemData))
 				end
 				self.tooltip:Draw(x, y + height + 2 + (self.hoverSel - 1) * (height - 4) - scrollBar.offset, width, height - 4, viewPort)
 			end
@@ -581,11 +628,11 @@ function GemSelectClass:Draw(viewPort, noTooltip)
 			if cursorX > (x + width - 18) then
 				colorS = 1
 				self.tooltip:Clear()
-				self.tooltip:AddLine(16, "Only show Support gems")
+				self.tooltip:AddLine(16, i18n.t("statCompare.onlyShowSupport"))
 			elseif (cursorX > (x + width - 40) and cursorX < (x + width - 18)) then
 				colorA = 1
 				self.tooltip:Clear()
-				self.tooltip:AddLine(16, "Only show Active gems")
+				self.tooltip:AddLine(16, i18n.t("statCompare.onlyShowActive"))
 			end
 
 			-- support shortcut
@@ -623,21 +670,22 @@ function GemSelectClass:AddGemTooltip(gemInstance)
 	local fontSizeTitle = main.showFlavourText and 24 or 20
 	self.tooltip.center = true
 	self.tooltip.color = colorCodes.GEM
+	self.tooltip.maxWidth = 500
 	local grantedEffect = gemInstance.gemData.grantedEffect
 	local additionalEffects = gemInstance.gemData.additionalGrantedEffects
 	self.tooltip.tooltipHeader = "GEM"
 	if grantedEffect.name:match("^Spectre:") or grantedEffect.name:match("^Companion:") then
-		self.tooltip:AddLine(fontSizeTitle, colorCodes.GEM .. (gemInstance.displayEffect and gemInstance.displayEffect.nameSpec or gemInstance.gemData.name), "FONTIN SC")	
+		self.tooltip:AddLine(fontSizeTitle, colorCodes.GEM .. (gemInstance.displayEffect and gemInstance.displayEffect.nameSpec or gemDisplayName(gemInstance.gemData)), "FONTIN SC")
 	else
-		self.tooltip:AddLine(fontSizeTitle, colorCodes.GEM .. gemInstance.gemData.name, "FONTIN SC")
+		self.tooltip:AddLine(fontSizeTitle, colorCodes.GEM .. gemDisplayName(gemInstance.gemData), "FONTIN SC")
 	end
 	self.tooltip:AddSeparator(10)
-	self.tooltip:AddLine(fontSizeBig, colorCodes.NORMAL .. gemInstance.gemData.gemType, "FONTIN SC")
+	self.tooltip:AddLine(fontSizeBig, colorCodes.NORMAL .. gemTypeDisplay(gemInstance.gemData.gemType), "FONTIN SC")
 	if gemInstance.gemData.tagString ~= "" then
-		self.tooltip:AddLine(fontSizeBig, "^x7F7F7F" .. gemInstance.gemData.tagString, "FONTIN SC")
+		self.tooltip:AddLine(fontSizeBig, "^x7F7F7F" .. tagStringDisplay(gemInstance.gemData.tagString), "FONTIN SC")
 	end
 	if gemInstance.gemData.gemFamily then
-		self.tooltip:AddLine(fontSizeBig, "^x7F7F7FCategory: ^7" .. gemInstance.gemData.gemFamily, "FONTIN SC")
+		self.tooltip:AddLine(fontSizeBig, "^x7F7F7F" .. i18n.t("gemTooltip.category") .. " ^7" .. gemInstance.gemData.gemFamily, "FONTIN SC")
 	end
 	-- Will need rework if a gem can have 2+ additional supports
 	self:AddGrantedEffectInfo(gemInstance, grantedEffect, true)
@@ -664,8 +712,15 @@ function GemSelectClass:AddGemTooltip(gemInstance)
 	end
 	if grantedEffect.flavourText and main.showFlavourText then
 		self.tooltip:AddSeparator(10)
-		for _, line in ipairs(grantedEffect.flavourText) do
-			self.tooltip:AddLine(fontSizeBig, colorCodes.UNIQUE .. line, "FONTIN SC ITALIC")
+		local translatedFlavour = i18n.lookup("gemFlavourText", grantedEffect.name)
+		if translatedFlavour then
+			for line in translatedFlavour:gmatch("[^\n]+") do
+				self.tooltip:AddLine(fontSizeBig, colorCodes.UNIQUE .. line, "FONTIN SC ITALIC")
+			end
+		else
+			for _, line in ipairs(grantedEffect.flavourText) do
+				self.tooltip:AddLine(fontSizeBig, colorCodes.UNIQUE .. line, "FONTIN SC ITALIC")
+			end
 		end
 	end
 end
@@ -675,101 +730,101 @@ function GemSelectClass:AddGrantedEffectInfo(gemInstance, grantedEffect, addReq)
 	local displayInstance = gemInstance.displayEffect or gemInstance
 	local grantedEffectLevel = grantedEffect.levels[displayInstance.level] or { }
 	if gemInstance.gemData.Tier and gemInstance.gemData.Tier > 0 and not grantedEffect.isLineage and not grantedEffect.hidden then
-			self.tooltip:AddLine(fontSizeBig, string.format("^x7F7F7FTier: ^7%d", gemInstance.gemData.Tier), "FONTIN SC")
+			self.tooltip:AddLine(fontSizeBig, "^x7F7F7F" .. i18n.t("gemTooltip.tier") .. " ^7" .. tostring(gemInstance.gemData.Tier), "FONTIN SC")
 		end
 	if addReq and not grantedEffect.support then
-		self.tooltip:AddLine(fontSizeBig, string.format("^x7F7F7FLevel: ^7%d%s%s",
-			gemInstance.level,
+		self.tooltip:AddLine(fontSizeBig, string.format("^x7F7F7F" .. i18n.t("gemTooltip.level") .. " ^7%s%s%s",
+			tostring(gemInstance.level),
 			((displayInstance.level > gemInstance.level) and " (" .. colorCodes.MAGIC .. "+" .. (displayInstance.level - gemInstance.level) .. "^7)") or ((displayInstance.level < gemInstance.level) and " (" .. colorCodes.WARNING .. "-" .. (gemInstance.level - displayInstance.level) .. "^7)") or "",
-			(gemInstance.level >= gemInstance.gemData.naturalMaxLevel) and " (Max)" or ""
+			(gemInstance.level >= gemInstance.gemData.naturalMaxLevel) and " " .. i18n.t("gemTooltip.maxLevel") or ""
 		),"FONTIN SC")
 	end
 	if grantedEffect.support then
 		if grantedEffectLevel.manaMultiplier and grantedEffectLevel.reservationMultiplier and grantedEffectLevel.manaMultiplier == grantedEffectLevel.reservationMultiplier then
-			self.tooltip:AddLine(fontSizeBig, string.format("^x7F7F7FCost & Reservation Multiplier: ^7%d%%", grantedEffectLevel.manaMultiplier + 100), "FONTIN SC")
+			self.tooltip:AddLine(fontSizeBig, "^x7F7F7F" .. i18n.t("gemTooltip.costReservationMultiplier") .. " ^7" .. tostring(grantedEffectLevel.manaMultiplier + 100) .. "%", "FONTIN SC")
 		elseif grantedEffectLevel.reservationMultiplier then
-			self.tooltip:AddLine(fontSizeBig, string.format("^x7F7F7FReservation Multiplier: ^7%d%%", grantedEffectLevel.reservationMultiplier + 100), "FONTIN SC")
+			self.tooltip:AddLine(fontSizeBig, "^x7F7F7F" .. i18n.t("gemTooltip.reservationMultiplier") .. " ^7" .. tostring(grantedEffectLevel.reservationMultiplier + 100) .. "%", "FONTIN SC")
 		elseif grantedEffectLevel.manaMultiplier then
-			self.tooltip:AddLine(fontSizeBig, string.format("^x7F7F7FCost Multiplier: ^7%d%%", grantedEffectLevel.manaMultiplier + 100), "FONTIN SC")
+			self.tooltip:AddLine(fontSizeBig, "^x7F7F7F" .. i18n.t("gemTooltip.costMultiplier") .. " ^7" .. tostring(grantedEffectLevel.manaMultiplier + 100) .. "%", "FONTIN SC")
 		end
 		if grantedEffectLevel.spiritReservationFlat then
 			if grantedEffect.support then
-				self.tooltip:AddLine(fontSizeBig, string.format("^x7F7F7FAdditional Reservation: ^7%d Spirit", grantedEffectLevel.spiritReservationFlat), "FONTIN SC")
+				self.tooltip:AddLine(fontSizeBig, "^x7F7F7F" .. string.format(i18n.t("gemTooltip.additionalReservation"), "^7" .. tostring(grantedEffectLevel.spiritReservationFlat)), "FONTIN SC")
 			else
-				self.tooltip:AddLine(fontSizeBig, string.format("^x7F7F7FReservation: ^7%d Spirit", grantedEffectLevel.spiritReservationFlat), "FONTIN SC")
+				self.tooltip:AddLine(fontSizeBig, "^x7F7F7F" .. string.format(i18n.t("gemTooltip.reservation"), "^7" .. tostring(grantedEffectLevel.spiritReservationFlat)), "FONTIN SC")
 			end
 		end
 		if grantedEffectLevel.cooldown then
-			local string = string.format("^x7F7F7FCooldown Time: ^7%.2f sec", grantedEffectLevel.cooldown)
+			local str = "^x7F7F7F" .. string.format(i18n.t("gemTooltip.cooldownTime"), "^7" .. string.format("%.2f", grantedEffectLevel.cooldown))
 			if grantedEffectLevel.storedUses and grantedEffectLevel.storedUses > 1 then
-				string = string .. string.format(" (%d uses)", grantedEffectLevel.storedUses)
+				str = str .. " " .. string.format(i18n.t("gemTooltip.cooldownUses"), tostring(grantedEffectLevel.storedUses))
 			end
-			self.tooltip:AddLine(fontSizeBig, string, "FONTIN SC")
+			self.tooltip:AddLine(fontSizeBig, str, "FONTIN SC")
 		end
 	else
 		if gemInstance.skillMinion then
 			if gemInstance.nameSpec:match("^Spectre:") then
-				grantedEffectLevel.spiritReservationFlat = data.spectres[gemInstance.skillMinion].spectreReservation
+				grantedEffectLevel.spiritReservationFlat = data:getSpectres()[gemInstance.skillMinion].spectreReservation
 			elseif gemInstance.nameSpec:match("^Companion:") then
-				grantedEffectLevel.spiritReservationPercent = data.spectres[gemInstance.skillMinion].companionReservation
+				grantedEffectLevel.spiritReservationPercent = data:getSpectres()[gemInstance.skillMinion].companionReservation
 			end
 		end
 		if grantedEffectLevel.spiritReservationFlat then
-			self.tooltip:AddLine(fontSizeBig, string.format("^x7F7F7FReservation: ^7%d Spirit", grantedEffectLevel.spiritReservationFlat), "FONTIN SC")
+			self.tooltip:AddLine(fontSizeBig, "^x7F7F7F" .. string.format(i18n.t("gemTooltip.reservation"), "^7" .. tostring(grantedEffectLevel.spiritReservationFlat)), "FONTIN SC")
 		end
 		if grantedEffectLevel.spiritReservationPercent then
-			self.tooltip:AddLine(fontSizeBig, string.format("^x7F7F7FReservation: ^7%.1f%% Spirit", grantedEffectLevel.spiritReservationPercent), "FONTIN SC")
+			self.tooltip:AddLine(fontSizeBig, "^x7F7F7F" .. string.format(i18n.t("gemTooltip.reservationPercent"), "^7" .. string.format("%.1f", grantedEffectLevel.spiritReservationPercent)), "FONTIN SC")
 		end
 		local cost
 		for _, res in ipairs(self.costs) do
 			if grantedEffectLevel.cost and grantedEffectLevel.cost[res.Resource] then
-				cost = (cost and (cost..", ") or "") .. res.ResourceString:gsub("{0}", string.format("%g", round(grantedEffectLevel.cost[res.Resource] / res.Divisor, 2)))
+				cost = (cost and (cost..", ") or "") .. costResourceDisplay(res.ResourceString):gsub("{0}", string.format("%g", round(grantedEffectLevel.cost[res.Resource] / res.Divisor, 2)))
 			end
 		end
 		if cost then
-			self.tooltip:AddLine(fontSizeBig, "^x7F7F7FCost: ^7"..cost, "FONTIN SC")
+			self.tooltip:AddLine(fontSizeBig, "^x7F7F7F" .. i18n.t("gemTooltip.cost") .. " ^7" .. cost, "FONTIN SC")
 		end
 		if grantedEffectLevel.cooldown then
-			local string = string.format("^x7F7F7FCooldown Time: ^7%.2f sec", grantedEffectLevel.cooldown)
+			local str = "^x7F7F7F" .. string.format(i18n.t("gemTooltip.cooldownTime"), "^7" .. string.format("%.2f", grantedEffectLevel.cooldown))
 			if grantedEffectLevel.storedUses and grantedEffectLevel.storedUses > 1 then
-				string = string .. string.format(" (%d uses)", grantedEffectLevel.storedUses)
+				str = str .. " " .. string.format(i18n.t("gemTooltip.cooldownUses"), tostring(grantedEffectLevel.storedUses))
 			end
-			self.tooltip:AddLine(fontSizeBig, string, "FONTIN SC")
+			self.tooltip:AddLine(fontSizeBig, str, "FONTIN SC")
 		end
 		if grantedEffectLevel.vaalStoredUses then
-			self.tooltip:AddLine(fontSizeBig, string.format("^x7F7F7FCan Store ^7%d ^x7F7F7FUse (%d Souls)", grantedEffectLevel.vaalStoredUses, grantedEffectLevel.vaalStoredUses * grantedEffectLevel.cost.Soul), "FONTIN SC")
+			self.tooltip:AddLine(fontSizeBig, "^x7F7F7F" .. string.format(i18n.t("gemTooltip.canStoreUse"), "^7" .. tostring(grantedEffectLevel.vaalStoredUses), tostring(grantedEffectLevel.vaalStoredUses * grantedEffectLevel.cost.Soul)), "FONTIN SC")
 		end
 		if grantedEffectLevel.soulPreventionDuration then
-			self.tooltip:AddLine(fontSizeBig, string.format("^x7F7F7FSoul Gain Prevention: ^7%d sec", grantedEffectLevel.soulPreventionDuration), "FONTIN SC")
+			self.tooltip:AddLine(fontSizeBig, "^x7F7F7F" .. string.format(i18n.t("gemTooltip.soulGainPrevention"), "^7" .. tostring(grantedEffectLevel.soulPreventionDuration)), "FONTIN SC")
 		end
 		if gemInstance.gemData.tags.attack then
 			if grantedEffectLevel.attackSpeedMultiplier then
-				self.tooltip:AddLine(fontSizeBig, string.format("^x7F7F7FAttack Speed: ^7%d%% of base", grantedEffectLevel.attackSpeedMultiplier + 100), "FONTIN SC")
+				self.tooltip:AddLine(fontSizeBig, "^x7F7F7F" .. string.format(i18n.t("gemTooltip.attackSpeed"), "^7" .. tostring(grantedEffectLevel.attackSpeedMultiplier + 100)), "FONTIN SC")
 			end
 			if grantedEffectLevel.attackTime then
-				self.tooltip:AddLine(fontSizeBig, string.format("^x7F7F7FAttack Time: ^7%.2f sec", grantedEffectLevel.attackTime / 1000), "FONTIN SC")
+				self.tooltip:AddLine(fontSizeBig, "^x7F7F7F" .. string.format(i18n.t("gemTooltip.attackTime"), "^7" .. string.format("%.2f", grantedEffectLevel.attackTime / 1000)), "FONTIN SC")
 			end
 			if grantedEffectLevel.baseMultiplier then
-				self.tooltip:AddLine(fontSizeBig, string.format("^x7F7F7FAttack Damage: ^7%g%% of base", grantedEffectLevel.baseMultiplier * 100), "FONTIN SC")
+				self.tooltip:AddLine(fontSizeBig, "^x7F7F7F" .. string.format(i18n.t("gemTooltip.attackDamage"), "^7" .. string.format("%g", grantedEffectLevel.baseMultiplier * 100)), "FONTIN SC")
 			end
 		elseif not grantedEffect.hidden then
 			if grantedEffect.castTime > 0 then
-				self.tooltip:AddLine(fontSizeBig, string.format("^x7F7F7FCast Time: ^7%.2f sec", grantedEffect.castTime), "FONTIN SC")
+				self.tooltip:AddLine(fontSizeBig, "^x7F7F7F" .. string.format(i18n.t("gemTooltip.castTime"), "^7" .. string.format("%.2f", grantedEffect.castTime)), "FONTIN SC")
 			else
-				self.tooltip:AddLine(fontSizeBig, "^x7F7F7FCast Time: ^7Instant", "FONTIN SC")
+				self.tooltip:AddLine(fontSizeBig, "^x7F7F7F" .. i18n.t("gemTooltip.castTimeInstant"), "FONTIN SC")
 			end
 		end
 		if grantedEffectLevel.critChance then
-			self.tooltip:AddLine(fontSizeBig, string.format("^x7F7F7FCritical Hit Chance: ^7%.2f%%", grantedEffectLevel.critChance), "FONTIN SC")
+			self.tooltip:AddLine(fontSizeBig, "^x7F7F7F" .. i18n.t("gemTooltip.criticalHitChance") .. " ^7" .. string.format("%.2f%%", grantedEffectLevel.critChance), "FONTIN SC")
 		end
 		if gemInstance.gemData.weaponRequirements and not grantedEffect.hidden then
-			self.tooltip:AddLine(fontSizeBig, "^x7F7F7F Requires: ^7" .. gemInstance.gemData.weaponRequirements, "FONTIN SC")
+			self.tooltip:AddLine(fontSizeBig, "^x7F7F7F " .. i18n.t("gemTooltip.requires") .. " ^7" .. weaponReqDisplay(gemInstance.gemData.weaponRequirements), "FONTIN SC")
 		end
 	end
 	if addReq and displayInstance.quality > 0 then
-		self.tooltip:AddLine(fontSizeBig, string.format("^x7F7F7FQuality: "..colorCodes.MAGIC.."+%d%%^7%s",
-			gemInstance.quality,
-			(displayInstance.quality > gemInstance.quality) and " ("..colorCodes.MAGIC.."+"..(displayInstance.quality - gemInstance.quality).."^7)" or ""
+		self.tooltip:AddLine(fontSizeBig, string.format("^x7F7F7F" .. i18n.t("gemTooltip.quality") .. " " .. colorCodes.MAGIC .. "+%s%%^7%s",
+			tostring(gemInstance.quality),
+			(displayInstance.quality > gemInstance.quality) and " (" .. colorCodes.MAGIC .. "+" .. (displayInstance.quality - gemInstance.quality) .. "^7)" or ""
 		), "FONTIN SC")
 	end
 	self.tooltip:AddSeparator(10)
@@ -780,11 +835,43 @@ function GemSelectClass:AddGrantedEffectInfo(gemInstance, grantedEffect, addReq)
 		local reqInt = calcLib.getGemStatRequirement(reqLevel, grantedEffect.support, gemInstance.gemData.reqInt)
 		self.skillsTab.build:AddRequirementsToTooltip(self.tooltip, reqLevel, reqStr, reqDex, reqInt)
 	end
-	if grantedEffect.description then
-		local wrap = main:WrapString(grantedEffect.description, 16, m_max(DrawStringWidth(fontSizeBig, "VAR", gemInstance.gemData.tagString), 400))
-		for _, line in ipairs(wrap) do
-			self.tooltip:AddLine(fontSizeBig, colorCodes.GEMDESCRIPTION..line, "FONTIN ITALIC")
+	local descText = i18n.lookup("gemDescriptions", gemInstance.gemData.name) or grantedEffect.description
+	if descText then
+		local wrapWidth = (self.tooltip.maxWidth and (self.tooltip.maxWidth - 34)) or 466
+		-- Split on 。 (U+3002, UTF-8: E3 80 82) for natural Japanese sentence breaks
+		-- Use string.find with plain=true for byte-safe matching (Lua patterns are byte-based)
+		local kuten = "\227\128\130"
+		local sentences = {}
+		local searchStart = 1
+		while true do
+			local p = descText:find(kuten, searchStart, true)
+			if p then
+				sentences[#sentences + 1] = descText:sub(searchStart, p + 2)
+				searchStart = p + 3
+			else
+				if searchStart <= #descText then
+					sentences[#sentences + 1] = descText:sub(searchStart)
+				end
+				break
+			end
 		end
+		-- Wrap each sentence and collect lines
+		local descLines = {}
+		for _, sentence in ipairs(sentences) do
+			local wrap = main:WrapString(sentence, fontSizeBig, wrapWidth)
+			for i = 1, #wrap do
+				descLines[#descLines + 1] = wrap[i]
+			end
+		end
+		-- Calculate max pixel width of wrapped lines for frame sizing
+		local fontToUse = main.showFlavourText and "FONTIN ITALIC" or "VAR"
+		local maxLineWidth = 0
+		for _, line in ipairs(descLines) do
+			local w = DrawStringWidth(fontSizeBig, fontToUse, line)
+			if w > maxLineWidth then maxLineWidth = w end
+		end
+		-- Add as framed description block (centered frame, left-aligned text)
+		self.tooltip:AddDescriptionBlock(descLines, fontSizeBig, fontToUse, colorCodes.GEMDESCRIPTION, maxLineWidth)
 	end
 end
 function GemSelectClass:AddStatSetInfo(gemInstance, grantedEffect, statSet, noLabel, index)
@@ -798,10 +885,10 @@ function GemSelectClass:AddStatSetInfo(gemInstance, grantedEffect, statSet, noLa
 		self.tooltip:AddSeparator(10)
 	end
 	if statSetLevel.critChance then
-		self.tooltip:AddLine(fontSizeBig, string.format("^x7F7F7FCritical Hit Chance: ^7%.2f%%", statSetLevel.critChance), "FONTIN SC")
+		self.tooltip:AddLine(fontSizeBig, "^x7F7F7F" .. i18n.t("gemTooltip.criticalHitChance") .. " ^7" .. string.format("%.2f%%", statSetLevel.critChance), "FONTIN SC")
 	end
 	if statSetLevel.baseMultiplier then
-		self.tooltip:AddLine(fontSizeBig, string.format("^x7F7F7FAttack Damage: ^7%d%%", statSetLevel.baseMultiplier * 100), "FONTIN SC")
+		self.tooltip:AddLine(fontSizeBig, "^x7F7F7F" .. string.format(i18n.t("gemTooltip.attackDamage"), "^7" .. tostring(math.floor(statSetLevel.baseMultiplier * 100))), "FONTIN SC")
 	end
 	if self.skillsTab and self.skillsTab.build.data.describeStats then
 		if not noLabel then self.tooltip:AddSeparator(10) end
@@ -845,7 +932,7 @@ function GemSelectClass:OnFocusGained()
 	self:UpdateSortCache()
 	self:BuildList("")
 	for index, gemId in pairs(self.list) do
-		if self.gems[gemId].name == self.buf then
+		if self.gems[gemId].name == self.buf or gemDisplayName(self.gems[gemId]) == self.buf then
 			self.selIndex = index
 			self:ScrollSelIntoView()
 			break
@@ -907,7 +994,7 @@ function GemSelectClass:OnKeyDown(key, doubleClick)
 			if self.hoverSel and self.gems[self.list[self.hoverSel]] then
 				self.dropped = false
 				self.selIndex = self.hoverSel
-				self:SetText(self.gems[self.list[self.selIndex]].name)
+				self:SetText(gemDisplayName(self.gems[self.list[self.selIndex]]))
 				self:UpdateGem(false, true)
 				return
 			end
@@ -933,7 +1020,7 @@ function GemSelectClass:OnKeyDown(key, doubleClick)
 		elseif key == "DOWN" then
 			if self.selIndex < #self.list and not self.noMatches then
 				self.selIndex = self.selIndex + 1
-				self:SetText(self.gems[self.list[self.selIndex]].name)
+				self:SetText(gemDisplayName(self.gems[self.list[self.selIndex]]))
 				self:UpdateGem()
 				self:ScrollSelIntoView()
 			end
@@ -943,7 +1030,7 @@ function GemSelectClass:OnKeyDown(key, doubleClick)
 				if self.selIndex == 0 then
 					self:SetText(self.searchStr)
 				else
-					self:SetText(self.gems[self.list[self.selIndex]].name)
+					self:SetText(gemDisplayName(self.gems[self.list[self.selIndex]]))
 				end
 				self:UpdateGem()
 				self:ScrollSelIntoView()

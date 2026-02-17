@@ -590,6 +590,8 @@ data.itemMods = {
 	JewelCluster = LoadModule("Data/ModJewelCluster"),
 	JewelCharm = LoadModule("Data/ModJewelCharm"),
 	Runes = LoadModule("Data/ModRunes"),
+	Exclusive = LoadModule("Data/ModItemExclusive"),
+	Corruption = LoadModule("Data/ModCorrupted"),
 }
 data.masterMods = LoadModule("Data/ModMaster")
 data.enchantments = {
@@ -1022,11 +1024,18 @@ end
 -- Load minions
 data.minions = { }
 LoadModule("Data/Minions", data.minions, makeSkillMod, makeFlagMod)
+data._spectresLoaded = false
 data.spectres = { }
-LoadModule("Data/Spectres", data.spectres, makeSkillMod, makeFlagMod)
-for name, spectre in pairs(data.spectres) do
-	spectre.limit = "ActiveSpectreLimit"
-	data.minions[name] = spectre
+function data:getSpectres()
+	if not self._spectresLoaded then
+		LoadModule("Data/Spectres", self.spectres, makeSkillMod, makeFlagMod)
+		for name, spectre in pairs(self.spectres) do
+			spectre.limit = "ActiveSpectreLimit"
+			self.minions[name] = spectre
+		end
+		self._spectresLoaded = true
+	end
+	return self.spectres
 end
 for _, minion in pairs(data.minions) do
 	for _, mod in ipairs(minion.modList) do
@@ -1065,7 +1074,7 @@ for name, base in pairs(data.itemBases) do
 end
 data.itemBaseTypeList = { }
 for type, list in pairs(data.itemBaseLists) do
-	table.insert(data.itemBaseTypeList, type)
+	table.insert(data.itemBaseTypeList, { label = type, name = type })
 	table.sort(list, function(a, b)
 		if a.base.req and b.base.req then
 			if a.base.req.level == b.base.req.level then
@@ -1082,7 +1091,37 @@ for type, list in pairs(data.itemBaseLists) do
 		end
 	end)
 end
-table.sort(data.itemBaseTypeList)
+table.sort(data.itemBaseTypeList, function(a, b) return a.name < b.name end)
+
+-- Rebuild display labels for item lists using i18n translations
+-- Called from Main.lua after i18n is initialized, and on language change
+function data.rebuildItemListLabels()
+	if not i18n then return end
+	-- Translate type list labels
+	for _, entry in ipairs(data.itemBaseTypeList) do
+		local typeName = entry.name
+		local mainType, subType = typeName:match("^(.-):%s*(.+)$")
+		if mainType and subType then
+			local translatedMain = i18n.lookup("items.typeNames", mainType) or mainType
+			local translatedParts = {}
+			for part in subType:gmatch("[^/]+") do
+				local trimmed = part:match("^%s*(.-)%s*$")
+				local translated = i18n.lookup("items.defenceTypes", trimmed) or trimmed
+				table.insert(translatedParts, translated)
+			end
+			entry.label = translatedMain .. ": " .. table.concat(translatedParts, "/")
+		else
+			entry.label = i18n.lookup("items.typeNames", typeName) or typeName
+		end
+	end
+	-- Translate base item labels
+	for _, list in pairs(data.itemBaseLists) do
+		for _, entry in ipairs(list) do
+			local cleanName = entry.name:gsub(" %(.+%)","")
+			entry.label = i18n.lookup("baseNames", cleanName) or cleanName
+		end
+	end
+end
 
 -- Rare templates
 data.rares = LoadModule("Data/Rares")

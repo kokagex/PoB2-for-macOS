@@ -123,6 +123,10 @@ local lib_path = "runtime/SimpleGraphic.dylib"
 local sg = ffi.load(lib_path)
 print("✓ SimpleGraphic loaded from: " .. lib_path)
 
+-- Incremental GC settings: reduce large GC pauses
+collectgarbage("setpause", 110)
+collectgarbage("setstepmul", 200)
+
 -- DPI scale cache (avoids repeated C calls per frame)
 local _dpi_scale = nil
 local function getDpiScale()
@@ -133,12 +137,17 @@ local function getDpiScale()
     return _dpi_scale
 end
 
+-- Forward declaration (defined at L396)
+local normalizeTextArg
+
 -- Setup global functions for Path of Building
 _G.RenderInit = sg.RenderInit
 _G.Shutdown = sg.Shutdown
 _G.IsUserTerminated = sg.IsUserTerminated
 _G.ProcessEvents = sg.ProcessEvents
-_G.SetWindowTitle = sg.SetWindowTitle
+_G.SetWindowTitle = function(title)
+    sg.SetWindowTitle(normalizeTextArg(title))
+end
 -- GetScreenSize: Returns logical pixels (physical / dpi_scale)
 _G.GetScreenSize = function()
     local w = ffi.new("int[1]")
@@ -156,8 +165,18 @@ _G.GetVirtualScreenSize = function()
     return _G.GetScreenSize()
 end
 
+-- Path validation: reject null bytes, directory traversal, and shell metacharacters
+local function validatePath(path)
+    if type(path) ~= "string" then return false end
+    if path:find("\0") then return false end
+    if path:find("%.%.[\\/]") or path:find("[\\/]%.%.$") then return false end
+    if path:find("[;|&$%(%)%{%}%[%]`]") then return false end
+    return true
+end
+
 -- NewFileSearch: File search implementation using shell commands
 _G.NewFileSearch = function(pattern, foldersOnly)
+    if not validatePath(pattern) then return nil end
     local function shellQuote(value)
         value = tostring(value or "")
         return "'" .. value:gsub("'", "'\\''") .. "'"
@@ -221,6 +240,9 @@ _G.NewFileSearch = function(pattern, foldersOnly)
 
     function fileSearchHandle:GetFileModifiedTime()
         if not self.currentFile then
+            return 0
+        end
+        if not validatePath(self.currentFile.fullPath) then
             return 0
         end
 
@@ -374,7 +396,7 @@ _G.SetDrawLayer = function(layer, subLayer)
     sg.SetDrawLayer(layer or 0, subLayer or 0)
 end
 
-local function normalizeTextArg(text)
+normalizeTextArg = function(text)
     if text == nil then
         return ""
     end
@@ -382,6 +404,32 @@ local function normalizeTextArg(text)
         return tostring(text)
     end
     return text
+end
+
+-- Font scale factor: 1.0 for LiberationSans (English), 0.93 for Noto Sans CJK JP (Japanese)
+local fontScale = 1.0
+
+-- Dynamic font scale control (called from Main.lua based on language setting)
+_G.SetFontScale = function(scale)
+	fontScale = scale
+end
+_G.GetFontScale = function()
+	return fontScale
+end
+
+-- Switch font file for next restart (copies appropriate .ttf to LiberationSans-Regular.ttf)
+_G.SwitchFontFile = function(langCode)
+	local fontDir = "runtime/fonts/"
+	local srcName = langCode == "ja" and "NotoSansCJKjp-Medium.ttf" or "LiberationSans-Original.ttf"
+	local inp = io.open(fontDir .. srcName, "rb")
+	if not inp then return false end
+	local data = inp:read("*a")
+	inp:close()
+	local out = io.open(fontDir .. "LiberationSans-Regular.ttf", "wb")
+	if not out then return false end
+	out:write(data)
+	out:close()
+	return true
 end
 
 -- DrawString: Logical→Physical conversion + alignment mapping + viewport offset
@@ -400,19 +448,23 @@ _G.DrawString = function(left, top, align, height, font, text)
     text = normalizeTextArg(text)
     local scale = getDpiScale()
     sg.DrawString(math.floor((left + viewportOffX) * scale), math.floor((top + viewportOffY) * scale),
-                  alignInt, math.floor(height * scale), font, text)
+                  alignInt, math.floor(height * scale * fontScale), font, text)
 end
 -- DrawStringWidth: Scale font height up, scale result back to logical
 _G.DrawStringWidth = function(height, font, text)
     text = normalizeTextArg(text)
     local scale = getDpiScale()
-    return math.floor(sg.DrawStringWidth(math.floor(height * scale), font, text) / scale)
+    local w = sg.DrawStringWidth(math.floor(height * scale * fontScale), font, text)
+    if fontScale < 1.0 then
+        return math.floor(w / scale * 1.30)
+    end
+    return math.floor(w / scale)
 end
 -- DrawStringCursorIndex: Scale font height and cursor coords to physical (viewport-adjusted)
 _G.DrawStringCursorIndex = function(height, font, text, cursorX, cursorY)
     text = normalizeTextArg(text)
     local scale = getDpiScale()
-    return sg.DrawStringCursorIndex(math.floor(height * scale), font, text,
+    return sg.DrawStringCursorIndex(math.floor(height * scale * fontScale), font, text,
                                      math.floor((cursorX - viewportOffX) * scale), math.floor((cursorY - viewportOffY) * scale))
 end
 -- DrawImage: Wrapper to handle wrapped ImageHandle objects
@@ -466,7 +518,7 @@ _G.DrawImage = function(imageHandle, left, top, width, height, tcLeft, tcTop, tc
     end
 
     local scale = getDpiScale()
-    sg.DrawImage(handle, (left + viewportOffX) * scale, (top + viewportOffY) * scale, width * scale, height * scale,
+    sg.DrawImage(handle or ffi.cast("void*", 0), (left + viewportOffX) * scale, (top + viewportOffY) * scale, width * scale, height * scale,
                  tcLeft, tcTop, tcRight, tcBottom)
 end
 -- DrawImageQuad: Wrapper to handle wrapped ImageHandle objects
@@ -476,6 +528,7 @@ _G.DrawImageQuad = function(imageHandle, x1, y1, x2, y2, x3, y3, x4, y4, s1, t1,
     if type(imageHandle) == "table" and imageHandle._handle then
         handle = imageHandle._handle
     end
+    handle = handle or ffi.cast("void*", 0)
     -- Provide defaults for any nil texture coordinates
     s1 = s1 or 0.0
     t1 = t1 or 0.0
@@ -533,10 +586,13 @@ function imageHandleMT:ImageSize()
 end
 
 function imageHandleMT:Unload()
+    if self._handle == nil then return end
     sg.ImageHandle_Unload(self._handle)
+    self._handle = nil
 end
 
 function imageHandleMT:IsValid()
+    if self._handle == nil then return false end
     return sg.ImageHandle_IsValid(self._handle) ~= 0
 end
 
@@ -690,12 +746,18 @@ end
 _G.ShowCursor = sg.ShowCursor
 
 -- Clipboard operations
-_G.Copy = sg.Copy
+_G.Copy = function(text)
+    if text == nil then return end
+    sg.Copy(normalizeTextArg(text))
+end
 _G.Paste = function()
     local result = sg.Paste()
     return result ~= nil and ffi.string(result) or ""
 end
-_G.SetClipboard = sg.SetClipboard
+_G.SetClipboard = function(text)
+    if text == nil then return end
+    sg.SetClipboard(normalizeTextArg(text))
+end
 
 -- System integration
 _G.OpenURL = function(url)
@@ -816,6 +878,8 @@ do
         if not data then return nil end
         dataLen = dataLen or #data
         if dataLen == 0 then return nil end
+        -- Reject input larger than 10MB
+        if dataLen > 10485760 then return nil end
 
         local strm = ffi.new("z_stream")
         ffi.fill(strm, streamSize)
@@ -844,6 +908,11 @@ do
             if have > 0 then
                 chunks[#chunks + 1] = ffi.string(buf, have)
                 totalOut = totalOut + have
+                -- Reject decompressed output larger than 50MB
+                if totalOut > 52428800 then
+                    zlib.inflateEnd(strm)
+                    return nil
+                end
             end
         until ret == Z_STREAM_END
 
@@ -906,6 +975,7 @@ end
 _G.ImageHandle_Unload = function(handle)
     if type(handle) == "table" and handle._handle then
         sg.ImageHandle_Unload(handle._handle)
+        handle._handle = nil
     else
         sg.ImageHandle_Unload(handle)
     end
@@ -1104,7 +1174,10 @@ local key_name_map = {
     BACKSPACE = "BACK",
 }
 
-local debug_char_file = io.open("/tmp/pob_char_debug.txt", "w")
+local debug_char_file
+if launch and launch.devMode then
+    debug_char_file = io.open("/tmp/pob_char_debug.txt", "w")
+end
 local function debug_char(msg)
     if debug_char_file then
         debug_char_file:write(msg .. "\n")
@@ -1213,6 +1286,19 @@ print("")
 -- Set window title to Path of Building
 SetWindowTitle("Path of Building (PoE2)")
 
+-- Visual regression test mode: POB_VISUAL_TEST=1 で自動スクリーンショット撮影
+local visual_test_mode = os.getenv("POB_VISUAL_TEST") == "1"
+local visual_test_targets = nil
+if visual_test_mode then
+    print("VISUAL_TEST: Test mode enabled")
+    MakeDir("screenshots")
+    visual_test_targets = {
+        { frame = 60,  name = "startup",   path = "screenshots/test_startup.png" },
+        { frame = 180, name = "main_view", path = "screenshots/test_main_view.png" },
+        { frame = 300, name = "tree_view", path = "screenshots/test_tree_view.png" },
+    }
+end
+
 while IsUserTerminated() == 0 do
     frame_count = frame_count + 1
 
@@ -1271,6 +1357,21 @@ while IsUserTerminated() == 0 do
     if frame_count % 60 == 0 then
         print(string.format("Frame %d - App running (%.1f seconds)",
                            frame_count, frame_count / 60.0))
+    end
+
+    -- Visual test: screenshot capture at target frames
+    if visual_test_mode and visual_test_targets then
+        for _, target in ipairs(visual_test_targets) do
+            if frame_count == target.frame then
+                TakeScreenshot(target.path)
+                print(string.format("VISUAL_TEST: Screenshot '%s' at frame %d", target.name, frame_count))
+            end
+        end
+        -- Auto-exit after all screenshots captured
+        if frame_count > 310 then
+            print("VISUAL_TEST: All screenshots captured. Exiting.")
+            break
+        end
     end
 
     ffi.C.usleep(16666)  -- ~60 FPS

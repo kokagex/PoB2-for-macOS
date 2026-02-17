@@ -33,6 +33,10 @@ end
 local xml = { }
 
 function xml.ParseXML(str)
+	-- Reject DTD and entity declarations (security: prevent entity expansion attacks)
+	if str:find("<!DOCTYPE") or str:find("<!ENTITY") then
+		return nil, "XML DTD/Entity declarations are not supported"
+	end
 	str = str:gsub("<!%-%-.-%-%->", "") -- Strip comments
 	local top = { }
 	local stack = {top}

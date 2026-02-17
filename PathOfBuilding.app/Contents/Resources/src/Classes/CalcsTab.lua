@@ -23,6 +23,11 @@ local CalcsTabClass = newClass("CalcsTab", "UndoHandler", "ControlHost", "Contro
 
 	self.build = build
 
+	-- Translate buff mode dropdown labels
+	for _, entry in ipairs(buffModeDropList) do
+		entry.label = i18n.lookup("calcs", entry.label)
+	end
+
 	self.calcs = LoadModule("Modules/Calcs")
 
 	self.input = { }
@@ -32,12 +37,12 @@ local CalcsTabClass = newClass("CalcsTab", "UndoHandler", "ControlHost", "Contro
 	self.colWidth = 230
 	self.sectionList = { }
 
-	self.controls.search = new("EditControl", {"TOPLEFT",self,"TOPLEFT"}, {4, 5, 260, 20}, "", "Search", "%c", 100, nil, nil, nil, true)
+	self.controls.search = new("EditControl", {"TOPLEFT",self,"TOPLEFT"}, {4, 5, 260, 20}, "", i18n.lookup("calcs", "Search"), "%c", 100, nil, nil, nil, true)
 	t_insert(self.controls, self.controls.search)
 
 	-- Special section for skill/mode selection
 	self:NewSection(3, "SkillSelect", 1, colorCodes.NORMAL, {{ defaultCollapsed = false, label = "View Skill Details", data = {
-		{ label = "Socket Group", { controlName = "mainSocketGroup", 
+		{ label = "Socket Group", { controlName = "mainSocketGroup",
 			control = new("DropDownControl", nil, {0, 0, 300, 16}, nil, function(index, value) 
 				self.input.skill_number = index
 				self:AddUndoState()
@@ -51,14 +56,14 @@ local CalcsTabClass = newClass("CalcsTab", "UndoHandler", "ControlHost", "Contro
 				end
 			}
 		}, },
-		{ label = "Active Skill", { controlName = "mainSkill", 
+		{ label = "Active Skill", { controlName = "mainSkill",
 			control = new("DropDownControl", nil, {0, 0, 300, 16}, nil, function(index, value)
 				local mainSocketGroup = self.build.skillsTab.socketGroupList[self.input.skill_number]
 				mainSocketGroup.mainActiveSkillCalcs = index
 				self.build.buildFlag = true
 			end)
 		}, },
-		{ label = "Stat Set", { controlName = "statSet", 
+		{ label = "Stat Set", { controlName = "statSet",
 			control = new("DropDownControl", nil, {0, 0, 300, 16}, nil, function(index, value)
 				local mainSocketGroup = self.build.skillsTab.socketGroupList[self.input.skill_number]
 				local srcInstance = mainSocketGroup.displaySkillListCalcs[mainSocketGroup.mainActiveSkillCalcs].activeEffect.srcInstance
@@ -68,7 +73,7 @@ local CalcsTabClass = newClass("CalcsTab", "UndoHandler", "ControlHost", "Contro
 				self.build.buildFlag = true
 			end)
 		}, },
-		{ label = "Skill Part", playerFlag = "multiPart", { controlName = "mainSkillPart", 
+		{ label = "Skill Part", playerFlag = "multiPart", { controlName = "mainSkillPart",
 			control = new("DropDownControl", nil, {0, 0, 250, 16}, nil, function(index, value)
 				local mainSocketGroup = self.build.skillsTab.socketGroupList[self.input.skill_number]
 				local srcInstance = mainSocketGroup.displaySkillListCalcs[mainSocketGroup.mainActiveSkillCalcs].activeEffect.srcInstance
@@ -94,7 +99,7 @@ local CalcsTabClass = newClass("CalcsTab", "UndoHandler", "ControlHost", "Contro
 				self.build.buildFlag = true
 			end)
 		}, },
-		{ label = "Show Minion Stats", flag = "haveMinion", { controlName = "showMinion", 
+		{ label = "Show Minion Stats", flag = "haveMinion", { controlName = "showMinion",
 			control = new("CheckBoxControl", nil, {0, 0, 18}, nil, function(state)
 				self.input.showMinion = state
 				self:AddUndoState()
@@ -156,7 +161,7 @@ local CalcsTabClass = newClass("CalcsTab", "UndoHandler", "ControlHost", "Contro
 				self.build.buildFlag = true
 			end)
 		} },
-		{ label = "Calculation Mode", { 
+		{ label = "Calculation Mode", {
 			controlName = "mode", 
 			control = new("DropDownControl", nil, {0, 0, 100, 16}, buffModeDropList, function(index, value) 
 				self.input.misc_buffMode = value.buffMode 

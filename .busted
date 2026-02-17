@@ -1,0 +1,10 @@
+return {
+    default = {
+        lua = "luajit",
+        ROOT = {"test/unit/"},
+        pattern = "test_.+%.lua$",
+        verbose = true,
+        loaders = {"lua"},
+        helper = "test/unit/busted_setup.lua",
+    },
+}

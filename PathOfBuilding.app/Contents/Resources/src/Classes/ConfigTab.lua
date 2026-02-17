@@ -11,6 +11,23 @@ local s_upper = string.upper
 
 local varList = LoadModule("Modules/ConfigOptions")
 
+-- Translation helpers for config options (ConfigOptions.lua is not modified)
+local function translateLabel(varData)
+	if not varData or not varData.var then return varData and varData.label or "" end
+	local key = "config." .. varData.var
+	local translated = i18n.t(key)
+	if translated ~= key then return translated end
+	return varData.label or ""
+end
+
+local function translateSection(sectionName)
+	if not sectionName then return "" end
+	local key = "config.sections." .. sectionName
+	local translated = i18n.t(key)
+	if translated ~= key then return translated end
+	return sectionName
+end
+
 local ConfigTabClass = newClass("ConfigTab", "UndoHandler", "ControlHost", "Control", function(self, build)
 	self.UndoHandler()
 	self.ControlHost()
@@ -46,17 +63,17 @@ local ConfigTabClass = newClass("ConfigTab", "UndoHandler", "ControlHost", "Cont
 	self.controls.setSelect.enabled = function()
 		return #self.configSetOrderList > 1
 	end
-	self.controls.setLabel = new("LabelControl", { "RIGHT", self.controls.setSelect, "LEFT" }, { -2, 0, 0, 16 }, "^7Config set:")
-	self.controls.setManage = new("ButtonControl", { "LEFT", self.controls.setSelect, "RIGHT" }, { 4, 0, 90, 20 }, "Manage...", function()
+	self.controls.setLabel = new("LabelControl", { "RIGHT", self.controls.setSelect, "LEFT" }, { -2, 0, 0, 16 }, "^7" .. i18n.t("config.ui.configSet"))
+	self.controls.setManage = new("ButtonControl", { "LEFT", self.controls.setSelect, "RIGHT" }, { 4, 0, 90, 20 }, i18n.t("config.ui.manage"), function()
 		self:OpenConfigSetManagePopup()
 	end)
 
-	self.controls.search = new("EditControl", { "TOPLEFT", self.controls.sectionAnchor, "TOPLEFT" }, { 8, 15, 360, 20 }, "", "Search", "%c", 100, function()
+	self.controls.search = new("EditControl", { "TOPLEFT", self.controls.sectionAnchor, "TOPLEFT" }, { 8, 15, 360, 20 }, "", i18n.t("config.ui.search"), "%c", 100, function()
 		self:UpdateControls()
 	end, nil, nil, true)
 	self.controls.toggleConfigs = new("ButtonControl", { "LEFT", self.controls.search, "RIGHT" }, { 10, 0, 200, 20 }, function()
 		-- dynamic text
-		return self.toggleConfigs and "Hide Ineligible Configurations" or "Show All Configurations"
+		return self.toggleConfigs and i18n.t("config.ui.hideIneligible") or i18n.t("config.ui.showAll")
 	end, function()
 		self.toggleConfigs = not self.toggleConfigs
 	end)
@@ -67,6 +84,14 @@ local ConfigTabClass = newClass("ConfigTab", "UndoHandler", "ControlHost", "Cont
 			local err, match = PCall(string.matchOrPattern, (varData.label or ""):lower(), searchStr)
 			if not err and match then
 				return true
+			end
+			-- Also search translated label
+			local translated = translateLabel(varData)
+			if translated ~= (varData.label or "") then
+				local err2, match2 = PCall(string.matchOrPattern, translated:lower(), searchStr)
+				if not err2 and match2 then
+					return true
+				end
 			end
 			return false
 		end
@@ -158,7 +183,7 @@ local ConfigTabClass = newClass("ConfigTab", "UndoHandler", "ControlHost", "Cont
 	local lastSection
 	for _, varData in ipairs(varList) do
 		if varData.section then
-			lastSection = new("SectionControl", {"TOPLEFT",self.controls.search,"BOTTOMLEFT"}, {0, 0, 360, 0}, varData.section)
+			lastSection = new("SectionControl", {"TOPLEFT",self.controls.search,"BOTTOMLEFT"}, {0, 0, 360, 0}, translateSection(varData.section))
 			lastSection.varControlList = { }
 			lastSection.col = varData.col
 			lastSection.height = function(self)
@@ -175,7 +200,7 @@ local ConfigTabClass = newClass("ConfigTab", "UndoHandler", "ControlHost", "Cont
 		else
 			local control
 			if varData.type == "check" then
-				control = new("CheckBoxControl", {"TOPLEFT",lastSection,"TOPLEFT"}, {234, 0, 18}, varData.label, function(state)
+				control = new("CheckBoxControl", {"TOPLEFT",lastSection,"TOPLEFT"}, {234, 0, 18}, translateLabel(varData), function(state)
 					self.configSets[self.activeConfigSetId].input[varData.var] = state
 					self:AddUndoState()
 					self:BuildModList()
@@ -256,7 +281,13 @@ local ConfigTabClass = newClass("ConfigTab", "UndoHandler", "ControlHost", "Cont
 			end
 
 			if varData.tooltip then
-				t_insert(tooltipFuncs, varData.tooltip)
+				if varData.var and type(varData.tooltip) == "string" then
+					local tipKey = "config." .. varData.var .. ".tooltip"
+					local translatedTip = i18n.t(tipKey)
+					t_insert(tooltipFuncs, translatedTip ~= tipKey and translatedTip or varData.tooltip)
+				else
+					t_insert(tooltipFuncs, varData.tooltip)
+				end
 			end
 
 			if varData.ifNode then
@@ -270,7 +301,7 @@ local ConfigTabClass = newClass("ConfigTab", "UndoHandler", "ControlHost", "Cont
 					end
 				end))
 				t_insert(tooltipFuncs, listOrSingleIfTooltip(varData.ifNode, function(ifOption)
-					return "This option is specific to '"..self.build.spec.nodes[ifOption].dn.."'."
+					return i18n.t("config.ui.specificToNode", {node = self.build.spec.nodes[ifOption].dn})
 				end))
 			end
 			if varData.ifOption then
@@ -552,7 +583,8 @@ local ConfigTabClass = newClass("ConfigTab", "UndoHandler", "ControlHost", "Cont
 			end
 			local labelControl = control
 			if varData.label and varData.type ~= "check" then
-				labelControl = new("LabelControl", {"RIGHT",control,"LEFT"}, {-4, 0, 0, DrawStringWidth(14, "VAR", varData.label) > 228 and 12 or 14}, "^7"..varData.label)
+				local displayLabel = translateLabel(varData)
+				labelControl = new("LabelControl", {"RIGHT",control,"LEFT"}, {-4, 0, 0, DrawStringWidth(14, "VAR", displayLabel) > 228 and 12 or 14}, "^7"..displayLabel)
 				t_insert(self.controls, labelControl)
 			end
 			if varData.var then
@@ -631,7 +663,7 @@ local ConfigTabClass = newClass("ConfigTab", "UndoHandler", "ControlHost", "Cont
 					local cur = self.configSets[self.activeConfigSetId].input[varData.var]
 					local def = self:GetDefaultState(varData.var, type(cur))
 					if not shown and cur ~= nil and cur ~= def then
-						tooltip:AddLine(14, colorCodes.NEGATIVE.."This config option is conditional with missing source and is invalid.")
+						tooltip:AddLine(14, colorCodes.NEGATIVE..i18n.t("config.ui.invalidConditional"))
 					end
 				end
 			end
@@ -967,7 +999,7 @@ function ConfigTabClass:RestoreUndoState(state)
 end
 
 function ConfigTabClass:OpenConfigSetManagePopup()
-	main:OpenPopup(370, 290, "Manage Config Sets", {
+	main:OpenPopup(370, 290, i18n.t("config.ui.manageConfigSets"), {
 		new("ConfigSetListControl", nil, {0, 50, 350, 200}, self),
 		new("ButtonControl", nil, {0, 260, 90, 20}, "Done", function()
 			main:ClosePopup()

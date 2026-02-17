@@ -109,13 +109,26 @@ function NotableDBClass:DoesNotableMatchFilters(node)
 			if not err and match then
 				found = true
 			end
+			if not found and node.dn_display then
+				err, match = PCall(string.matchOrPattern, node.dn_display:lower(), searchStr)
+				if not err and match then
+					found = true
+				end
+			end
 		end
 		if mode == 1 or mode == 3 then
-			for _, line in ipairs(node.sd) do
+			for i, line in ipairs(node.sd) do
 				local err, match = PCall(string.matchOrPattern, line:lower(), searchStr)
 				if not err and match then
 					found = true
 					break
+				end
+				if not found and node.sd_display and node.sd_display[i] then
+					err, match = PCall(string.matchOrPattern, node.sd_display[i]:lower(), searchStr)
+					if not err and match then
+						found = true
+						break
+					end
 				end
 			end
 		end
@@ -135,10 +148,12 @@ end
 
 function NotableDBClass:BuildSortOrder()
 	wipeTable(self.sortDropList)
+	local sortPrefix = i18n.t("items.sort.prefix")
 	for id,stat in pairs(data.powerStatList) do
 		if not stat.ignoreForItems then
+			local translatedLabel = i18n.lookup("items.sort.stats", stat.label) or stat.label
 			t_insert(self.sortDropList, {
-				label="Sort by "..stat.label,
+				label=sortPrefix..translatedLabel,
 				sortMode=stat.itemField or stat.stat,
 				itemField=stat.itemField,
 				stat=stat.stat,
@@ -275,12 +290,12 @@ function NotableDBClass:GetRowValue(column, index, node)
 				local scaledPower = node.measuredPower / self.sortMaxPower
 				local powerRed = scaledPower * (0xFF - 0x80) + 0x80
 				local powerColor = s_format("^x%X8080", powerRed)
-				return powerColor..node.dn
+				return powerColor..(node.dn_display or node.dn)
 			else
-				return "^x808080"..node.dn
+				return "^x808080"..(node.dn_display or node.dn)
 			end
 		else
-			return colorCodes.ENCHANTED..node.dn
+			return colorCodes.ENCHANTED..(node.dn_display or node.dn)
 		end
 	end
 end
@@ -302,12 +317,13 @@ function NotableDBClass:AddValueTooltip(tooltip, index, node)
 		if node.sd[1] then
 			tooltip:AddLine(16, "")
 			for i, line in ipairs(node.sd) do
-				if line ~= " " and (node.mods[i].extra or not node.mods[i].list) then
-					local line = colorCodes.UNSUPPORTED..line
+				local displayLine = (node.sd_display and node.sd_display[i]) or line
+				if displayLine ~= " " and (node.mods[i].extra or not node.mods[i].list) then
+					local line = colorCodes.UNSUPPORTED..displayLine
 					line = main.notSupportedModTooltips and (line .. main.notSupportedTooltipText) or line
 					tooltip:AddLine(16, line)
 				else
-					tooltip:AddLine(16, colorCodes.MAGIC..line)
+					tooltip:AddLine(16, colorCodes.MAGIC..displayLine)
 				end
 			end
 		end

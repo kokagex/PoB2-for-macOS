@@ -647,19 +647,18 @@ function EditClass:OnKeyDown(key, doubleClick)
 		if self.sel and self.sel ~= self.caret then
 			self:ReplaceSel("")
 		elseif self.caret > 1 then
-			local len = 1
+			local newCaret
 			if ctrl then
-				while self.caret - len > 1 and self.buf:sub(self.caret - len, self.caret - len):match("%s") and not self.buf:sub(self.caret - len - 1, self.caret - len - 1):match("\n") do
-					len = len + 1
-				end
-				if self.buf:sub(self.caret - len, self.caret - len):match("%w") then
-					while self.caret - len > 1 and self.buf:sub(self.caret - len - 1, self.caret - len - 1):match("%w") do
-						len = len + 1
-					end
-				end
+				-- Word deletion: skip trailing space/punctuation, then word (UTF-8 aware)
+				newCaret = self.caret - #utf8.match(self.buf:sub(1, self.caret-1), "[%s%p]*$")
+				newCaret = newCaret - #utf8.match(self.buf:sub(1, newCaret-1), "%w*$")
+				if newCaret < 1 then newCaret = 1 end
+			else
+				-- Single character deletion (UTF-8 aware)
+				newCaret = utf8.next(self.buf, self.caret, -1) or 1
 			end
-			self.buf = self.buf:sub(1, self.caret - 1 - len) .. self.buf:sub(self.caret)
-			self.caret = self.caret - len
+			self.buf = self.buf:sub(1, newCaret - 1) .. self.buf:sub(self.caret)
+			self.caret = newCaret
 			self.sel = nil
 			self:ScrollCaretIntoView()
 			self.blinkStart = GetTime()
@@ -673,18 +672,16 @@ function EditClass:OnKeyDown(key, doubleClick)
 		if self.sel and self.sel ~= self.caret then
 			self:ReplaceSel("")
 		elseif self.caret <= #self.buf then
-			local len = 1
+			local endPos
 			if ctrl then
-				while self.caret + len <= #self.buf and self.buf:sub(self.caret + len - 1, self.caret + len - 1):match("%s") and not self.buf:sub(self.caret + len, self.caret + len):match("\n") do
-					len = len + 1
-				end
-				if self.buf:sub(self.caret + len - 1, self.caret + len - 1):match("%w") then
-					while self.caret + len <= #self.buf and self.buf:sub(self.caret + len, self.caret + len):match("%w") do
-						len = len + 1
-					end
-				end
+				-- Word deletion forward: skip leading space/punctuation, then word (UTF-8 aware)
+				endPos = self.caret + #utf8.match(self.buf:sub(self.caret), "^[%s%p]*")
+				endPos = endPos + #utf8.match(self.buf:sub(endPos), "^%w*")
+			else
+				-- Single character deletion forward (UTF-8 aware)
+				endPos = utf8.next(self.buf, self.caret, 1) or (#self.buf + 1)
 			end
-			self.buf = self.buf:sub(1, self.caret - 1) .. self.buf:sub(self.caret + len)
+			self.buf = self.buf:sub(1, self.caret - 1) .. self.buf:sub(endPos)
 			self.sel = nil
 			self.blinkStart = GetTime()
 			if self.changeFunc then

@@ -64,7 +64,7 @@ local TreeTabClass = newClass("TreeTab", "ControlHost", function(self, build)
 					local calcFunc, calcBase = self.build.calcsTab:GetMiscCalculator()
 					if calcFunc then
 						local output = calcFunc({ spec = spec })
-						self.build:AddStatComparesToTooltip(tooltip, calcBase, output, "^7Switching to this tree will give you:")
+						self.build:AddStatComparesToTooltip(tooltip, calcBase, output, "^7" .. i18n.t("statCompare.switchingTree"))
 					end
 					if spec.curClassId == self.build.spec.curClassId then
 						local respec = 0
@@ -302,15 +302,16 @@ function TreeTabClass:Draw(viewPort, inputEvents)
 	local textInputActive = main.textInputActive
 
 	for id, event in ipairs(inputEvents) do
-		if event.type == "KeyDown" then
-			if event.key == "z" and IsKeyDown("CTRL") and not textInputActive then
-				self.build.spec:Undo()
-				self.build.buildFlag = true
-				inputEvents[id] = nil
-			elseif event.key == "y" and IsKeyDown("CTRL") and not textInputActive then
-				self.build.spec:Redo()
-				self.build.buildFlag = true
-				inputEvents[id] = nil
+		if not event.consumed then
+			if event.type == "KeyDown" then
+				if event.key == "z" and IsKeyDown("CTRL") and not textInputActive then
+					self.build.spec:Undo()
+					self.build.buildFlag = true
+					event.consumed = true
+				elseif event.key == "y" and IsKeyDown("CTRL") and not textInputActive then
+					self.build.spec:Redo()
+					self.build.buildFlag = true
+					event.consumed = true
 			elseif event.key == "UP" then
 				local index = self.activeSpec - 1
 				if self.specList[index] and not self.controls.specSelect:IsMouseOver() and not self.controls.specSelect.dropped then
@@ -328,6 +329,7 @@ function TreeTabClass:Draw(viewPort, inputEvents)
 			elseif event.key == "m" and IsKeyDown("CTRL") and not textInputActive then
 				self:OpenSpecManagePopup()
 			end
+		end
 		end
 	end
 	self:ProcessControlsInput(inputEvents, viewPort)
@@ -718,6 +720,7 @@ function TreeTabClass:OpenImportPopup()
 		if #treeLink == 0 then
 			return
 		end
+		local pendingSubScriptId
 		-- EG: http://poeurl.com/dABz
 		if treeLink:match("poeurl%.com/") then
 			controls.import.enabled = false
@@ -739,7 +742,10 @@ function TreeTabClass:OpenImportPopup()
 				return redirect
 			]], "", "", treeLink)
 			if id then
+				pendingSubScriptId = id
 				launch:RegisterSubScript(id, function(treeLink, errMsg)
+					pendingSubScriptId = nil
+					if not controls or not controls.msg then return end
 					if errMsg then
 						controls.msg.label = "^1"..errMsg.."^7"
 						controls.import.enabled = true
@@ -764,6 +770,10 @@ function TreeTabClass:OpenImportPopup()
 	end)
 	controls.import.enabled = false
 	controls.cancel = new("ButtonControl", nil, {45, 85, 80, 20}, "Cancel", function()
+		if pendingSubScriptId then
+			launch:UnregisterSubScript(pendingSubScriptId)
+			pendingSubScriptId = nil
+		end
 		main:ClosePopup()
 	end)
 	main:OpenPopup(580, 115, "Import Tree", controls, "import", "name")
@@ -938,7 +948,7 @@ function TreeTabClass:BuildPowerReportList(currentStat)
 			end
 
 			t_insert(report, {
-				name = node.dn,
+				name = node.dn_display or node.dn,
 				power = nodePower,
 				powerStr = nodePowerStr,
 				pathPower = pathPower,
@@ -969,7 +979,7 @@ function TreeTabClass:BuildPowerReportList(currentStat)
 			end
 
 			t_insert(report, {
-				name = node.dn,
+				name = node.dn_display or node.dn,
 				power = nodePower,
 				powerStr = nodePowerStr,
 				pathPower = 0,
