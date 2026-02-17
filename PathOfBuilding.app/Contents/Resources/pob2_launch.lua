@@ -137,12 +137,17 @@ local function getDpiScale()
     return _dpi_scale
 end
 
+-- Forward declaration (defined at L396)
+local normalizeTextArg
+
 -- Setup global functions for Path of Building
 _G.RenderInit = sg.RenderInit
 _G.Shutdown = sg.Shutdown
 _G.IsUserTerminated = sg.IsUserTerminated
 _G.ProcessEvents = sg.ProcessEvents
-_G.SetWindowTitle = sg.SetWindowTitle
+_G.SetWindowTitle = function(title)
+    sg.SetWindowTitle(normalizeTextArg(title))
+end
 -- GetScreenSize: Returns logical pixels (physical / dpi_scale)
 _G.GetScreenSize = function()
     local w = ffi.new("int[1]")
@@ -391,7 +396,7 @@ _G.SetDrawLayer = function(layer, subLayer)
     sg.SetDrawLayer(layer or 0, subLayer or 0)
 end
 
-local function normalizeTextArg(text)
+normalizeTextArg = function(text)
     if text == nil then
         return ""
     end
@@ -513,7 +518,7 @@ _G.DrawImage = function(imageHandle, left, top, width, height, tcLeft, tcTop, tc
     end
 
     local scale = getDpiScale()
-    sg.DrawImage(handle, (left + viewportOffX) * scale, (top + viewportOffY) * scale, width * scale, height * scale,
+    sg.DrawImage(handle or ffi.cast("void*", 0), (left + viewportOffX) * scale, (top + viewportOffY) * scale, width * scale, height * scale,
                  tcLeft, tcTop, tcRight, tcBottom)
 end
 -- DrawImageQuad: Wrapper to handle wrapped ImageHandle objects
@@ -580,7 +585,9 @@ function imageHandleMT:ImageSize()
 end
 
 function imageHandleMT:Unload()
+    if self._handle == nil then return end
     sg.ImageHandle_Unload(self._handle)
+    self._handle = nil
 end
 
 function imageHandleMT:IsValid()
@@ -737,12 +744,18 @@ end
 _G.ShowCursor = sg.ShowCursor
 
 -- Clipboard operations
-_G.Copy = sg.Copy
+_G.Copy = function(text)
+    if text == nil then return end
+    sg.Copy(normalizeTextArg(text))
+end
 _G.Paste = function()
     local result = sg.Paste()
     return result ~= nil and ffi.string(result) or ""
 end
-_G.SetClipboard = sg.SetClipboard
+_G.SetClipboard = function(text)
+    if text == nil then return end
+    sg.SetClipboard(normalizeTextArg(text))
+end
 
 -- System integration
 _G.OpenURL = function(url)
@@ -1270,6 +1283,19 @@ print("")
 -- Set window title to Path of Building
 SetWindowTitle("Path of Building (PoE2)")
 
+-- Visual regression test mode: POB_VISUAL_TEST=1 で自動スクリーンショット撮影
+local visual_test_mode = os.getenv("POB_VISUAL_TEST") == "1"
+local visual_test_targets = nil
+if visual_test_mode then
+    print("VISUAL_TEST: Test mode enabled")
+    MakeDir("screenshots")
+    visual_test_targets = {
+        { frame = 60,  name = "startup",   path = "screenshots/test_startup.png" },
+        { frame = 180, name = "main_view", path = "screenshots/test_main_view.png" },
+        { frame = 300, name = "tree_view", path = "screenshots/test_tree_view.png" },
+    }
+end
+
 while IsUserTerminated() == 0 do
     frame_count = frame_count + 1
 
@@ -1328,6 +1354,21 @@ while IsUserTerminated() == 0 do
     if frame_count % 60 == 0 then
         print(string.format("Frame %d - App running (%.1f seconds)",
                            frame_count, frame_count / 60.0))
+    end
+
+    -- Visual test: screenshot capture at target frames
+    if visual_test_mode and visual_test_targets then
+        for _, target in ipairs(visual_test_targets) do
+            if frame_count == target.frame then
+                TakeScreenshot(target.path)
+                print(string.format("VISUAL_TEST: Screenshot '%s' at frame %d", target.name, frame_count))
+            end
+        end
+        -- Auto-exit after all screenshots captured
+        if frame_count > 310 then
+            print("VISUAL_TEST: All screenshots captured. Exiting.")
+            break
+        end
     end
 
     ffi.C.usleep(16666)  -- ~60 FPS
