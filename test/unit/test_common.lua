@@ -94,6 +94,6 @@ end)
 else
     -- Common.lua failed to load, print diagnostic
     describe("Common.lua loading", function()
-        pending("Common.lua could not be loaded: " .. tostring(err))
+        error("Common.lua could not be loaded: " .. tostring(err))
     end)
 end

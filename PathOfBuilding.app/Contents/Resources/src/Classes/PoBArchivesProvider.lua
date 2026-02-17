@@ -80,7 +80,7 @@ function PoBArchivesProviderClass:GetRecommendations(buildCode, postURL)
 		self.pendingSubScriptId = id
 		launch:RegisterSubScript(id, function(response, errMsg)
 			self.pendingSubScriptId = nil
-			if not self or not self.ParseBuilds then return end
+			if not self.ParseBuilds then return end
 			if errMsg == 200 then
 				self.statusMsg = nil
 				self:ParseBuilds(response)

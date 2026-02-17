@@ -528,6 +528,7 @@ _G.DrawImageQuad = function(imageHandle, x1, y1, x2, y2, x3, y3, x4, y4, s1, t1,
     if type(imageHandle) == "table" and imageHandle._handle then
         handle = imageHandle._handle
     end
+    handle = handle or ffi.cast("void*", 0)
     -- Provide defaults for any nil texture coordinates
     s1 = s1 or 0.0
     t1 = t1 or 0.0
@@ -591,6 +592,7 @@ function imageHandleMT:Unload()
 end
 
 function imageHandleMT:IsValid()
+    if self._handle == nil then return false end
     return sg.ImageHandle_IsValid(self._handle) ~= 0
 end
 
@@ -973,6 +975,7 @@ end
 _G.ImageHandle_Unload = function(handle)
     if type(handle) == "table" and handle._handle then
         sg.ImageHandle_Unload(handle._handle)
+        handle._handle = nil
     else
         sg.ImageHandle_Unload(handle)
     end
