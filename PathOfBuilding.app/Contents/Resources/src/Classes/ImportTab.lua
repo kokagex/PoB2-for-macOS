@@ -166,6 +166,7 @@ local ImportTabClass = newClass("ImportTab", "ControlHost", "Control", function(
 			self.controls.generateCodeOut:SetText("")
 			self.controls.generateCodeByLink.label = "Creating link..."
 			launch:RegisterSubScript(subScriptId, function(pasteLink, errMsg)
+				if not self or not self.controls then return end
 				self.controls.generateCodeByLink.label = "Share"
 				if errMsg then
 					main:OpenMessagePopup(exportWebsite.id, "Error creating link:\n"..errMsg)

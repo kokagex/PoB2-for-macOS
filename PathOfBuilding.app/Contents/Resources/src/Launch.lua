@@ -101,6 +101,7 @@ function launch:CanExit()
 end
 
 function launch:OnExit()
+	self._shuttingDown = true
 	-- Let modules clean up their own SubScripts first
 	if self.main and self.main.Shutdown then
 		PCall(self.main.Shutdown, self.main)
@@ -242,6 +243,10 @@ function launch:OnSubError(id, errMsg)
 end
 
 function launch:OnSubFinished(id, ...)
+	if self._shuttingDown then
+		self.subScripts[id] = nil
+		return
+	end
 	local sub = self.subScripts[id]
 	if not sub then return end
 	if sub.type == "UPDATE" then

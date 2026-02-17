@@ -745,6 +745,7 @@ function TreeTabClass:OpenImportPopup()
 				pendingSubScriptId = id
 				launch:RegisterSubScript(id, function(treeLink, errMsg)
 					pendingSubScriptId = nil
+					if not controls or not controls.msg then return end
 					if errMsg then
 						controls.msg.label = "^1"..errMsg.."^7"
 						controls.import.enabled = true

@@ -183,7 +183,7 @@ function main:Init()
 
 	local function loadItemDBs()
 		for type, typeList in pairsYield(data.uniques) do
-			for _, raw in pairs(typeList) do
+			for _, raw in pairsYield(typeList) do
 				local ok, result = pcall(new, "Item", raw, "UNIQUE", true)
 				if ok then
 					newItem = result
