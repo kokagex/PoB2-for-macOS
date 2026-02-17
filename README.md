@@ -63,20 +63,44 @@ Whether this macOS port can keep up with the PoE2 0.5 update from the upstream P
 ## 既知の不具合 / Known Issues
 
 - 一部のオイルアイテムのテクスチャが表示されない（DDS圧縮の互換性問題）
-- ジュエルソケットのサムネイルプレビューで、ツリーの描画が枠外にはみ出すことがある
 - ビルド計算の一部数値が本家と一致しない場合がある
 - OAuth認証未実装のため、PoBサイトからの直接インポートは不可（リンク貼り付けは可能）
+- 日本語翻訳はまだ一部未対応の箇所があります
 
 ---
 
 - Some oil item textures may not display (DDS compression compatibility issue)
-- Jewel socket thumbnail previews may overflow outside the frame
 - Some build calculation values may differ from the Windows version
 - OAuth authentication is not yet implemented; direct import from the PoB site is unavailable (link paste still works)
+- Japanese translation is still incomplete in some areas
 
 ---
 
 ## バージョン履歴 / Version History
+
+### v0.2.0 (2026-02-17)
+
+- 日本語ローカライゼーション対応（UI全タブ、パッシブツリー、アイテム、スキル、Mod）
+- パッシブツリーノード名 589件の日本語翻訳
+- ユニークアイテム名・フレーバーテキスト 374件の日本語翻訳
+- ジェム説明文・Mod統計行 3,298件の日本語翻訳
+- SubScriptライフサイクル安全性の向上（コールバッククラッシュ防止）
+- 大規模テーブル走査のyield改善（フレームスタッター軽減）
+- ImageHandle安全性の向上（ダングリングポインタ修正）
+- Bustedユニットテスト基盤（71テスト）+ GitHub Actions CI
+- ビジュアルリグレッションテスト基盤
+
+---
+
+- Japanese localization (all UI tabs, passive tree, items, skills, mods)
+- 589 passive tree node name translations
+- 374 unique item name and flavour text translations
+- 3,298 gem description and mod stat line translations
+- Improved SubScript lifecycle safety (prevents callback crashes)
+- Yield improvement for large table iteration (reduces frame stutter)
+- ImageHandle safety improvements (dangling pointer fix)
+- Busted unit test infrastructure (71 tests) + GitHub Actions CI
+- Visual regression test infrastructure
 
 ### v0.1.2 (2026-02-11)
 
