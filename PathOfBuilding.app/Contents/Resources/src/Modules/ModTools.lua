@@ -12,8 +12,8 @@ local t_sort = table.sort
 local m_floor = math.floor
 local m_abs = math.abs
 local s_format = string.format
-local band = AND64 -- bit.band
-local bor = OR64 -- bit.bor
+local band = bit.band
+local bor = bit.bor
 
 modLib = { }
 
@@ -184,20 +184,7 @@ function modLib.formatValue(value)
 			t_insert(paramNames, name)
 		end
 	end
-
-	t_sort(paramNames, function (a, b)
-		if type(a) == "number" and type(b) == "number" then
-			return a < b
-		end
-		if type(a) == "number" then
-			return true
-		end
-		if type(b) == "number" then
-			return false
-		end
-		return a < b
-	end)
-
+	t_sort(paramNames)
 	if haveType then
 		t_insert(paramNames, 1, "type")
 	end
@@ -235,34 +222,16 @@ function modLib.setSource(mod, source)
 	return mod
 end
 
--- Check if a mod contains a specific tag already
--- Note: All keys AND values need to be matched exactly
----@param mod table individual mod that is to be checked
----@param searchTag table exact tag you're searching for, e.g.  { type = "Condition", var = "Shocked" }
----@return boolean @returns `true` if tag is found, otherwise `false`
----@return number @returns position as `number` if tag exists or `0` if not 
-function modLib.hasTag(mod, searchTag)
-	local numSearchKeys = 0 -- Apparently Lua doesn't have a built in functionality to return the number of keys in a table(?) so have to determine manually
-	for _, __ in pairs(searchTag) do
-		numSearchKeys = numSearchKeys + 1
-	end
-
-	for i, tag in ipairs(mod) do
-		local numTagKeys = 0 -- Total number of keys in tag
-		local numMatchedKeys = 0 -- Number of keys matching with searchTag
-		if type(tag) == "table" then
-			for key, value in pairs(searchTag) do
-				numTagKeys = numTagKeys + 1
-				if tag[key] and (tag[key] == value) then
-					numMatchedKeys = numMatchedKeys + 1
-				else
-					break -- this is not the correct tag
-				end
+-- Merge keystone modifiers
+function modLib.mergeKeystones(env, modDB)
+	env.keystonesAdded = env.keystonesAdded or { }
+	for _, modObj in ipairs(modDB:Tabulate("LIST", nil, "Keystone")) do
+		if not env.keystonesAdded[modObj.value] and env.spec.tree.keystoneMap[modObj.value] then
+			env.keystonesAdded[modObj.value] = true
+			local fromTree = modObj.mod.source and not modObj.mod.source:lower():match("tree")
+			for _, mod in ipairs(env.spec.tree.keystoneMap[modObj.value].modList) do
+				modDB:AddMod(fromTree and modLib.setSource(mod, modObj.mod.source) or mod)
 			end
 		end
-		if (numSearchKeys > 0) and (numSearchKeys == numMatchedKeys) and (numSearchKeys == numTagKeys) then
-			return true, i
-		end
 	end
-	return false, 0
 end
