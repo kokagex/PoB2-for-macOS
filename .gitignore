@@ -20,8 +20,8 @@ test_results_*.md
 
 # Large binary assets (distribute via Releases)
 *.dds.zst
-TreeData/**/*.png
-TreeData/**/*.jpg
+**/TreeData/**/*.png
+**/TreeData/**/*.jpg
 *.zip
 !PathOfBuilding.app/Contents/Resources/src/Data/TimelessJewelData/*.zip*
 
