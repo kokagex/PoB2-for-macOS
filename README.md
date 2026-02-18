@@ -14,23 +14,24 @@ Releases ページから `.zip` をダウンロードして解凍し、`PathOfBu
 
 Download the `.zip` from the Releases page, extract it, and drag `PathOfBuilding.app` into your Applications folder.
 
-### 署名なしアプリについて / Unsigned App Notice
+### 初回起動について / First Launch
 
-このアプリは Apple Developer ID による署名を行っていません。初回起動時に macOS の Gatekeeper がブロックします。**ダウンロード後、ターミナルで以下を実行してから起動してください：**
+このアプリは Ad-hoc 署名済みですが、Apple の公証（Notarization）は受けていません。初回起動時に Gatekeeper がブロックする場合があります。
 
-This app is not signed with an Apple Developer ID. macOS Gatekeeper will block it on first launch. **After downloading, run this in Terminal before opening:**
+This app is ad-hoc signed but not notarized by Apple. Gatekeeper may block it on first launch.
 
-```bash
-xattr -cr ~/Downloads/PathOfBuilding.app
-```
+1. `PathOfBuilding.app` を右クリック（またはControlキーを押しながらクリック）→「開く」
+2. 「開発元を検証できません」ダイアログで「開く」をクリック
 
-その後、ダブルクリックまたは右クリック →「開く」で起動できます。
+---
 
-Then open it by double-clicking or right-click → "Open".
+1. Right-click (or Control-click) `PathOfBuilding.app` → "Open"
+2. Click "Open" in the "unverified developer" dialog
 
-> **注意 / Note:** `~/Downloads/PathOfBuilding.app` はアプリの実際のパスに置き換えてください。Applications フォルダに移動した場合は `/Applications/PathOfBuilding.app` になります。
+> **それでも開けない場合 / If it still won't open:**
+> ターミナルで `xattr -cr PathOfBuilding.app` を実行してから再度開いてください。
 >
-> Replace `~/Downloads/PathOfBuilding.app` with the actual path. If moved to Applications, use `/Applications/PathOfBuilding.app`.
+> Run `xattr -cr PathOfBuilding.app` in Terminal, then try again.
 
 ---
 
