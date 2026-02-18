@@ -184,7 +184,7 @@ function ExtBuildListControlClass:importBuild(build)
 end
 
 function ExtBuildListControlClass:GetAscendancyImageHandle(ascendancy)
-	if ascendancy then
+	if ascendancy and ascendancy:match("^[A-Za-z%s'-]+$") then
 		local fileName = s_format('Assets/ascendants/%s.jpeg', (ascendancy:gsub("^%l", string.lower)))
 		local file = io.open(fileName, "r")
 		if file then

@@ -169,6 +169,7 @@ end
 local function validatePath(path)
     if type(path) ~= "string" then return false end
     if path:find("\0") then return false end
+    if path:find("[\r\n]") then return false end
     if path:find("%.%.[\\/]") or path:find("[\\/]%.%.$") then return false end
     if path:find("[;|&$%(%)%{%}%[%]`]") then return false end
     return true

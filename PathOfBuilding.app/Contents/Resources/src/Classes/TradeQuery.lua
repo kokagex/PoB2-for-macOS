@@ -18,6 +18,13 @@ local s_format = string.format
 
 local baseSlots = { "Weapon 1", "Weapon 2", "Weapon 1 Swap", "Weapon 2 Swap", "Helmet", "Body Armour", "Gloves", "Boots", "Amulet", "Ring 1", "Ring 2", "Ring 3", "Belt", "Charm 1", "Charm 2", "Charm 3", "Flask 1", "Flask 2" }
 
+local function sanitizeLeagueName(name)
+	if type(name) ~= "string" then return nil end
+	if name:find("%.%.") then return nil end
+	if not name:match("^[%w%s%-_%.]+$") then return nil end
+	return name
+end
+
 local TradeQueryClass = newClass("TradeQuery", function(self, itemsTab)
 	self.itemsTab = itemsTab
 	self.itemsTab.leagueDropList = { }
@@ -173,9 +180,13 @@ function TradeQueryClass:PullPoENinjaCurrencyConversion(league)
 				for key, value in pairs(self.pbCurrencyConversion[self.pbLeague]) do
 					print_str = print_str .. '"'..key..'": '..tostring(value)..','
 				end
-				local foo = io.open("../"..self.pbLeague.."_currency_values.json", "w")
-				foo:write("{" .. print_str .. '"updateTime": ' .. tostring(get_time()) .. "}")
-				foo:close()
+				local safeName = sanitizeLeagueName(self.pbLeague)
+				if not safeName then return end
+				local foo = io.open("../"..safeName.."_currency_values.json", "w")
+				if foo then
+					foo:write("{" .. print_str .. '"updateTime": ' .. tostring(get_time()) .. "}")
+					foo:close()
+				end
 				self:SetCurrencyConversionButton()
 			end)
 	end)
@@ -620,7 +631,8 @@ function TradeQueryClass:SetCurrencyConversionButton()
 		end
 		return
 	end
-	local values_file = io.open("../"..self.pbLeague.."_currency_values.json", "r")
+	local safeName = sanitizeLeagueName(self.pbLeague)
+	local values_file = safeName and io.open("../"..safeName.."_currency_values.json", "r")
 	if values_file then
 		local lines = values_file:read "*a"
 		values_file:close()

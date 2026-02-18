@@ -139,20 +139,34 @@ function PoEAPIClass:ValidateAuth(callback)
 	end
 end
 
+local function secure_random_bytes(n)
+	local f = io.open("/dev/urandom", "rb")
+	if f then
+		local bytes = f:read(n)
+		f:close()
+		if bytes and #bytes == n then
+			return bytes
+		end
+	end
+	-- Fallback: math.random with combined seed
+	math.randomseed(os.time() + math.floor(os.clock() * 1000000))
+	local t = {}
+	for i = 1, n do
+		t[i] = string.char(math.random(0, 255))
+	end
+	return table.concat(t)
+end
+
 local function base64_encode(secret)
-	return base64.encode(secret):gsub("+","-"):gsub("/","_"):gsub("=$", "")
+	return base64.encode(secret):gsub("+","-"):gsub("/","_"):gsub("=+$", "")
 end
 
 function PoEAPIClass:BeginAuth(redirectUri)
-	math.randomseed(os.time())
-	local secret = math.random(2^32-1)
-	local code_verifier = base64_encode(tostring(secret))
+	local code_verifier = base64_encode(secure_random_bytes(32))
 	local code_challenge = base64_encode(sha.hex_to_bin(sha.sha256(code_verifier)))
 
-	-- 16 character hex string
-	local initialState = string.gsub('xxxxxxxxxxxxxxxx', 'x', function()
-		return string.format('%x', math.random(0, 0xf))
-	end)
+	local initialState = secure_random_bytes(8)
+	initialState = initialState:gsub(".", function(c) return string.format("%02x", string.byte(c)) end)
 
 	local redirect_uri = redirectUri or "http://127.0.0.1:45000"
 	local authUrl = string.format(
