@@ -78,6 +78,24 @@ Whether this macOS port can keep up with the PoE2 0.5 update from the upstream P
 
 ## バージョン履歴 / Version History
 
+### v0.2.1 (2026-02-18)
+
+- OAuth PKCE認証の暗号強度を改善（math.random → /dev/urandom、256bit エントロピー）
+- TradeQuery通貨ファイルのパストラバーサル脆弱性を修正
+- 外部ビルドリストのascendancy名によるパストラバーサルを修正
+- ファイルパス検証の改行文字バイパスを修正
+- base64urlパディング処理の修正
+- io.open nilガード追加（通貨ファイル書き込み時のクラッシュ防止）
+
+---
+
+- Improved OAuth PKCE cryptographic strength (math.random → /dev/urandom, 256-bit entropy)
+- Fixed path traversal vulnerability in TradeQuery currency file paths
+- Fixed path traversal via ascendancy names from external build lists
+- Fixed newline bypass in file path validation
+- Fixed base64url padding strip for double-padded output
+- Added io.open nil guard to prevent crash on currency file write failure
+
 ### v0.2.0 (2026-02-17)
 
 - 日本語ローカライゼーション対応（UI全タブ、パッシブツリー、アイテム、スキル、Mod）
