@@ -16,23 +16,21 @@ Download the `.zip` from the Releases page, extract it, and drag `PathOfBuilding
 
 ### 署名なしアプリについて / Unsigned App Notice
 
-このアプリは Apple Developer ID による署名を行っていません。初回起動時に macOS の Gatekeeper がブロックします。以下の手順で開いてください:
+このアプリは Apple Developer ID による署名を行っていません。初回起動時に macOS の Gatekeeper がブロックします。**ダウンロード後、ターミナルで以下を実行してから起動してください：**
 
-This app is not signed with an Apple Developer ID. macOS Gatekeeper will block it on first launch. To open it:
+This app is not signed with an Apple Developer ID. macOS Gatekeeper will block it on first launch. **After downloading, run this in Terminal before opening:**
 
-1. `PathOfBuilding.app` を右クリック（またはControlキーを押しながらクリック）
-2. 「開く」を選択
-3. 警告ダイアログが出るので、もう一度「開く」をクリック
+```bash
+xattr -cr ~/Downloads/PathOfBuilding.app
+```
 
----
+その後、ダブルクリックまたは右クリック →「開く」で起動できます。
 
-1. Right-click (or Control-click) `PathOfBuilding.app`
-2. Select "Open"
-3. Click "Open" again in the warning dialog
+Then open it by double-clicking or right-click → "Open".
 
-2回目以降は普通にダブルクリックで起動できます。
-
-After the first time, it will open normally with a double-click.
+> **注意 / Note:** `~/Downloads/PathOfBuilding.app` はアプリの実際のパスに置き換えてください。Applications フォルダに移動した場合は `/Applications/PathOfBuilding.app` になります。
+>
+> Replace `~/Downloads/PathOfBuilding.app` with the actual path. If moved to Applications, use `/Applications/PathOfBuilding.app`.
 
 ---
 
