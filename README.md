@@ -10,28 +10,29 @@ An unofficial macOS native port of the PoE2 build planner developed by [Path of 
 
 ## インストール / Installation
 
-Releases ページから `.zip` をダウンロードして解凍し、`PathOfBuilding.app` を Applications フォルダに入れてください。
+1. Releases ページから `.zip` をダウンロードして解凍
+2. `PathOfBuilding.app` を好きな場所に配置（Applications フォルダ推奨）
+3. ターミナルを開き、`PathOfBuilding.app` を置いたフォルダに移動してから以下を実行：
 
-Download the `.zip` from the Releases page, extract it, and drag `PathOfBuilding.app` into your Applications folder.
+```bash
+cd /Applications  # アプリを置いた場所に合わせて変更
+xattr -cr PathOfBuilding.app
+```
 
-### 初回起動について / First Launch
-
-このアプリは Ad-hoc 署名済みですが、Apple の公証（Notarization）は受けていません。初回起動時に Gatekeeper がブロックする場合があります。
-
-This app is ad-hoc signed but not notarized by Apple. Gatekeeper may block it on first launch.
-
-1. `PathOfBuilding.app` を右クリック（またはControlキーを押しながらクリック）→「開く」
-2. 「開発元を検証できません」ダイアログで「開く」をクリック
+4. `PathOfBuilding.app` をダブルクリックで起動
 
 ---
 
-1. Right-click (or Control-click) `PathOfBuilding.app` → "Open"
-2. Click "Open" in the "unverified developer" dialog
+1. Download the `.zip` from the Releases page and extract it
+2. Place `PathOfBuilding.app` wherever you like (Applications folder recommended)
+3. Open Terminal, navigate to the folder containing `PathOfBuilding.app`, and run:
 
-> **それでも開けない場合 / If it still won't open:**
-> ターミナルで `xattr -cr PathOfBuilding.app` を実行してから再度開いてください。
->
-> Run `xattr -cr PathOfBuilding.app` in Terminal, then try again.
+```bash
+cd /Applications  # Change to wherever you placed the app
+xattr -cr PathOfBuilding.app
+```
+
+4. Double-click `PathOfBuilding.app` to launch
 
 ---
 
