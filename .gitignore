@@ -6,3 +6,31 @@ skills/
 installed-skills/
 claude-code-insights-日本語版.md
 .worktrees/
+
+# Dev tools and session artifacts
+tools/
+docs/plans/
+scripts/
+.mcp.json
+RESEARCH*.md
+plan.md
+HANDOVER.md
+test.md
+test_results_*.md
+
+# Large binary assets (distribute via Releases)
+*.dds.zst
+TreeData/**/*.png
+TreeData/**/*.jpg
+*.zip
+!PathOfBuilding.app/Contents/Resources/src/Data/TimelessJewelData/*.zip*
+
+# Fonts (standard fonts, install separately)
+PathOfBuilding.app/Contents/Resources/runtime/fonts/LiberationSans-*.ttf
+
+# Build artifacts and temp files
+*.lua.new
+*.lua.bak
+*.dylib.bak*
+*.log
+pob2macos/
