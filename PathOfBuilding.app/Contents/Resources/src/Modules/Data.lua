@@ -373,6 +373,41 @@ data.nonDamagingAilment = {
 }
 
 -- Used in ModStoreClass:ScaleAddMod(...) to identify high precision modifiers
+data.defaultAilmentDamageTypes = {
+		-- damaging
+		["Bleed"] = {
+			["ScalesFrom"] = {
+				["Physical"] = true,
+			},
+			["DamageType"] = "Physical",
+		},
+		["Poison"] = {
+			["ScalesFrom"] = {
+				["Physical"] = true,
+				["Chaos"] = true,
+			},
+			["DamageType"] = "Chaos",
+		},
+		["Ignite"] = {
+			["ScalesFrom"] = {
+				["Fire"] = true,
+			},
+			["DamageType"] = "Fire",
+		},
+		-- non-damaging
+		["Shock"] = {
+			["ScalesFrom"] = {
+				["Lightning"] = true,
+			}
+		},
+		["Chill"] = {
+			["ScalesFrom"] = {
+				["Cold"] = true,
+			}
+		},
+	}
+
+-- Used in ModStoreClass:ScaleAddMod(...) to identify high precision modifiers
 data.defaultHighPrecision = 1
 data.highPrecisionMods = {
 	["CritChance"] = {
