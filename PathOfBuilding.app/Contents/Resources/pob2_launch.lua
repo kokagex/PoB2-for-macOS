@@ -145,7 +145,7 @@ local function getDpiScale()
     return _dpi_scale
 end
 
--- Forward declaration (defined at L396)
+-- Forward declaration (defined in "normalizeTextArg" section below)
 local normalizeTextArg
 
 -- Setup global functions for Path of Building
@@ -577,6 +577,7 @@ function imageHandleMT:Load(fileName, ...)
     -- Check if file is in an archive
     -- Note: MIPMAP/async flag is not passed to archive loads; the engine
     -- handles mip generation internally for archive-backed textures.
+    if fileName == nil then return 0 end
     local archive = getArchiveForPath(fileName)
     if archive then
         local result = sg.ImageHandle_LoadFromArchive(self._handle, archive, fileName)
@@ -1046,9 +1047,35 @@ if home then
 end
 
 print("✓ Lua package paths configured")
+print("")
+
+-- Set working directory to script path (pob2macos directory)
+-- Use Lua's arg[0] to get actual script path instead of GetScriptPath() which returns luajit binary path
+local script_file = arg[0]
+local script_path
+if script_file then
+    -- Extract directory from script file path
+    script_path = script_file:match("(.*/)")
+    if not script_path then
+        -- If no directory separator found, use current directory
+        script_path = "."
+    end
+    -- Remove trailing slash if present
+    script_path = script_path:gsub("/$", "")
+    print("Script file: " .. script_file)
+else
+    -- Fallback to GetScriptPath() if arg[0] is not available
+    script_path = GetScriptPath()
+    print("Using GetScriptPath() fallback")
+end
+print("Script path: " .. script_path)
+SetWorkDir(script_path)
+print("Working directory set to: " .. script_path)
+print("")
 
 -- Archive loader: register custom package.loaders entry for SGPAK archives
 -- require("archive.assets") → opens archives/assets.sgpak
+-- Registered after SetWorkDir so relative paths resolve correctly.
 table.insert(package.loaders, function(modname)
     local name = modname:match("^archive%.(.+)$")
     if not name then return end
@@ -1080,8 +1107,17 @@ local archiveMapping = {
 getArchiveForPath = function(fileName)
     for _, mapping in ipairs(archiveMapping) do
         if fileName:sub(1, #mapping.prefix) == mapping.prefix then
+            -- Check cached failure sentinel to avoid repeated require retries
+            if package.loaded[mapping.archive] == false then
+                return nil
+            end
             local ok, archive = pcall(require, mapping.archive)
-            if ok and archive ~= nil then
+            if not ok then
+                print("WARNING: Failed to load archive " .. mapping.archive .. ": " .. tostring(archive))
+                package.loaded[mapping.archive] = false  -- cache failure
+                return nil
+            end
+            if archive ~= nil then
                 if sg.SG_ArchiveContains(archive, fileName) ~= 0 then
                     return archive
                 end
@@ -1093,30 +1129,6 @@ getArchiveForPath = function(fileName)
 end
 
 print("✓ Archive loader registered")
-print("")
-
--- Set working directory to script path (pob2macos directory)
--- Use Lua's arg[0] to get actual script path instead of GetScriptPath() which returns luajit binary path
-local script_file = arg[0]
-local script_path
-if script_file then
-    -- Extract directory from script file path
-    script_path = script_file:match("(.*/)")
-    if not script_path then
-        -- If no directory separator found, use current directory
-        script_path = "."
-    end
-    -- Remove trailing slash if present
-    script_path = script_path:gsub("/$", "")
-    print("Script file: " .. script_file)
-else
-    -- Fallback to GetScriptPath() if arg[0] is not available
-    script_path = GetScriptPath()
-    print("Using GetScriptPath() fallback")
-end
-print("Script path: " .. script_path)
-SetWorkDir(script_path)
-print("Working directory set to: " .. script_path)
 print("")
 
 -- Don't call RenderInit here - let Launch.lua do it
