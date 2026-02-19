@@ -23,7 +23,6 @@ end
 local listMode = new("ControlHost")
 
 function listMode:Init(selBuildName, subPath)
-	print("★★★ BUILDLIST.LUA VERSION: 2026-02-06-1945 ★★★")
 	if self.initialised then
 		self.subPath = subPath or self.subPath
 		self.controls.buildList.controls.path:SetSubPath(self.subPath)
@@ -43,9 +42,7 @@ function listMode:Init(selBuildName, subPath)
 
 	self.anchor = new("Control", nil, {0, 4 * s, 0, 0})
 	self.anchor.x = function()
-		-- Keep anchor at screen center for button positioning
-		local anchorX = main.screenW / 2
-		return anchorX
+		return main.screenW / 2
 	end
 
 	self.subPath = subPath or ""
@@ -78,20 +75,26 @@ function listMode:Init(selBuildName, subPath)
 		self:SortList()
 	end)
 	self.controls.sort:SelByValue(main.buildSortMode, "sortMode")
-
 	self.controls.buildList = new("BuildListControl", {"TOP",self.anchor,"TOP"}, {0, 75 * s, 900 * s, 0}, self)
 	self.controls.buildList.height = function()
 		return main.screenH - 80 * s
 	end
 	local buildListWidth = function ()
-		-- Windows version logic
-		local width = math.min((main.screenW / 2), 900 * s)
-		return width
+		--if main.showPublicBuilds then
+		if false then
+			return math.min((main.screenW / 2), 900 * s)
+		else
+			return 900 * s
+		end
 	end
 	local buildListOffset = function ()
-		-- Windows version logic
-		local offset = math.min(450 * s, main.screenW / 4)
-		return offset - 450 * s
+		--if main.showPublicBuilds then
+		if false then
+			local offset = math.min(450 * s, main.screenW / 4)
+			return offset - 450 * s
+		else
+			return 0
+		end
 	end
 
 	self.controls.buildList.width = buildListWidth

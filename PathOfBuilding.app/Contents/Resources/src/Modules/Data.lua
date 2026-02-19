@@ -17,7 +17,6 @@ local skillTypes = {
 	"act_dex",
 	"act_int",
 	"other",
-	-- "glove", -- Stage 4: Removed (PoE1 feature, causes SkillType errors)
 	"minion",
 	"spectre",
 	"sup_str",
@@ -28,15 +27,21 @@ local itemTypes = {
 	"axe",
 	"bow",
 	"claw",
+	"crossbow",
 	"dagger",
 	"fishing",
+	"flail",
+	"focus",
 	"mace",
+	"spear",
 	"staff",
+	"sceptre",
 	"sword",
+	"talisman",
 	"wand",
-	"helmet",
 	"body",
 	"gloves",
+	"helmet",
 	"boots",
 	"shield",
 	"quiver",
@@ -45,17 +50,7 @@ local itemTypes = {
 	"belt",
 	"jewel",
 	"flask",
-	"tincture",
-	"graft",
-	"sceptre",
-	"focus",
-	"crossbow",
-	"flail",
-	"spear",
-	"soulcore",
-	"talisman",
-	"traptool",
-	"incursionlimb",
+	"incursionlimb"
 }
 
 local function makeSkillMod(modName, modType, modVal, flags, keywordFlags, ...)
@@ -79,24 +74,26 @@ local function processMod(grantedEffect, mod, statName)
 	if type(mod.value) == "table" and mod.value.mod then
 		mod.value.mod.source = "Skill:"..grantedEffect.id
 	end
-
+	
 	for _, tag in ipairs(mod) do
 		if tag.type == "GlobalEffect" then
 			grantedEffect.hasGlobalEffect = true
 			break
 		end
 	end
-
+	
 	local notMinionStat = false
-	if grantedEffect.notMinionStat and statName and (grantedEffect.support or grantedEffect.skillTypes and grantedEffect.skillTypes[SkillType.Buff]) then
-		for _, notMinionStatName in ipairs(grantedEffect.notMinionStat) do
-			if notMinionStatName == statName then
-				notMinionStat = true
+	for _, statStet in ipairs(grantedEffect.statSets) do
+		if statStet.notMinionStat and statName and (grantedEffect.support or grantedEffect.skillTypes and grantedEffect.skillTypes[SkillType.Buff]) then
+			for _, notMinionStatName in ipairs(statStet.notMinionStat) do
+				if notMinionStatName == statName then
+					notMinionStat = true
+				end
 			end
 		end
 	end
 	if notMinionStat then
-		t_insert(mod, { type = "ActorCondition", actor = "parent", neg = true})
+		t_insert(mod, { type = "ActorCondition", actor = "parent", neg = true })
 	end
 end
 
@@ -149,6 +146,7 @@ data.powerStatList = {
 	{ stat="ManaRegen", label="Mana regen" },
 	{ stat="ManaLeechRate", label="Mana leech" },
 	{ stat="Ward", label="Ward" },
+	{ stat="Spirit", label="Spirit" },
 	{ stat="Str", label="Strength" },
 	{ stat="Dex", label="Dexterity" },
 	{ stat="Int", label="Intelligence" },
@@ -173,6 +171,7 @@ data.powerStatList = {
 	{ stat="BlockChance", label="Block Chance" },
 	{ stat="SpellBlockChance", label="Spell Block Chance" },
 	{ stat="SpellSuppressionChance", label="Spell Suppression Chance" },
+	{ stat="EffectiveLootRarityMod", label="Rarity of Items found" },
 }
 
 data.misc = { -- magic numbers
@@ -305,80 +304,56 @@ data.cursePriority = {
 	["CurseFromAura"] = 20000,
 }
 
----@type string[] @List of all keystones not exclusive to timeless jewels or cluster jewels.
+---@type string[] @List of all keystones not exclusive to timeless jewels.
 data.keystones = {
 	"Acrobatics",
 	"Ancestral Bond",
-	"Arrow Dancing",
-	"Arsenal of Vengeance",
 	"Avatar of Fire",
+	"Blackflame Covenant",
 	"Blood Magic",
-	"Bloodsoaked Blade",
-	"Call to Arms",
+	"Bulwark",
 	"Chaos Inoculation",
 	"Conduit",
-	"Corrupted Soul",
-	"Crimson Dance",
-	"Divine Flesh",
-	"Divine Shield",
-	"Doomsday",
+	"Crimson Assault",
+	"Dance with Death",
 	"Eldritch Battery",
 	"Elemental Equilibrium",
-	"Elemental Overload",
 	"Eternal Youth",
-	"Ghost Dance",
-	"Ghost Reaver",
+	"Giant's Blood",
 	"Glancing Blows",
-	"Hex Master",
-	"Imbalanced Guard",
-	"Immortal Ambition",
-	"Inner Conviction",
-	"Iron Grip",
+	"Heartstopper",
+	"Hollow Palm Technique",
 	"Iron Reflexes",
-	"Iron Will",
-	"Lethe Shade",
-	"Magebane",
+	"Lord of the Wilds",
 	"Mind Over Matter",
-	"Minion Instability",
-	"Mortal Conviction",
-	"Necromantic Aegis",
+	"Necromantic Talisman",
+	"Oasis",
 	"Pain Attunement",
-	"Perfect Agony",
-	"Phase Acrobatics",
-	"Point Blank",
-	"Power of Purpose",
-	"Precise Technique",
+	"Primal Hunger",
 	"Resolute Technique",
-	"Runebinder",
-	"Solipsism",
-	"Supreme Decadence",
-	"Supreme Ego",
-	"The Agnostic",
-	"The Impaler",
-	"Transcendence",
+	"Resonance",
+	"Ritual Cadence",
+	"Scarred Faith",
+	"Trusted Kinship",
 	"Unwavering Stance",
 	"Vaal Pact",
-	"Versatile Combatant",
-	"Wicked Ward",
-	"Wind Dancer",
+	"Walker of the Wilds",
+	"Whispers of Doom",
+	"Wildsurge Incantation",
 	"Zealot's Oath",
 }
 
-data.ailmentTypeList = { "Bleed", "Poison", "Ignite", "Chill", "Freeze", "Shock", "Scorch", "Brittle", "Sap" }
-data.elementalAilmentTypeList = { "Ignite", "Chill", "Freeze", "Shock", "Scorch", "Brittle", "Sap" }
-data.nonDamagingAilmentTypeList = { "Chill", "Freeze", "Shock", "Scorch", "Brittle", "Sap" }
+data.ailmentTypeList = { "Bleed", "Poison", "Ignite", "Chill", "Freeze", "Shock" }
+data.elementalAilmentTypeList = { "Ignite", "Chill", "Freeze", "Shock" }
+data.nonDamagingAilmentTypeList = { "Chill", "Freeze", "Shock" }
 data.nonElementalAilmentTypeList = { "Bleed", "Poison" }
 
 data.nonDamagingAilment = {
-	["Chill"] = { associatedType = "Cold", alt = false, default = 10, min = 5, max = 30, precision = 0, duration = 2 },
-	["Freeze"] = { associatedType = "Cold", alt = false, default = nil, min = 0.3, max = 3, precision = 2, duration = nil },
-	["Shock"] = { associatedType = "Lightning", alt = false, default = 15, min = 5, max = 50, precision = 0, duration = 2 },
-	["Scorch"] = { associatedType = "Fire", alt = true, default = 10, min = 0, max = 30, precision = 0, duration = 4 },
-	["Brittle"] = { associatedType = "Cold", alt = true, default = 2, min = 0, max = 6, precision = 2, duration = 4 },
-	["Sap"] = { associatedType = "Lightning", alt = true, default = 6, min = 0, max = 20, precision = 0, duration = 4 },
+	["Chill"] = { associatedType = "Cold", alt = false, default = 30, min = 30, max = data.gameConstants["ChillMaxEffect"], precision = 0, duration = data.gameConstants["BaseChillDuration"] },
+	["Freeze"] = { associatedType = "Cold", alt = false, default = nil, min = 0.3, max = 3, precision = 2, duration = data.gameConstants["FreezeDuration"] },
+	["Shock"] = { associatedType = "Lightning", alt = false, default = data.gameConstants["BaseShockMagnitude"], min = data.gameConstants["BaseShockMagnitude"], max = 100, precision = 0, duration = data.gameConstants["BaseShockDuration"] },
 }
 
--- Used in ModStoreClass:ScaleAddMod(...) to identify high precision modifiers
 data.buildupTypes = {
 		["Electrocute"] = {
 			["ScalesFrom"] = {
@@ -553,6 +528,9 @@ data.highPrecisionMods = {
 	["SupportManaMultiplier"] = {
 		["MORE"] = 4,
 	},
+	["ReservationMultiplier"] = {
+		["MORE"] = 4,
+	},
 }
 
 data.weaponTypeInfo = {
@@ -598,69 +576,54 @@ data.unarmedWeaponData = {
 }
 
 data.setJewelRadiiGlobally = function(treeVersion)
-	local major, minor = treeVersion:match("(%d+)_(%d+)")
-	if tonumber(major) <= 3 and tonumber(minor) <= 15 then
-		data.jewelRadius = data.jewelRadii["3_15"]
-	else
-		data.jewelRadius = data.jewelRadii["3_16"]
+	local tMajor, tMinor = treeVersion:match("(%d+)_(%d+)")
+	tMajor, tMinor = tonumber(tMajor), tonumber(tMinor)
+
+	local sMajor, sMinor = nil, nil
+
+	for version, _ in pairs(data.jewelRadii) do
+		local jMajor, jMinor = version:match("(%d+)_(%d+)")
+		jMajor, jMinor = tonumber(jMajor), tonumber(jMinor)
+
+		if (jMajor < tMajor) or (jMajor == tMajor and jMinor <= tMinor) then
+			if not sMajor or (jMajor > sMajor) or (jMajor == sMajor and jMinor > sMinor) then
+				sMajor, sMinor = jMajor, jMinor
+			end
+		end
 	end
+	data.jewelRadius = data.jewelRadii[sMajor.."_"..sMinor]
 
 	local maxJewelRadius = 0
 	for _, radiusInfo in ipairs(data.jewelRadius) do
-		radiusInfo.outerSquared = radiusInfo.outer * radiusInfo.outer
-		radiusInfo.innerSquared = radiusInfo.inner * radiusInfo.inner
+		radiusInfo.outerSquared = radiusInfo.outer * radiusInfo.outer * data.gameConstants["PassiveTreeJewelDistanceMultiplier"] * data.gameConstants["PassiveTreeJewelDistanceMultiplier"]
+		radiusInfo.innerSquared = radiusInfo.inner * radiusInfo.inner * data.gameConstants["PassiveTreeJewelDistanceMultiplier"] * data.gameConstants["PassiveTreeJewelDistanceMultiplier"]
 
 		if radiusInfo.outer > maxJewelRadius then
-			maxJewelRadius = radiusInfo.outer
+			maxJewelRadius = radiusInfo.outer * data.gameConstants["PassiveTreeJewelDistanceMultiplier"]
 		end
 	end
 	data.maxJewelRadius = maxJewelRadius
 end
 
 data.jewelRadii = {
-	["3_15"] = {
-		{ inner = 0, outer = 800, col = "^xBB6600", label = "Small" },
-		{ inner = 0, outer = 1200, col = "^x66FFCC", label = "Medium" },
-		{ inner = 0, outer = 1500, col = "^x2222CC", label = "Large" },
+	["0_1"] = {
+		{ inner = 0, outer = 1000, col = "^xBB6600", label = "Small" },
+		{ inner = 0, outer = 1150, col = "^x66FFCC", label = "Medium" },
+		{ inner = 0, outer = 1300, col = "^x2222CC", label = "Large" },
+		{ inner = 0, outer = 1500, col = "^xC100FF", label = "Very Large" },
 
-		{ inner = 850, outer = 1100, col = "^xD35400", label = "Variable" },
-		{ inner = 1150, outer = 1400, col = "^x66FFCC", label = "Variable" },
-		{ inner = 1450, outer = 1700, col = "^x2222CC", label = "Variable" },
-		{ inner = 1750, outer = 2000, col = "^xC100FF", label = "Variable" },
-		{ inner = 1750, outer = 2000, col = "^xC100FF", label = "Variable" },
-	},
-	["3_16"] = {
-		{ inner = 0, outer = 960, col = "^xBB6600", label = "Small" },
-		{ inner = 0, outer = 1440, col = "^x66FFCC", label = "Medium" },
-		{ inner = 0, outer = 1800, col = "^x2222CC", label = "Large" },
-		{ inner = 0, outer = 2400, col = "^xC100FF", label = "Very Large" },	
-		{ inner = 0, outer = 2880, col = "^x0B9300", label = "Massive" },
-
-		{ inner = 960, outer = 1320, col = "^xD35400", label = "Variable" },
-		{ inner = 1320, outer = 1680, col = "^x66FFCC", label = "Variable" },
-		{ inner = 1680, outer = 2040, col = "^x2222CC", label = "Variable" },
-		{ inner = 2040, outer = 2400, col = "^xC100FF", label = "Variable" },
-		{ inner = 2400, outer = 2880, col = "^x0B9300", label = "Variable" },
+		{ inner = 650, outer = 950, col = "^xD35400", label = "Variable" },
+		{ inner = 800, outer = 1100, col = "^x66FFCC", label = "Variable" },
+		{ inner = 950, outer = 1250, col = "^x2222CC", label = "Variable" },
+		{ inner = 1100, outer = 1400, col = "^xC100FF", label = "Variable" },
+		{ inner = 1250, outer = 1550, col = "^x0B9300", label = "Variable" },
+		{ inner = 1400, outer = 1700, col = "^xFFCC00", label = "Variable" },
+		{ inner = 1650, outer = 1950, col = "^xFF6600", label = "Variable" },
+		{ inner = 1800, outer = 2100, col = "^x0099FF", label = "Variable" },
 	}
 }
 
 data.jewelRadius = data.setJewelRadiiGlobally(latestTreeVersion)
-
-data.enchantmentSource = {
-	{ name = "ENKINDLING", label = "Enkindling Orb" },
-	{ name = "INSTILLING", label = "Instilling Orb" },
-	{ name = "RUNESMITH", label = "Runecraft Bench" },
-	{ name = "HEIST", label = "Heist" },
-	{ name = "HARVEST", label = "Harvest" },
-	{ name = "DEDICATION", label = "Dedication to the Goddess" },
-	{ name = "ENDGAME", label = "Eternal Labyrinth" },
-	{ name = "MERCILESS", label = "Merciless Labyrinth" },
-	{ name = "CRUEL", label = "Cruel Labyrinth" },
-	{ name = "NORMAL", label = "Normal Labyrinth" },
-}
-
--- Misc data tables
-LoadModule("Data/Misc", data)
 
 -- Stat descriptions
 data.describeStats = LoadModule("Modules/StatDescriber")
@@ -669,53 +632,29 @@ data.describeStats = LoadModule("Modules/StatDescriber")
 data.itemMods = {
 	Item = LoadModule("Data/ModItem"),
 	Flask = LoadModule("Data/ModFlask"),
-	Tincture = LoadModule("Data/ModTincture"),
-	Graft = LoadModule("Data/ModGraft"),
+	Charm = LoadModule("Data/ModCharm"),
+	IncursionLimb = LoadModule("Data/ModIncursionLimb"),
 	Jewel = LoadModule("Data/ModJewel"),
-	JewelAbyss = LoadModule("Data/ModJewelAbyss"),
-	JewelCluster = LoadModule("Data/ModJewelCluster"),
-	JewelCharm = LoadModule("Data/ModJewelCharm"),
-	Runes = LoadModule("Data/ModRunes"),
-	Exclusive = LoadModule("Data/ModItemExclusive"),
 	Corruption = LoadModule("Data/ModCorrupted"),
+	Runes = LoadModule("Data/ModRunes"),
+	Exclusive = LoadModule("Data/ModItemExclusive")
 }
-data.masterMods = LoadModule("Data/ModMaster")
-data.enchantments = {
-	["Helmet"] = LoadModule("Data/EnchantmentHelmet"),
-	["Boots"] = LoadModule("Data/EnchantmentBoots"),
-	["Gloves"] = LoadModule("Data/EnchantmentGloves"),
-	["Belt"] = LoadModule("Data/EnchantmentBelt"),
-	["Body Armour"] = LoadModule("Data/EnchantmentBody"),
-	["Weapon"] = LoadModule("Data/EnchantmentWeapon"),
-	["UtilityFlask"] = LoadModule("Data/EnchantmentFlask"),
-}
+
+-- update JewelRadius affixes for Time-Lost jewels
 do
-	data.enchantments["Flask"] = data.enchantments["UtilityFlask"]--["HARVEST"]
-	for baseType, _ in pairs(data.weaponTypeInfo) do
-		data.enchantments[baseType] = { }
-		for enchantmentType, enchantmentList in pairs(data.enchantments["Weapon"]) do
-			if type(enchantmentList[1]) == "string" then
-				data.enchantments[baseType][enchantmentType] = enchantmentList
-			elseif type(enchantmentList[1]) == "table" then
-				data.enchantments[baseType][enchantmentType] = {}
-				for _, enchantment in ipairs(enchantmentList) do
-					if enchantment.types[baseType] then
-						t_insert(data.enchantments[baseType][enchantmentType], table.concat(enchantment, "/"))
-					end
-				end
+	for index, value in pairs(data.itemMods.Jewel) do
+		if index:find("JewelRadius") and value.nodeType and value[1] then
+			if value.nodeType == 1 then
+				value[1] = "Small Passive Skills in Radius also grant "..value[1]
+			elseif value.nodeType == 2 then
+				value[1] = "Notable Passive Skills in Radius also grant "..value[1]
 			end
 		end
-	end					
+	end
 end
-data.essences = LoadModule("Data/Essence")
-data.veiledMods = LoadModule("Data/ModVeiled")
-data.beastCraft = LoadModule("Data/BeastCraft")
-data.necropolisMods = LoadModule("Data/ModNecropolis")
-data.crucible = LoadModule("Data/Crucible")
-data.pantheons = LoadModule("Data/Pantheons")
-data.costs = LoadModule("Data/Costs")
-data.questRewards = LoadModule("Data/QuestRewards")
 
+data.essences = LoadModule("Data/Essence")
+data.costs = LoadModule("Data/Costs")
 do
 	local map = { }
 	for i, value in ipairs(data.costs) do
@@ -764,8 +703,6 @@ data.itemTagSpecialExclusionPattern = {
 			"Life as Physical Damage",
 			"Life as Extra Maximum Energy Shield",
 			"maximum Life as Fire Damage",
-			"while on Full Life", -- foxshade
-			"while you are on Full Life", -- foxshade
 			"when on Full Life",
 			"when on Low Life",
 			"Gain Maximum Life instead of Maximum Energy Shield",
@@ -775,14 +712,13 @@ data.itemTagSpecialExclusionPattern = {
 		["boots"] = {
 			"Enemy's Life", -- Legacy of Fury
 			"^Enemies Cannot Leech Life", -- Sin Trek
-			'their Life as Chaos Damage', -- Beacon of Madness
 			"when on Full Life",
 			"when on Low Life",
 			"^Allocates",
 		},
 		["belt"] = {
 			"Life as Extra Maximum Energy Shield", -- Soul Tether
-			"Life Recovery from Flasks is applied to nearby Allies", -- The Druggery
+			"Life Recovery from Flasks", -- The Druggery
 			"Life Flasks gain", -- The Druggery
 			"when on Full Life",
 			"when on Low Life",
@@ -847,80 +783,6 @@ data.itemTagSpecialExclusionPattern = {
 	},
 }
 
--- Cluster jewel data
-data.clusterJewels = LoadModule("Data/ClusterJewels")
-
--- Create a quick lookup cache from cluster jewel skill to the notables which use that skill
----@type table<string, table<string>>
-local clusterSkillToNotables = { }
-for notableKey, notableInfo in pairs(data.itemMods.JewelCluster) do
-	-- Translate the notable key to its name
-	local notableName = notableInfo[1] and notableInfo[1]:match("1 Added Passive Skill is (.*)")
-	if notableName then
-		for weightIndex, clusterSkill in pairs(notableInfo.weightKey) do
-			if notableInfo.weightVal[weightIndex] > 0 then
-				if not clusterSkillToNotables[clusterSkill] then
-					clusterSkillToNotables[clusterSkill] = { }
-				end
-				table.insert(clusterSkillToNotables[clusterSkill], notableName)
-			end
-		end
-	end
-end
-
--- Create easy lookup from cluster node name -> cluster jewel size and types
-data.clusterJewelInfoForNotable = { }
-for size, jewel in pairs(data.clusterJewels.jewels) do
-	for skill, skillInfo in pairs(jewel.skills) do
-		local notables = clusterSkillToNotables[skill]
-		if notables then
-			for _, notableKey in ipairs(notables) do
-				if not data.clusterJewelInfoForNotable[notableKey] then
-					data.clusterJewelInfoForNotable[notableKey] = { }
-					data.clusterJewelInfoForNotable[notableKey].jewelTypes = { }
-					data.clusterJewelInfoForNotable[notableKey].size = { }
-				end
-				local curJewelInfo = data.clusterJewelInfoForNotable[notableKey]
-				curJewelInfo.size[size] = true
-				table.insert(curJewelInfo.jewelTypes, skill)
-			end
-		end
-	end
-end
-
-data.timelessJewelTypes = {
-	[1] = "Glorious Vanity",
-	[2] = "Lethal Pride",
-	[3] = "Brutal Restraint",
-	[4] = "Militant Faith",
-	[5] = "Elegant Hubris",
-}
-data.timelessJewelSeedMin = {
-	[1] = 100,
-	[2] = 10000,
-	[3] = 500,
-	[4] = 2000,
-	[5] = 2000 / 20,
-}
-data.timelessJewelSeedMax = {
-	[1] = 8000,
-	[2] = 18000,
-	[3] = 8000,
-	[4] = 10000,
-	[5] = 160000 / 20,
-}
-data.timelessJewelTradeIDs = LoadModule("Data/TimelessJewelData/LegionTradeIds")
-data.timelessJewelAdditions = 94 -- #legionAdditions
-data.nodeIDList = LoadModule("Data/TimelessJewelData/NodeIndexMapping")
-data.timelessJewelLUTs = { }
-data.readLUT, data.repairLUTs = LoadModule("Modules/DataLegionLookUpTableHelper")
-
--- this runs if the "size" key is missing from nodeIDList and attempts to rebuild all jewel LUTs and the nodeIDList
--- note this should only run in dev mode
-if not data.nodeIDList.size and launch.devMode then
-	-- data.nodeIDList = data.repairLUTs()
-end
-
 -- Load bosses
 do 
 	data.bosses = { }
@@ -957,14 +819,12 @@ This is divided by 4.40 to represent 4 damage types + some (40% as much) ^xD0209
 Bosses' armour and evasion multiplier are calculated using the average of the boss type
 
 Standard Boss adds the following modifiers:
-	+40% to enemy Elemental Resistances
-	+25% to enemy ^xD02090Chaos Resistance
+	+30% to enemy Elemental Resistances
 	^7]]..tostring(m_floor(data.misc.stdBossDPSMult * 100))..[[% of monster Damage of each type
 	]]..tostring(m_floor(data.misc.stdBossDPSMult * 4.4 * 100))..[[% of monster Damage total
 
 Guardian / Pinnacle Boss adds the following modifiers:
 	+50% to enemy Elemental Resistances
-	+30% to enemy ^xD02090Chaos Resistance
 	^7]]..tostring(m_floor(data.bossStats.PinnacleArmourMean))..[[% of monster Armour
 	]]..tostring(m_floor(data.bossStats.PinnacleEvasionMean))..[[% of monster ^x33FF77Evasion
 	^7]]..tostring(m_floor(data.misc.pinnacleBossDPSMult * 100))..[[% of monster Damage of each type
@@ -973,7 +833,6 @@ Guardian / Pinnacle Boss adds the following modifiers:
 
 Uber Pinnacle Boss adds the following modifiers:
 	+50% to enemy Elemental Resistances
-	+30% to enemy ^xD02090Chaos Resistance
 	^7]]..tostring(m_floor(data.bossStats.UberArmourMean))..[[% of monster Armour
 	]]..tostring(m_floor(data.bossStats.UberEvasionMean))..[[% of monster ^x33FF77Evasion
 	^770% less to enemy Damage taken
@@ -1063,7 +922,6 @@ local function setupGem(gem, gemId)
 	if gem.baseTypeName and gem.baseTypeName ~= baseName then
 		data.gemForBaseName[gem.baseTypeName:lower()] = gemId
 	end
-	gem.secondaryGrantedEffect = gem.secondaryGrantedEffectId and data.skills[gem.secondaryGrantedEffectId]
 	gem.additionalGrantedEffects = {}
 	gem.grantedEffectList = {
 		gem.grantedEffect,
@@ -1076,6 +934,7 @@ local function setupGem(gem, gemId)
 	end
 	if gem.grantedEffectDisplayOrder then
 		local tempTable = {}
+		local moved = false
 		for i, temp in ipairs(gem.grantedEffectList) do
 			if gem.grantedEffectDisplayOrder[i] then
 				tempTable[i] = gem.grantedEffectList[gem.grantedEffectDisplayOrder[i] + 1]
@@ -1102,28 +961,6 @@ for gemId, gem in pairs(data.gems) do
 			end
 		end
 	end
-    for _, alt in ipairs{"AltX", "AltY"} do
-        if loc and data.skills[gem.secondaryGrantedEffectId..alt] then
-			data.gemGrantedEffectIdForVaalGemId[gem.secondaryGrantedEffectId..alt] = gemId..alt
-			data.gemVaalGemIdForBaseGemId[gemId..alt] = data.gemVaalGemIdForBaseGemId[gemId]..alt
-            local newGem = { name, gameId, variantId, grantedEffectId, secondaryGrantedEffectId, vaalGem, tags = {}, tagString, reqStr, reqDex, reqInt, naturalMaxLevel }
-			-- Hybrid gems (e.g. Vaal gems) use the display name of the active skill e.g. Vaal Summon Skeletons of Sorcery
-            newGem.name = "Vaal " .. data.skills[gem.secondaryGrantedEffectId..alt].baseTypeName
-            newGem.gameId = gem.gameId
-            newGem.variantId = gem.variantId..alt
-            newGem.grantedEffectId = gem.grantedEffectId
-            newGem.secondaryGrantedEffectId = gem.secondaryGrantedEffectId..alt
-            newGem.vaalGem = gem.vaalGem
-            newGem.tags = copyTable(gem.tags)
-            newGem.tagString = gem.tagString
-            newGem.reqStr = gem.reqStr
-            newGem.reqDex = gem.reqDex
-            newGem.reqInt = gem.reqInt
-            newGem.naturalMaxLevel = gem.naturalMaxLevel
-            setupGem(newGem, gemId..alt)
-            toAddGems[gemId..alt] = newGem
-        end
-    end
 end
 for id, gem in pairs(toAddGems) do
     data.gems[id] = gem
@@ -1132,18 +969,11 @@ end
 -- Load minions
 data.minions = { }
 LoadModule("Data/Minions", data.minions, makeSkillMod, makeFlagMod)
-data._spectresLoaded = false
 data.spectres = { }
-function data:getSpectres()
-	if not self._spectresLoaded then
-		LoadModule("Data/Spectres", self.spectres, makeSkillMod, makeFlagMod)
-		for name, spectre in pairs(self.spectres) do
-			spectre.limit = "ActiveSpectreLimit"
-			self.minions[name] = spectre
-		end
-		self._spectresLoaded = true
-	end
-	return self.spectres
+LoadModule("Data/Spectres", data.spectres, makeSkillMod, makeFlagMod)
+for name, spectre in pairs(data.spectres) do
+	spectre.limit = "ActiveSpectreLimit"
+	data.minions[name] = spectre
 end
 for _, minion in pairs(data.minions) do
 	for _, mod in ipairs(minion.modList) do
@@ -1182,7 +1012,7 @@ for name, base in pairs(data.itemBases) do
 end
 data.itemBaseTypeList = { }
 for type, list in pairs(data.itemBaseLists) do
-	table.insert(data.itemBaseTypeList, { label = type, name = type })
+	table.insert(data.itemBaseTypeList, type)
 	table.sort(list, function(a, b)
 		if a.base.req and b.base.req then
 			if a.base.req.level == b.base.req.level then
@@ -1199,84 +1029,10 @@ for type, list in pairs(data.itemBaseLists) do
 		end
 	end)
 end
-table.sort(data.itemBaseTypeList, function(a, b) return a.name < b.name end)
-
--- Rebuild display labels for item lists using i18n translations
--- Called from Main.lua after i18n is initialized, and on language change
-function data.rebuildItemListLabels()
-	if not i18n then return end
-	-- Translate type list labels
-	for _, entry in ipairs(data.itemBaseTypeList) do
-		local typeName = entry.name
-		local mainType, subType = typeName:match("^(.-):%s*(.+)$")
-		if mainType and subType then
-			local translatedMain = i18n.lookup("items.typeNames", mainType) or mainType
-			local translatedParts = {}
-			for part in subType:gmatch("[^/]+") do
-				local trimmed = part:match("^%s*(.-)%s*$")
-				local translated = i18n.lookup("items.defenceTypes", trimmed) or trimmed
-				table.insert(translatedParts, translated)
-			end
-			entry.label = translatedMain .. ": " .. table.concat(translatedParts, "/")
-		else
-			entry.label = i18n.lookup("items.typeNames", typeName) or typeName
-		end
-	end
-	-- Translate base item labels
-	for _, list in pairs(data.itemBaseLists) do
-		for _, entry in ipairs(list) do
-			local cleanName = entry.name:gsub(" %(.+%)","")
-			entry.label = i18n.lookup("baseNames", cleanName) or cleanName
-		end
-	end
-end
+table.sort(data.itemBaseTypeList)
 
 -- Rare templates
 data.rares = LoadModule("Data/Rares")
-
-data.casterTagCrucibleUniques = {
-	["Atziri's Rule"] = true,
-	["Cane of Kulemak"] = true,
-	["Cane of Unravelling"] = true,
-	["Cospri's Malice"] = true,
-	["Cybil's Paw"] = true,
-	["Disintegrator"] = true,
-	["Duskdawn"] = true,
-	["Geofri's Devotion"] = true,
-	["Mjolner"] = true,
-	["Pledge of Hands"] = true,
-	["Soulwrest"] = true,
-	["Taryn's Shiver"] = true,
-	["The Rippling Thoughts"] = true,
-	["The Surging Thoughts"] = true,
-	["The Whispering Ice"] = true,
-	["Tremor Rod"] = true,
-	["Xirgil's Crank"] = true,
-}
-data.minionTagCrucibleUniques = {
-	["Arakaali's Fang"] = true,
-	["Ashcaller"] = true,
-	["Chaber Cairn"] = true,
-	["Chober Chaber"] = true,
-	["Clayshaper"] = true,
-	["Earendel's Embrace"] = true,
-	["Femurs of the Saints"] = true,
-	["Jorrhast's Blacksteel"] = true,
-	["Law of the Wilds"] = true,
-	["Midnight Bargain"] = true,
-	["Mon'tregul's Grasp"] = true,
-	["Null's Inclination"] = true,
-	["Queen's Decree"] = true,
-	["Queen's Escape"] = true,
-	["Replica Earendel's Embrace"] = true,
-	["Replica Midnight Bargain"] = true,
-	["Severed in Sleep"] = true,
-	["Soulwrest"] = true,
-	["The Black Cane"] = true,
-	["The Iron Mass"] = true,
-	["The Scourge"] = true,
-	["United in Dream"] = true,
-}
 
 -- Uniques (loaded after version-specific data because reasons)
 data.uniques = { }
@@ -1284,21 +1040,11 @@ for _, type in pairs(itemTypes) do
 	data.uniques[type] = LoadModule("Data/Uniques/"..type)
 end
 data.uniques['race'] = LoadModule("Data/Uniques/Special/race")
-data.uniqueMods = { }
-data.uniqueMods["Watcher's Eye"] = { }
-local unsortedMods = LoadModule("Data/Uniques/Special/WatchersEye")
-local sortedMods = { }
-for modId in pairs(unsortedMods) do
-	table.insert(sortedMods, modId)
-end
-table.sort(sortedMods)
-for _, modId in ipairs(sortedMods) do
-	table.insert(data.uniqueMods["Watcher's Eye"], {
-		Id = modId,
-		mod = unsortedMods[modId],
-	})
-end
 LoadModule("Data/Uniques/Special/Generated")
 LoadModule("Data/Uniques/Special/New")
 
+data.questRewards = LoadModule("Data/QuestRewards")
+
 data.flavourText = LoadModule("Data/FlavourText")
+data.worldAreas = {}
+LoadModule("Data/WorldAreas", data.worldAreas)

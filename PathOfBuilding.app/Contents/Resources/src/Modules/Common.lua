@@ -627,7 +627,7 @@ function pairsYield(t)
 	local k
 	local start = GetTime()
 	return function() -- iterator function
-		if coroutine.running() and GetTime() - start > 5 then
+		if coroutine.running() and GetTime() - start > 20 then
 			coroutine.yield()
 			start = GetTime()
 		end
@@ -1085,4 +1085,15 @@ end
 
 function getHashFromString(string)
 	return common.sha1(string)
+end
+
+-- Returns virtual screen size
+function GetVirtualScreenSize()
+	local width, height = GetScreenSize()
+	local scale = GetScreenScale and GetScreenScale() or 1.0
+	if scale ~= 1.0 then
+		width = math.floor(width / scale)
+		height = math.floor(height / scale)
+	end
+	return width, height
 end
