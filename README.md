@@ -78,6 +78,24 @@ Whether this macOS port can keep up with the PoE2 0.5 update from the upstream P
 
 ## バージョン履歴 / Version History
 
+### v0.2.2 (2026-02-19)
+
+- SGPAKアーカイブからのアセット読み込みシステムを追加（ディスク上の個別ファイルの代わりにアーカイブを使用）
+- アーカイブのシャットダウン時クリーンアップ（ハンドルリーク防止）
+- FFI nullポインタチェックの強化
+- アーカイブ読み込み失敗時の警告ログ追加（サイレント失敗の防止）
+- 未使用のMemory Budget API宣言を削除
+- コード署名ディレクトリの.gitignore追加
+
+---
+
+- Added SGPAK archive loading system for bundled assets (loads from archives instead of loose files on disk)
+- Archive cleanup on shutdown (prevents handle leaks)
+- Improved FFI null pointer checks for robustness
+- Added warning logs on archive load failure (prevents silent failures)
+- Removed unused Memory Budget API declarations
+- Added _CodeSignature directory to .gitignore
+
 ### v0.2.1 (2026-02-18)
 
 - OAuth PKCE認証の暗号強度を改善（math.random → /dev/urandom、256bit エントロピー）
