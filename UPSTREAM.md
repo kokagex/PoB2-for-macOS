@@ -76,25 +76,52 @@
 
 ---
 
-## 未同期 — 優先度 中 / Not Synced — Medium Priority
+### Phase 3 — v0.5.0 (2026-02-20): 計算エンジン残りモジュール11ファイル
 
-### 計算エンジン残り
+丸ごと置換（6）:
 
-同期済みCalcファイルと連携。Data.luaはさらに差分あり。
+| ファイル | 内容 |
+|---|---|
+| `src/Modules/CalcSections.lua` | Calcsタブ表示セクション定義 |
+| `src/Modules/Calcs.lua` | 計算エンジンメインループ |
+| `src/Modules/CalcTools.lua` | 計算ユーティリティ関数 |
+| `src/Modules/BuildDisplayStats.lua` | ステータス表示定義 |
+| `src/Modules/CalcBreakdown.lua` | 計算内訳 |
+| `src/Modules/BuildSiteTools.lua` | ビルドサイト連携 |
 
-| ファイル | 差分行数 | 内容 |
-|---|---|---|
-| `src/Modules/CalcSections.lua` | 550 | Calcsタブ表示セクション定義 |
-| `src/Modules/Data.lua` | 504 | データ読み込み（部分同期済み） |
-| `src/Modules/StatDescriber.lua` | 181 | Mod説明文生成 |
-| `src/Modules/Calcs.lua` | 132 | 計算エンジンメインループ |
-| `src/Modules/CalcTools.lua` | 109 | 計算ユーティリティ関数 |
-| `src/Modules/Common.lua` | 64 | 共通ユーティリティ |
-| `src/Modules/ModTools.lua` | 55 | Modユーティリティ（部分同期済み: sort comparator） |
-| `src/Modules/BuildDisplayStats.lua` | 71 | ステータス表示定義 |
-| `src/Modules/CalcBreakdown.lua` | 16 | 計算内訳 |
-| `src/Modules/BuildList.lua` | 72 | ビルドリスト |
-| `src/Modules/BuildSiteTools.lua` | 27 | ビルドサイト連携 |
+手動マージ（5）:
+
+| ファイル | ローカル保持 |
+|---|---|
+| `src/Modules/Data.lua` | metatableガード、weaponTypeエイリアス、rebuildItemListLabels |
+| `src/Modules/Common.lua` | UTF-8バリデータ、nilガード2箇所 |
+| `src/Modules/ModTools.lua` | formatTag混合キー型sort comparator |
+| `src/Modules/StatDescriber.lua` | i18n stat翻訳lookup、io.openパス修正 |
+| `src/Modules/BuildList.lua` | screenScale、i18n.t()、textInputActiveガード |
+
+呼び出し側修正:
+- `SkillsTab.lua`, `GemSelectControl.lua`: getGemStatRequirement引数順 `(level, multi, isSupport)`
+
+i18n翻訳追加:
+- `ItemTools.lua`: formatModLineにtranslateModLine適用
+- `GemSelectControl.lua`: ジェムstat行にtranslateModLineフォールバック
+- `PassiveTreeView.lua`: ツリーノードstat行にtranslateModLineフォールバック
+
+---
+
+## 残タスク — i18n翻訳辞書 / Remaining — i18n Dictionary Updates
+
+Phase 2のStatDescriptionsデータ同期でdesc.textが変わったため、以下の翻訳辞書の更新が必要:
+
+- [ ] `ja_stat_descriptions.lua`: StatDescriptionsデータファイルの現在の`desc.text`キーに合わせて再生成
+  - 現状: 古いキーが多く、StatDescriber内のi18n.lookupがマッチしない
+  - 対応: stat_descriptions.lua等から全desc.textを抽出し、ja翻訳を再マッピング
+- [ ] `ja_mod_stat_lines.lua`: PoE2固有stat（"Freeze Buildup", "Bonded:", "Spirit"等）の翻訳キー追加
+  - 現状: PoE1由来のmodは翻訳OK、PoE2新規modはキーなし
+
+---
+
+## 未同期 — 優先度 低 / Not Synced — Low Priority
 
 ---
 
