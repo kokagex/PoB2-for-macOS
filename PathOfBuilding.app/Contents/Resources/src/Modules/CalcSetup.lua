@@ -1793,12 +1793,17 @@ function calcs.initEnv(build, mode, override, specEnv)
 					group.displayLabel = nil
 					for _, gemInstance in ipairs(group.gemList) do
 						local grantedEffect = gemInstance.gemData and gemInstance.gemData.grantedEffect or gemInstance.grantedEffect
-						local gemName = gemInstance.gemData and gemInstance.gemData.name
 						if grantedEffect and not grantedEffect.support and gemInstance.enabled then
+							local gemName = grantedEffect.name
+							if gemInstance.gemData then
+								local i18nKey = "gems." .. gemInstance.gemData.name
+								local translated = i18n.t(i18nKey)
+								if translated ~= i18nKey then gemName = translated end
+							end
 							if grantedEffect.name:match("^Companion:") or grantedEffect.name:match("^Spectre:") then
 								group.displayLabel = (group.displayLabel and group.displayLabel..", " or "") .. gemInstance.nameSpec
 							else
-								group.displayLabel = (group.displayLabel and group.displayLabel..", " or "") .. gemName or grantedEffect.name
+								group.displayLabel = (group.displayLabel and group.displayLabel..", " or "") .. gemName
 							end
 						end
 					end
