@@ -919,30 +919,35 @@ for skillId, grantedEffect in pairs(data.skills) do
 	grantedEffect.name = sanitiseText(grantedEffect.name)
 	grantedEffect.id = skillId
 	grantedEffect.modSource = "Skill:"..skillId
+	grantedEffect.statSets = grantedEffect.statSets or {}
 	-- Add sources for skill mods, and check for global effects
-	for _, list in pairs({grantedEffect.baseMods, grantedEffect.qualityMods, grantedEffect.levelMods}) do
-		for _, mod in pairs(list) do
-			if mod.name then
-				processMod(grantedEffect, mod)
-			else
-				for _, mod in ipairs(mod) do
+	for _, skillPart in pairs(tableConcat({grantedEffect}, grantedEffect.statSets)) do
+		for _, list in pairs({skillPart.baseMods, skillPart.qualityMods, skillPart.levelMods}) do
+			for _, mod in pairs(list) do
+				if mod.name then
 					processMod(grantedEffect, mod)
+				else
+					for _, mod in ipairs(mod) do
+						processMod(grantedEffect, mod)
+					end
 				end
 			end
 		end
 	end
 	-- Install stat map metatable
-	grantedEffect.statMap = grantedEffect.statMap or { }
-	setmetatable(grantedEffect.statMap, data.skillStatMapMeta)
-	grantedEffect.statMap._grantedEffect = grantedEffect
-	for name, map in pairs(grantedEffect.statMap) do
-		-- Some mods need different scalars for different stats, but the same value.  Putting them in a group allows this
-		for _, modOrGroup in ipairs(map) do
-			if modOrGroup.name then
-				processMod(grantedEffect, modOrGroup, name)
-			else
-				for _, mod in ipairs(modOrGroup) do
-					processMod(grantedEffect, mod, name)
+	for _, statSet in pairs(tableConcat({grantedEffect}, grantedEffect.statSets)) do
+		statSet.statMap = statSet.statMap or { }
+		setmetatable(statSet.statMap, data.skillStatMapMeta)
+		statSet.statMap._grantedEffect = grantedEffect
+		for name, map in pairs(statSet.statMap) do
+			-- Some mods need different scalars for different stats, but the same value.  Putting them in a group allows this
+			for _, modOrGroup in ipairs(map) do
+				if modOrGroup.name then
+					processMod(grantedEffect, modOrGroup, name)
+				else
+					for _, mod in ipairs(modOrGroup) do
+						processMod(grantedEffect, mod, name)
+					end
 				end
 			end
 		end
