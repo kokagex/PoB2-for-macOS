@@ -9,23 +9,26 @@ buildSites = { }
 -- Import/Export websites list used in dropdowns
 buildSites.websiteList = {
 	{
-		label = "Maxroll", id = "Maxroll", matchURL = "maxroll%.gg/poe/pob/.*", regexURL = "maxroll%.gg/poe/pob/(.+)%s*$", downloadURL = "maxroll%.gg/poe/api/pob/%1",
-		codeOut = "https://maxroll.gg/poe/pob/", postUrl = "https://maxroll.gg/poe/api/pob", postFields = "pobCode=", linkURL = "maxroll%.gg/poe/pob/%1"
+		label = "Maxroll", id = "Maxroll", matchURL = "maxroll%.gg/poe2/pob/.*", regexURL = "maxroll%.gg/poe2/pob/(.+)%s*$", downloadURL = "maxroll%.gg/poe2/api/pob/%1",
+		codeOut = "https://maxroll.gg/poe2/pob/", postUrl = "https://maxroll.gg/poe2/api/pob", postFields = "pobCode=", linkURL = "maxroll%.gg/poe2/pob/%1"
 	},
 	{
 		label = "pobb.in", id = "POBBin", matchURL = "pobb%.in/.+", regexURL = "pobb%.in/(.+)%s*$", downloadURL = "pobb.in/pob/%1",
 		codeOut = "https://pobb.in/", postUrl = "https://pobb.in/pob/", postFields = "", linkURL = "pobb.in/%1"
 	},
 	{
-		label = "PoeNinja", id = "PoeNinja", matchURL = "poe%.ninja/?p?o?e?1?/pob/%w+", regexURL = "poe%.ninja/?p?o?e?1?/pob/(%w+)%s*$", downloadURL = "poe.ninja/poe1/pob/raw/%1",
-		codeOut = "", postUrl = "https://poe.ninja/poe1/pob/api/upload", postFields = "code=", linkURL="poe.ninja/poe1/pob/%1"
+		label = "poe.ninja", id = "PoeNinja", matchURL = "poe2?%.ninja/?p?o?e?2?/pob/.+", regexURL = "poe2?%.ninja/?p?o?e?2?/pob/(.+)%s*$", downloadURL = "poe.ninja/poe2/pob/raw/%1",
+		codeOut = "", postUrl = "https://poe.ninja/poe2/pob/api/upload", postFields = "code=", linkURL="poe.ninja/poe2/pob/%1"
+	},
+	{ 
+		label = "poe2db.tw", id = "PoE2DB", matchURL = "poe2db%.tw/pob/.+", regexURL = "poe2db%.tw/pob/(.+)%s*$", downloadURL = "poe2db.tw/pob/%1/raw", 
+		codeOut = "", postUrl = "https://poe2db.tw/pob/api/gen", postFields = "", linkURL = "poe2db.tw/pob/%1" 
 	},
 	{
 		label = "Pastebin.com", id = "pastebin", matchURL = "pastebin%.com/%w+", regexURL = "pastebin%.com/(%w+)%s*$", downloadURL = "pastebin.com/raw/%1", linkURL = "pastebin.com/%1"
 	},
 	{ label = "PastebinP.com", id = "pastebinProxy", matchURL = "pastebinp%.com/%w+", regexURL = "pastebinp%.com/(%w+)%s*$", downloadURL = "pastebinp.com/raw/%1", linkURL = "pastebin.com/%1" },
 	{ label = "Rentry.co", id = "rentry", matchURL = "rentry%.co/%w+", regexURL = "rentry%.co/(%w+)%s*$", downloadURL = "rentry.co/paste/%1/raw", linkURL = "rentry.co/%1" },
-	{ label = "poedb.tw", id = "PoEDB", matchURL = "poedb%.tw/.+", regexURL = "poedb%.tw/pob/(.+)%s*$", downloadURL = "poedb.tw/pob/%1/raw", codeOut = "", postUrl = "https://poedb.tw/pob/api/gen", postFields = "", linkURL = "poedb.tw/pob/%1" },
 }
 
 --- Uploads a PoB build code to a website
@@ -77,8 +80,8 @@ function buildSites.DownloadBuild(link, websiteInfo, callback)
 	-- Only called on program start via protocol handler
 	if not websiteInfo then
 		for _, siteInfo in ipairs(buildSites.websiteList) do
-			if link:match("^pob:[/\\]*" .. siteInfo.id:lower() .. "[/\\]+(.+)") then
-				siteCodeURL = link:gsub("^pob:[/\\]*" .. siteInfo.id:lower() .. "[/\\]+(.+)", "https://" .. siteInfo.downloadURL)
+			if link:match("^pob2:[/\\]*" .. siteInfo.id:lower() .. "[/\\]+(.+)") then
+				siteCodeURL = link:gsub("^pob2:[/\\]*" .. siteInfo.id:lower() .. "[/\\]+(.+)", "https://" .. siteInfo.downloadURL)
 				websiteInfo = siteInfo
 				break
 			end
@@ -100,14 +103,14 @@ function buildSites.DownloadBuild(link, websiteInfo, callback)
 end
 
 -- Parses and converts URI's to import links. Currently only supports protocol handler URI's, extend as needed.
--- @param uri string Example: pob://pobbin/<id> or pob://poeninja/<id>
+--- @param uri string Example: pob2://pobbin/<id> or pob2://poeninja/<id>
 function buildSites.ParseImportLinkFromURI(uri)
 	local importLink = nil
-
+	
 	-- Check if it's an URI from protocol handler
 	for _, siteInfo in ipairs(buildSites.websiteList) do
-		if uri:match("^pob:[/\\]*" .. siteInfo.id:lower() .. "[/\\]+(.+)") then
-			importLink = uri:gsub("^pob:[/\\]*" .. siteInfo.id:lower() .. "[/\\]+(.+)", "https://" .. siteInfo.linkURL)
+		if uri:match("^pob2:[/\\]*" .. siteInfo.id:lower() .. "[/\\]+(.+)") then
+			importLink = uri:gsub("^pob2:[/\\]*" .. siteInfo.id:lower() .. "[/\\]+(.+)", "https://" .. siteInfo.linkURL)
 			break
 		end
 	end

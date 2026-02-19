@@ -1807,6 +1807,10 @@ function PassiveTreeViewClass:AddNodeTooltip(tooltip, node, build, incSmallPassi
 		end
 		for i, line in ipairs(mNode.sd) do
 			local displayLine = (mNode.sd_display and mNode.sd_display[i]) or line
+			-- Fallback translation via mod line translator if no tree translation available
+			if displayLine == line and i18n and i18n.translateModLine then
+				displayLine = i18n.translateModLine(line)
+			end
 			addModInfoToTooltip(mNode, i, displayLine, localIncEffect)
 		end
 	end

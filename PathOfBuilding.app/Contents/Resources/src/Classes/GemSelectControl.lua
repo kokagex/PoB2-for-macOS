@@ -830,9 +830,9 @@ function GemSelectClass:AddGrantedEffectInfo(gemInstance, grantedEffect, addReq)
 	self.tooltip:AddSeparator(10)
 	if addReq then
 		local reqLevel = grantedEffect.levels[gemInstance.level] and grantedEffect.levels[gemInstance.level].levelRequirement or 1
-		local reqStr = calcLib.getGemStatRequirement(reqLevel, grantedEffect.support, gemInstance.gemData.reqStr)
-		local reqDex = calcLib.getGemStatRequirement(reqLevel, grantedEffect.support, gemInstance.gemData.reqDex)
-		local reqInt = calcLib.getGemStatRequirement(reqLevel, grantedEffect.support, gemInstance.gemData.reqInt)
+		local reqStr = calcLib.getGemStatRequirement(reqLevel, gemInstance.gemData.reqStr, grantedEffect.support)
+		local reqDex = calcLib.getGemStatRequirement(reqLevel, gemInstance.gemData.reqDex, grantedEffect.support)
+		local reqInt = calcLib.getGemStatRequirement(reqLevel, gemInstance.gemData.reqInt, grantedEffect.support)
 		self.skillsTab.build:AddRequirementsToTooltip(self.tooltip, reqLevel, reqStr, reqDex, reqInt)
 	end
 	local descText = i18n.lookup("gemDescriptions", gemInstance.gemData.name) or grantedEffect.description
@@ -902,6 +902,8 @@ function GemSelectClass:AddStatSetInfo(gemInstance, grantedEffect, statSet, noLa
 		for i, line in ipairs(descriptions) do
 			local source = (statSet.statMap and statSet.statMap[lineMap[line]]) or self.skillsTab.build.data.skillStatMap[lineMap[line]]
 			local bg = nil  -- GemHoverModBg.png asset not available on macOS
+			-- Translate stat line via mod line translator as fallback
+			local displayLine = (i18n and i18n.translateModLine) and i18n.translateModLine(line) or line
 			if source then
 				if launch.devModeAlt then
 					local devText = lineMap[line]
@@ -911,16 +913,16 @@ function GemSelectClass:AddStatSetInfo(gemInstance, grantedEffect, statSet, noLa
 						end
 						devText = modLib.formatMod(source[1])
 					end
-					line = line .. " ^2" .. devText
+					displayLine = displayLine .. " ^2" .. devText
 				end
-				self.tooltip:AddLine(fontSizeBig, colorCodes.MAGIC .. line, "FONTIN SC", bg)
+				self.tooltip:AddLine(fontSizeBig, colorCodes.MAGIC .. displayLine, "FONTIN SC", bg)
 			else
 				if launch.devModeAlt then
-					line = line .. " ^1" .. lineMap[line]
+					displayLine = displayLine .. " ^1" .. lineMap[line]
 				end
-				local line = colorCodes.UNSUPPORTED .. line
-				line = main.notSupportedModTooltips and (line .. main.notSupportedTooltipText) or line
-				self.tooltip:AddLine(fontSizeBig, line, "FONTIN SC", bg)
+				local unsupLine = colorCodes.UNSUPPORTED .. displayLine
+				unsupLine = main.notSupportedModTooltips and (unsupLine .. main.notSupportedTooltipText) or unsupLine
+				self.tooltip:AddLine(fontSizeBig, unsupLine, "FONTIN SC", bg)
 			end
 		end
 	end

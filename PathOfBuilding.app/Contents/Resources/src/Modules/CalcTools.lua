@@ -94,10 +94,10 @@ function calcLib.canGrantedEffectSupportActiveSkill(grantedEffect, activeSkill)
 	if grantedEffect.fromItem and grantedEffect.support and (activeSkill.activeEffect.grantedEffect.fromItem or activeSkill.activeEffect.grantedEffect.modSource:sub(1, #"Item") == "Item" or (activeSkill.activeEffect.srcInstance and activeSkill.activeEffect.srcInstance.fromItem)) then
 		return false
 	end
-
+	
 	local effectiveSkillTypes = activeSkill.summonSkill and activeSkill.summonSkill.skillTypes or activeSkill.skillTypes
 	local effectiveMinionTypes = not grantedEffect.ignoreMinionTypes and (activeSkill.summonSkill and activeSkill.summonSkill.minionSkillTypes or activeSkill.minionSkillTypes)
-
+	
 	-- if the activeSkill is a Minion's skill like "Default Attack", use minion's skillTypes instead for exclusions
 	-- otherwise compare support to activeSkill directly
 	if grantedEffect.excludeSkillTypes[1] and calcLib.doesTypeExpressionMatch(grantedEffect.excludeSkillTypes, effectiveSkillTypes) then
@@ -105,41 +105,6 @@ function calcLib.canGrantedEffectSupportActiveSkill(grantedEffect, activeSkill)
 	end
 	if grantedEffect.isTrigger and activeSkill.actor.enemy.player ~= activeSkill.actor then
 		return false
-	end
-	-- Special case for Sacred Wisps, i.e. Wisps Support has a weaponType of Wand so it should only match with Active Skills that at least have Wand as a weaponType.
-	-- Super special case for Varunastra, e.g. allow Nightblade to support Smite.
-	local actorHasAllOneHand = (activeSkill.actor.weaponData1 and activeSkill.actor.weaponData1.countsAsAll1H) or (activeSkill.actor.weaponData2 and activeSkill.actor.weaponData2.countsAsAll1H)
-	if grantedEffect.weaponTypes then
-		-- Build a lookup of the active skill's weapon types
-		local activeTypeLookup = { }
-		if activeSkill.activeEffect.grantedEffect.weaponTypes then
-			for activeType in pairs(activeSkill.activeEffect.grantedEffect.weaponTypes) do
-				activeTypeLookup[activeType] = true
-			end
-		end
-		-- If the support expects a weapon type but the active skill doesn't have any (e.g. shield skills), it's not a match.
-		if not next(activeTypeLookup) then
-			return false
-		end
-		-- Varunastra counts as every one-handed melee weapon type, but notably not Wand or Shield.
-		if actorHasAllOneHand then
-			activeTypeLookup["Claw"] = true
-			activeTypeLookup["Dagger"] = true
-			activeTypeLookup["One Handed Axe"] = true
-			activeTypeLookup["One Handed Mace"] = true
-			activeTypeLookup["One Handed Sword"] = true
-		end
-		local typeMatch = false
-		for grantedType in pairs(grantedEffect.weaponTypes) do
-			if activeTypeLookup[grantedType] then
-				typeMatch = true
-				break
-			end
-		end
-		-- No match, does not support the active skill
-		if not typeMatch then
-			return false
-		end
 	end
 	return not grantedEffect.requireSkillTypes[1] or calcLib.doesTypeExpressionMatch(grantedEffect.requireSkillTypes, effectiveSkillTypes, effectiveMinionTypes)
 end
@@ -152,7 +117,6 @@ function calcLib.gemIsType(gem, type, includeTransfigured)
 			(type == "trap or mine" and (gem.tags.trap or gem.tags.mine)) or
 			((type == "active skill" or type == "grants_active_skill" or type == "skill") and gem.tags.grants_active_skill and not gem.tags.support) or
 			(type == "non-vaal" and not gem.tags.vaal) or
-			(type == "non-exceptional" and not gem.tags.exceptional) or
 			(type == gem.name:lower()) or
 			(type == gem.name:lower():gsub("^vaal ", "")) or
 			(includeTransfigured and calcLib.isGemIdSame(gem.name, type, true)) or
@@ -160,58 +124,48 @@ function calcLib.gemIsType(gem, type, includeTransfigured)
 end
 
 -- In-game formula
-function calcLib.getGemStatRequirement(level, isSupport, multi)
-	-- Nil safety: multi can be nil during initialization
-	if not multi or multi == 0 then
+function calcLib.getGemStatRequirement(level, multi, isSupport)
+	if not multi or multi == 0 or isSupport then
 		return 0
 	end
-	local statType = 0.7
-	if isSupport then
-		statType = 0.5
-	end
-	local req = round( ( 20 + ( level - 3 ) * 3 ) * ( multi / 100 ) ^ 0.9 * statType )
-	return req < 14 and 0 or req
+	local req = round( ( 5 + ( level - 3 ) * 1.7 ) * ( multi / 100 ) ^ 0.9 ) + 4
+	return req < 8 and 0 or req
 end
 
--- Build table of stats for the given skill instance
-function calcLib.buildSkillInstanceStats(skillInstance, grantedEffect)
+-- Build table of stats for the given skill instance statset
+function calcLib.buildSkillInstanceStats(skillInstance, grantedEffect, statSet)
 	local stats = { }
 	if skillInstance.quality > 0 and grantedEffect.qualityStats then
-		local qualityId = skillInstance.qualityId or "Default"
-		local qualityStats = grantedEffect.qualityStats[qualityId]
-		if not qualityStats then
-			qualityStats = grantedEffect.qualityStats
-		end
+		local qualityStats = grantedEffect.qualityStats
 		for _, stat in ipairs(qualityStats) do
 			stats[stat[1]] = (stats[stat[1]] or 0) + math.modf(stat[2] * skillInstance.quality)
 		end
 	end
-	local statSetLevels = grantedEffect.statSets and grantedEffect.statSets[1] and grantedEffect.statSets[1].levels
-	local level = (statSetLevels and statSetLevels[skillInstance.level]) or grantedEffect.levels[skillInstance.level] or { }
+	local grantedEffectLevel = grantedEffect.levels[skillInstance.level] or { }
+	local statSetLevel = statSet.levels[skillInstance.level] or statSet.levels[1] or { }
 	local availableEffectiveness
-	local actorLevel = skillInstance.actorLevel or level.actorLevel or level.levelRequirement or 1
-	local grantedStats = grantedEffect.stats or (grantedEffect.statSets and grantedEffect.statSets[1] and grantedEffect.statSets[1].stats) or {}
-	for index, stat in ipairs(grantedStats) do
+	local actorLevel = skillInstance.actorLevel or grantedEffectLevel.levelRequirement or 1
+	for index, stat in ipairs(statSet.stats) do
 		-- Static value used as default (assumes statInterpolation == 1)
-		local statValue = level[index] or 1
-		if level.statInterpolation then
-			if level.statInterpolation[index] == 3 then
+		local statValue = statSetLevel[index] or 1
+		if statSetLevel.statInterpolation then
+			if statSetLevel.statInterpolation[index] == 3 then
 				-- Effectiveness interpolation
 				if not availableEffectiveness then
-					local baseEff = grantedEffect.baseEffectiveness or (grantedEffect.statSets and grantedEffect.statSets[1] and grantedEffect.statSets[1].baseEffectiveness) or 1
-					local incrEff = grantedEffect.incrementalEffectiveness or (grantedEffect.statSets and grantedEffect.statSets[1] and grantedEffect.statSets[1].incrementalEffectiveness) or 0
+					actorLevel = #statSet.levels < 5 and skillInstance.actorLevel or statSetLevel.actorLevel
 					availableEffectiveness =
-					(data.gameConstants["SkillDamageBaseEffectiveness"] + data.gameConstants["SkillDamageIncrementalEffectiveness"] * (actorLevel - 1)) * baseEff
-							* (1 + incrEff) ^ (actorLevel - 1)
+						data.gameConstants["SkillDamageBaseEffectiveness"] * (statSet.baseEffectiveness or 1)
+							* (1 + (statSet.incrementalEffectiveness or 0) * (actorLevel - 1)) 
+							* (1 + (statSet.damageIncrementalEffectiveness or 0)) ^ (actorLevel - 1)
 				end
-				statValue = round(availableEffectiveness * level[index])
-			elseif level.statInterpolation[index] == 2 then
+				statValue = round(availableEffectiveness * statSetLevel[index])
+			elseif statSetLevel.statInterpolation[index] == 2 then
 				-- Linear interpolation; I'm actually just guessing how this works
 
 				-- Order the levels, since sometimes they skip around
 				local orderedLevels = { }
 				local currentLevelIndex
-				for level, _ in pairs(statSetLevels or grantedEffect.levels) do
+				for level, _ in pairs(grantedEffect.levels) do
 					t_insert(orderedLevels, level)
 				end
 				table.sort(orderedLevels)
@@ -223,23 +177,20 @@ function calcLib.buildSkillInstanceStats(skillInstance, grantedEffect)
 
 				if #orderedLevels > 1 then
 					local nextLevelIndex = m_min(currentLevelIndex + 1, #orderedLevels)
-					local nextReq = (statSetLevels or grantedEffect.levels)[orderedLevels[nextLevelIndex]].levelRequirement
-					local prevReq = (statSetLevels or grantedEffect.levels)[orderedLevels[nextLevelIndex - 1]].levelRequirement
-					local nextStat = (statSetLevels or grantedEffect.levels)[orderedLevels[nextLevelIndex]][index]
-					local prevStat = (statSetLevels or grantedEffect.levels)[orderedLevels[nextLevelIndex - 1]][index]
+					local nextReq = grantedEffect.levels[orderedLevels[nextLevelIndex]].levelRequirement
+					local prevReq = grantedEffect.levels[orderedLevels[nextLevelIndex - 1]].levelRequirement
+					local nextStat = grantedEffect.levels[orderedLevels[nextLevelIndex]][index]
+					local prevStat = grantedEffect.levels[orderedLevels[nextLevelIndex - 1]][index]
 					statValue = round(prevStat + (nextStat - prevStat) * (actorLevel - prevReq) / (nextReq - prevReq))
 				else
-					statValue = round((statSetLevels or grantedEffect.levels)[orderedLevels[currentLevelIndex]][index])
+					statValue = round(grantedEffect.levels[orderedLevels[currentLevelIndex]][index])
 				end
 			end
 		end
 		stats[stat] = (stats[stat] or 0) + statValue
 	end
-	local constantStats = grantedEffect.constantStats or (grantedEffect.statSets and grantedEffect.statSets[1] and grantedEffect.statSets[1].constantStats)
-	if constantStats then
-		for _, stat in ipairs(constantStats) do
-			stats[stat[1]] = (stats[stat[1]] or 0) + (stat[2] or 0)
-		end
+	for _, stat in ipairs(statSet.constantStats or {}) do
+		stats[stat[1]] = (stats[stat[1]] or 0) + (stat[2] or 0)
 	end
 	return stats
 end

@@ -10,6 +10,8 @@ local ipairs = ipairs
 local t_insert = table.insert
 local m_floor = math.floor
 local m_sqrt = math.sqrt
+local m_min = math.min
+local m_max = math.max
 local s_format = string.format
 
 local breakdown = { }
@@ -69,7 +71,7 @@ end
 function breakdown.mod(modList, cfg, ...)
 	local inc = modList:Sum("INC", cfg, ...)
 	local more = modList:More(cfg, ...)
-	if inc ~= 0 or more ~= 1 then
+	if inc ~= 0 and more ~= 1 then
 		return { 
 			s_format("%.2f ^8(increased/reduced)", 1 + inc/100),
 			s_format("x %.2f ^8(more/less)", more),
@@ -88,7 +90,7 @@ function breakdown.slot(source, sourceName, cfg, base, total, ...)
 		total = s_format("%.2f", total or (base * (1 + inc / 100) * more)),
 		source = source,
 		sourceName = sourceName,
-		item = actor.itemList[source],
+		item = not sourceName and actor.itemList[source],
 	})
 end
 
@@ -108,7 +110,7 @@ function breakdown.area(base, areaMod, total, incBreakpoint, moreBreakpoint, red
 	return out
 end
 
-function breakdown.effMult(damageType, resist, pen, taken, mult, takenMore, sourceRes, useRes, invertChance)
+function breakdown.effMult(damageType, resist, pen, taken, mult, takenMore, sourceRes, useRes, invertChance, minPen)
 	local out = { }
 	local resistForm = (damageType == "Physical") and "physical damage reduction" or "resistance"
 	local resistLabel = resistForm
@@ -132,14 +134,18 @@ function breakdown.effMult(damageType, resist, pen, taken, mult, takenMore, sour
 		if not useRes then
 			t_insert(out, s_format("x %d%% ^8(resistance ignored)", 0))
 			t_insert(out, s_format("= %d%%", (0)))
-		else 
+		elseif resist <= minPen then
+			t_insert(out, s_format("= %d%% ^8(negative resistance unaffected by penetration)", resist))
+		elseif (resist - pen) < minPen then
+			t_insert(out, s_format("= %d%% ^8(penetration cannot bring resistances below %d%%)", m_max(resist - pen, minPen), minPen))
+		else
 			t_insert(out, s_format("= %d%%", (resist - pen)))
 		end
 	end
 	if useRes then
 		breakdown.multiChain(out, {
 			label = "Effective DPS modifier:",
-			{ "%.2f ^8(%s)", 1 - (resist - pen) / 100, resistForm },
+			{ "%.2f ^8(%s)", 1 - (math.max(resist - pen,0)) / 100, resistForm },
 			{ "%.2f ^8(increased/reduced damage taken)", 1 + taken / 100 },
 			{ "%.2f ^8(more/less damage taken)", takenMore },
 			total = s_format("= %.3f", mult),

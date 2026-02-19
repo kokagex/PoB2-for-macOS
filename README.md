@@ -78,6 +78,28 @@ Whether this macOS port can keep up with the PoE2 0.5 update from the upstream P
 
 ## バージョン履歴 / Version History
 
+### v0.5.0 (2026-02-20)
+
+- 上流 PathOfBuilding-PoE2 dev ブランチから計算エンジン残り11モジュールを同期
+- CalcSections/Calcs/CalcTools/BuildDisplayStats/CalcBreakdown/BuildSiteTools: 上流版に置換
+- Data.lua/Common.lua/ModTools.lua/StatDescriber.lua/BuildList.lua: 手動マージ（ローカルパッチ保持）
+- CalcSections: Spirit、Deflection、Freeze Buildup、Charm、Mark等のPoE2新stat表示追加
+- BuildSiteTools: poe2db.tw対応、pob2:プロトコルハンドラ対応
+- getGemStatRequirement引数順変更に伴うSkillsTab/GemSelectControlの呼び出し側修正
+- 日本語翻訳: CalcSections 72項目追加、アイテムMod行・ジェムstat・パッシブツリーのtranslateModLine対応
+- StatDescriber: undefined floor修正、i18n stat description lookup復元
+
+---
+
+- Synced remaining 11 calc engine modules from upstream PathOfBuilding-PoE2 dev branch
+- CalcSections/Calcs/CalcTools/BuildDisplayStats/CalcBreakdown/BuildSiteTools: wholesale replaced with upstream
+- Data.lua/Common.lua/ModTools.lua/StatDescriber.lua/BuildList.lua: manual merge preserving local patches
+- CalcSections: added PoE2 new stat displays (Spirit, Deflection, Freeze Buildup, Charm, Mark, etc.)
+- BuildSiteTools: added poe2db.tw support, pob2: protocol handler support
+- Fixed getGemStatRequirement argument order change in SkillsTab/GemSelectControl callers
+- Japanese translations: 72 new CalcSections labels, translateModLine support for item mods, gem stats, passive tree
+- StatDescriber: fixed undefined floor, restored i18n stat description lookup
+
 ### v0.4.0 (2026-02-20)
 
 - 上流 PathOfBuilding-PoE2 dev ブランチから24データファイルを同期
