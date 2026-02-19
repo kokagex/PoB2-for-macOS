@@ -78,6 +78,30 @@ Whether this macOS port can keep up with the PoE2 0.5 update from the upstream P
 
 ## バージョン履歴 / Version History
 
+### v0.4.0 (2026-02-20)
+
+- 上流 PathOfBuilding-PoE2 dev ブランチから24データファイルを同期
+- StatDescriptions 5ファイル: Mod説明文・スキルstat・ジェムstat・モンスターstat更新
+- ModCache: Modパース結果キャッシュ更新
+- Bases 6ファイル: 剣・斧・メイス・ダガー・フレイル・スタッフの新ベース追加
+- Uniques: 新ユニーク・レースユニーク追加
+- TimelessJewel: レギオンパッシブ・ノードマッピング更新
+- その他: Spectres、Minions、SkillStatMap、Global、Gems、Misc、ModScalability、ModItemExclusive更新
+- ModTools.lua: 混合キー型ソートcomparator追加（Blackened Heart等の起動クラッシュ修正）
+- Data.lua: metatableガード移設、PoE2武器タイプ・クラス対応
+
+---
+
+- Synced 24 data files from upstream PathOfBuilding-PoE2 dev branch
+- StatDescriptions (5 files): updated mod descriptions, skill stats, gem stats, monster stats
+- ModCache: updated mod parse result cache
+- Bases (6 files): added new sword, axe, mace, dagger, flail, staff bases
+- Uniques: added new uniques and race uniques
+- TimelessJewel: updated legion passives and node index mapping
+- Other: updated Spectres, Minions, SkillStatMap, Global, Gems, Misc, ModScalability, ModItemExclusive
+- ModTools.lua: added mixed key type sort comparator (fixes launch crash on Blackened Heart etc.)
+- Data.lua: relocated metatable guards, PoE2 weapon type and class support
+
 ### v0.3.0 (2026-02-19)
 
 - 上流 PathOfBuilding-PoE2 dev ブランチから計算エンジンを同期（161コミット分のPoE2対応改善）

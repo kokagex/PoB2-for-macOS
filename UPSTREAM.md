@@ -2,7 +2,7 @@
 
 上流: `PathOfBuildingCommunity/PathOfBuilding-PoE2` `dev` ブランチ
 ローカル: `kokagex/PoB2-for-macOS` `pob2macos_stage2` ブランチ
-最終同期: 2026-02-20 (v0.3.1)
+最終同期: 2026-02-20 (v0.4.0)
 
 ---
 
@@ -29,7 +29,7 @@
 - `SkillsTab.lua`: displaySkillList nilガード
 - `Build.lua`: displaySkillList nilガード6箇所
 
-### Phase 2 — v0.3.1 (2026-02-20): データファイル24ファイル
+### Phase 2 — v0.4.0 (2026-02-20): データファイル24ファイル
 
 #### 自動生成系データ
 
