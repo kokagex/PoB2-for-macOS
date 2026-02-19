@@ -1173,6 +1173,7 @@ function buildMode:Init(dbFileName, buildName, buildXML, convertBuild, importLin
 	end)
 	self.controls.mainSkillPart = new("DropDownControl", {"TOPLEFT",self.controls.mainSkill,"BOTTOMLEFT",true}, {0, 2, 300, 18}, nil, function(index, value)
 		local mainSocketGroup = self.skillsTab.socketGroupList[self.mainSocketGroup]
+		if not mainSocketGroup or not mainSocketGroup.displaySkillList then return end
 		local srcInstance = mainSocketGroup.displaySkillList[mainSocketGroup.mainActiveSkill].activeEffect.srcInstance
 		srcInstance.skillPart = index
 		self.modFlag = true
@@ -1185,6 +1186,7 @@ function buildMode:Init(dbFileName, buildName, buildXML, convertBuild, importLin
 	}
 	self.controls.mainSkillStageCount = new("EditControl", {"LEFT",self.controls.mainSkillStageCountLabel,"RIGHT",true}, {2, 0, 60, 18}, nil, nil, "%D", nil, function(buf)
 		local mainSocketGroup = self.skillsTab.socketGroupList[self.mainSocketGroup]
+		if not mainSocketGroup or not mainSocketGroup.displaySkillList then return end
 		local srcInstance = mainSocketGroup.displaySkillList[mainSocketGroup.mainActiveSkill].activeEffect.srcInstance
 		srcInstance.skillStageCount = tonumber(buf)
 		self.modFlag = true
@@ -1197,6 +1199,7 @@ function buildMode:Init(dbFileName, buildName, buildXML, convertBuild, importLin
 	}
 	self.controls.mainSkillMineCount = new("EditControl", {"LEFT",self.controls.mainSkillMineCountLabel,"RIGHT",true}, {2, 0, 60, 18}, nil, nil, "%D", nil, function(buf)
 		local mainSocketGroup = self.skillsTab.socketGroupList[self.mainSocketGroup]
+		if not mainSocketGroup or not mainSocketGroup.displaySkillList then return end
 		local srcInstance = mainSocketGroup.displaySkillList[mainSocketGroup.mainActiveSkill].activeEffect.srcInstance
 		srcInstance.skillMineCount = tonumber(buf)
 		self.modFlag = true
@@ -1204,6 +1207,7 @@ function buildMode:Init(dbFileName, buildName, buildXML, convertBuild, importLin
 	end)
 	self.controls.mainSkillMinion = new("DropDownControl", {"TOPLEFT",self.controls.mainSkillMineCountLabel,"BOTTOMLEFT",true}, {0, 3, 178, 18}, nil, function(index, value)
 		local mainSocketGroup = self.skillsTab.socketGroupList[self.mainSocketGroup]
+		if not mainSocketGroup or not mainSocketGroup.displaySkillList then return end
 		local srcInstance = mainSocketGroup.displaySkillList[mainSocketGroup.mainActiveSkill].activeEffect.srcInstance
 		if value.itemSetId then
 			srcInstance.skillMinionItemSet = value.itemSetId
@@ -1216,6 +1220,7 @@ function buildMode:Init(dbFileName, buildName, buildXML, convertBuild, importLin
 	function self.controls.mainSkillMinion.CanReceiveDrag(control, type, value)
 		if type == "Item" and control.list[control.selIndex] and control.list[control.selIndex].itemSetId then
 			local mainSocketGroup = self.skillsTab.socketGroupList[self.mainSocketGroup]
+			if not mainSocketGroup or not mainSocketGroup.displaySkillList then return end
 			local minionUses = mainSocketGroup.displaySkillList[mainSocketGroup.mainActiveSkill].activeEffect.grantedEffect.minionUses
 			return minionUses and minionUses[value:GetPrimarySlot()] -- O_O
 		end
@@ -1236,6 +1241,7 @@ function buildMode:Init(dbFileName, buildName, buildXML, convertBuild, importLin
 	end)
 	self.controls.mainSkillMinionSkill = new("DropDownControl", {"TOPLEFT",self.controls.mainSkillMinion,"BOTTOMLEFT",true}, {0, 2, 200, 16}, nil, function(index, value)
 		local mainSocketGroup = self.skillsTab.socketGroupList[self.mainSocketGroup]
+		if not mainSocketGroup or not mainSocketGroup.displaySkillList then return end
 		local srcInstance = mainSocketGroup.displaySkillList[mainSocketGroup.mainActiveSkill].activeEffect.srcInstance
 		srcInstance.skillMinionSkill = index
 		self.modFlag = true

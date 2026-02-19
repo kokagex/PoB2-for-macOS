@@ -1837,6 +1837,7 @@ function calcs.initEnv(build, mode, override, specEnv)
 				level = 1,
 				quality = 0,
 				enabled = true,
+				srcInstance = { },
 				statSet = { index = 1},
 				statSetCalcs = { index = 1}
 			}
