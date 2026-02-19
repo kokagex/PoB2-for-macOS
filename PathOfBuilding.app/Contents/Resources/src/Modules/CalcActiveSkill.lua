@@ -172,6 +172,9 @@ function calcs.createActiveSkill(activeEffect, supportList, env, actor, socketGr
 		end
 	end
 
+	-- Expose skillFlags on activeSkill for backward compatibility with Build.lua
+	activeSkill.skillFlags = skillFlags
+
 	return activeSkill
 end
 
