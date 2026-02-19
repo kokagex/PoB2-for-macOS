@@ -138,7 +138,7 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 	end
 
 	self.size = m_min(self.max_x - self.min_x, self.max_y - self.min_y) * self.scaleImage * 1.1
-	
+
 	-- Shift classes from 1-indexed to 0-indexed
 	-- Dynamically detect max index to support both PoE1 (7 classes) and PoE2 (8 classes)
 	local maxClassIndex = 0
