@@ -116,6 +116,14 @@ ffi.cdef[[
 
     // sleep (POSIX)
     int usleep(unsigned int usec);
+
+    // Archive API
+    void*         SG_ArchiveOpen(const char* path);
+    void          SG_ArchiveClose(void* archive);
+    int           SG_ArchiveContains(void* archive, const char* path);
+    int           ImageHandle_LoadFromArchive(void* handle, void* archive,
+                                              const char* path);
+
 ]]
 
 -- Load SimpleGraphic library
@@ -137,7 +145,7 @@ local function getDpiScale()
     return _dpi_scale
 end
 
--- Forward declaration (defined at L396)
+-- Forward declaration (defined in "normalizeTextArg" section below)
 local normalizeTextArg
 
 -- Setup global functions for Path of Building
@@ -558,12 +566,28 @@ if ENABLE_DRAW_PARAM_TEST then
     end
 end
 
+-- Forward declaration (defined in "Archive mapping" section below)
+local getArchiveForPath
+
 -- Image handle wrapper class to match PassiveTree.lua expectations
 local imageHandleMT = {}
 imageHandleMT.__index = imageHandleMT
 
 function imageHandleMT:Load(fileName, ...)
-    -- Convert Lua varargs to async flag (MIPMAP flag in original code)
+    -- Check if file is in an archive
+    -- Note: MIPMAP/async flag is not passed to archive loads; the engine
+    -- handles mip generation internally for archive-backed textures.
+    if fileName == nil then return 0 end
+    local archive = getArchiveForPath(fileName)
+    if archive then
+        local result = sg.ImageHandle_LoadFromArchive(self._handle, archive, fileName)
+        if result == 0 then
+            print("ERROR: Archive load failed: " .. tostring(fileName))
+        end
+        return result
+    end
+
+    -- Disk load (file not in any archive)
     local async = 0
     if ... == "MIPMAP" then
         async = 1
@@ -1049,6 +1073,64 @@ SetWorkDir(script_path)
 print("Working directory set to: " .. script_path)
 print("")
 
+-- Archive loader: register custom package.loaders entry for SGPAK archives
+-- require("archive.assets") → opens archives/assets.sgpak
+-- Registered after SetWorkDir so relative paths resolve correctly.
+table.insert(package.loaders, function(modname)
+    local name = modname:match("^archive%.(.+)$")
+    if not name then return end
+    local path = "archives/" .. name .. ".sgpak"
+    return function()
+        local handle = sg.SG_ArchiveOpen(path)
+        if handle == nil or handle == ffi.cast("void*", 0) then
+            error("Failed to open archive: " .. path)
+        end
+        print("Archive opened: " .. path)
+        return handle
+    end
+end)
+
+-- Archive mapping: prefix → archive module name
+-- Order matters: more specific prefixes first
+local archiveMapping = {
+    { prefix = "src/Assets/",    archive = "archive.assets" },
+    { prefix = "TreeData/0_1/",  archive = "archive.treedata_0_1" },
+    { prefix = "TreeData/0_2/",  archive = "archive.treedata_0_2" },
+    { prefix = "TreeData/0_3/",  archive = "archive.treedata_0_3" },
+    { prefix = "TreeData/0_4/",  archive = "archive.treedata_0_4" },
+    { prefix = "TreeData/",      archive = "archive.treedata_common" },
+}
+
+-- Resolve path to archive handle (nil if not in any archive).
+-- Design: returns after the first matching prefix. Each prefix bucket is
+-- self-contained, so TreeData/0_1/ files won't fall through to TreeData/.
+getArchiveForPath = function(fileName)
+    for _, mapping in ipairs(archiveMapping) do
+        if fileName:sub(1, #mapping.prefix) == mapping.prefix then
+            -- Check cached failure sentinel to avoid repeated require retries
+            if package.loaded[mapping.archive] == false then
+                return nil
+            end
+            local ok, archive = pcall(require, mapping.archive)
+            if not ok then
+                print("WARNING: Failed to load archive " .. mapping.archive .. ": " .. tostring(archive))
+                package.loaded[mapping.archive] = false  -- cache failure
+                return nil
+            end
+            if archive ~= nil then
+                if sg.SG_ArchiveContains(archive, fileName) ~= 0 then
+                    return archive
+                end
+            end
+            return nil
+        end
+    end
+    return nil
+end
+
+print("✓ Archive loader registered")
+print("")
+
 -- Don't call RenderInit here - let Launch.lua do it
 -- This prevents double initialization
 print("Skipping early RenderInit - Launch.lua will initialize")
@@ -1404,6 +1486,15 @@ if ENABLE_DRAW_PARAM_TEST and _G.draw_param_test then
     _G.draw_param_test.analyze()
     print("=====================================")
     print("")
+end
+
+-- Close all opened SGPAK archives before shutdown
+for _, mapping in ipairs(archiveMapping) do
+    local loaded = package.loaded[mapping.archive]
+    if loaded ~= nil then
+        sg.SG_ArchiveClose(loaded)
+        package.loaded[mapping.archive] = nil
+    end
 end
 
 print("")
