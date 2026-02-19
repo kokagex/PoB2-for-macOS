@@ -1031,6 +1031,36 @@ for type, list in pairs(data.itemBaseLists) do
 end
 table.sort(data.itemBaseTypeList)
 
+-- Rebuild display labels for item lists using i18n translations
+-- Called from Main.lua after i18n is initialized, and on language change
+function data.rebuildItemListLabels()
+	if not i18n then return end
+	-- Translate type list labels
+	for _, entry in ipairs(data.itemBaseTypeList) do
+		local typeName = entry.name
+		local mainType, subType = typeName:match("^(.-):%s*(.+)$")
+		if mainType and subType then
+			local translatedMain = i18n.lookup("items.typeNames", mainType) or mainType
+			local translatedParts = {}
+			for part in subType:gmatch("[^/]+") do
+				local trimmed = part:match("^%s*(.-)%s*$")
+				local translated = i18n.lookup("items.defenceTypes", trimmed) or trimmed
+				table.insert(translatedParts, translated)
+			end
+			entry.label = translatedMain .. ": " .. table.concat(translatedParts, "/")
+		else
+			entry.label = i18n.lookup("items.typeNames", typeName) or typeName
+		end
+	end
+	-- Translate base item labels
+	for _, list in pairs(data.itemBaseLists) do
+		for _, entry in ipairs(list) do
+			local cleanName = entry.name:gsub(" %(.+%)","")
+			entry.label = i18n.lookup("baseNames", cleanName) or cleanName
+		end
+	end
+end
+
 -- Rare templates
 data.rares = LoadModule("Data/Rares")
 

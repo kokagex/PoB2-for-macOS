@@ -274,7 +274,17 @@ return function(stats, scopeName, quality)
 			for _, spec in ipairs(desc) do
 				applySpecial(val, spec)
 			end
-			local statDesc = desc.text:gsub("{(%d)}", function(n) 
+			local textToUse = desc.text
+			if i18n and i18n.getLocale and i18n.getLocale() ~= "en" then
+				local translated = i18n.lookup("statDescriptions", desc.text)
+				if not translated and desc.text:find("\n") then
+					translated = i18n.lookup("statDescriptions", desc.text:gsub("\n", " "))
+				end
+				if translated then
+					textToUse = translated
+				end
+			end
+			local statDesc = textToUse:gsub("{(%d)}", function(n) 
 				local v = val[tonumber(n)+1]
 				if v.min == v.max then
 					return s_format("%"..v.fmt, v.min)
