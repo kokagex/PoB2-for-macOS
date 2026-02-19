@@ -2,13 +2,13 @@
 
 上流: `PathOfBuildingCommunity/PathOfBuilding-PoE2` `dev` ブランチ
 ローカル: `kokagex/PoB2-for-macOS` `pob2macos_stage2` ブランチ
-最終同期: 2026-02-19 (v0.3.0)
+最終同期: 2026-02-20 (v0.3.1)
 
 ---
 
 ## 同期済み / Synced
 
-v0.3.0 で上流版に置換済み。
+### Phase 1 — v0.3.0 (2026-02-19): 計算エンジン9ファイル
 
 | ファイル | 差分行数 | 内容 |
 |---|---|---|
@@ -29,13 +29,9 @@ v0.3.0 で上流版に置換済み。
 - `SkillsTab.lua`: displaySkillList nilガード
 - `Build.lua`: displaySkillList nilガード6箇所
 
----
+### Phase 2 — v0.3.1 (2026-02-20): データファイル24ファイル
 
-## 未同期 — 優先度 高 / Not Synced — High Priority
-
-### データファイル（自動生成系）
-
-リスク低。丸ごと置換可能。新アイテム・スキル・Mod対応に必須。
+#### 自動生成系データ
 
 | ファイル | 差分行数 | 内容 |
 |---|---|---|
@@ -46,9 +42,7 @@ v0.3.0 で上流版に置換済み。
 | `src/Data/StatDescriptions/monster_stat_descriptions.lua` | 95 | モンスターstat説明文 |
 | `src/Data/ModCache.lua` | 15,865 | Modパース結果キャッシュ |
 
-### データファイル（ゲームデータ）
-
-リスク低。新アイテムベース・ユニーク対応。
+#### ゲームデータ
 
 | ファイル | 差分行数 | 内容 |
 |---|---|---|
@@ -69,12 +63,16 @@ v0.3.0 で上流版に置換済み。
 | `src/Data/Gems.lua` | 2 | ジェムデータ |
 | `src/Data/Global.lua` | 1 | グローバル定数 |
 
-### TimelessJewel データ
+#### TimelessJewel データ
 
 | ファイル | 差分行数 | 内容 |
 |---|---|---|
 | `src/Data/TimelessJewelData/LegionPassives.lua` | 4,626 | レギオンパッシブ |
 | `src/Data/TimelessJewelData/NodeIndexMapping.lua` | 3,478 | ノードマッピング |
+
+互換性修正（ローカル追加）:
+- `Data.lua`: metatableガードをMisc.luaから移設、weaponTypeInfoレガシーエイリアス保持、unarmedWeaponData PoE2クラス対応
+- `ModTools.lua`: formatTag/formatValueの混合キー型ソートcomparator追加（上流はformatValueのみ。formatTagへの追加はローカル独自の防御的措置）
 
 ---
 
@@ -92,7 +90,7 @@ v0.3.0 で上流版に置換済み。
 | `src/Modules/Calcs.lua` | 132 | 計算エンジンメインループ |
 | `src/Modules/CalcTools.lua` | 109 | 計算ユーティリティ関数 |
 | `src/Modules/Common.lua` | 64 | 共通ユーティリティ |
-| `src/Modules/ModTools.lua` | 55 | Modユーティリティ |
+| `src/Modules/ModTools.lua` | 55 | Modユーティリティ（部分同期済み: sort comparator） |
 | `src/Modules/BuildDisplayStats.lua` | 71 | ステータス表示定義 |
 | `src/Modules/CalcBreakdown.lua` | 16 | 計算内訳 |
 | `src/Modules/BuildList.lua` | 72 | ビルドリスト |
