@@ -227,8 +227,6 @@ data.characterConstants = {
 	["sprint_end_stun_linger_duration_ms"] = 200,
 	["base_speed"] = 37,
 }
--- PoE2: Return 0 for missing characterConstants keys to prevent nil arithmetic errors
-setmetatable(data.characterConstants, { __index = function(t, k) return 0 end })
 -- From Metadata/Monsters/Monster.ot
 data.monsterConstants = {
 	["item_drop_slots"] = 1,
@@ -265,8 +263,6 @@ data.monsterConstants = {
 	["stun_base_duration_override_ms"] = 500,
 	["bleeding_moving_damage_%_of_base_override"] = 200,
 }
--- PoE2: Return 0 for missing monsterConstants keys to prevent nil arithmetic errors
-setmetatable(data.monsterConstants, { __index = function(t, k) return 0 end })
 -- From PlayerMinionIntrinsicStats.dat
 data.playerMinionIntrinsicStats = {
 	["stun_base_duration_override_ms"] = 500,
