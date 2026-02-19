@@ -237,11 +237,11 @@ function CalcSectionClass:Draw(viewPort, noTooltip)
 		SetDrawColor(0.10, 0.10, 0.10)
 		-- Draw label
 		if not self.enabled then
-			local displayLabel = (i18n and i18n.lookup and i18n.lookup("calcs", subSec.label)) or subSec.label
+			local displayLabel = i18n.lookup("calcs", subSec.label) or subSec.label
 			DrawString(x + 3, lineY + 3, "LEFT", 16, "VAR BOLD", "^8"..displayLabel)
 		else
 			local textColor = "^7"
-			local displayLabel = (i18n and i18n.lookup and i18n.lookup("calcs", subSec.label)) or subSec.label
+			local displayLabel = i18n.lookup("calcs", subSec.label) or subSec.label
 			if self.calcsTab:SearchMatch(subSec.label) or self.calcsTab:SearchMatch(displayLabel) then
 				textColor = colorCodes.HIGHLIGHT
 			end
@@ -276,7 +276,7 @@ function CalcSectionClass:Draw(viewPort, noTooltip)
 						textColor = rowData.color
 					end
 					if rowData.label then
-						local displayRowLabel = (i18n and i18n.lookup and i18n.lookup("calcs", rowData.label)) or rowData.label
+						local displayRowLabel = i18n.lookup("calcs", rowData.label) or rowData.label
 						SetDrawColor(rowData.bgCol or "^0")
 						DrawImage(nil, x + 2, lineY + 2, 130, 18)
 						if self.calcsTab:SearchMatch(rowData.label) or self.calcsTab:SearchMatch(displayRowLabel) then
