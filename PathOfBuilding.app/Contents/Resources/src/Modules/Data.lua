@@ -373,6 +373,31 @@ data.nonDamagingAilment = {
 }
 
 -- Used in ModStoreClass:ScaleAddMod(...) to identify high precision modifiers
+data.buildupTypes = {
+		["Electrocute"] = {
+			["ScalesFrom"] = {
+			}
+		},
+		["Freeze"] = {
+			["ScalesFrom"] = {
+				["Cold"] = true,
+			}
+		},
+		["HeavyStun"] = {
+			["ScalesFrom"] = {
+				["Physical"] = true,
+				["Fire"] = true,
+				["Cold"] = true,
+				["Lightning"] = true,
+				["Chaos"] = true,
+			}
+		},
+		["Pin"] = {
+			["ScalesFrom"] = {
+			}
+		},
+}
+
 data.defaultAilmentDamageTypes = {
 		-- damaging
 		["Bleed"] = {
