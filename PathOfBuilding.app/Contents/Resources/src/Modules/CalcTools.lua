@@ -125,7 +125,7 @@ end
 
 -- In-game formula
 function calcLib.getGemStatRequirement(level, multi, isSupport)
-	if multi == 0 or isSupport then
+	if not multi or multi == 0 or isSupport then
 		return 0
 	end
 	local req = round( ( 5 + ( level - 3 ) * 1.7 ) * ( multi / 100 ) ^ 0.9 ) + 4

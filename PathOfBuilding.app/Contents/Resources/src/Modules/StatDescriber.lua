@@ -7,6 +7,7 @@ local pairs = pairs
 local ipairs = ipairs
 local t_insert = table.insert
 local s_format = string.format
+local m_floor = math.floor
 
 local scopes = { }
 
@@ -136,8 +137,8 @@ local function applySpecial(val, spec)
 		val[spec.v].max = val[spec.v].max / 1000
 		val[spec.v].fmt = "g"
 	elseif spec.k == "per_minute_to_per_second" then
-		val[spec.v].min = floor(val[spec.v].min / 60, 1)
-		val[spec.v].max = floor(val[spec.v].max / 60, 1)
+		val[spec.v].min = m_floor(val[spec.v].min / 60)
+		val[spec.v].max = m_floor(val[spec.v].max / 60)
 		val[spec.v].fmt = "g"
 	elseif spec.k == "per_minute_to_per_second_0dp" then
 		val[spec.v].min = round(val[spec.v].min / 60)
