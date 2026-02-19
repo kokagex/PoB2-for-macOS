@@ -1035,10 +1035,11 @@ table.sort(data.itemBaseTypeList)
 -- Called from Main.lua after i18n is initialized, and on language change
 function data.rebuildItemListLabels()
 	if not i18n then return end
-	-- Translate type list labels
-	for _, entry in ipairs(data.itemBaseTypeList) do
-		local typeName = entry.name
+	-- Translate type list labels (upstream changed to string array; wrap in tables for DropDownControl .label support)
+	for i, entry in ipairs(data.itemBaseTypeList) do
+		local typeName = type(entry) == "table" and entry.name or entry
 		local mainType, subType = typeName:match("^(.-):%s*(.+)$")
+		local label
 		if mainType and subType then
 			local translatedMain = i18n.lookup("items.typeNames", mainType) or mainType
 			local translatedParts = {}
@@ -1047,9 +1048,15 @@ function data.rebuildItemListLabels()
 				local translated = i18n.lookup("items.defenceTypes", trimmed) or trimmed
 				table.insert(translatedParts, translated)
 			end
-			entry.label = translatedMain .. ": " .. table.concat(translatedParts, "/")
+			label = translatedMain .. ": " .. table.concat(translatedParts, "/")
 		else
-			entry.label = i18n.lookup("items.typeNames", typeName) or typeName
+			label = i18n.lookup("items.typeNames", typeName) or typeName
+		end
+		-- Promote string entry to table so DropDownControl can use .label
+		if type(entry) == "string" then
+			data.itemBaseTypeList[i] = { name = typeName, label = label }
+		else
+			entry.label = label
 		end
 	end
 	-- Translate base item labels
