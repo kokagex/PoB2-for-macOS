@@ -78,6 +78,36 @@ Whether this macOS port can keep up with the PoE2 0.5 update from the upstream P
 
 ## バージョン履歴 / Version History
 
+### v0.3.0 (2026-02-19)
+
+- 上流 PathOfBuilding-PoE2 dev ブランチから計算エンジンを同期（161コミット分のPoE2対応改善）
+- CalcOffence: Firestorm/RoA等のDPS計算、ダメージ再帰構造を更新
+- CalcDefence: PoE2のヒットチャンス/アーマー計算式、Deflection対応
+- CalcPerform: Spirit計算、mergeKeystones対応
+- CalcSetup: PoE2 characterConstants、statSets構造対応
+- CalcActiveSkill: statSet構造、baseMods対応
+- ModParser: PoE2 Conquerors（Vorana等）、Mod解析改善
+- ItemTools: formatValue復活、PoE2 influence対応
+- CalcTriggers: Unleashable→CanRapidFire リネーム
+- CalcMirages: General's Cry改善
+- Data.lua: PoE2対応の定数・テーブル追加（DeflectEffect、buildupTypes、ailmentDamageTypes等）
+- ソケットグループの日本語表示ラベル修正
+
+---
+
+- Synced calculation engine from upstream PathOfBuilding-PoE2 dev branch (161 commits of PoE2 improvements)
+- CalcOffence: Firestorm/RoA DPS calculations, damage recursive structure update
+- CalcDefence: PoE2 hit chance/armour formulas, Deflection support
+- CalcPerform: Spirit calculation, mergeKeystones support
+- CalcSetup: PoE2 characterConstants, statSets structure support
+- CalcActiveSkill: statSet structure, baseMods support
+- ModParser: PoE2 Conquerors (Vorana etc), mod parsing improvements
+- ItemTools: formatValue restoration, PoE2 influence support
+- CalcTriggers: Unleashable→CanRapidFire rename
+- CalcMirages: General's Cry improvements
+- Data.lua: Added PoE2 constants and tables (DeflectEffect, buildupTypes, ailmentDamageTypes, etc.)
+- Fixed Japanese display labels for socket groups
+
 ### v0.2.2 (2026-02-19)
 
 - SGPAKアーカイブからのアセット読み込みシステムを追加（ディスク上の個別ファイルの代わりにアーカイブを使用）

@@ -1138,7 +1138,7 @@ print("")
 
 -- Stage 4: Define global constants required by Main.lua
 _G.APP_NAME = "Path of Building"
-_G.APP_VERSION = "PoE2-macOS-0.2.2"
+_G.APP_VERSION = "PoE2-macOS-0.3.0"
 
 -- Load and run Launch.lua
 print("Loading Launch.lua...")
