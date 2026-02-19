@@ -117,6 +117,12 @@ data = { }
 -- Misc data tables
 LoadModule("Data/Misc", data)
 
+-- PoE2 macOS: Return 0 for missing constants keys to prevent nil arithmetic errors
+-- (upstream Misc.lua doesn't have these guards; they protect against key mismatches
+-- between data files and calc engine during incremental syncs)
+setmetatable(data.characterConstants, { __index = function(t, k) return 0 end })
+setmetatable(data.monsterConstants, { __index = function(t, k) return 0 end })
+
 data.powerStatList = {
 	{ stat=nil, label="Offence/Defence", combinedOffDef=true, ignoreForItems=true },
 	{ stat=nil, label="Name", itemField="Name", ignoreForNodes=true, reverseSort=true, transform=function(value) return value:gsub("^The ","") end},
@@ -552,32 +558,43 @@ data.highPrecisionMods = {
 data.weaponTypeInfo = {
 	["None"] = { oneHand = true, melee = true, flag = "Unarmed" },
 	["Bow"] = { oneHand = false, melee = false, flag = "Bow" },
+	["Crossbow"] = { oneHand = false, melee = false, flag = "Crossbow" },
 	["Claw"] = { oneHand = true, melee = true, flag = "Claw" },
 	["Dagger"] = { oneHand = true, melee = true, flag = "Dagger" },
-	["Staff"] = { oneHand = false, melee = true, flag = "Staff" },
+	["Spear"] = { oneHand = true, melee = true, flag = "Spear" },
+	["Flail"] = { oneHand = true, melee = true, flag = "Flail" },
+	["Staff"] = { oneHand = false, melee = true, flag = "Staff", label = "Quarterstaff" },
+	["Warstaff"] = { oneHand = false, melee = true, flag = "Warstaff" },
 	["Wand"] = { oneHand = true, melee = false, flag = "Wand" },
+	["One Hand Axe"] = { oneHand = true, melee = true, flag = "Axe" },
+	["One Hand Mace"] = { oneHand = true, melee = true, flag = "Mace" },
+	["One Hand Sword"] = { oneHand = true, melee = true, flag = "Sword" },
+	["Thrusting One Hand Sword"] = { oneHand = true, melee = true, flag = "Sword", label = "One Hand Sword" },
+	["Fishing Rod"] = { oneHand = false, melee = true, flag = "Fishing" },
+	["Two Hand Axe"] = { oneHand = false, melee = true, flag = "Axe" },
+	["Two Hand Mace"] = { oneHand = false, melee = true, flag = "Mace" },
+	["Two Hand Sword"] = { oneHand = false, melee = true, flag = "Sword" },
+	["Talisman"] = { oneHand = false, melee = true, flag = "Talisman" },
+	-- Legacy aliases for backward compatibility (PoE1 naming)
+	["Sceptre"] = { oneHand = true, melee = true, flag = "Mace", label = "Sceptre" },
 	["One Handed Axe"] = { oneHand = true, melee = true, flag = "Axe" },
 	["One Handed Mace"] = { oneHand = true, melee = true, flag = "Mace" },
 	["One Handed Sword"] = { oneHand = true, melee = true, flag = "Sword" },
-	["Sceptre"] = { oneHand = true, melee = true, flag = "Mace", label = "Sceptre" },
 	["Thrusting One Handed Sword"] = { oneHand = true, melee = true, flag = "Sword", label = "One Handed Sword" },
-	["Fishing Rod"] = { oneHand = false, melee = true, flag = "Fishing" },
 	["Two Handed Axe"] = { oneHand = false, melee = true, flag = "Axe" },
 	["Two Handed Mace"] = { oneHand = false, melee = true, flag = "Mace" },
 	["Two Handed Sword"] = { oneHand = false, melee = true, flag = "Sword" },
-	["Spear"] = { oneHand = true, melee = true, flag = "Spear" },
-	["Flail"] = { oneHand = true, melee = true, flag = "Flail" },
-	["Crossbow"] = { oneHand = false, melee = false, flag = "Crossbow" },
-	["Talisman"] = { oneHand = false, melee = true, flag = "Talisman" },
 }
 data.unarmedWeaponData = {
-	[0] = { type = "None", AttackRate = 1.2, CritChance = 0, PhysicalMin = 2, PhysicalMax = 6 }, -- Scion
-	[1] = { type = "None", AttackRate = 1.2, CritChance = 0, PhysicalMin = 2, PhysicalMax = 8 }, -- Marauder
-	[2] = { type = "None", AttackRate = 1.2, CritChance = 0, PhysicalMin = 2, PhysicalMax = 5 }, -- Ranger
-	[3] = { type = "None", AttackRate = 1.2, CritChance = 0, PhysicalMin = 2, PhysicalMax = 5 }, -- Witch
-	[4] = { type = "None", AttackRate = 1.2, CritChance = 0, PhysicalMin = 2, PhysicalMax = 6 }, -- Duelist
-	[5] = { type = "None", AttackRate = 1.2, CritChance = 0, PhysicalMin = 2, PhysicalMax = 6 }, -- Templar
-	[6] = { type = "None", AttackRate = 1.2, CritChance = 0, PhysicalMin = 2, PhysicalMax = 5 }, -- Shadow
+	[0] = { type = "None", AttackRate = 1.65, CritChance = data.characterConstants["unarmed_base_critical_strike_chance"] / 100, PhysicalMin = 2, PhysicalMax = 6 }, -- Scion
+	[1] = { type = "None", AttackRate = 1.65, CritChance = data.characterConstants["unarmed_base_critical_strike_chance"] / 100, PhysicalMin = 2, PhysicalMax = 5 }, -- Ranger
+	[2] = { type = "None", AttackRate = 1.65, CritChance = data.characterConstants["unarmed_base_critical_strike_chance"] / 100, PhysicalMin = 2, PhysicalMax = 5 }, -- Huntress
+	[3] = { type = "None", AttackRate = 1.65, CritChance = data.characterConstants["unarmed_base_critical_strike_chance"] / 100, PhysicalMin = 2, PhysicalMax = 8 }, -- Warrior
+	[4] = { type = "None", AttackRate = 1.65, CritChance = data.characterConstants["unarmed_base_critical_strike_chance"] / 100, PhysicalMin = 2, PhysicalMax = 6 }, -- Mercenary
+	[5] = { type = "None", AttackRate = 1.65, CritChance = data.characterConstants["unarmed_base_critical_strike_chance"] / 100, PhysicalMin = 2, PhysicalMax = 6 }, -- Druid
+	[6] = { type = "None", AttackRate = 1.65, CritChance = data.characterConstants["unarmed_base_critical_strike_chance"] / 100, PhysicalMin = 2, PhysicalMax = 5 }, -- Witch
+	[7] = { type = "None", AttackRate = 1.65, CritChance = data.characterConstants["unarmed_base_critical_strike_chance"] / 100, PhysicalMin = 2, PhysicalMax = 5 }, -- Sorceress
+	[8] = { type = "None", AttackRate = 1.65, CritChance = data.characterConstants["unarmed_base_critical_strike_chance"] / 100, PhysicalMin = 2, PhysicalMax = 5 }, -- Monk
 }
 
 data.setJewelRadiiGlobally = function(treeVersion)
