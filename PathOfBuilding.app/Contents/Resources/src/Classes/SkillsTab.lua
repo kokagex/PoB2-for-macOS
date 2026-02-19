@@ -1182,7 +1182,7 @@ function SkillsTabClass:AddSocketGroupTooltip(tooltip, socketGroup)
 		tooltip:AddSeparator(10)
 	end
 	local gemShown = { }
-	for index, activeSkill in ipairs(socketGroup.displaySkillList) do
+	for index, activeSkill in ipairs(socketGroup.displaySkillList or {}) do
 		if index > 1 then
 			tooltip:AddSeparator(10)
 		end
@@ -1234,7 +1234,7 @@ function SkillsTabClass:AddSocketGroupTooltip(tooltip, socketGroup)
 			elseif grantedEffect.support then
 				if displayEffect.superseded then
 					reason = "(Superseded)"
-				elseif (not displayEffect.isSupporting or not next(displayEffect.isSupporting)) and #socketGroup.displaySkillList > 0 then
+				elseif (not displayEffect.isSupporting or not next(displayEffect.isSupporting)) and socketGroup.displaySkillList and #socketGroup.displaySkillList > 0 then
 					reason = "(Cannot apply to any of the active skills)"
 				end
 			end

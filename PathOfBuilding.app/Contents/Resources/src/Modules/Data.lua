@@ -172,47 +172,55 @@ data.powerStatList = {
 data.misc = { -- magic numbers
 	ServerTickTime = 0.033,
 	ServerTickRate = 1 / 0.033,
-	AccuracyPerDexBase = 2,
-	LowPoolThreshold = 0.5,
+	AccuracyPerDexBase = 6,
+	LowPoolThreshold = 0.35,
 	TemporalChainsEffectCap = 75,
 	BuffExpirationSlowCap = 0.25,
 	DamageReductionCap = data.characterConstants["maximum_physical_damage_reduction_%"],
 	EnemyPhysicalDamageReductionCap = data.monsterConstants["maximum_physical_damage_reduction_%"],
 	ResistFloor = -200,
 	MaxResistCap = 90,
-	EvadeChanceCap = 95,
+	EvadeChanceCap = data.gameConstants["DefaultMaxEvadeChancePercent"],
 	DodgeChanceCap = 75,
 	BlockChanceCap = 90,
 	SuppressionChanceCap = 100,
-	SuppressionEffect = 40,
+	SuppressionEffect = 50,
+	DeflectEffect = data.gameConstants["BasePercentDamageDeflected"],
 	AvoidChanceCap = 75,
-	FortifyBaseDuration = 6,
+	AccuracyFalloffStart = 20,
+	AccuracyFalloffEnd = 90,
+	MaxAccuracyRangePenalty = -data.characterConstants["accuracy_rating_+%_final_at_max_distance_scaled"],
+	ArmourRatio = 10,
+	NegArmourDmgBonusCap = 100,
 	ManaRegenBase = data.characterConstants["character_inherent_mana_regeneration_rate_per_minute_%"] / 60 / 100,
 	EnergyShieldRechargeBase = data.characterConstants["energy_shield_recharge_rate_per_minute_%"] / 60 / 100,
-	EnergyShieldRechargeBase = 0.33,
-	EnergyShieldRechargeDelay = 2,
+	EnergyShieldRechargeDelay = 4,
 	WardRechargeDelay = 2,
 	Transfiguration = 0.3,
 	EnemyMaxResist = data.monsterConstants["base_maximum_all_resistances_%"],
 	LeechRateBase = 0.02,
 	DotDpsCap = 35791394, -- (2 ^ 31 - 1) / 60 (int max / 60 seconds)
-	BleedPercentBase = 70,
-	BleedDurationBase = 5,
-	PoisonPercentBase = 0.30,
-	PoisonDurationBase = 2,
-	IgnitePercentBase = 0.9,
-	IgniteDurationBase = 4,
+	BleedPercentBase = data.gameConstants["BleedingHitDamagePercentPerMinute"] / 60 / 100,
+	BleedDurationBase = data.gameConstants["BaseBleedingDuration"],
+	PoisonPercentBase = data.gameConstants["PoisonHitDamagePercentPerMinute"] / 60 / 100,
+	PoisonDurationBase = data.gameConstants["BasePoisonDuration"],
+	IgnitePercentBase = data.gameConstants["IgniteHitDamagePercentPerMinute"] / 60 / 100,
+	IgniteDurationBase = data.gameConstants["BaseIgniteDuration"],
 	ImpaleStoredDamageBase = 0.1,
 	TrapTriggerRadiusBase = 10,
 	MineDetonationRadiusBase = 60,
 	MineAuraRadiusBase = 35,
+	SurroundedRadiusBase = 30,
+	MinionRevivalTimeBase = data.characterConstants["global_resummon_time_ms"] / 1000,
 	BrandAttachmentRangeBase = 30,
 	ProjectileDistanceCap = 150,
-	PlayerMovementSpeed = data.characterConstants["base_speed"],
 	MinStunChanceNeeded = 20,
 	StunBaseMult = 200,
-	StunBaseDuration = 0.35,
-	StunNotMeleeDamageMult = 0.75,
+	StunBaseDuration = data.characterConstants["stun_base_duration_override_ms"] / 1000,
+	MinionBaseStunDuration = (data.monsterConstants["stun_base_duration_override_ms"] + data.playerMinionIntrinsicStats["stun_base_duration_override_ms"]) / 1000,
+	MeleeStunMult = data.monsterConstants["melee_hit_damage_stun_multiplier_+%_final_from_ot"] / 100,
+	PhysicalStunMult = data.monsterConstants["physical_hit_damage_stun_multiplier_+%_final_from_ot"] / 100,
+	PlayerMovementSpeed = data.characterConstants["base_speed"],
 	MaxEnemyLevel = 85,
 	maxExperiencePenaltyFreeAreaLevel = 70,
 	experiencePenaltyMultiplier = 0.06,
@@ -365,7 +373,68 @@ data.nonDamagingAilment = {
 }
 
 -- Used in ModStoreClass:ScaleAddMod(...) to identify high precision modifiers
+data.buildupTypes = {
+		["Electrocute"] = {
+			["ScalesFrom"] = {
+			}
+		},
+		["Freeze"] = {
+			["ScalesFrom"] = {
+				["Cold"] = true,
+			}
+		},
+		["HeavyStun"] = {
+			["ScalesFrom"] = {
+				["Physical"] = true,
+				["Fire"] = true,
+				["Cold"] = true,
+				["Lightning"] = true,
+				["Chaos"] = true,
+			}
+		},
+		["Pin"] = {
+			["ScalesFrom"] = {
+			}
+		},
+}
+
+data.defaultAilmentDamageTypes = {
+		-- damaging
+		["Bleed"] = {
+			["ScalesFrom"] = {
+				["Physical"] = true,
+			},
+			["DamageType"] = "Physical",
+		},
+		["Poison"] = {
+			["ScalesFrom"] = {
+				["Physical"] = true,
+				["Chaos"] = true,
+			},
+			["DamageType"] = "Chaos",
+		},
+		["Ignite"] = {
+			["ScalesFrom"] = {
+				["Fire"] = true,
+			},
+			["DamageType"] = "Fire",
+		},
+		-- non-damaging
+		["Shock"] = {
+			["ScalesFrom"] = {
+				["Lightning"] = true,
+			}
+		},
+		["Chill"] = {
+			["ScalesFrom"] = {
+				["Cold"] = true,
+			}
+		},
+	}
+
+-- Used in ModStoreClass:ScaleAddMod(...) to identify high precision modifiers
 data.defaultHighPrecision = 1
+data.modScalability = LoadModule("Data/ModScalability")
 data.highPrecisionMods = {
 	["CritChance"] = {
 		["BASE"] = 2,
@@ -919,30 +988,35 @@ for skillId, grantedEffect in pairs(data.skills) do
 	grantedEffect.name = sanitiseText(grantedEffect.name)
 	grantedEffect.id = skillId
 	grantedEffect.modSource = "Skill:"..skillId
+	grantedEffect.statSets = grantedEffect.statSets or {}
 	-- Add sources for skill mods, and check for global effects
-	for _, list in pairs({grantedEffect.baseMods, grantedEffect.qualityMods, grantedEffect.levelMods}) do
-		for _, mod in pairs(list) do
-			if mod.name then
-				processMod(grantedEffect, mod)
-			else
-				for _, mod in ipairs(mod) do
+	for _, skillPart in pairs(tableConcat({grantedEffect}, grantedEffect.statSets)) do
+		for _, list in pairs({skillPart.baseMods, skillPart.qualityMods, skillPart.levelMods}) do
+			for _, mod in pairs(list) do
+				if mod.name then
 					processMod(grantedEffect, mod)
+				else
+					for _, mod in ipairs(mod) do
+						processMod(grantedEffect, mod)
+					end
 				end
 			end
 		end
 	end
 	-- Install stat map metatable
-	grantedEffect.statMap = grantedEffect.statMap or { }
-	setmetatable(grantedEffect.statMap, data.skillStatMapMeta)
-	grantedEffect.statMap._grantedEffect = grantedEffect
-	for name, map in pairs(grantedEffect.statMap) do
-		-- Some mods need different scalars for different stats, but the same value.  Putting them in a group allows this
-		for _, modOrGroup in ipairs(map) do
-			if modOrGroup.name then
-				processMod(grantedEffect, modOrGroup, name)
-			else
-				for _, mod in ipairs(modOrGroup) do
-					processMod(grantedEffect, mod, name)
+	for _, statSet in pairs(tableConcat({grantedEffect}, grantedEffect.statSets)) do
+		statSet.statMap = statSet.statMap or { }
+		setmetatable(statSet.statMap, data.skillStatMapMeta)
+		statSet.statMap._grantedEffect = grantedEffect
+		for name, map in pairs(statSet.statMap) do
+			-- Some mods need different scalars for different stats, but the same value.  Putting them in a group allows this
+			for _, modOrGroup in ipairs(map) do
+				if modOrGroup.name then
+					processMod(grantedEffect, modOrGroup, name)
+				else
+					for _, mod in ipairs(modOrGroup) do
+						processMod(grantedEffect, mod, name)
+					end
 				end
 			end
 		end
@@ -973,10 +1047,27 @@ local function setupGem(gem, gemId)
 		data.gemForBaseName[gem.baseTypeName:lower()] = gemId
 	end
 	gem.secondaryGrantedEffect = gem.secondaryGrantedEffectId and data.skills[gem.secondaryGrantedEffectId]
+	gem.additionalGrantedEffects = {}
 	gem.grantedEffectList = {
 		gem.grantedEffect,
-		gem.secondaryGrantedEffect
 	}
+	local i = 1
+	while gem["additionalGrantedEffectId"..i] do
+		table.insert(gem.grantedEffectList, data.skills[gem["additionalGrantedEffectId"..i]])
+		table.insert(gem.additionalGrantedEffects, data.skills[gem["additionalGrantedEffectId"..i]])
+		i = i + 1
+	end
+	if gem.grantedEffectDisplayOrder then
+		local tempTable = {}
+		for i, temp in ipairs(gem.grantedEffectList) do
+			if gem.grantedEffectDisplayOrder[i] then
+				tempTable[i] = gem.grantedEffectList[gem.grantedEffectDisplayOrder[i] + 1]
+			else
+				tempTable[i] = temp
+			end
+		end
+		gem.grantedEffectList = tempTable
+	end
 	gem.naturalMaxLevel = gem.naturalMaxLevel or (#gem.grantedEffect.levels > 20 and #gem.grantedEffect.levels - 20) or (gem.grantedEffect.levels[3][1] and 3) or 1
 end
 
