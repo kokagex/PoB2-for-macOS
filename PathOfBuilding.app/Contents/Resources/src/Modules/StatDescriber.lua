@@ -16,7 +16,7 @@ local function getScope(scopeName)
 		-- Allow lowercase "specific_skill_stat_descriptions/<name>" by stripping the prefix (Linux is case-sensitive).
 		local normalizedScopeName = scopeName:gsub("^specific_skill_stat_descriptions/", "")
 
-		local file = io.open("Data/StatDescriptions/Specific_Skill_Stat_Descriptions/"..normalizedScopeName..".lua", 'rb')
+		local file = io.open("src/Data/StatDescriptions/Specific_Skill_Stat_Descriptions/"..normalizedScopeName..".lua", 'rb')
 		if file then
 			file:close()
 			scope = LoadModule("Data/StatDescriptions/Specific_Skill_Stat_Descriptions/"..normalizedScopeName)
