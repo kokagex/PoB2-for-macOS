@@ -1047,10 +1047,27 @@ local function setupGem(gem, gemId)
 		data.gemForBaseName[gem.baseTypeName:lower()] = gemId
 	end
 	gem.secondaryGrantedEffect = gem.secondaryGrantedEffectId and data.skills[gem.secondaryGrantedEffectId]
+	gem.additionalGrantedEffects = {}
 	gem.grantedEffectList = {
 		gem.grantedEffect,
-		gem.secondaryGrantedEffect
 	}
+	local i = 1
+	while gem["additionalGrantedEffectId"..i] do
+		table.insert(gem.grantedEffectList, data.skills[gem["additionalGrantedEffectId"..i]])
+		table.insert(gem.additionalGrantedEffects, data.skills[gem["additionalGrantedEffectId"..i]])
+		i = i + 1
+	end
+	if gem.grantedEffectDisplayOrder then
+		local tempTable = {}
+		for i, temp in ipairs(gem.grantedEffectList) do
+			if gem.grantedEffectDisplayOrder[i] then
+				tempTable[i] = gem.grantedEffectList[gem.grantedEffectDisplayOrder[i] + 1]
+			else
+				tempTable[i] = temp
+			end
+		end
+		gem.grantedEffectList = tempTable
+	end
 	gem.naturalMaxLevel = gem.naturalMaxLevel or (#gem.grantedEffect.levels > 20 and #gem.grantedEffect.levels - 20) or (gem.grantedEffect.levels[3][1] and 3) or 1
 end
 
