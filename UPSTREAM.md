@@ -2,13 +2,13 @@
 
 上流: `PathOfBuildingCommunity/PathOfBuilding-PoE2` `dev` ブランチ
 ローカル: `kokagex/PoB2-for-macOS` `pob2macos_stage2` ブランチ
-最終同期: 2026-02-20 (v0.4.0)
+最終同期: 2026-02-20 (v0.5.0)
 
 ---
 
 ## 同期済み / Synced
 
-### Phase 1 — v0.3.0 (2026-02-19): 計算エンジン9ファイル
+### ✅ Phase 1 — v0.3.0 (2026-02-19): 計算エンジン9ファイル
 
 | ファイル | 差分行数 | 内容 |
 |---|---|---|
@@ -29,7 +29,7 @@
 - `SkillsTab.lua`: displaySkillList nilガード
 - `Build.lua`: displaySkillList nilガード6箇所
 
-### Phase 2 — v0.4.0 (2026-02-20): データファイル24ファイル
+### ✅ Phase 2 — v0.4.0 (2026-02-20): データファイル24ファイル
 
 #### 自動生成系データ
 
@@ -76,7 +76,7 @@
 
 ---
 
-### Phase 3 — v0.5.0 (2026-02-20): 計算エンジン残りモジュール11ファイル
+### ✅ Phase 3 — v0.5.0 (2026-02-20): 計算エンジン残りモジュール11ファイル
 
 丸ごと置換（6）:
 
@@ -109,19 +109,14 @@ i18n翻訳追加:
 
 ---
 
-## 残タスク — i18n翻訳辞書 / Remaining — i18n Dictionary Updates
+## ✅ 完了 — i18n翻訳辞書 / Completed — i18n Dictionary Updates
 
-Phase 2のStatDescriptionsデータ同期でdesc.textが変わったため、以下の翻訳辞書の更新が必要:
+Phase 2のStatDescriptionsデータ同期でdesc.textが変わったため更新を実施:
 
-- [ ] `ja_stat_descriptions.lua`: StatDescriptionsデータファイルの現在の`desc.text`キーに合わせて再生成
-  - 現状: 古いキーが多く、StatDescriber内のi18n.lookupがマッチしない
-  - 対応: stat_descriptions.lua等から全desc.textを抽出し、ja翻訳を再マッピング
-- [ ] `ja_mod_stat_lines.lua`: PoE2固有stat（"Freeze Buildup", "Bonded:", "Spirit"等）の翻訳キー追加
-  - 現状: PoE1由来のmodは翻訳OK、PoE2新規modはキーなし
-
----
-
-## 未同期 — 優先度 低 / Not Synced — Low Priority
+- [x] `ja_stat_descriptions.lua`: StatDescriptionsデータファイルの現在の`desc.text`キーに合わせて再生成済み
+  - レンジ形式修正、キー再マッピング、PoE2新規翻訳追加
+- [x] `ja_mod_stat_lines.lua`: PoE2固有stat 681件の日本語翻訳追加済み
+  - Freeze Buildup, Bonded:, Spirit等のPoE2新規mod対応
 
 ---
 
