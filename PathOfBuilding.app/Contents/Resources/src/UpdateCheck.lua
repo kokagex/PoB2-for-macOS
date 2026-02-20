@@ -24,7 +24,7 @@ local function downloadFileText(source, file)
 		easy:setopt_url(escapedUrl)
 		easy:setopt(curl.OPT_ACCEPT_ENCODING, "")
 		if authToken then
-			easy:setopt(curl.OPT_HTTPHEADER, {"Authorization: token "..authToken})
+			easy:setopt(curl.OPT_HTTPHEADER, {"Authorization: Bearer "..authToken})
 		end
 		if connectionProtocol then
 			easy:setopt(curl.OPT_IPRESOLVE, connectionProtocol)
@@ -62,7 +62,7 @@ local function downloadFile(source, file, outName)
 		easy:setopt_url(escapedUrl)
 		easy:setopt(curl.OPT_ACCEPT_ENCODING, "")
 		if authToken then
-			easy:setopt(curl.OPT_HTTPHEADER, {"Authorization: token "..authToken})
+			easy:setopt(curl.OPT_HTTPHEADER, {"Authorization: Bearer "..authToken})
 		end
 		if connectionProtocol then
 			easy:setopt(curl.OPT_IPRESOLVE, connectionProtocol)
@@ -214,7 +214,10 @@ do
 		tokenFile:close()
 		if authToken then
 			authToken = authToken:match("^%s*(.-)%s*$")
-			if authToken == "" then authToken = nil end
+			if authToken == "" or authToken == "REPLACE_WITH_GITHUB_PAT" then authToken = nil end
+			if authToken and not authToken:match("^ghp_") and not authToken:match("^github_pat_") then
+				authToken = nil
+			end
 		end
 	end
 end
