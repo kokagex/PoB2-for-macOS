@@ -11,6 +11,8 @@ local sha1 = require("sha1")
 local curl = require("lcurl.safe")
 local lzip = require("lzip")
 
+local authToken
+
 local function downloadFileText(source, file)
 	for i = 1, 5 do
 		if i > 1 then
@@ -21,6 +23,9 @@ local function downloadFileText(source, file)
 		local escapedUrl = source..easy:escape(file)
 		easy:setopt_url(escapedUrl)
 		easy:setopt(curl.OPT_ACCEPT_ENCODING, "")
+		if authToken then
+			easy:setopt(curl.OPT_HTTPHEADER, {"Authorization: Bearer "..authToken})
+		end
 		if connectionProtocol then
 			easy:setopt(curl.OPT_IPRESOLVE, connectionProtocol)
 		end
@@ -33,7 +38,7 @@ local function downloadFileText(source, file)
 			ConPrintf("SSL verification disabled")
 		end
 		easy:setopt_writefunction(function(data)
-			text = text..data 
+			text = text..data
 			return true
 		end)
 		local _, error = easy:perform()
@@ -56,6 +61,9 @@ local function downloadFile(source, file, outName)
 		local escapedUrl = source..easy:escape(file)
 		easy:setopt_url(escapedUrl)
 		easy:setopt(curl.OPT_ACCEPT_ENCODING, "")
+		if authToken then
+			easy:setopt(curl.OPT_HTTPHEADER, {"Authorization: Bearer "..authToken})
+		end
 		if connectionProtocol then
 			easy:setopt(curl.OPT_IPRESOLVE, connectionProtocol)
 		end
@@ -196,6 +204,22 @@ localSource = localSource:gsub("{branch}", localBranch)
 if not sanitizeSourceUrl(localSource) then
 	ConPrintf("Update check failed: insecure local source URL")
 	return nil, "Invalid local manifest"
+end
+
+-- Load GitHub auth token for private repo access
+do
+	local tokenFile = io.open(scriptPath.."/update_auth.cfg", "r")
+	if tokenFile then
+		authToken = tokenFile:read("*l")
+		tokenFile:close()
+		if authToken then
+			authToken = authToken:match("^%s*(.-)%s*$")
+			if authToken == "" or authToken == "REPLACE_WITH_GITHUB_PAT" then authToken = nil end
+			if authToken and not authToken:match("^ghp_") and not authToken:match("^github_pat_") then
+				authToken = nil
+			end
+		end
+	end
 end
 
 -- Download and process remote manifest

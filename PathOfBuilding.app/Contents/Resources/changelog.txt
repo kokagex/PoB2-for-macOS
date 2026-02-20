@@ -1,0 +1,108 @@
+VERSION[0.5.0][2026/02/20]
+
+--- 新機能 / New Features ---
+* 上流 PathOfBuilding-PoE2 dev ブランチから計算エンジン残り11モジュールを同期
+* CalcSections: Spirit、Deflection、Freeze Buildup、Charm、Mark等のPoE2新stat表示追加
+* BuildSiteTools: poe2db.tw対応、pob2:プロトコルハンドラ対応
+* 日本語翻訳: CalcSections 72項目追加、アイテムMod行・ジェムstat・パッシブツリーのtranslateModLine対応
+
+--- バグ修正 / Bug Fixes ---
+* getGemStatRequirement引数順変更に伴うSkillsTab/GemSelectControlの呼び出し側修正
+* StatDescriber: undefined floor修正、i18n stat description lookup復元
+
+--- 同期ファイル / Synced Modules ---
+* CalcSections/Calcs/CalcTools/BuildDisplayStats/CalcBreakdown/BuildSiteTools: 上流版に置換
+* Data.lua/Common.lua/ModTools.lua/StatDescriber.lua/BuildList.lua: 手動マージ（ローカルパッチ保持）
+
+VERSION[0.4.0][2026/02/20]
+
+--- 新機能 / New Features ---
+* 上流 PathOfBuilding-PoE2 dev ブランチから24データファイルを同期
+* StatDescriptions 5ファイル: Mod説明文・スキルstat・ジェムstat・モンスターstat更新
+* Bases 6ファイル: 剣・斧・メイス・ダガー・フレイル・スタッフの新ベース追加
+* Uniques: 新ユニーク・レースユニーク追加
+* TimelessJewel: レギオンパッシブ・ノードマッピング更新
+
+--- バグ修正 / Bug Fixes ---
+* ModTools.lua: 混合キー型ソートcomparator追加（Blackened Heart等の起動クラッシュ修正）
+* Data.lua: metatableガード移設、PoE2武器タイプ・クラス対応
+
+VERSION[0.3.0][2026/02/19]
+
+--- 計算エンジン同期 / Calc Engine Sync ---
+* 上流 PathOfBuilding-PoE2 dev ブランチから計算エンジンを同期（161コミット分のPoE2対応改善）
+* CalcOffence: Firestorm/RoA等のDPS計算、ダメージ再帰構造を更新
+* CalcDefence: PoE2のヒットチャンス/アーマー計算式、Deflection対応
+* CalcPerform: Spirit計算、mergeKeystones対応
+* CalcSetup: PoE2 characterConstants、statSets構造対応
+* CalcActiveSkill: statSet構造、baseMods対応
+
+--- バグ修正 / Bug Fixes ---
+* ModParser: PoE2 Conquerors（Vorana等）、Mod解析改善
+* ItemTools: formatValue復活、PoE2 influence対応
+* CalcTriggers: Unleashable→CanRapidFire リネーム
+* Data.lua: PoE2対応の定数・テーブル追加（DeflectEffect、buildupTypes、ailmentDamageTypes等）
+* ソケットグループの日本語表示ラベル修正
+
+VERSION[0.2.2][2026/02/19]
+
+--- 新機能 / New Features ---
+* SGPAKアーカイブからのアセット読み込みシステムを追加
+* アーカイブのシャットダウン時クリーンアップ（ハンドルリーク防止）
+
+--- バグ修正 / Bug Fixes ---
+* FFI nullポインタチェックの強化
+* アーカイブ読み込み失敗時の警告ログ追加（サイレント失敗の防止）
+* 未使用のMemory Budget API宣言を削除
+
+VERSION[0.2.1][2026/02/18]
+
+--- セキュリティ修正 / Security Fixes ---
+* OAuth PKCE認証の暗号強度を改善（math.random → /dev/urandom、256bit エントロピー）
+* TradeQuery通貨ファイルのパストラバーサル脆弱性を修正
+* 外部ビルドリストのascendancy名によるパストラバーサルを修正
+* ファイルパス検証の改行文字バイパスを修正
+
+--- バグ修正 / Bug Fixes ---
+* base64urlパディング処理の修正
+* io.open nilガード追加（通貨ファイル書き込み時のクラッシュ防止）
+
+VERSION[0.2.0][2026/02/17]
+
+--- 日本語ローカライゼーション / Japanese Localization ---
+* 日本語ローカライゼーション対応（UI全タブ、パッシブツリー、アイテム、スキル、Mod）
+* パッシブツリーノード名 589件の日本語翻訳
+* ユニークアイテム名・フレーバーテキスト 374件の日本語翻訳
+* ジェム説明文・Mod統計行 3,298件の日本語翻訳
+
+--- 安定性改善 / Stability ---
+* SubScriptライフサイクル安全性の向上（コールバッククラッシュ防止）
+* 大規模テーブル走査のyield改善（フレームスタッター軽減）
+* ImageHandle安全性の向上（ダングリングポインタ修正）
+
+--- テスト / Testing ---
+* Bustedユニットテスト基盤（71テスト）+ GitHub Actions CI
+* ビジュアルリグレッションテスト基盤
+
+VERSION[0.1.2][2026/02/11]
+
+--- 変更 / Changes ---
+* ConfigOptionsをPoE2上流版に差し替え（Quest Rewards追加、Bandit/Pantheon削除）
+* Warningsポップアップの表示順序修正（他のウィジェットの上に表示）
+* 旧セーブデータ互換性のためのnil安全性修正
+
+VERSION[0.1.1][2026/02/11]
+
+--- バグ修正 / Bug Fixes ---
+* ビルドのセーブ/ロード機能を有効化（macOSパス設定修正）
+
+VERSION[0.1.0][2026/02/11]
+
+--- 初回リリース / Initial Release ---
+* macOS ネイティブ動作（Metal / ARM64）
+* パッシブツリーの表示・ノード割り当て・ステータス反映
+* ビルド画面の全7タブ（Tree, Skills, Items, Calcs, Config, Notes, Import/Export）
+* PoB リンクからのビルドインポート
+* リアルタイムステータス再計算
+* ツールチップ表示（アイテム・ノード・スキル）
+* PoE2 武器タイプ対応（Spear, Flail, Crossbow, Talisman）
