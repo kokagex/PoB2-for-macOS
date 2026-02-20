@@ -552,43 +552,35 @@ function GemSelectClass:Draw(viewPort, noTooltip)
 		SetViewport()
 		self:DrawControls(viewPort, (noTooltip and not self.forceTooltip) and self)
 		if self.hoverSel then
-			local success, err = pcall(function()
+			local gemData = self.gems[self.list[self.hoverSel]]
+			local tooltipY = y + height + 2 + (self.hoverSel - 1) * (height - 4) - scrollBar.offset
+			if gemData then
+				self.tooltip:Clear()
+				local gemInstance = {
+						level = self.skillsTab:ProcessGemLevel(gemData),
+						quality = self.skillsTab.defaultGemQuality or 0,
+						count = 1,
+						enabled = true,
+						enableGlobal1 = true,
+						enableGlobal2 = true,
+						gemId = gemData.id,
+						nameSpec = gemData.name,
+						skillId = gemData.grantedEffectId,
+						displayEffect = nil,
+						gemData = gemData
+					}
+				self:AddGemTooltip(gemInstance)
 				local calcsTab = self.skillsTab.build and self.skillsTab.build.calcsTab
 				local calcFunc, calcBase
 				if calcsTab and calcsTab.miscCalculator then
 					calcFunc, calcBase = calcsTab:GetMiscCalculator()
 				end
 				if calcFunc then
-					self.tooltip:Clear()
-					local gemData = self.gems[self.list[self.hoverSel]]
 					local output = self:CalcOutputWithThisGem(calcFunc, gemData, self.skillsTab.sortGemsByDPSField == "FullDPS", nil, calcBase)
-					local gemInstance = {
-							level = self.skillsTab:ProcessGemLevel(gemData),
-							quality = self.skillsTab.defaultGemQuality or 0,
-							count = 1,
-							enabled = true,
-							enableGlobal1 = true,
-							enableGlobal2 = true,
-							gemId = gemData.id,
-							nameSpec = gemData.name,
-							skillId = gemData.grantedEffectId,
-							displayEffect = nil,
-							gemData = gemData
-						}
-					self:AddGemTooltip(gemInstance)
 					self.tooltip:AddSeparator(10)
 					self.skillsTab.build:AddStatComparesToTooltip(self.tooltip, calcBase, output, "^7" .. i18n.t("statCompare.selectingGem"))
-					self.tooltip:Draw(x, y + height + 2 + (self.hoverSel - 1) * (height - 4) - scrollBar.offset, width, height - 4, viewPort)
 				end
-			end)
-			if not success then
-				-- Show simple tooltip with gem name instead of crashing
-				self.tooltip:Clear()
-				local gemData = self.gems[self.list[self.hoverSel]]
-				if gemData then
-					self.tooltip:AddLine(16, colorCodes.GEM .. gemDisplayName(gemData))
-				end
-				self.tooltip:Draw(x, y + height + 2 + (self.hoverSel - 1) * (height - 4) - scrollBar.offset, width, height - 4, viewPort)
+				self.tooltip:Draw(x, tooltipY, width, height - 4, viewPort)
 			end
 		end
 		SetDrawLayer(nil, 0)
@@ -685,7 +677,12 @@ function GemSelectClass:AddGemTooltip(gemInstance)
 		self.tooltip:AddLine(fontSizeBig, "^x7F7F7F" .. tagStringDisplay(gemInstance.gemData.tagString), "FONTIN SC")
 	end
 	if gemInstance.gemData.gemFamily then
-		self.tooltip:AddLine(fontSizeBig, "^x7F7F7F" .. i18n.t("gemTooltip.category") .. " ^7" .. gemInstance.gemData.gemFamily, "FONTIN SC")
+		local familyName = gemInstance.gemData.gemFamily
+		local translatedFamily = gemDisplayName({name = familyName})
+		if translatedFamily == familyName then
+			translatedFamily = i18n.lookup("gemTooltip.tags", familyName) or familyName
+		end
+		self.tooltip:AddLine(fontSizeBig, "^x7F7F7F" .. i18n.t("gemTooltip.category") .. " ^7" .. translatedFamily, "FONTIN SC")
 	end
 	-- Will need rework if a gem can have 2+ additional supports
 	self:AddGrantedEffectInfo(gemInstance, grantedEffect, true)
@@ -697,7 +694,7 @@ function GemSelectClass:AddGemTooltip(gemInstance)
 		if not additional.support then
 			if additional.name ~= "" then
 				self.tooltip:AddSeparator(10)
-				self.tooltip:AddLine(fontSizeTitle, colorCodes.GEM .. additional.name, "FONTIN SC")
+				self.tooltip:AddLine(fontSizeTitle, colorCodes.GEM .. gemDisplayName({name = additional.name}), "FONTIN SC")
 			end
 			self.tooltip:AddSeparator(10)
 			self:AddGrantedEffectInfo(gemInstance, additional)
@@ -881,7 +878,7 @@ function GemSelectClass:AddStatSetInfo(gemInstance, grantedEffect, statSet, noLa
 	local statSetLevel = statSet.levels[displayInstance.level] or statSet.levels[1] or { }
 	if not (index == 1 and statSet.label == grantedEffect.name) and statSet.label ~= "" and not noLabel then
 		self.tooltip:AddSeparator(10)
-		self.tooltip:AddLine(fontSizeTitle, colorCodes.GEM .. statSet.label, "FONTIN SC")
+		self.tooltip:AddLine(fontSizeTitle, colorCodes.GEM .. gemDisplayName({name = statSet.label}), "FONTIN SC")
 		self.tooltip:AddSeparator(10)
 	end
 	if statSetLevel.critChance then

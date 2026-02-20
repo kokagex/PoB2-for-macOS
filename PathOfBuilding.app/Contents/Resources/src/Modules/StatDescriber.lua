@@ -285,7 +285,7 @@ return function(stats, scopeName, quality)
 					textToUse = translated
 				end
 			end
-			local statDesc = textToUse:gsub("{(%d)}", function(n) 
+			local statDesc = textToUse:gsub("{(%d)}", function(n)
 				local v = val[tonumber(n)+1]
 				if v.min == v.max then
 					return s_format("%"..v.fmt, v.min)
