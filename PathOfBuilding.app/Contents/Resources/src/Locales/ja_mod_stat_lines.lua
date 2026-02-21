@@ -1,7 +1,7 @@
 -- PoE2 Mod Stat Line Translations: English → Japanese
 -- Sources: poe2db.tw/jp (official), pattern-based translation
 -- Updated: 2026-02-20
--- Total entries: 4302
+-- Total entries: 5370
 
 return {
 	["% increased Quantity of Waystones found in Map"] = "マップで見つかるウェイストーンの数量が%増加する",
@@ -183,6 +183,11 @@ return {
 	["+{0} to Level of all Spell Skills"] = "全てのスペルスキルのレベル +{0}",
 	["+{0} to Level of all Trap Skill Gems"] = "全トラップスキルジェムのレベル +{0}",
 	["+{0} to Level of all Vaal Skill Gems"] = "全ヴァールジェムのレベル +{0}",
+	["+{0} to Level of Despair Skills"] = "絶望スキルのレベル +{0}",
+	["+{0} to Level of Elemental Weakness Skills"] = "エレメンタルウィークネススキルのレベル +{0}",
+	["+{0} to Level of Enfeeble Skills"] = "衰弱スキルのレベル +{0}",
+	["+{0} to Level of Temporal Chains Skills"] = "時間の鎖スキルのレベル +{0}",
+	["+{0} to Level of Vulnerability Skills"] = "脆弱スキルのレベル +{0}",
 	["+{0} to Level of Socketed Active Skill Gems"] = "ソケットされたアクティブスキルジェムのレベル +{0}",
 	["+{0} to Level of Socketed Active Skill Gems per {1} Player Levels"] = "プレイヤーレベル{1}ごとにソケットされたアクティブスキルジェムのレベル +{0}",
 	["+{0} to Level of Socketed Aura Gems"] = "ソケットされたオーラジェムのレベル +{0}",
@@ -907,6 +912,8 @@ return {
 	["Banners gain {0} Glory per second"] = "バナーは毎秒{0}のグローリーを獲得する",
 	["Banners you are carrying gain 1 Stage on Melee Hit, up to 5 per second"] = "運んでいるバナーは近接ヒットで1ステージを獲得する（毎秒最大5）",
 	["Banners you are carrying gain {0} Stage on Melee Hit, up to {1} per second"] = "運んでいるバナーが近接ヒット時に{0}ステージを獲得する（毎秒最大{1}）",
+	["Barrageable Attacks with this Bow Repeat +{0} time if no enemies are in your Presence"] = "この弓によるバラージ可能なアタックは存在下に敵がいなければ+{0}回繰り返す",
+	["Barrageable Attacks with this Bow Repeat +{0} times if no enemies are in your Presence"] = "この弓によるバラージ可能なアタックは存在下に敵がいなければ+{0}回繰り返す",
 	["Barrageable Attacks with this Bow Repeat+2 times if no enemies are in your Presence"] = "この弓によるバラージ可能なアタックは存在下に敵がいなければ+2 回繰り返す",
 	["Base Critical Hit Chance for Attacks with Weapons is 7%"] = "武器によるアタックの基礎クリティカルヒット率は 7%になる",
 	["Base Spell Critical Strike Chance of Spells is equal to that of Main Hand Weapon"] = "スペルの基本スペルクリティカルストライク率はメインハンド武器と同じ",
@@ -1159,6 +1166,7 @@ return {
 	["Critical Hits inflict Impale"] = "クリティカルヒットは串刺しを付与する",
 	["Critical Hits Poison the enemy"] = "クリティカルヒットが敵を中毒にする",
 	["Critical Hits with Spells apply {0} Stack of Critical Weakness"] = "スペルによるクリティカルヒットは{0}スタックのクリティカルウィークネスを付与する",
+	["Critical Hits with Spells apply {0} Stacks of Critical Weakness"] = "スペルによるクリティカルヒットは{0}スタックのクリティカルウィークネスを付与する",
 	["Critical HitsIgnore Enemy Monster Lightning Resistance"] = "クリティカルヒットは敵モンスターの雷耐性を無視する",
 	["Critical HitsPoison the enemy"] = "クリティカルヒットは敵に毒を付与する",
 	["Critical Strike Chance is increased by Lightning Resistance"] = "クリティカルストライク率が雷耐性で増加",
@@ -2314,6 +2322,8 @@ return {
 	["Non-ChannellingSpells cost an additional 6% of your maximum Life"] = "チャネリング以外のスペルはプレイヤーの最大ライフの 6%を追加のコストとする",
 	["Non-ChannellingSpells deal 6% increased Damage per 100 maximum Life"] = "チャネリング以外のスペルは最大ライフ100ごとにダメージが 6%増加する",
 	["Non-ChannellingSpells have 3% increased Critical Hit Chance per 100 maximum Life"] = "チャネリング以外のスペルは最大ライフ100ごとにクリティカルヒット率が 3%増加する",
+	["Non-Channelling Spells deal {0}% increased Damage per {1} maximum Life"] = "非チャネリングスペルは最大ライフ{1}ごとにダメージが{0}%増加する",
+	["Non-Channelling Spells have {0}% increased Critical Hit Chance per {1} maximum Life"] = "非チャネリングスペルは最大ライフ{1}ごとにクリティカルヒット率が{0}%増加する",
 	["Non-Chilled Enemies you inflict Bleeding on are Chilled"] = "出血を付与した非チル状態の敵がチル状態になる",
 	["Non-Chilled Enemies you Poison are Chilled"] = "非チル状態の敵 あなた ポイズン は チル状態",
 	["Non-Critical Strikes deal no Damage"] = "非クリティカルストライクがダメージを与えない",
@@ -3544,6 +3554,7 @@ return {
 	["{0}% increased Cooldown Recovery Rate for Grenade Skills"] = "グレネードスキルのクールダウン回復速度が{0}%増加する",
 	["{0}% increased Cost of Skills"] = "スキルコストが{0}%増加",
 	["{0}% increased Cost of Skills for each 200 total Mana Spent Recently"] = "直近マナを合計200使用するごとにスキルのコストが{0}%増加する",
+	["{0}% increased Cost of Skills for each {1} total Mana Spent Recently"] = "直近マナを合計{1}使用するごとにスキルのコストが{0}%増加する",
 	["{0}% increased Creeping Frost Area of Effect"] = "クリーピングフロスト 効果範囲が{0}%増加する",
 	["{0}% increased Creeping Frost Damage"] = "クリーピングフロスト ダメージが{0}%増加する",
 	["{0}% increased Creeping Frost Duration"] = "クリーピングフロスト 持続時間が{0}%増加する",
@@ -3801,6 +3812,7 @@ return {
 	["{0}% increased Spell Cold Damage"] = "スペル 冷気ダメージが{0}%増加する",
 	["{0}% increased Spell Damage"] = "スペルダメージが{0}%増加する",
 	["{0}% increased Spell damage for each 200 total Mana you have Spent Recently"] = "直近プレイヤーが使用した合計マナ200ごとにスペルダメージが{0}%増加する",
+	["{0}% increased Spell damage for each {1} total Mana you have Spent Recently"] = "直近プレイヤーが使用した合計マナ{1}ごとにスペルダメージが{0}%増加する",
 	["{0}% increased Spell Damage per 10 Spirit"] = "スピリット10ごとにスペルダメージが{0}%増加する",
 	["{0}% increased Spell Damage per Power Charge"] = "パワーチャージごとにスペル ダメージが{0}%増加",
 	["{0}% increased Spell Damage per {1} Intelligence"] = "{1} 知性ごとにスペル ダメージが{0}%増加",
