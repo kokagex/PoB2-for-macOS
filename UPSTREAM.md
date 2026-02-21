@@ -2,13 +2,13 @@
 
 上流: `PathOfBuildingCommunity/PathOfBuilding-PoE2` `dev` ブランチ
 ローカル: `kokagex/PoB2-for-macOS` `pob2macos_stage2` ブランチ
-最終同期: 2026-02-20 (v0.4.0)
+最終同期: 2026-02-21 (v0.5.1)
 
 ---
 
 ## 同期済み / Synced
 
-### Phase 1 — v0.3.0 (2026-02-19): 計算エンジン9ファイル
+### ✅ Phase 1 — v0.3.0 (2026-02-19): 計算エンジン9ファイル
 
 | ファイル | 差分行数 | 内容 |
 |---|---|---|
@@ -29,7 +29,7 @@
 - `SkillsTab.lua`: displaySkillList nilガード
 - `Build.lua`: displaySkillList nilガード6箇所
 
-### Phase 2 — v0.4.0 (2026-02-20): データファイル24ファイル
+### ✅ Phase 2 — v0.4.0 (2026-02-20): データファイル24ファイル
 
 #### 自動生成系データ
 
@@ -76,7 +76,7 @@
 
 ---
 
-### Phase 3 — v0.5.0 (2026-02-20): 計算エンジン残りモジュール11ファイル
+### ✅ Phase 3 — v0.5.0 (2026-02-20): 計算エンジン残りモジュール11ファイル
 
 丸ごと置換（6）:
 
@@ -109,43 +109,65 @@ i18n翻訳追加:
 
 ---
 
-## 残タスク — i18n翻訳辞書 / Remaining — i18n Dictionary Updates
+### ✅ Phase 4 — v0.5.1 (2026-02-21): UI Classes cherry-pick + 確認
 
-Phase 2のStatDescriptionsデータ同期でdesc.textが変わったため、以下の翻訳辞書の更新が必要:
+66ファイル調査の結果、大半はローカルPoE2カスタマイズ済みでsync不要。
+upstreamの有用な変更のみcherry-pick。
 
-- [ ] `ja_stat_descriptions.lua`: StatDescriptionsデータファイルの現在の`desc.text`キーに合わせて再生成
-  - 現状: 古いキーが多く、StatDescriber内のi18n.lookupがマッチしない
-  - 対応: stat_descriptions.lua等から全desc.textを抽出し、ja翻訳を再マッピング
-- [ ] `ja_mod_stat_lines.lua`: PoE2固有stat（"Freeze Buildup", "Bonded:", "Spirit"等）の翻訳キー追加
-  - 現状: PoE1由来のmodは翻訳OK、PoE2新規modはキーなし
+#### cherry-pick実施
+
+| ファイル | 変更内容 |
+|---|---|
+| `src/Classes/CalcBreakdownControl.lua` | damageTypes `Gain`カラム追加 |
+| `src/Classes/TreeTab.lua` | FindTimelessJewelボタン再有効化、treeSubType汎用化、versionSelect幅修正 |
+| `src/Classes/ModStore.lua` | `replace`パラメータ、`noFloor`/`limitStat`タグ、`Graft`除外、`nameCond` |
+
+#### 確認済み — sync不要
+
+| ファイル | 差分行数 | 理由 |
+|---|---|---|
+| `src/Classes/CalcsTab.lua` | 134 | ローカルが既にStatSet/BeastLibrary/MinionStatSet等を実装済み |
+| `src/Classes/PassiveTreeView.lua` | 2,221 | ローカルPoE2描画+Metal対応。showStatDifferences=false は意図的（MINIMAL mode safety） |
+| `src/Classes/GemSelectControl.lua` | 694 | ローカルi18nジェムツールチップ。reservationMapは将来検討 |
+| `src/Classes/Tooltip.lua` | 417 | ローカルCJKフォント+Metal deferred描画。upstream追加はOil recipe（PoE1） |
+| `src/Classes/PassiveTree.lua` | 1,240 | ローカルPoE2専用書き換え済み |
+| `src/Classes/ItemsTab.lua` | 3,017 | ローカルPoE2アイテム対応済み |
+| `src/Classes/PassiveSpec.lua` | 1,205 | ローカルPoE2パッシブ仕様済み |
+| `src/Classes/Item.lua` | 1,135 | ローカルPoE2アイテムクラス済み |
+| `src/Classes/ImportTab.lua` | 1,099 | ローカルPoE2インポート対応済み |
+| `src/Classes/TradeQueryGenerator.lua` | 1,077 | ローカルPoE2 API対応済み |
+| `src/Classes/SkillsTab.lua` | 816 | ローカルi18n+PoE2スキル対応済み |
+| `src/Classes/TradeQueryRateLimiter.lua` | 486 | ローカルPoE2 API対応済み |
+| `src/Classes/TradeQueryRequests.lua` | 426 | ローカルPoE2 API対応済み |
+| `src/Classes/TradeQuery.lua` | 297 | ローカルPoE2 API対応済み |
+| `src/Classes/ConfigTab.lua` | 262 | ローカルi18n+PoE2設定対応済み |
+| `src/Classes/DropDownControl.lua` | 182 | ローカルmacOSカスタマイズ（screenScale, textInputActive） |
+| `src/Classes/EditControl.lua` | 157 | ローカルmacOSカスタマイズ（IME, textInputActive） |
+| `src/Classes/PartyTab.lua` | 140 | ローカルi18n対応済み |
+| `src/Classes/ItemSlotControl.lua` | 138 | ローカルi18n対応済み |
+| `src/Classes/ItemDBControl.lua` | 127 | ローカルi18n対応済み |
+| `src/Classes/NotableDBControl.lua` | 113 | ローカルi18n対応済み |
+| `src/Classes/MinionListControl.lua` | 108 | ローカルi18n対応済み |
+| `src/Classes/MinionSearchListControl.lua` | 98 | ローカルi18n対応済み |
+| `src/Classes/ControlHost.lua` | 97 | ローカルmacOSカスタマイズ |
+| `src/Classes/ItemListControl.lua` | 93 | ローカルi18n対応済み |
+| `src/Classes/PoEAPI.lua` | LOCAL_ONLY | macOS OAuth専用（upstream非対応） |
+| 小差分22ファイル（diff < 50行） | — | ローカルi18n/macOSカスタマイズのみ |
+| 同一23ファイル（diff = 0） | — | 変更なし |
+
+将来検討:
+- `GemSelectControl.lua`: reservationMap（PoE2リザベーション表示）をi18nツールチップに統合
 
 ---
 
-## 未同期 — 優先度 低 / Not Synced — Low Priority
+## ✅ 完了 — i18n翻訳辞書 / Completed — i18n Dictionary Updates
 
----
+Phase 2のStatDescriptionsデータ同期でdesc.textが変わったため更新を実施:
 
-## 未同期 — 優先度 低 / Not Synced — Low Priority
-
-### UI Classes
-
-macOSカスタマイズとの衝突リスクが高い。手動マージが必要。
-
-| ファイル | 差分行数 | 内容 | 注意点 |
-|---|---|---|---|
-| `src/Classes/PassiveTreeView.lua` | 1,010 | ツリー描画 | macOS Metal対応あり |
-| `src/Classes/PassiveTree.lua` | 459 | ツリーデータ構造 | |
-| `src/Classes/ItemsTab.lua` | 419 | アイテムタブ | |
-| `src/Classes/PoEAPI.lua` | 403 | PoE API連携 | OAuth macOS対応 |
-| `src/Classes/GemSelectControl.lua` | 387 | ジェム選択 | |
-| `src/Classes/PassiveSpec.lua` | 335 | パッシブ仕様 | |
-| `src/Classes/SkillsTab.lua` | 298 | スキルタブ | i18n対応済み |
-| `src/Classes/ConfigTab.lua` | 148 | 設定タブ | |
-| `src/Classes/TreeTab.lua` | 167 | ツリータブ | |
-| `src/Classes/DropDownControl.lua` | 137 | ドロップダウン | |
-| `src/Classes/Tooltip.lua` | 126 | ツールチップ | CJKフォント対応あり |
-| `src/Classes/EditControl.lua` | 117 | テキスト入力 | IME対応あり? |
-| その他 20+ ファイル | 〜600 | 各種UIコントロール | |
+- [x] `ja_stat_descriptions.lua`: StatDescriptionsデータファイルの現在の`desc.text`キーに合わせて再生成済み
+  - レンジ形式修正、キー再マッピング、PoE2新規翻訳追加
+- [x] `ja_mod_stat_lines.lua`: PoE2固有stat 681件の日本語翻訳追加済み
+  - Freeze Buildup, Bonded:, Spirit等のPoE2新規mod対応
 
 ---
 

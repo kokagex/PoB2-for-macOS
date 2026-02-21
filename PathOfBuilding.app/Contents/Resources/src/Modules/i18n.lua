@@ -15,6 +15,8 @@ local changeCallbacks = setmetatable({}, { __mode = "v" })
 local auxiliaryFiles = {
 	gemDescriptions = "_gem_descriptions",
 	statDescriptions = "_stat_descriptions",
+	statDescriptionsCustom = "_stat_descriptions_custom",
+	statDescriptionsManual = "_stat_descriptions_manual",
 	gemFlavourText = "_gem_flavourtext",
 	uniqueNames = "_unique_names",
 	baseNames = "_base_names",
@@ -33,7 +35,8 @@ local function ensureAuxLoaded(localeCode, section)
 	if auxLoaded[key] then return end
 	auxLoaded[key] = true
 	local suffix = auxiliaryFiles[section]
-	local ok, data = pcall(LoadModule, "Locales/" .. localeCode .. suffix)
+	local path = "Locales/" .. localeCode .. suffix
+	local ok, data = pcall(LoadModule, path)
 	if ok and type(data) == "table" then
 		locales[localeCode][section] = data
 	end
@@ -213,8 +216,62 @@ function i18n.translateModLine(line)
 		return result
 	end)
 
-	local translated = data.modStatLines[tmpl]
-	if not translated then return line end
+	-- Also try statDescriptions, statDescriptionsCustom, statDescriptionsManual as fallback
+	ensureAuxLoaded(currentLocale, "statDescriptions")
+	ensureAuxLoaded(currentLocale, "statDescriptionsCustom")
+	ensureAuxLoaded(currentLocale, "statDescriptionsManual")
+	local function lookupTemplate(key)
+		-- Manual overrides custom (hand-curated corrections take priority)
+		local val = data.modStatLines[key]
+		if not val and data.statDescriptionsManual then
+			val = data.statDescriptionsManual[key]
+		end
+		if not val and data.statDescriptions then
+			val = data.statDescriptions[key]
+		end
+		if not val and data.statDescriptionsCustom then
+			val = data.statDescriptionsCustom[key]
+		end
+		return val
+	end
+
+	local translated = lookupTemplate(tmpl)
+
+	-- Fallback: try singular/plural normalization (Japanese has no plural)
+	if not translated then
+		local alt = tmpl
+			:gsub(" metres", " metre"):gsub(" seconds", " second")
+			:gsub(" Charges", " Charge"):gsub(" Stages", " Stage")
+			:gsub(" Targets", " Target"):gsub(" targets", " target")
+			:gsub(" Enemies", " Enemy"):gsub(" enemies", " enemy")
+			:gsub(" Seals", " Seal"):gsub(" times", " time")
+			:gsub(" Projectiles", " Projectile"):gsub(" Bolts", " Bolt")
+			:gsub(" Aftershocks", " Aftershock"):gsub(" Fissures", " Fissure")
+			:gsub(" Spikes", " Spike"):gsub(" Remnants", " Remnant")
+			:gsub(" Spears", " Spear"):gsub(" Beetles", " Beetle")
+			:gsub(" Plants", " Plant"):gsub(" pustules", " pustule")
+		if alt ~= tmpl then
+			translated = lookupTemplate(alt)
+		end
+	end
+	if not translated then
+		-- Try the reverse: singular → plural (use word boundary: space/punctuation/end)
+		local alt = tmpl
+			:gsub(" metre([%s%p])", " metres%1"):gsub(" metre$", " metres")
+			:gsub(" second([%s%p])", " seconds%1"):gsub(" second$", " seconds")
+			:gsub(" Charge([%s%p])", " Charges%1"):gsub(" Charge$", " Charges")
+			:gsub(" Stage([%s%p])", " Stages%1"):gsub(" Stage$", " Stages")
+			:gsub(" Target([%s%p])", " Targets%1"):gsub(" Target$", " Targets")
+			:gsub(" Seal([%s%p])", " Seals%1"):gsub(" Seal$", " Seals")
+			:gsub(" Bolt([%s%p])", " Bolts%1"):gsub(" Bolt$", " Bolts")
+		if alt ~= tmpl then
+			translated = lookupTemplate(alt)
+		end
+	end
+
+	if not translated then
+		return line
+	end
 
 	-- Restore captured values into translated template
 	return (translated:gsub("{(%d+)}", function(n)

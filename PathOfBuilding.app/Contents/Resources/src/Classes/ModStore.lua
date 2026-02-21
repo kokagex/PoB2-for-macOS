@@ -34,7 +34,7 @@ local ModStoreClass = newClass("ModStore", function(self, parent)
 	self.conditions = { }
 end)
 
-function ModStoreClass:ScaleAddMod(mod, scale)
+function ModStoreClass:ScaleAddMod(mod, scale, replace)
 	local unscalable = false
 	for _, effects in ipairs(mod) do
 		if effects.unscalable then
@@ -67,7 +67,11 @@ function ModStoreClass:ScaleAddMod(mod, scale)
 				subMod.value = m_modf(round(subMod.value * scale, 2))
 			end
 		end
-		self:AddMod(scaledMod)
+		if replace then
+			self:ReplaceModInternal(scaledMod)
+		else
+			self:AddMod(scaledMod)
+		end
 	end
 end
 
@@ -77,12 +81,12 @@ function ModStoreClass:CopyList(modList)
 	end
 end
 
-function ModStoreClass:ScaleAddList(modList, scale)
+function ModStoreClass:ScaleAddList(modList, scale, replace)
 	if scale == 1 then
 		self:AddList(modList)
 	else
 		for i = 1, #modList do
-			self:ScaleAddMod(modList[i], scale)
+			self:ScaleAddMod(modList[i], scale, replace)
 		end
 	end
 end
@@ -257,14 +261,19 @@ function ModStoreClass:GetMultiplier(var, cfg, noMod)
 end
 
 function ModStoreClass:GetStat(stat, cfg)
+	local function isNameInBuffList(buffList, name)
+		for _, buff in ipairs(buffList) do
+			if buff.name == name then return true end
+		end
+		return false
+	end
 	if stat == "ManaReservedPercent" then
 		local reservedPercentMana = 0
 		-- Check if mana is 0 (i.e. from Blood Magic) to avoid division by 0.
 		local totalMana = self.actor.output["Mana"]
 		if totalMana == 0 then return 0 else
 			for _, activeSkill in ipairs(self.actor.activeSkillList) do
-				-- currently only checks main statSet for skill flags. rework if required
-				if (activeSkill.skillTypes[SkillType.Aura] and not activeSkill.activeEffect.statSet.skillFlags.disable and activeSkill.buffList and activeSkill.buffList[1] and activeSkill.buffList[1].name == cfg.skillName) then
+				if (activeSkill.skillTypes[SkillType.HasReservation] and not activeSkill.skillFlags.disable and activeSkill.buffList and cfg and (isNameInBuffList(activeSkill.buffList, cfg.skillName) or isNameInBuffList(activeSkill.buffList, cfg.summonSkillName))) then
 					local manaBase = activeSkill.skillData["ManaReservedBase"] or 0
 					reservedPercentMana = m_floor(manaBase / totalMana * 100)
 					break
@@ -340,10 +349,15 @@ function ModStoreClass:EvalMod(mod, cfg, globalLimits)
 				tag.div = GetMultiplier(self, tag.divVar, cfg)
 			end
 			local mult = m_floor(base / (tag.div or 1) + 0.0001)
+			if tag.noFloor then
+				mult = base / (tag.div or 1)
+			end
 			local limitTotal
 			local limitNegTotal
-			if tag.limit or tag.limitVar then
-				local limit = tag.limit or GetMultiplier(limitTarget, tag.limitVar, cfg)
+			if tag.limit or tag.limitVar or tag.limitStat then
+				local limit = tag.limit
+					or tag.limitVar and GetMultiplier(limitTarget, tag.limitVar, cfg)
+					or tag.limitStat and GetStat(limitTarget, tag.limitStat, cfg)
 				if tag.limitTotal then
 					limitTotal = limit
 				elseif tag.limitNegTotal then
@@ -628,7 +642,7 @@ function ModStoreClass:EvalMod(mod, cfg, globalLimits)
 			end
 			if tag.searchCond then
 				for slot, item in pairs(items) do
-					if (not tag.allSlots or tag.allSlots and item.type ~= "Jewel") and slot ~= itemSlot or not tag.excludeSelf then
+					if (not tag.allSlots or tag.allSlots and (item.type ~= "Jewel" and item.type ~= "Graft")) and slot ~= itemSlot or not tag.excludeSelf then
 						t_insert(matches, item:FindModifierSubstring(tag.searchCond:lower(), slot:lower()))
 					end
 				end
@@ -641,6 +655,11 @@ function ModStoreClass:EvalMod(mod, cfg, globalLimits)
 			if tag.corruptedCond then
 				for _, item in pairs(items) do
 					t_insert(matches, item.corrupted == tag.corruptedCond)
+				end
+			end
+			if tag.nameCond then
+				for _, item in pairs(items) do
+					t_insert(matches, item.name and item.name:lower() == tag.nameCond:lower())
 				end
 			end
 

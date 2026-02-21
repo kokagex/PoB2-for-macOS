@@ -78,6 +78,22 @@ Whether this macOS port can keep up with the PoE2 0.5 update from the upstream P
 
 ## バージョン履歴 / Version History
 
+### v0.6.0 (2026-02-21)
+
+- スキルジェムツールチップの日本語翻訳を大幅強化（効果分岐ラベル約360件追加）
+- gem_stat_descriptions全テンプレートを網羅チェックし、未翻訳145件を追加（statテンプレートカバレッジ100%達成）
+- ツールチップの改行時にカラーコードが消失する問題を修正
+- calcFunc未取得時にジェムツールチップ全体が消失する問題を修正
+- デバッグログ出力削除によるパフォーマンス改善
+
+---
+
+- Significantly enhanced Japanese translations for skill gem tooltips (added ~360 effect branch labels)
+- Exhaustive check of all gem_stat_descriptions templates, added 145 missing entries (100% stat template coverage)
+- Fixed color code loss when tooltip text wraps to next line
+- Fixed gem tooltip disappearing entirely when calcFunc is unavailable
+- Performance improvement by removing debug file I/O from translateModLine
+
 ### v0.5.0 (2026-02-20)
 
 - 上流 PathOfBuilding-PoE2 dev ブランチから計算エンジン残り11モジュールを同期

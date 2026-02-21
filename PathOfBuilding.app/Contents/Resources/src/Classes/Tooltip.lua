@@ -72,7 +72,16 @@ function TooltipClass:AddLine(size, text, font, background)
 				self.blocks[#self.blocks].height = self.blocks[#self.blocks].height + size + 2
 			end
 			if self.maxWidth then
-				for _, wrappedLine in ipairs(main:WrapString(line, size, self.maxWidth - H_PAD)) do
+				local wrapped = main:WrapString(line, size, self.maxWidth - H_PAD)
+				for idx, wrappedLine in ipairs(wrapped) do
+					if idx > 1 then
+						-- Carry forward the last color code so continuation lines retain color
+						local prevText = wrapped[idx - 1]
+						local lastColor = prevText:match(".*(%^x%x%x%x%x%x%x)") or prevText:match(".*(%^%d)")
+						if lastColor and not wrappedLine:match("^%^") then
+							wrappedLine = lastColor .. wrappedLine
+						end
+					end
 					t_insert(self.lines, { size = size, text = wrappedLine, block = #self.blocks, font = fontToUse, center = self.center, background = background })
 				end
 			else

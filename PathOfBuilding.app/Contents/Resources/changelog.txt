@@ -1,3 +1,16 @@
+VERSION[0.6.0][2026/02/21]
+
+--- 新機能 / New Features ---
+* スキルジェムツールチップの日本語翻訳を大幅強化
+* ジェム効果分岐ラベル（Explosion, Aftershock, Fire, Lightning, Cold等）約360件を翻訳辞書に追加
+* gem_stat_descriptions全テンプレートを網羅チェックし、未翻訳145件を追加（statテンプレートカバレッジ100%達成）
+
+--- バグ修正 / Bug Fixes ---
+* ツールチップの改行時にカラーコードが消失する問題を修正（Tooltip.lua WrapString色引き継ぎ）
+* calcFunc未取得時にジェムツールチップ全体が消失する問題を修正（GemSelectControl.lua）
+* statSet.label / additional.name / gemFamilyの未翻訳表示を修正
+* i18n.luaのデバッグログ出力を削除（translateModLine毎回のio.openによるパフォーマンス低下を解消）
+
 VERSION[0.5.0][2026/02/20]
 
 --- 新機能 / New Features ---

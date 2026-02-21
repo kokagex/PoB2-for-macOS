@@ -276,16 +276,7 @@ return function(stats, scopeName, quality)
 				applySpecial(val, spec)
 			end
 			local textToUse = desc.text
-			if i18n and i18n.getLocale and i18n.getLocale() ~= "en" then
-				local translated = i18n.lookup("statDescriptions", desc.text)
-				if not translated and desc.text:find("\n") then
-					translated = i18n.lookup("statDescriptions", desc.text:gsub("\n", " "))
-				end
-				if translated then
-					textToUse = translated
-				end
-			end
-			local statDesc = textToUse:gsub("{(%d)}", function(n) 
+			local statDesc = textToUse:gsub("{(%d)}", function(n)
 				local v = val[tonumber(n)+1]
 				if v.min == v.max then
 					return s_format("%"..v.fmt, v.min)
@@ -320,7 +311,7 @@ return function(stats, scopeName, quality)
 					return s_format("(%"..fmt..v.fmt.."-%"..fmt..v.fmt..")", v.min, v.max)
 				end
 			end):gsub("%%%%","%%")
-			for line in (statDesc.."\\n"):gmatch("([^\\]+)\\n") do
+			for line in (statDesc.."\n"):gmatch("([^\n]+)") do
 				t_insert(out, line)
 				lineMap[line] = stat
 			end
