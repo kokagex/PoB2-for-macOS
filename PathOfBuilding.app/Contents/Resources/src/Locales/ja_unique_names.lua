@@ -3,7 +3,6 @@
 -- Generated: 2026-02-14
 -- Updated: 2026-02-21 (added 9 missing items)
 return {
-	["Atziri's Contempt"] = "アッツィリの軽蔑",
 	["Ab Aeterno"] = "永遠から",
 	["Adonia's Ego"] = "アドニアのエゴ",
 	["Aerisvane's Wings"] = "エーリスヴェインの翼",
@@ -22,6 +21,7 @@ return {
 	["Astramentis"] = "アストラメンティス",
 	["Atsak's Sight"] = "アツァクの視野",
 	["Atziri's Acuity"] = "アッツィリの鋭敏さ",
+	["Atziri's Contempt"] = "アッツィリの侮蔑",
 	["Atziri's Disdain"] = "アッツィリの軽蔑",
 	["Atziri's Rule"] = "アッツィリの統治",
 	["Atziri's Splendour"] = "アッツィリの栄耀",
@@ -169,8 +169,8 @@ return {
 	["Horns of Bynden"] = "ビンデンの角笛",
 	["Hrimnor's Hymn"] = "フリムノーの聖歌",
 	["Husk of Dreams"] = "夢の殻",
-	["Hysseg's Claw"] = "ヒッセグの爪",
 	["Hyrri's Ire"] = "ハイリの怒り",
+	["Hysseg's Claw"] = "ヒッセグの爪",
 	["Icefang Orbit"] = "アイスファングの軌道",
 	["Icetomb"] = "アイストゥーム",
 	["Idle Hands"] = "暇人の手",
@@ -364,8 +364,8 @@ return {
 	["Tidebreaker"] = "タイドブレーカー",
 	["Titanrot Cataphract"] = "タイタンロットのカタフラクト",
 	["Trampletoe"] = "踏みつぶす爪先",
-	["Treefingers"] = "ツリーフィンガーズ",
 	["Transcendent Limb"] = "超越の肢体",
+	["Treefingers"] = "ツリーフィンガーズ",
 	["Trenchtimbre"] = "トレンチティンバー",
 	["Trephina"] = "トレフィナ",
 	["Tyranny's Grip"] = "圧政の手",
