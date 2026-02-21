@@ -794,7 +794,7 @@ return {
 	["Animated Minions' Melee Attacks deal Splash Damage to surrounding targets"] = "アニメイトミニオンの近接アタックが周囲のターゲットにスプラッシュダメージを与える",
 	["Animated Minions' Melee Attacks deal {0}% less Damage to surrounding targets"] = "アニメイトミニオンの近接アタックが周囲のターゲットに{0}%低下したダメージを与える",
 	["Any number of Poisons from this Weapon can affect a target at the same time"] = "この武器による一度に1体の対象に影響できる毒のスタック数の上限がなくなる",
-	["apply to Energy Shield Recharge Rate"] = "最大マナの{0}%をアーマーとして獲得する",
+	-- removed: placeholder mismatch
 	["Area contains a Tormented Spirit"] = "エリアに苦悶の霊が存在する",
 	["Area contains additional waves of Raging Spirits"] = "エリアに追加のレイジングスピリットの波が存在する",
 	["Area contains Creeping Agony"] = "エリアに忍び寄る苦悶が存在する",
@@ -1134,7 +1134,7 @@ return {
 	["Consumes a Void Charge to Trigger Level {0} Void Shot when you fire Arrows with a Non-Triggered Skill"] = "非トリガースキルで矢を放つ時にヴォイドチャージを消費してレベル{0}のヴォイドショットをトリガーする",
 	["Consumes Socketed Support Gems when they reach Maximum Level"] = "ソケットされたサポートジェムが最大レベルに達した時に消費",
 	["Consuming Glory grants you {0}% increased Attack damage per Glory consumed for 6 seconds, up to 60%"] = "グローリー消費時に消費したグローリーごとにアタックダメージが{0}%増加する（6秒間、最大60%）",
-	["containing CorruptedMagicJewels"] = "ソケットパッシブスキルの効果が{0}%増加する",
+	-- removed: placeholder mismatch
 	["Converted to Cold Damage"] = "冷気ダメージに変換",
 	["Copy a random Modifier from each enemy in your Presence when"] = "動物形態にシェープシフトした時に",
 	["Corpses you Spawn have {0}% increased Maximum Life"] = "プレイヤーが生成した死体の最大ライフが{0}%増加する",
@@ -3137,7 +3137,7 @@ return {
 	["You take {0}% of Elemental Damage from Blocked Hits"] = "ブロックしたヒットからエレメンタルダメージの{0}%を受ける",
 	["You take {0}% of your maximum Life as Chaos Damage on use"] = "使用時に最大ライフの{0}%を混沌ダメージとして受ける",
 	["You take {0}% reduced Extra Damage from Critical Strikes by Poisoned Enemies"] = "毒状態の敵のクリティカルストライクからの追加ダメージが{0}%減少",
-	["your Ailments on them"] = "敵に付与した発火、感電および冷却の持続時間が{0}%減少する",
+	-- removed: placeholder mismatch
 	["Your Aura Buffs do not affect allies"] = "オーラバフが味方に影響しない",
 	["Your base Energy Shield Recharge Delay is 10 seconds"] = "基本エナジーシールドリチャージ遅延が 10秒になる",
 	["Your base Energy ShieldRecharge Delay is 10 seconds"] = "プレイヤーの基礎エナジーシールドリチャージ遅延は 10 秒",

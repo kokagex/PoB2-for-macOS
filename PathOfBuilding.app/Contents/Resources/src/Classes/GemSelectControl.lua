@@ -606,11 +606,7 @@ function GemSelectClass:Draw(viewPort, noTooltip)
 			local cursorX, cursorY = GetCursorPos()
 			self.tooltip:Clear()
 			if gemInstance and gemInstance.gemData then
-				local ok, err = pcall(function() self:AddGemTooltip(gemInstance) end)
-				if not ok then
-					self.tooltip:Clear()
-					self.tooltip:AddLine(16, colorCodes.GEM .. (gemInstance.gemData.name or "Unknown Gem"))
-				end
+				self:AddGemTooltip(gemInstance)
 			else
 				self.tooltip:AddLine(16, toolTipText)
 			end
@@ -899,7 +895,6 @@ function GemSelectClass:AddStatSetInfo(gemInstance, grantedEffect, statSet, noLa
 		for i, line in ipairs(descriptions) do
 			local source = (statSet.statMap and statSet.statMap[lineMap[line]]) or self.skillsTab.build.data.skillStatMap[lineMap[line]]
 			local bg = nil  -- GemHoverModBg.png asset not available on macOS
-			-- Translate stat line via mod line translator as fallback
 			local displayLine = (i18n and i18n.translateModLine) and i18n.translateModLine(line) or line
 			if source then
 				if launch.devModeAlt then

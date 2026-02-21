@@ -15,6 +15,8 @@ local changeCallbacks = setmetatable({}, { __mode = "v" })
 local auxiliaryFiles = {
 	gemDescriptions = "_gem_descriptions",
 	statDescriptions = "_stat_descriptions",
+	statDescriptionsCustom = "_stat_descriptions_custom",
+	statDescriptionsManual = "_stat_descriptions_manual",
 	gemFlavourText = "_gem_flavourtext",
 	uniqueNames = "_unique_names",
 	baseNames = "_base_names",
@@ -33,9 +35,15 @@ local function ensureAuxLoaded(localeCode, section)
 	if auxLoaded[key] then return end
 	auxLoaded[key] = true
 	local suffix = auxiliaryFiles[section]
-	local ok, data = pcall(LoadModule, "Locales/" .. localeCode .. suffix)
+	local path = "Locales/" .. localeCode .. suffix
+	local ok, data = pcall(LoadModule, path)
+	local logf = io.open("/tmp/pob_i18n_debug.log", "a")
 	if ok and type(data) == "table" then
 		locales[localeCode][section] = data
+		local c = 0; for _ in pairs(data) do c = c + 1 end
+		if logf then logf:write(string.format("i18n: Loaded %s (%d entries)\n", path, c)); logf:close() end
+	else
+		if logf then logf:write(string.format("i18n: FAILED to load %s: %s\n", path, tostring(data))); logf:close() end
 	end
 end
 
@@ -213,8 +221,63 @@ function i18n.translateModLine(line)
 		return result
 	end)
 
-	local translated = data.modStatLines[tmpl]
-	if not translated then return line end
+	-- Also try statDescriptions, statDescriptionsCustom, statDescriptionsManual as fallback
+	ensureAuxLoaded(currentLocale, "statDescriptions")
+	ensureAuxLoaded(currentLocale, "statDescriptionsCustom")
+	ensureAuxLoaded(currentLocale, "statDescriptionsManual")
+	local function lookupTemplate(key)
+		local val = data.modStatLines[key]
+		if not val and data.statDescriptions then
+			val = data.statDescriptions[key]
+		end
+		if not val and data.statDescriptionsCustom then
+			val = data.statDescriptionsCustom[key]
+		end
+		if not val and data.statDescriptionsManual then
+			val = data.statDescriptionsManual[key]
+		end
+		return val
+	end
+
+	local translated = lookupTemplate(tmpl)
+
+	-- Fallback: try singular/plural normalization (Japanese has no plural)
+	if not translated then
+		local alt = tmpl
+			:gsub(" metres", " metre"):gsub(" seconds", " second")
+			:gsub(" Charges", " Charge"):gsub(" Stages", " Stage")
+			:gsub(" Targets", " Target"):gsub(" targets", " target")
+			:gsub(" Enemies", " Enemy"):gsub(" enemies", " enemy")
+			:gsub(" Seals", " Seal"):gsub(" times", " time")
+			:gsub(" Projectiles", " Projectile"):gsub(" Bolts", " Bolt")
+			:gsub(" Aftershocks", " Aftershock"):gsub(" Fissures", " Fissure")
+			:gsub(" Spikes", " Spike"):gsub(" Remnants", " Remnant")
+			:gsub(" Spears", " Spear"):gsub(" Beetles", " Beetle")
+			:gsub(" Plants", " Plant"):gsub(" pustules", " pustule")
+		if alt ~= tmpl then
+			translated = lookupTemplate(alt)
+		end
+	end
+	if not translated then
+		-- Try the reverse: singular → plural
+		local alt = tmpl
+			:gsub(" metre([^s])", " metres%1"):gsub(" metre$", " metres")
+			:gsub(" second([^s])", " seconds%1"):gsub(" second$", " seconds")
+			:gsub(" Charge([^s])", " Charges%1"):gsub(" Charge$", " Charges")
+			:gsub(" Stage([^s])", " Stages%1"):gsub(" Stage$", " Stages")
+			:gsub(" Target([^s])", " Targets%1"):gsub(" Target$", " Targets")
+			:gsub(" Seal([^s])", " Seals%1"):gsub(" Seal$", " Seals")
+			:gsub(" Bolt([^s])", " Bolts%1"):gsub(" Bolt$", " Bolts")
+		if alt ~= tmpl then
+			translated = lookupTemplate(alt)
+		end
+	end
+
+	if not translated then
+		local logf = io.open("/tmp/pob_i18n_debug.log", "a")
+		if logf then logf:write("BOTH MISS: " .. tmpl .. " | input: " .. line .. "\n"); logf:close() end
+		return line
+	end
 
 	-- Restore captured values into translated template
 	return (translated:gsub("{(%d+)}", function(n)
