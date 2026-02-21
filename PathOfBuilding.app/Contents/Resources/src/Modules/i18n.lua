@@ -22,6 +22,7 @@ local auxiliaryFiles = {
 	baseNames = "_base_names",
 	modStatLines = "_mod_stat_lines",
 	uniqueFlavourText = "_unique_flavourtext",
+	passiveNames = "_passive_names",
 }
 
 -- Track which auxiliary files have been loaded per locale

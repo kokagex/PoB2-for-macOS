@@ -1042,32 +1042,55 @@ function PassiveTreeClass:ApplyDisplayTranslations()
 		end
 		return
 	end
-	local ok, treeTrans = pcall(LoadModule, "Data/TreeTranslations/" .. locale)
-	if not ok or not treeTrans then
-		ConPrintf("TreeTranslations: Failed to load locale '%s'", tostring(locale))
-		return
-	end
 	local nameCount = 0
 	local statCount = 0
-	-- Build a lookup of translated dn and sd for each node id
 	for id, node in pairs(self.nodes) do
-		if node.dn and treeTrans.names and treeTrans.names[node.dn] then
-			node.dn_display = treeTrans.names[node.dn]
-			nameCount = nameCount + 1
+		-- Node name: lookup via i18n passiveNames auxiliary file (trim trailing whitespace)
+		if node.dn then
+			local dnKey = node.dn:match("^(.-)%s*$")
+			local translated = i18n.lookup("passiveNames", dnKey)
+			if translated then
+				node.dn_display = translated
+				nameCount = nameCount + 1
+			end
 		end
-		if node.sd and treeTrans.stats then
-			local translated = {}
+		-- Stat lines: translate via i18n.translateModLine (templatized dictionaries)
+		if node.sd then
+			local translatedLines = {}
 			local hasAny = false
+			local skip = {}
 			for i, line in ipairs(node.sd) do
-				if treeTrans.stats[line] then
-					translated[i] = treeTrans.stats[line]
-					hasAny = true
-				else
-					translated[i] = line
+				if not skip[i] then
+					local tl = i18n.translateModLine(line)
+					if tl ~= line then
+						translatedLines[i] = tl
+						hasAny = true
+					else
+						-- Try combining with next line(s) for multi-line stat fragments
+						local combined = line
+						local found = false
+						for j = i + 1, math.min(i + 3, #node.sd) do
+							combined = combined .. "\n" .. node.sd[j]
+							local tlc = i18n.translateModLine(combined)
+							if tlc ~= combined then
+								translatedLines[i] = tlc
+								for k = i + 1, j do
+									skip[k] = true
+									translatedLines[k] = ""
+								end
+								hasAny = true
+								found = true
+								break
+							end
+						end
+						if not found then
+							translatedLines[i] = line
+						end
+					end
 				end
 			end
 			if hasAny then
-				node.sd_display = translated
+				node.sd_display = translatedLines
 				statCount = statCount + 1
 			end
 		end
@@ -1082,6 +1105,6 @@ function PassiveTreeClass:ApplyDisplayTranslations()
 			end
 		end
 	end
-	ConPrintf("TreeTranslations: Applied %s name translations, %s stat translations for locale '%s'",
+	ConPrintf("i18n: Applied %s name translations, %s stat translations for locale '%s'",
 		tostring(nameCount), tostring(statCount), tostring(locale))
 end
