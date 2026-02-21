@@ -37,6 +37,9 @@ PathOfBuilding.app/Contents/_CodeSignature/
 # Fonts (standard fonts, install separately)
 PathOfBuilding.app/Contents/Resources/runtime/fonts/LiberationSans-*.ttf
 
+# Local working files
+tmp/
+
 # Build artifacts and temp files
 *.lua.new
 *.lua.bak
