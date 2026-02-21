@@ -37,13 +37,8 @@ local function ensureAuxLoaded(localeCode, section)
 	local suffix = auxiliaryFiles[section]
 	local path = "Locales/" .. localeCode .. suffix
 	local ok, data = pcall(LoadModule, path)
-	local logf = io.open("/tmp/pob_i18n_debug.log", "a")
 	if ok and type(data) == "table" then
 		locales[localeCode][section] = data
-		local c = 0; for _ in pairs(data) do c = c + 1 end
-		if logf then logf:write(string.format("i18n: Loaded %s (%d entries)\n", path, c)); logf:close() end
-	else
-		if logf then logf:write(string.format("i18n: FAILED to load %s: %s\n", path, tostring(data))); logf:close() end
 	end
 end
 
@@ -274,8 +269,6 @@ function i18n.translateModLine(line)
 	end
 
 	if not translated then
-		local logf = io.open("/tmp/pob_i18n_debug.log", "a")
-		if logf then logf:write("BOTH MISS: " .. tmpl .. " | input: " .. line .. "\n"); logf:close() end
 		return line
 	end
 
