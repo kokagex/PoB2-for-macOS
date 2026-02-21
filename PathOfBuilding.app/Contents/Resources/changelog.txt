@@ -1,3 +1,18 @@
+VERSION[0.7.0][2026/02/21]
+
+--- 新機能 / New Features ---
+* パッシブツリー翻訳をi18nシステムに統合（TreeTranslations廃止）
+* ja_passive_names.lua: 1911件のノード名翻訳を新規i18n補助ファイルとして抽出
+* ja_mod_stat_lines.lua: 1077件の新規stat行テンプレートを追加
+* 複数行stat結合ロジック追加（改行分割されたstat行を自動結合して翻訳）
+* ノード名末尾空白トリム対応（5件8ノード）
+* Attribute/Attributesノード名翻訳追加（296ノード）
+
+--- バグ修正 / Bug Fixes ---
+* 49件のハードコード数値をプレースホルダ形式に修正（翻訳テンプレート品質向上）
+* "A maximum of one Modifer"の誤翻訳を修正
+* multi-line stat結合時の消費行表示を修正（空行表示防止）
+
 VERSION[0.6.0][2026/02/21]
 
 --- 新機能 / New Features ---
