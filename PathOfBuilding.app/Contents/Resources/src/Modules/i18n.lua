@@ -221,15 +221,16 @@ function i18n.translateModLine(line)
 	ensureAuxLoaded(currentLocale, "statDescriptionsCustom")
 	ensureAuxLoaded(currentLocale, "statDescriptionsManual")
 	local function lookupTemplate(key)
+		-- Manual overrides custom (hand-curated corrections take priority)
 		local val = data.modStatLines[key]
+		if not val and data.statDescriptionsManual then
+			val = data.statDescriptionsManual[key]
+		end
 		if not val and data.statDescriptions then
 			val = data.statDescriptions[key]
 		end
 		if not val and data.statDescriptionsCustom then
 			val = data.statDescriptionsCustom[key]
-		end
-		if not val and data.statDescriptionsManual then
-			val = data.statDescriptionsManual[key]
 		end
 		return val
 	end
@@ -254,15 +255,15 @@ function i18n.translateModLine(line)
 		end
 	end
 	if not translated then
-		-- Try the reverse: singular → plural
+		-- Try the reverse: singular → plural (use word boundary: space/punctuation/end)
 		local alt = tmpl
-			:gsub(" metre([^s])", " metres%1"):gsub(" metre$", " metres")
-			:gsub(" second([^s])", " seconds%1"):gsub(" second$", " seconds")
-			:gsub(" Charge([^s])", " Charges%1"):gsub(" Charge$", " Charges")
-			:gsub(" Stage([^s])", " Stages%1"):gsub(" Stage$", " Stages")
-			:gsub(" Target([^s])", " Targets%1"):gsub(" Target$", " Targets")
-			:gsub(" Seal([^s])", " Seals%1"):gsub(" Seal$", " Seals")
-			:gsub(" Bolt([^s])", " Bolts%1"):gsub(" Bolt$", " Bolts")
+			:gsub(" metre([%s%p])", " metres%1"):gsub(" metre$", " metres")
+			:gsub(" second([%s%p])", " seconds%1"):gsub(" second$", " seconds")
+			:gsub(" Charge([%s%p])", " Charges%1"):gsub(" Charge$", " Charges")
+			:gsub(" Stage([%s%p])", " Stages%1"):gsub(" Stage$", " Stages")
+			:gsub(" Target([%s%p])", " Targets%1"):gsub(" Target$", " Targets")
+			:gsub(" Seal([%s%p])", " Seals%1"):gsub(" Seal$", " Seals")
+			:gsub(" Bolt([%s%p])", " Bolts%1"):gsub(" Bolt$", " Bolts")
 		if alt ~= tmpl then
 			translated = lookupTemplate(alt)
 		end
