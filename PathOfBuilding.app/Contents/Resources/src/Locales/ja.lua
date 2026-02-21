@@ -2501,6 +2501,8 @@ return {
 		-- Template/special entries
 		["Companion: {0}"] = "コンパニオン: {0}",
 		["Spectre: {0}"] = "スペクター: {0}",
+		["Spectre: {0} "] = "スペクター: {0}",
+		["Command: {0} "] = "命令: {0}",
 		-- Boss-specific gems (His X series - The Arbiter of Ash)
 		["His Foul Emergence"] = "穢れし出現",
 		["His Scattering Calamity"] = "散乱する災厄",
