@@ -1,6 +1,7 @@
 -- PoE2 Unique Item Names: English → Japanese
 -- Source: poe2db.tw/jp
 -- Generated: 2026-02-14
+-- Updated: 2026-02-21 (added 9 missing items)
 return {
 	["Ab Aeterno"] = "永遠から",
 	["Adonia's Ego"] = "アドニアのエゴ",
@@ -20,7 +21,11 @@ return {
 	["Astramentis"] = "アストラメンティス",
 	["Atsak's Sight"] = "アツァクの視野",
 	["Atziri's Acuity"] = "アッツィリの鋭敏さ",
+	["Atziri's Contempt"] = "アッツィリの侮蔑",
 	["Atziri's Disdain"] = "アッツィリの軽蔑",
+	["Atziri's Rule"] = "アッツィリの統治",
+	["Atziri's Splendour"] = "アッツィリの栄耀",
+	["Atziri's Step"] = "アッツィリの歩み",
 	["Aurseize"] = "オアシーズ",
 	["Beacon of Azis"] = "アジスの標",
 	["Beetlebite"] = "ビートルバイト",
@@ -123,6 +128,7 @@ return {
 	["Feathered Fortress"] = "羽根付き要塞",
 	["Fireflower"] = "ファイアフラワー",
 	["Fixation of Yix"] = "イクスの凝視",
+	["Flesh Crucible"] = "肉のるつぼ",
 	["Forbidden Gaze"] = "フォービドンゲイズ",
 	["Font of Power"] = "力の源泉",
 	["For Utopia"] = "楽園のために",
@@ -164,6 +170,7 @@ return {
 	["Hrimnor's Hymn"] = "フリムノーの聖歌",
 	["Husk of Dreams"] = "夢の殻",
 	["Hyrri's Ire"] = "ハイリの怒り",
+	["Hysseg's Claw"] = "ヒッセグの爪",
 	["Icefang Orbit"] = "アイスファングの軌道",
 	["Icetomb"] = "アイストゥーム",
 	["Idle Hands"] = "暇人の手",
@@ -184,6 +191,7 @@ return {
 	["Killjoy"] = "キルジョイ",
 	["Kingsguard"] = "キングスガード",
 	["Kitoko's Current"] = "キトコの流れ",
+	["Lavianga's Spirits"] = "ラヴィアンガの心",
 	["Leer Cast"] = "リアー・キャスト",
 	["Legionstride"] = "リージョンストライド",
 	["Leopold's Applause"] = "レオポルドの拍手",
@@ -324,6 +332,7 @@ return {
 	["The Empty Roar"] = "虚ろな咆哮",
 	["The Eternal Spark"] = "永遠の火花",
 	["The Everlasting Gaze"] = "不朽の眼差し",
+	["The Flesh Poppet"] = "肉の呪い人形",
 	["The Gnashing Sash"] = "歯を鳴らす帯",
 	["The Hammer of Faith"] = "信仰の鎚",
 	["The Hollow Mask"] = "虚ろの仮面",
@@ -355,6 +364,7 @@ return {
 	["Tidebreaker"] = "タイドブレーカー",
 	["Titanrot Cataphract"] = "タイタンロットのカタフラクト",
 	["Trampletoe"] = "踏みつぶす爪先",
+	["Transcendent Limb"] = "超越の肢体",
 	["Treefingers"] = "ツリーフィンガーズ",
 	["Trenchtimbre"] = "トレンチティンバー",
 	["Trephina"] = "トレフィナ",
