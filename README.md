@@ -78,6 +78,18 @@ Whether this macOS port can keep up with the PoE2 0.5 update from the upstream P
 
 ## バージョン履歴 / Version History
 
+### v0.7.0 (2026-02-21)
+
+- パッシブツリー翻訳をi18nシステムに統合（TreeTranslations/ja.lua廃止→i18n補助ファイル一本化）
+- 1911件のノード名翻訳 + 1077件の新規stat行テンプレートを追加
+- 複数行stat結合ロジック・ノード名末尾空白トリム・翻訳テンプレート品質修正
+
+---
+
+- Integrated passive tree translations into i18n system (removed standalone TreeTranslations/ja.lua)
+- Added 1911 node name translations + 1077 new stat line templates
+- Multi-line stat combining logic, node name whitespace trimming, template quality fixes
+
 ### v0.6.0 (2026-02-21)
 
 - スキルジェムツールチップの日本語翻訳を大幅強化（効果分岐ラベル約360件追加）
