@@ -1066,7 +1066,9 @@ function PassiveTreeClass:ApplyDisplayTranslations()
 						translatedLines[i] = tl
 						hasAny = true
 					else
-						-- Try combining with next line(s) for multi-line stat fragments
+						-- Some tree stats span multiple lines in game data but are stored
+						-- as a single translation template with embedded newlines.
+						-- Try combining with next line(s) to match these templates.
 						local combined = line
 						local found = false
 						for j = i + 1, math.min(i + 3, #node.sd) do
@@ -1076,7 +1078,7 @@ function PassiveTreeClass:ApplyDisplayTranslations()
 								translatedLines[i] = tlc
 								for k = i + 1, j do
 									skip[k] = true
-									translatedLines[k] = ""
+									translatedLines[k] = " "
 								end
 								hasAny = true
 								found = true
