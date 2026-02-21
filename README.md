@@ -78,6 +78,18 @@ Whether this macOS port can keep up with the PoE2 0.5 update from the upstream P
 
 ## バージョン履歴 / Version History
 
+### v0.7.1 (2026-02-21)
+
+- 最新PoE2ユニーク装備の翻訳漏れ修正（アイテム名9件追加）
+- mod効果テンプレート12件追加（呪いスキルレベル、バラージ、クリティカルウィークネス、非チャネリングスペル等）
+- Contents/Info.plistバージョン同期修正
+
+---
+
+- Fixed missing translations for latest PoE2 unique items (9 item names added)
+- Added 12 mod stat line templates (curse skill levels, barrage, critical weakness, non-channelling spells, etc.)
+- Fixed Contents/Info.plist version sync
+
 ### v0.7.0 (2026-02-21)
 
 - パッシブツリー翻訳をi18nシステムに統合（TreeTranslations/ja.lua廃止→i18n補助ファイル一本化）
