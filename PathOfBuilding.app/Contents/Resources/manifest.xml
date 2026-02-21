@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <PoBVersion>
-    <Version number="0.7.0" branch="main" platform="macos"/>
+    <Version number="0.7.1" branch="main" platform="macos"/>
     <Source part="default" url="https://raw.githubusercontent.com/kokagex/PoB2-for-macOS/{branch}/PathOfBuilding.app/Contents/Resources/"/>
     <File part="default" sha1="24a30615d5bd53746a64ebd3f9a0780ab2bdd07c" name="manifest.xml"/>
     <File part="default" sha1="7aa2cf6bf217623b8cbbe2317acebdba52403991" name="LaunchServer.lua"/>
