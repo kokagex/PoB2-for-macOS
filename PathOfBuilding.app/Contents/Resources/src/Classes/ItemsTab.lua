@@ -2921,27 +2921,27 @@ function ItemsTabClass:AddItemTooltip(tooltip, item, slot, dbMode)
 		local flaskData = item.flaskData
 		if flaskData.lifeTotal then
 			if flaskData.lifeGradual ~= 0 then
-				tooltip:AddLine(fontSizeBig, s_format("^x7F7F7FRecovers %s%d ^x7F7F7FLife over %s%.1f0 ^x7F7F7FSeconds",
+				tooltip:AddLine(fontSizeBig, s_format("^x7F7F7F" .. i18n.t("items.tooltip.recovers") .. "%s%d ^x7F7F7F" .. i18n.t("items.tooltip.lifeOver") .. "%s%.1f0 ^x7F7F7F" .. i18n.t("items.tooltip.seconds"),
 					main:StatColor(flaskData.lifeTotal, base.flask.life), flaskData.lifeGradual,
 					main:StatColor(flaskData.duration, base.flask.duration), flaskData.duration
 					), "FONTIN SC")
 			end
 			if flaskData.lifeInstant ~= 0 then
-				tooltip:AddLine(fontSizeBig, s_format("^x7F7F7FRecovers %s%d ^x7F7F7FLife instantly", main:StatColor(flaskData.lifeTotal, base.flask.life), flaskData.lifeInstant), "FONTIN SC")
+				tooltip:AddLine(fontSizeBig, s_format("^x7F7F7F" .. i18n.t("items.tooltip.recovers") .. "%s%d ^x7F7F7F" .. i18n.t("items.tooltip.lifeInstantly"), main:StatColor(flaskData.lifeTotal, base.flask.life), flaskData.lifeInstant), "FONTIN SC")
 			end
 		end
 		if flaskData.manaTotal then
 			if flaskData.manaGradual ~= 0 then
-				tooltip:AddLine(fontSizeBig, s_format("^x7F7F7FRecovers %s%d ^x7F7F7FMana over %s%.1f0 ^x7F7F7FSeconds",
+				tooltip:AddLine(fontSizeBig, s_format("^x7F7F7F" .. i18n.t("items.tooltip.recovers") .. "%s%d ^x7F7F7F" .. i18n.t("items.tooltip.manaOver") .. "%s%.1f0 ^x7F7F7F" .. i18n.t("items.tooltip.seconds"),
 					main:StatColor(flaskData.manaTotal, base.flask.mana), flaskData.manaGradual,
 					main:StatColor(flaskData.duration, base.flask.duration), flaskData.duration
 					), "FONTIN SC")
 			end
 			if flaskData.manaInstant ~= 0 then
-				tooltip:AddLine(fontSizeBig, s_format("^x7F7F7FRecovers %s%d ^x7F7F7FMana instantly", main:StatColor(flaskData.manaTotal, base.flask.mana), flaskData.manaInstant), "FONTIN SC")
+				tooltip:AddLine(fontSizeBig, s_format("^x7F7F7F" .. i18n.t("items.tooltip.recovers") .. "%s%d ^x7F7F7F" .. i18n.t("items.tooltip.manaInstantly"), main:StatColor(flaskData.manaTotal, base.flask.mana), flaskData.manaInstant), "FONTIN SC")
 			end
 		end
-		tooltip:AddLine(fontSizeBig, s_format("^x7F7F7FConsumes %s%d ^x7F7F7Fof %s%d ^x7F7F7FCharges on use",
+		tooltip:AddLine(fontSizeBig, s_format("^x7F7F7F" .. i18n.t("items.tooltip.consumes") .. "%s%d ^x7F7F7F/ %s%d ^x7F7F7F" .. i18n.t("items.tooltip.chargesOnUse"),
 			main:StatColor(flaskData.chargesUsed, base.flask.chargesUsed), flaskData.chargesUsed,
 			main:StatColor(flaskData.chargesMax, base.flask.chargesMax), flaskData.chargesMax
 			), "FONTIN SC")
@@ -2951,15 +2951,18 @@ function ItemsTabClass:AddItemTooltip(tooltip, item, slot, dbMode)
 				line = main.notSupportedModTooltips and (line .. main.notSupportedTooltipText) or line
 				tooltip:AddLine(fontSizeBig, line, "FONTIN SC")
 			else
-				tooltip:AddLine(fontSizeBig, colorCodes.MAGIC..modLine.line, "FONTIN SC")
+				local displayLine = modLine.line
+				if i18n and i18n.translateModLine then
+					displayLine = i18n.translateModLine(displayLine)
+				end
+				tooltip:AddLine(fontSizeBig, colorCodes.MAGIC..displayLine, "FONTIN SC")
 			end
 		end
 	elseif base.charm then
 		-- Charm-specific info
 		local charmData = item.charmData
-		
-		tooltip:AddLine(fontSizeBig, s_format("^x7F7F7FLasts %s%.2f ^x7F7F7FSeconds", main:StatColor(charmData.duration, base.charm.duration), charmData.duration), "FONTIN SC")
-		tooltip:AddLine(fontSizeBig, s_format("^x7F7F7FConsumes %s%d ^x7F7F7Fof %s%d ^x7F7F7FCharges on use",
+		tooltip:AddLine(fontSizeBig, s_format("^x7F7F7F" .. i18n.t("items.tooltip.lasts") .. "%s%.2f ^x7F7F7F" .. i18n.t("items.tooltip.seconds"), main:StatColor(charmData.duration, base.charm.duration), charmData.duration), "FONTIN SC")
+		tooltip:AddLine(fontSizeBig, s_format("^x7F7F7F" .. i18n.t("items.tooltip.consumes") .. "%s%d ^x7F7F7F/ %s%d ^x7F7F7F" .. i18n.t("items.tooltip.chargesOnUse"),
 			main:StatColor(charmData.chargesUsed, base.charm.chargesUsed), charmData.chargesUsed,
 			main:StatColor(charmData.chargesMax, base.charm.chargesMax), charmData.chargesMax
 		), "FONTIN SC")
@@ -2969,19 +2972,24 @@ function ItemsTabClass:AddItemTooltip(tooltip, item, slot, dbMode)
 				line = main.notSupportedModTooltips and (line .. main.notSupportedTooltipText) or line
 				tooltip:AddLine(fontSizeBig, line, "FONTIN SC")
 			else
-				tooltip:AddLine(fontSizeBig, colorCodes.MAGIC..modLine.line, "FONTIN SC")
+				local displayLine = modLine.line
+				if i18n and i18n.translateModLine then
+					displayLine = i18n.translateModLine(displayLine)
+				end
+				tooltip:AddLine(fontSizeBig, colorCodes.MAGIC..displayLine, "FONTIN SC")
 			end
 		end
 	elseif item.type == "Jewel" then
 		-- Jewel-specific info
 		if item.limit then
-			tooltip:AddLine(fontSizeBig, "^x7F7F7FLimited to: ^7"..item.limit, "FONTIN SC")
+			tooltip:AddLine(fontSizeBig, "^x7F7F7F" .. i18n.t("items.tooltip.limitedTo") .. "^7"..item.limit, "FONTIN SC")
 		end
 		if item.classRestriction then
-			tooltip:AddLine(fontSizeBig, "^x7F7F7FRequires Class "..(self.build.spec.curClassName == item.classRestriction and colorCodes.POSITIVE or colorCodes.NEGATIVE)..item.classRestriction, "FONTIN SC")
+			local classDisplayName = i18n.lookup("passiveNames", item.classRestriction) or item.classRestriction
+			tooltip:AddLine(fontSizeBig, "^x7F7F7FRequires Class "..(self.build.spec.curClassName == item.classRestriction and colorCodes.POSITIVE or colorCodes.NEGATIVE)..classDisplayName, "FONTIN SC")
 		end
 		if item.jewelRadiusLabel then
-			tooltip:AddLine(fontSizeBig, "^x7F7F7FRadius: ^7"..item.jewelRadiusLabel, "FONTIN SC")
+			tooltip:AddLine(fontSizeBig, "^x7F7F7F" .. i18n.t("items.tooltip.radius") .. "^7"..item.jewelRadiusLabel, "FONTIN SC")
 		end
 		if item.jewelRadiusData and slot and item.jewelRadiusData[slot.nodeId] then
 			local radiusData = item.jewelRadiusData[slot.nodeId]

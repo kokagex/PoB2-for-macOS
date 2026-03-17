@@ -54,8 +54,8 @@ local TreeTabClass = newClass("TreeTab", "ControlHost", function(self, build)
 			local spec = self.specList[selIndex]
 			if spec then
 				local used, ascUsed, secondaryAscUsed, sockets = spec:CountAllocNodes()
-				tooltip:AddLine(16, "Class: "..spec.curClassName)
-				tooltip:AddLine(16, "Ascendancy: "..spec.curAscendClassName)
+				tooltip:AddLine(16, "Class: "..(i18n.lookup("passiveNames", spec.curClassName) or spec.curClassName))
+				tooltip:AddLine(16, "Ascendancy: "..(i18n.lookup("passiveNames", spec.curAscendClassName) or spec.curAscendClassName))
 				tooltip:AddLine(16, "Points used: "..used)
 				if sockets > 0 then
 					tooltip:AddLine(16, "Jewel sockets: "..sockets)
