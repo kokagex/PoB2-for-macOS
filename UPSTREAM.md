@@ -2,7 +2,7 @@
 
 上流: `PathOfBuildingCommunity/PathOfBuilding-PoE2` `dev` ブランチ
 ローカル: `kokagex/PoB2-for-macOS` `pob2macos_stage2` ブランチ
-最終同期: 2026-02-21 (v0.5.1)
+最終同期: 2026-03-17 (Phase 5)
 
 ---
 
@@ -157,6 +157,18 @@ upstreamの有用な変更のみcherry-pick。
 
 将来検討:
 - `GemSelectControl.lua`: reservationMap（PoE2リザベーション表示）をi18nツールチップに統合
+
+---
+
+### ✅ Phase 5 — (2026-03-17): upstream/dev 6ebe367 まで同期
+
+上流 `75f06dc..6ebe367` の差分は**1コミット・1ファイルのみ**:
+
+| ファイル | 変更内容 |
+|---|---|
+| `src/Classes/TradeQueryGenerator.lua` | modWeightsソート改善: meanStatDiff同値時にabs(weight)でタイブレイク、重複ソート削除 (#1779) |
+
+Data/, Modules/ の変更なし。翻訳辞書更新不要。
 
 ---
 
