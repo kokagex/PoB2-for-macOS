@@ -8,7 +8,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-APP_DIR="$PROJECT_ROOT/PathOfBuilding.app"
+APP_DIR="${POB_APP_DIR:-$PROJECT_ROOT/dist/PathOfBuilding.app}"
 RESOURCES="$APP_DIR/Contents/Resources"
 SCREENSHOT_DIR="$RESOURCES/screenshots"
 BASELINE_DIR="$PROJECT_ROOT/test/visual/baselines"

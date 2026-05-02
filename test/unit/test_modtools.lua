@@ -6,7 +6,7 @@ _G.ModFlag = { Attack = 1, Spell = 2, Hit = 4, Dot = 8, Cast = 16 }
 _G.KeywordFlag = { Fire = 1, Cold = 2, Lightning = 4, Physical = 8 }
 
 -- Load ModTools
-dofile("PathOfBuilding.app/Contents/Resources/src/Modules/ModTools.lua")
+dofile("src/Modules/ModTools.lua")
 
 describe("modLib.createMod", function()
     it("creates a basic mod", function()

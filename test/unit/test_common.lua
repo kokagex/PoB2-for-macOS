@@ -4,7 +4,7 @@ require("test_helpers")
 -- Try to load Common.lua
 local common_loaded = false
 local ok, err = pcall(function()
-    dofile("PathOfBuilding.app/Contents/Resources/src/Modules/Common.lua")
+    dofile("src/Modules/Common.lua")
 end)
 if ok then
     common_loaded = true
