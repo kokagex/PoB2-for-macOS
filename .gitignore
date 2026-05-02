@@ -2,8 +2,10 @@
 .claude/
 
 # Local docs and skills (not part of the app distribution)
+# /skills/ is anchored to repo root so it does NOT swallow src/Data/Skills/
+# on case-insensitive filesystems (macOS APFS/HFS+).
 doc/
-skills/
+/skills/
 .worktrees/
 
 # Dev tools and session artifacts
