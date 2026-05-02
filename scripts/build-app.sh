@@ -48,6 +48,12 @@ else
   cp -R "$ROOT/tree-data" "$RES/TreeData"
 fi
 
+# 4b. Compatibility symlinks: Lua code references Assets/... and Data/...
+# with paths relative to Contents/Resources/ (CWD at runtime). Pre-refactor
+# these were tracked symlinks pointing into src/Assets and src/Data; we
+# recreate them at build time so the Lua paths keep resolving.
+( cd "$RES" && ln -sfn src/Assets Assets && ln -sfn src/Data Data )
+
 # 5. Root scripts and metadata into Resources/
 cp "$ROOT/pob2_launch.lua" "$ROOT/LaunchServer.lua" "$RES/"
 cp "$ROOT/manifest.xml" "$ROOT/changelog.txt" "$RES/"
