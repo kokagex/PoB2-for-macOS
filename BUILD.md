@@ -16,8 +16,34 @@ ls dist/PathOfBuilding-macOS-0.3.0.zip
 
 - macOS (Apple Silicon, ARM64)
 - LuaJIT (`/usr/local/bin/luajit` — `package/MacOS/PathOfBuilding` ランチャースクリプトが exec する)
-- Python 3 (SGPAK アーカイブパッカー)
+- Python 3 + `pip install zstandard` (SGPAK アーカイブパッカー)
 - `codesign` (macOS 標準、リリースビルド時のみ)
+- `pob2macos/` ローカル clone (gitignored、C++ 側プロジェクト) — `tools/pak_builder.py`, `tools/rebuild_archives.sh` が必要
+
+## 初回 setup (clone 直後にやること)
+
+`.gitignore` で配布物に含めない大型バイナリをローカルに復元する:
+
+```bash
+# 1. fonts (LiberationSans-{Bold,Regular}.ttf) — 別 zip 配布から or 任意の TTF 配置
+mkdir -p runtime/fonts
+# (LiberationSans を https://www.fontsquirrel.com/ 等からダウンロードして配置)
+
+# 2. tree-data の PNG / JPG / DDS texture (上流リポからの rsync が最速)
+#    pob2macos/dev/pob2-original/ に上流 PathOfBuilding-PoE2 のクローンがあること前提
+rsync -a \
+  --include='*/' \
+  --include='*.png' --include='*.jpg' \
+  --include='*.dds' --include='*.dds.zst' \
+  --exclude='*' \
+  pob2macos/dev/pob2-original/src/TreeData/ tree-data/
+
+# 3. 動作確認
+bash scripts/build-app.sh --dev
+open dist/PathOfBuilding.app
+```
+
+これらは `.gitignore` で `tree-data/**/*.png|*.jpg`, `*.dds.zst`, `runtime/fonts/LiberationSans-*.ttf` が ignore されているため commit されない。各環境で手動配置する設計 (容量対策)。
 
 ## ディレクトリ構造 / Layout
 
