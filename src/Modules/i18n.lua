@@ -10,19 +10,20 @@ local currentLocale = "en"
 local fallbackLocale = "en"
 local changeCallbacks = setmetatable({}, { __mode = "v" })
 
--- Auxiliary file mapping: section name → file suffix
--- These files are lazy-loaded on first access instead of at startup
+-- Auxiliary file mapping: section name → file basename
+-- Files live in Locales/<localeCode>/<basename>.lua and are lazy-loaded
+-- on first access instead of at startup.
 local auxiliaryFiles = {
-	gemDescriptions = "_gem_descriptions",
-	statDescriptions = "_stat_descriptions",
-	statDescriptionsCustom = "_stat_descriptions_custom",
-	statDescriptionsManual = "_stat_descriptions_manual",
-	gemFlavourText = "_gem_flavourtext",
-	uniqueNames = "_unique_names",
-	baseNames = "_base_names",
-	modStatLines = "_mod_stat_lines",
-	uniqueFlavourText = "_unique_flavourtext",
-	passiveNames = "_passive_names",
+	gemDescriptions = "gem_descriptions",
+	statDescriptions = "stat_descriptions",
+	statDescriptionsCustom = "stat_descriptions_custom",
+	statDescriptionsManual = "stat_descriptions_manual",
+	gemFlavourText = "gem_flavourtext",
+	uniqueNames = "unique_names",
+	baseNames = "base_names",
+	modStatLines = "mod_stat_lines",
+	uniqueFlavourText = "unique_flavourtext",
+	passiveNames = "passive_names",
 }
 
 -- Track which auxiliary files have been loaded per locale
@@ -36,7 +37,7 @@ local function ensureAuxLoaded(localeCode, section)
 	if auxLoaded[key] then return end
 	auxLoaded[key] = true
 	local suffix = auxiliaryFiles[section]
-	local path = "Locales/" .. localeCode .. suffix
+	local path = "Locales/" .. localeCode .. "/" .. suffix
 	local ok, data = pcall(LoadModule, path)
 	if ok and type(data) == "table" then
 		locales[localeCode][section] = data
