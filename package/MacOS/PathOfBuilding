@@ -1,0 +1,8 @@
+#!/bin/zsh
+set -euo pipefail
+cd "$(dirname "$0")/../Resources"
+LOG_DIR="${POB_LOG_DIR:-${HOME:-/tmp}/Library/Logs/pob2macos}"
+mkdir -p "$LOG_DIR"
+LOG="$LOG_DIR/passive_tree_app.log"
+echo "=== RUN $(date) ===" >> "$LOG"
+exec /usr/local/bin/luajit "./pob2_launch.lua" >> "$LOG" 2>&1

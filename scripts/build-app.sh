@@ -15,44 +15,36 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DIST="$ROOT/dist"
 APP="$DIST/PathOfBuilding.app"
 RES="$APP/Contents/Resources"
-RUNTIME="$RES/runtime"
 VERSION="${VERSION:-dev}"
 
 echo "==> mode=$mode  app=$APP"
 
-# 1. Clean and create skeleton
+# 1. Clean and create skeleton (runtime/ is created by section 4 below)
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS" "$RES" "$RUNTIME"
+mkdir -p "$APP/Contents/MacOS" "$RES"
 
 # 2. App bundle template (Info.plist, .icns)
 cp "$ROOT/package/Info.plist" "$APP/Contents/Info.plist"
 cp "$ROOT/package/Resources/Info.plist" "$RES/"
 cp "$ROOT/package/Resources/"*.icns "$RES/"
 
-# 3. C++ build (PathOfBuilding binary + dylibs)
-echo "==> Building native binary and dylibs..."
-BUILD_DIR="$ROOT/pob2macos/simplegraphic/build"
-mkdir -p "$BUILD_DIR"
-( cd "$BUILD_DIR" && cmake .. && make -j )
+# 3. Launcher script (zsh wrapper that exec's luajit pob2_launch.lua)
+cp "$ROOT/package/MacOS/PathOfBuilding" "$APP/Contents/MacOS/PathOfBuilding"
+chmod +x "$APP/Contents/MacOS/PathOfBuilding"
 
-# Copy build outputs. Adjust source paths if CMakeLists.txt installs elsewhere.
-if [[ -f "$BUILD_DIR/PathOfBuilding" ]]; then
-  cp "$BUILD_DIR/PathOfBuilding" "$APP/Contents/MacOS/PathOfBuilding"
-fi
-cp "$BUILD_DIR/"*.dylib "$RUNTIME/" 2>/dev/null || true
-
-# 4. Lua source / data placement
+# 4. Lua source, runtime (lua libs + dylibs), tree data
+# Note: dylibs (SimpleGraphic, libSimpleGraphic, CharInput) are tracked in
+# runtime/ as fixed assets — pob2macos/.claude/CLAUDE.md says rebuilding
+# SimpleGraphic.dylib breaks the UI, so they live here as committed binaries.
 if [[ "$mode" == "--dev" ]]; then
   echo "==> Dev mode: symlinking sources..."
   ln -sfn "$ROOT/src" "$RES/src"
-  ln -sfn "$ROOT/runtime/lua" "$RUNTIME/lua"
-  [[ -d "$ROOT/runtime/fonts" ]] && ln -sfn "$ROOT/runtime/fonts" "$RUNTIME/fonts"
+  ln -sfn "$ROOT/runtime" "$RES/runtime"
   ln -sfn "$ROOT/tree-data" "$RES/TreeData"
 else
   echo "==> Release mode: copying sources..."
   cp -R "$ROOT/src" "$RES/"
-  cp -R "$ROOT/runtime/lua" "$RUNTIME/"
-  [[ -d "$ROOT/runtime/fonts" ]] && cp -R "$ROOT/runtime/fonts" "$RUNTIME/"
+  cp -R "$ROOT/runtime" "$RES/"
   cp -R "$ROOT/tree-data" "$RES/TreeData"
 fi
 
