@@ -76,15 +76,6 @@ local function getSortGemTypeList()
 	}
 end
 
-local function getAlternateGemQualityList()
-	return {
-		{ label = i18n.t("skills.gemQuality.default"), type = "Default" },
-		{ label = i18n.t("skills.gemQuality.anomalous"), type = "Alternate1" },
-		{ label = i18n.t("skills.gemQuality.divergent"), type = "Alternate2" },
-		{ label = i18n.t("skills.gemQuality.phantasmal"), type = "Alternate3" },
-	}
-end
-
 local function translateGemName(name)
 	if not name then return name end
 	local key = "gems." .. name
@@ -104,7 +95,6 @@ local function translateItemName(source)
 	end
 	return name
 end
-
 local SkillsTabClass = newClass("SkillsTab", "UndoHandler", "ControlHost", "Control", function(self, build)
 	self.UndoHandler()
 	self.ControlHost()
