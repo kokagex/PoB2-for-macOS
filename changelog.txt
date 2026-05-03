@@ -1,3 +1,35 @@
+VERSION[0.7.2][2026/05/03]
+
+--- リポジトリ整理 / Repository Cleanup ---
+* PathOfBuilding.app の中身をリポジトリ直下に展開（src/, runtime/, tree-data/, package/）
+* .app は scripts/build-app.sh で組み立てる build artifact 化（dist/PathOfBuilding.app）
+* dev mode (--dev): Lua ソースは symlink で配置、編集即反映
+* release mode (--release): cp + codesign + zip 化
+* SimpleGraphic / libSimpleGraphic / CharInput dylib + 起動ランチャーは tracked リソースとして runtime/ + package/MacOS/ に配置
+* i18n 言語ファイルを言語別サブディレクトリ化（src/Locales/ja_*.lua → src/Locales/ja/*.lua）
+* 重複ディレクトリ統合（doc/docs, skills/installed-skills）
+* .gitignore の skills/ ルールが case-insensitive で src/Data/Skills/ も巻き込んでいた問題を修正
+* BUILD.md 新設（初回 setup と build pipeline 説明）
+
+--- バグ修正 / Bug Fixes ---
+* PassiveTreeView.lua クラッシュ修正（Assets/Data compatibility symlink を build-app.sh で再生成）
+* test ファイルの絶対パス参照を新レイアウトに更新（test_common, test_modtools, run_visual_test）
+
+--- Repository Cleanup ---
+* Extract PathOfBuilding.app contents to repo root (src/, runtime/, tree-data/, package/)
+* The .app is now a build artifact assembled by scripts/build-app.sh into dist/
+* Dev mode (--dev): symlink Lua sources for instant reload
+* Release mode (--release): cp + codesign + zip
+* SimpleGraphic / libSimpleGraphic / CharInput dylibs and the launcher script are tracked resources
+* i18n locales reorganized into per-language subdirectories (src/Locales/ja_*.lua → src/Locales/ja/*.lua)
+* Consolidate duplicate directories (doc/docs, skills/installed-skills)
+* Fix .gitignore skills/ rule that was case-insensitively swallowing src/Data/Skills/
+* New BUILD.md documenting initial setup and build pipeline
+
+--- Bug Fixes ---
+* Fix PassiveTreeView.lua crash by recreating Assets/Data compatibility symlinks in build-app.sh
+* Update absolute path references in test files to the new layout
+
 VERSION[0.7.1][2026/02/21]
 
 --- 修正 / Fixes ---
