@@ -58,9 +58,17 @@ fi
 cp "$ROOT/pob2_launch.lua" "$ROOT/LaunchServer.lua" "$RES/"
 cp "$ROOT/manifest.xml" "$ROOT/changelog.txt" "$RES/"
 
-# 6. SGPAK archives (rebuilt from current src/Assets and tree-data)
-echo "==> Rebuilding SGPAK archives..."
-PATH_OF_BUILDING_RES="$RES" bash "$ROOT/pob2macos/tools/rebuild_archives.sh"
+# 6. SGPAK archives. Rebuild from current src/Assets + tree-data,
+# or borrow pre-built sgpak from a directory (for environments
+# without zstandard installed).
+if [[ -n "${ARCHIVES_DIR:-}" ]]; then
+  echo "==> Borrowing prebuilt SGPAK archives from $ARCHIVES_DIR"
+  mkdir -p "$RES/archives"
+  cp "$ARCHIVES_DIR/"*.sgpak "$RES/archives/"
+else
+  echo "==> Rebuilding SGPAK archives..."
+  PATH_OF_BUILDING_RES="$RES" bash "$ROOT/pob2macos/tools/rebuild_archives.sh"
+fi
 
 # 7. Release: codesign + zip
 if [[ "$mode" == "--release" ]]; then
