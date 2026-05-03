@@ -416,7 +416,7 @@ local ops = { }
 local opsRuntime = { }
 for _, data in pairs(updateFiles) do
 	-- Ensure that the destination path of this file exists
-	local dirStr = ""
+	local dirStr = data.fullPath:sub(1,1) == "/" and "/" or ""
 	for dir in data.fullPath:gmatch("([^/]+/)") do
 		dirStr = dirStr .. dir
 		MakeDir(dirStr)
