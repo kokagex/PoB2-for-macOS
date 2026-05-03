@@ -2,7 +2,7 @@
 
 上流: `PathOfBuildingCommunity/PathOfBuilding-PoE2` `dev` ブランチ
 ローカル: `kokagex/PoB2-for-macOS` `pob2macos_stage2` ブランチ
-最終同期: 2026-03-17 (Phase 5)
+最終同期: 2026-05-03 (Phase 6, 上流 commit `31dabfaa1`)
 
 ---
 
@@ -169,6 +169,66 @@ upstreamの有用な変更のみcherry-pick。
 | `src/Classes/TradeQueryGenerator.lua` | modWeightsソート改善: meanStatDiff同値時にabs(weight)でタイブレイク、重複ソート削除 (#1779) |
 
 Data/, Modules/ の変更なし。翻訳辞書更新不要。
+
+---
+
+### ✅ Phase 6 — (2026-05-03): upstream/dev 31dabfaa1 まで同期
+
+上流 `6ebe367..31dabfaa1` の 18 commits / 25 files / +241/-122 行を機能別に取り込み。
+worktree `.worktrees/upstream-sync-phase6` (branch `sync/upstream-phase6`) で 4 commit に分割。
+
+#### Modules (commit `2f25905`)
+
+| ファイル | 変更内容 |
+|---|---|
+| `src/Modules/CalcDefence.lua` | pob1-port: negative eHP / NaN Max hit fix (#1799) |
+| `src/Modules/CalcOffence.lua` | pob1-port: skill repeat 計算修正 + trap/mine 二重カウント fix (#1791) |
+| `src/Modules/BuildSiteTools.lua` | URL spoofing fix: `matchURL` に `^https:/` 強制 (#1792, security) |
+| `src/Modules/CalcSetup.lua` | alternate quality 廃止: `qualityId` 参照削除 (#1794) |
+| `src/Modules/ModParser.lua` | `magnitude of ailments` mod 追加 (#1793) + Molten One's Gift fix (#1803) + Duelist mod 移設 |
+
+ローカル衝突: BuildSiteTools.lua と CalcSetup.lua は変更箇所が離れていて自動マージ可。ModParser.lua はローカル変更ゼロで完全 fast-forward。
+
+#### Data (commit `e792a38`) — 完全 fast-forward (ローカル変更ゼロ)
+
+| ファイル | 変更内容 |
+|---|---|
+| `src/Data/StatDescriptions/stat_descriptions.lua` | `canonical_stat` / `canonical_line` キー順序入れ替えのメタ変更のみ (`desc.text` 本文変更なし → `ja_stat_descriptions.lua` 追従不要) |
+| `src/Data/ModCache.lua` | 自動再生成 |
+| `src/Data/SkillStatMap.lua` | mod マッピング追加 6 行 |
+| `src/Data/Uniques/body.lua` | Keeper of the Arc legacy mod 修正 (#1784) |
+| `src/Data/Uniques/{helmet,jewel,amulet}.lua` | variant text ordering fix: The Adorned, Yoke of Suffering 等 (#1783) |
+
+#### Classes (commit `7063014`)
+
+| ファイル | 変更内容 |
+|---|---|
+| `src/Classes/Tooltip.lua` | spell-checker directives 追加のみ (#1771) |
+| `src/Classes/SkillsTab.lua` | `alternateGemQualityList` 削除 (#1794) — ローカル i18n 化リストは温存、未使用関数のみ削除 |
+| `src/Classes/GemSelectControl.lua` | `GetQualityType` メソッド削除 + `UpdateGem` 引数調整 (#1794) |
+| `src/Classes/ImportTab.lua` | Remember league for imported characters (#1795) — `lastLeague` の Save/Load + `DownloadCharacterList` 復元ロジック |
+
+3-way merge: SkillsTab.lua のみ衝突、ローカル i18n を維持しつつ alternate quality 関連のみ削除で手動解決。
+
+#### その他 (commit `14df3f0`)
+
+| ファイル | 変更内容 |
+|---|---|
+| `src/HeadlessWrapper.lua` | `GetVirtualScreenSize` stub 追加 (#1789) |
+| `src/UpdateCheck.lua` | 絶対パス対応 (PoB1 PR #9777 移植 #1802) |
+
+#### スキップ判定 (Phase 6 で取り込まないファイル)
+
+| ファイル | 理由 |
+|---|---|
+| `CONTRIBUTING.md` | ローカル独自化 372 行差、上流 doc 変更 (spell-checker directives 追加) は取り込み価値低 |
+| `src/Export/*` (6 ファイル) | ローカル PoE2 export 大幅改造、上流変更との 3-way merge は影響範囲不明 → 別 sprint で扱う |
+
+#### 検証
+
+- 全 18 ファイル LuaJIT syntax check PASS (`luajit -bl <file> /dev/null`)
+- busted 単体テスト: 環境に未インストールのため未実施 (要 `luarocks install busted` for LuaJIT)
+- `scripts/build-app.sh --dev` 起動確認: ユーザー側で実施推奨
 
 ---
 
