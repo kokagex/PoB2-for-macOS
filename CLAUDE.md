@@ -1,3 +1,7 @@
+## Skill routing
+
+- `/brain-spec`, `spec を html 化`, `html spec 出して` → invoke `brain-spec`
+
 ## MCP Brain（opti-brain）
 
 セッション間の記憶を Supabase に蓄積する。
