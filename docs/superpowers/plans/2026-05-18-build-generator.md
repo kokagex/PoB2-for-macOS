@@ -2505,6 +2505,382 @@ git add src-tauri/src/commands.rs src-tauri/src/lib.rs \
 git commit -m "feat(ui): class + skill picker + copy build code button"
 ```
 
+### Task 7.2: KeyItemPicker (Weapon1 unique 限定、lean)
+
+MVP に key item picker を入れる (spec §9 準拠)。lean 縛りで:
+- 対応 slot は **Weapon1 のみ** (他 slot は Phase 9)
+- 対応 item は **unique のみ** (rare 入力は Phase 9)
+- UI は単純な `<select>`、fuzzy 検索や icon 表示なし
+- optimizer は locked item を BuildModel に格納するだけ、tree allocation には影響させない (Phase 9 で intent inference に key item 反映)
+- xml serializer は locked unique を `<Items>` + `<Slots>` で出力 (PoB の auto-mod populate に任せる)
+
+**Files:**
+- Create: `src/components/KeyItemPicker.tsx`
+- Modify: `src/types/build.ts`
+- Modify: `src/api/tauri.ts`
+- Modify: `src/App.tsx`
+- Modify: `src-tauri/src/commands.rs`
+- Modify: `src-tauri/src/core/pob_xml.rs`
+- Modify: `src-tauri/src/core/optimizer.rs`
+
+- [ ] **Step 1: failing test - pob_xml が locked unique を出力する**
+
+`src-tauri/src/core/pob_xml.rs` の test に追加:
+
+```rust
+    #[test]
+    fn serialize_includes_locked_unique_weapon() {
+        use crate::core::model::{ItemRef, Slot};
+        let mut m = BuildModel::default();
+        m.class = Some(Class::Ranger);
+        m.main_skill = Some("LightningArrow".to_string());
+        m.locked_items.insert(Slot::Weapon1, ItemRef::Unique {
+            name: "Quill Rain".to_string(),
+        });
+        let xml = serialize(&m);
+        assert!(xml.contains("Quill Rain"), "xml should contain unique name");
+        assert!(xml.contains(r#"slot="Weapon 1""#) || xml.contains(r#"name="Weapon 1""#),
+                "xml should reference Weapon 1 slot");
+    }
+```
+
+- [ ] **Step 2: serialize を locked_items 対応に拡張**
+
+`src-tauri/src/core/pob_xml.rs` の `serialize` を以下に置換:
+
+```rust
+use crate::core::model::{BuildModel, Class, ItemRef, Slot};
+
+fn slot_name(slot: Slot) -> &'static str {
+    match slot {
+        Slot::Weapon1 => "Weapon 1",
+        Slot::Weapon2 => "Weapon 2",
+        Slot::Helmet => "Helmet",
+        Slot::Body => "Body Armour",
+        Slot::Gloves => "Gloves",
+        Slot::Boots => "Boots",
+        Slot::Belt => "Belt",
+        Slot::Amulet => "Amulet",
+        Slot::Ring1 => "Ring 1",
+        Slot::Ring2 => "Ring 2",
+    }
+}
+
+fn render_items_and_slots(build: &BuildModel) -> (String, String) {
+    let mut items_xml = String::new();
+    let mut slots_xml = String::new();
+    let mut next_id = 1u32;
+    for (slot, item) in &build.locked_items {
+        match item {
+            ItemRef::Unique { name } => {
+                items_xml.push_str(&format!(
+                    "    <Item id=\"{id}\">\nRarity: UNIQUE\n{name}\n</Item>\n",
+                    id = next_id,
+                    name = name,
+                ));
+                slots_xml.push_str(&format!(
+                    "    <Slot name=\"{slot}\" itemId=\"{id}\"/>\n",
+                    slot = slot_name(*slot),
+                    id = next_id,
+                ));
+                next_id += 1;
+            }
+            ItemRef::Rare { .. } => {
+                // Phase 9 で対応
+            }
+        }
+    }
+    (items_xml, slots_xml)
+}
+
+pub fn serialize(build: &BuildModel) -> String {
+    let class_name = match build.class {
+        Some(Class::Ranger) => "Ranger",
+        Some(Class::Warrior) => "Warrior",
+        Some(Class::Witch) => "Witch",
+        Some(Class::Sorceress) => "Sorceress",
+        Some(Class::Monk) => "Monk",
+        Some(Class::Mercenary) => "Mercenary",
+        Some(Class::Druid) => "Druid",
+        Some(Class::Huntress) => "Huntress",
+        None => "Ranger",
+    };
+    let ascendancy = build.ascendancy.as_deref().unwrap_or("");
+    let main_skill_id = build.main_skill.as_deref().unwrap_or("");
+    let (items_xml, slots_xml) = render_items_and_slots(build);
+
+    format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<PathOfBuilding>
+  <Build level="95" targetVersion="3_0" className="{class}" ascendClassName="{asc}" mainSocketGroup="1"/>
+  <Skills sortGemsByDPS="true" defaultGemQuality="0">
+    <SkillSet id="1">
+      <Skill mainActiveSkill="1" enabled="true">
+        <Gem level="20" quality="20" enabled="true" gemId="Metadata/Items/Gems/SkillGem{skill}" nameSpec="{skill}"/>
+      </Skill>
+    </SkillSet>
+  </Skills>
+  <Tree>
+    <Spec treeVersion="3_0"><URL>https://www.pathofexile.com/passive-skill-tree/AAAAAA==</URL></Spec>
+  </Tree>
+  <Items>
+{items}  </Items>
+  <ItemSets>
+    <ItemSet id="1">
+{slots}    </ItemSet>
+  </ItemSets>
+  <Notes/>
+</PathOfBuilding>"#,
+        class = class_name,
+        asc = ascendancy,
+        skill = main_skill_id,
+        items = items_xml,
+        slots = slots_xml,
+    )
+}
+```
+
+- [ ] **Step 3: test PASS 確認 (新 test + 既存 test 両方)**
+
+```bash
+cd ~/pob2-build-generator/src-tauri
+cargo test core::pob_xml::tests
+```
+
+Expected: 2 passed (`serialize_includes_class_and_skill` と `serialize_includes_locked_unique_weapon`)。
+
+- [ ] **Step 4: generate_build と Tauri command を locked_items 対応に**
+
+`src-tauri/src/core/optimizer.rs` の `generate_build` を以下に置換:
+
+```rust
+pub fn generate_build(
+    class: crate::core::model::Class,
+    main_skill_id: String,
+    locked_items: std::collections::HashMap<crate::core::model::Slot, crate::core::model::ItemRef>,
+    intent: &BuildIntent,
+    tree: &PassiveTreeData,
+) -> BuildModel {
+    let mut m = BuildModel::default();
+    m.class = Some(class);
+    m.main_skill = Some(main_skill_id);
+    m.locked_items = locked_items;
+    m.passive_tree = greedy_allocate_tree(tree, intent, "Ranger", 95);
+    m
+}
+```
+
+- [ ] **Step 5: GenerateRequest に locked_unique_weapon 追加**
+
+`src-tauri/src/commands.rs` の `GenerateRequest` と `generate` を以下に置換:
+
+```rust
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub struct GenerateRequest {
+    pub class: String,
+    pub main_skill: String,
+    #[serde(default)]
+    pub locked_unique_weapon: Option<String>,
+}
+
+#[tauri::command]
+pub fn generate(req: GenerateRequest, state: tauri::State<AppState>) -> Result<GenerateResponse, String> {
+    use crate::core::model::{ItemRef, Slot};
+    use std::collections::HashMap;
+
+    let data_lock = state.data.lock().unwrap();
+    let data = data_lock.as_ref().ok_or_else(|| "PoB data not loaded".to_string())?;
+
+    let skill = data.skills.get(&req.main_skill)
+        .ok_or_else(|| format!("skill not found: {}", req.main_skill))?;
+    let intent = BuildIntent::infer(skill, &[], &[]);
+    let tree: PassiveTreeData = (&data.tree).into();
+
+    let class = match req.class.as_str() {
+        "Ranger" => Class::Ranger,
+        "Warrior" => Class::Warrior,
+        "Witch" => Class::Witch,
+        "Sorceress" => Class::Sorceress,
+        "Monk" => Class::Monk,
+        "Mercenary" => Class::Mercenary,
+        "Druid" => Class::Druid,
+        "Huntress" => Class::Huntress,
+        _ => return Err(format!("unknown class: {}", req.class)),
+    };
+
+    let mut locked_items: HashMap<Slot, ItemRef> = HashMap::new();
+    if let Some(name) = &req.locked_unique_weapon {
+        locked_items.insert(Slot::Weapon1, ItemRef::Unique { name: name.clone() });
+    }
+
+    let build = generate_build(class, req.main_skill.clone(), locked_items, &intent, &tree);
+    let xml = pob_xml::serialize(&build);
+
+    drop(data_lock);
+
+    let mut wlock = state.worker.lock().unwrap();
+    let w = wlock.as_mut().ok_or_else(|| "worker not initialized".to_string())?;
+    let stats = w.calc(&xml).map_err(|e| e.to_string())?;
+
+    Ok(GenerateResponse {
+        dps: stats.dps,
+        ehp: stats.ehp,
+        build_code: xml,
+    })
+}
+```
+
+- [ ] **Step 6: list_uniques command 追加**
+
+`src-tauri/src/commands.rs` に追加:
+
+```rust
+use crate::pob_bridge::data_reader::Unique;
+
+#[tauri::command]
+pub fn list_uniques_for_slot(slot: String, state: tauri::State<AppState>) -> Result<Vec<Unique>, String> {
+    let data = state.data.lock().unwrap();
+    let data = data.as_ref().ok_or_else(|| "PoB data not loaded".to_string())?;
+    let mut out = data.uniques.get(&slot).cloned().unwrap_or_default();
+    out.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(out)
+}
+```
+
+`src-tauri/src/lib.rs` の invoke_handler に `commands::list_uniques_for_slot` を追加。
+
+- [ ] **Step 7: フロント types + API**
+
+`src/types/build.ts` を以下に置換:
+
+```typescript
+export interface GenerateRequest {
+  class: string;
+  main_skill: string;
+  locked_unique_weapon: string | null;
+}
+
+export interface GenerateResponse {
+  dps: number;
+  ehp: number;
+  build_code: string;
+}
+
+export interface Settings {
+  pob_install_path: string | null;
+}
+
+export interface Skill {
+  id: string;
+  name: string;
+  gem_tags?: Record<string, boolean>;
+}
+
+export interface Unique {
+  name: string;
+  baseName?: string;
+}
+```
+
+`src/api/tauri.ts` に追加:
+
+```typescript
+import type { Unique } from '../types/build';
+
+export async function listUniquesForSlot(slot: string): Promise<Unique[]> {
+  return await invoke<Unique[]>('list_uniques_for_slot', { slot });
+}
+```
+
+- [ ] **Step 8: KeyItemPicker component (Weapon1 限定 lean 版)**
+
+`src/components/KeyItemPicker.tsx`:
+
+```tsx
+import { useEffect, useState } from 'react';
+import { listUniquesForSlot } from '../api/tauri';
+import type { Unique } from '../types/build';
+
+interface Props {
+  value: string | null;
+  onChange: (uniqueName: string | null) => void;
+}
+
+export function KeyItemPicker({ value, onChange }: Props) {
+  const [uniques, setUniques] = useState<Unique[]>([]);
+
+  useEffect(() => {
+    listUniquesForSlot('Weapon').then(setUniques).catch(() => setUniques([]));
+  }, []);
+
+  return (
+    <label>
+      Key Weapon (unique, optional):{' '}
+      <select
+        value={value ?? ''}
+        onChange={e => onChange(e.target.value || null)}
+      >
+        <option value="">(none — optimizer に任せる)</option>
+        {uniques.map(u => (
+          <option key={u.name} value={u.name}>{u.name}</option>
+        ))}
+      </select>
+    </label>
+  );
+}
+```
+
+- [ ] **Step 9: App.tsx に KeyItemPicker 統合**
+
+`src/App.tsx` の `Configure` セクションを以下に置換 (state と generate request も更新):
+
+```tsx
+// state 追加
+const [lockedUniqueWeapon, setLockedUniqueWeapon] = useState<string | null>(null);
+
+// onGenerate 内
+const res = await generate({
+  class: klass,
+  main_skill: mainSkill,
+  locked_unique_weapon: lockedUniqueWeapon,
+});
+
+// Configure section
+{skills.length > 0 && (
+  <section style={{ marginTop: 16 }}>
+    <h2>Configure</h2>
+    <ClassPicker value={klass} onChange={setKlass} />
+    <SkillPicker skills={skills} value={mainSkill} onChange={setMainSkill} />
+    <KeyItemPicker value={lockedUniqueWeapon} onChange={setLockedUniqueWeapon} />
+  </section>
+)}
+```
+
+`src/App.tsx` の import に `KeyItemPicker` を追加。
+
+- [ ] **Step 10: 動作確認**
+
+```bash
+cd ~/pob2-build-generator
+npm run tauri dev
+```
+
+- Load PoB Data → unique 一覧が KeyItemPicker に並ぶ
+- Quill Rain など選択 → Generate
+- 結果の build_code に `Quill Rain` が含まれる
+- build_code を PoB に Import → 武器スロットに Quill Rain が装備された build が開く
+
+- [ ] **Step 11: commit**
+
+```bash
+cd ~/pob2-build-generator
+git add src-tauri/src/commands.rs src-tauri/src/lib.rs \
+        src-tauri/src/core/pob_xml.rs src-tauri/src/core/optimizer.rs \
+        src/App.tsx src/components/KeyItemPicker.tsx \
+        src/api/tauri.ts src/types/build.ts
+git commit -m "feat(ui): KeyItemPicker for Weapon1 unique - MVP key item input"
+```
+
 ---
 
 ## Phase 8: End-to-end smoke test + README
@@ -2729,13 +3105,13 @@ MVP 完成後、以下を実測して spec の Open Questions に答えていく
 | §5.4 Greedy | Task 6.1, 6.2 ✅ (gem links / gear は MVP 外、Phase 9) |
 | §5.5 計算コスト | Task 6.1 で実測する |
 | §6 PoB 連携 | Phase 2, 3 ✅ |
-| §7 UI / UX | Phase 7 (item picker は MVP 外) |
+| §7 UI / UX | Phase 7 (KeyItemPicker は Task 7.2、Weapon1 unique 限定 lean) ✅ |
 | §8 プロジェクト構成 | Phase 0 で雛形 ✅ |
 | §9 MVP done line | Phase 8 task 8.1 smoke test ✅ |
 | §10 Open Questions | Phase 9 iteration ✅ |
 | §11 検証戦略 | Task 8.1 ✅ |
 
-**Gap**: spec §5.4 で Greedy の Gem links / Gear synth / Jewel 部分を MVP に入れる/外す明示が曖昧 → 本 plan では「Phase 6 = tree allocation のみ」「gem / gear / jewel は Phase 9」と明確に絞り MVP 軽量化。spec の §9 MVP done line は `class + main skill + key item 1 個 + Balanced preset` を含んでいたが、key item picker は重い (UI 作り込み) ので **本 plan で MVP を「class + main skill + greedy tree → PoB import 可能」**に縮小。これは spec から軽くスコープ縮退、user 承認時に明示。
+**Gap**: spec §5.4 で Greedy の Gem links / Gear synth / Jewel 部分を MVP に入れる/外す明示が曖昧 → 本 plan では「Phase 6 = tree allocation のみ」「gem / gear / jewel は Phase 9」と明確に絞り MVP 軽量化。Key item picker は spec §9 通り MVP に含める (Task 7.2、Weapon1 unique 限定の lean 版)。
 
 ### 2. Placeholder scan
 
@@ -2753,19 +3129,19 @@ MVP 完成後、以下を実測して spec の Open Questions に答えていく
 - `CalcStats`: worker.rs で定義、commands.rs で参照 ✅
 - 命名 collision なし
 
-### 4. MVP スコープ縮退 (spec から)
+### 4. MVP scope (確定)
 
-Spec §9 MVP done line で `key item 1 個` が含まれていたが、本 plan では除外 (item picker UI 作り込みが MVP スコープを膨らませるため)。これは user に**明示承認を取る必要あり**。承認されなければ Phase 7 に Task 7.2 として KeyItemPicker を追加。
+Spec §9 MVP done line 通り `class + main skill + key item 1 個 (Weapon1 unique limited) + greedy passive tree → PoB import` を MVP に含む。`gear synth` `gem links` `jewel` `preset 切替` `progressive output` `cluster jewel` 等は Phase 9 iteration。
 
 ---
 
-## Execution Handoff (writing-plans skill 必須)
+## Execution: Subagent-Driven (確定)
 
-**Plan complete and saved to `docs/superpowers/plans/2026-05-18-build-generator.md`. 二択の選択肢:**
+User goal で **B (key item picker を MVP に含む、Task 7.2 追加) + 1 (subagent-driven 実行)** を確定。
 
-1. **Subagent-Driven (recommended)** — task 毎に fresh subagent を dispatch、task 間で main agent が review、fast iteration、context 汚染最小
-2. **Inline Execution** — 本 session で executing-plans を使って batch 実行、checkpoint で main agent が review
-
-どちらで進める? (subagent-driven 推奨理由: Phase 0-8 で 30+ tasks ある、各 task の context は独立、main agent の context を smoke test まで残しておきたい)
-
-加えて **scope 確認**: 本 plan は MVP done line を spec から軽く縮退してる (key item picker を Phase 7 task 7.2 ではなく Phase 9 iteration 送り)。これでよければ実行へ、key item picker を MVP に入れたければ言って Phase 7 拡張する。
+実行手順 (subagent-driven-development skill 経由):
+1. 各 task は fresh subagent (Sonnet) に dispatch
+2. subagent は failing test → impl → passing test → commit までを 1 task で完結
+3. main agent (Opus) は task 間で diff レビュー + 次 task の context を準備
+4. Phase 0 → 1 → 2 → ... → 8 の順序、各 phase 内で task 順序通り
+5. Phase 完了時に smoke check (主要動作確認)
