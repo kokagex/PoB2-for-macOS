@@ -217,7 +217,7 @@ local SkillsTabClass = newClass("SkillsTab", "UndoHandler", "ControlHost", "Cont
 	self.controls.groupCountLabel.shown = function()
 		return self.displayGroup.source ~= nil
 	end
-	self.controls.groupCount = new("EditControl", { "LEFT", self.controls.groupCountLabel, "RIGHT" }, { 4, 0, 60, 20 }, nil, nil, "%D", 2, function(buf)
+	self.controls.groupCount = new("EditControl", { "LEFT", self.controls.groupCountLabel, "RIGHT" }, { 4, 0, 80, 20 }, nil, nil, "^%d.", 6, function(buf)
 		self.displayGroup.groupCount = tonumber(buf) or 1
 		self:AddUndoState()
 		self.build.buildFlag = true
@@ -531,7 +531,7 @@ function SkillsTabClass:Draw(viewPort, inputEvents)
 	self.controls.scrollBarH.y = viewPort.y + viewPort.height - 18
 
 	do
-		local maxX = self.controls.gemCountHeader:GetPos() + self.controls.gemCountHeader:GetSize() + 15
+		local maxX = self.controls.gemCountHeader:GetPos() + self.controls.gemCountHeader:GetSize() + 25
 		local contentWidth = maxX - self.x
 		self.controls.scrollBarH:SetContentDimension(contentWidth, viewPort.width)
 	end
@@ -594,7 +594,7 @@ function SkillsTabClass:CopySocketGroup(socketGroup)
 		skillText = skillText .. "Slot: " .. socketGroup.slot .. "\r\n"
 	end
 	for _, gemInstance in ipairs(socketGroup.gemList) do
-		skillText = skillText .. string.format("%s %d/%d %s %d\r\n", gemInstance.nameSpec, gemInstance.level, gemInstance.quality, gemInstance.enabled and "" or "DISABLED", gemInstance.count or 1)
+		skillText = skillText .. string.format("%s %d/%d %s %s\r\n", gemInstance.nameSpec, gemInstance.level, gemInstance.quality, gemInstance.enabled and "" or "DISABLED", string.format("%g", gemInstance.count or 1))
 	end
 	Copy(skillText)
 end
@@ -611,7 +611,7 @@ function SkillsTabClass:PasteSocketGroup(testInput)
 		if slot then
 			newGroup.slot = slot
 		end
-		for nameSpec, level, quality, state, count in skillText:gmatch("([ %a']+) (%d+)/(%d+) ?(%a*) (%d+)") do
+		for nameSpec, level, quality, state, count in skillText:gmatch("([ %a']+) (%d+)/(%d+) ?(%a*) ([%d%.]+)") do
 			t_insert(newGroup.gemList, {
 				nameSpec = nameSpec,
 				level = tonumber(level) or 20,
@@ -879,7 +879,7 @@ function SkillsTabClass:CreateGemSlot(index)
 	self.controls["gemSlot"..index.."Enable"] = slot.enabled
 
 	-- Count gem
-	slot.count = new("EditControl", {"LEFT",slot.enabled,"RIGHT"}, {18, 0, 60, 20}, nil, nil, "%D", 2, function(buf)
+	slot.count = new("EditControl", {"LEFT",slot.enabled,"RIGHT"}, {18, 0, 80, 20}, nil, nil, "^%d.", 5, function(buf)
 		local gemInstance = self.displayGroup.gemList[index]
 		if not gemInstance then
 			gemInstance = { nameSpec = "", level = self.defaultGemLevel or 20, quality = self.defaultGemQuality or 0, enabled = true, enableGlobal1 = true, count = 1, new = true }
@@ -890,7 +890,6 @@ function SkillsTabClass:CreateGemSlot(index)
 			slot.enableGlobal1.state = true
 		end
 		gemInstance.count = tonumber(buf) or 1
-		slot.count.buf = tostring(gemInstance.count)
 		self:ProcessSocketGroup(self.displayGroup)
 		self:AddUndoState()
 		self.build.buildFlag = true
@@ -1344,10 +1343,12 @@ function SkillsTabClass:UpdateGlobalGemCountAssignments()
 	for _, socketGroup in ipairs(self.socketGroupList) do
 		local countGroup = true
 		if socketGroup.enabled then
+			local activeGem = socketGroup.gemList[1]
+			local activeGrantedEffect = activeGem and (activeGem.grantedEffect or activeGem.gemData and activeGem.gemData.grantedEffect)
+			if activeGem and (activeGem.fromItem or activeGem.fromTree or activeGrantedEffect and (activeGrantedEffect.fromItem or activeGrantedEffect.fromTree)) then
+				countGroup = false
+			end
 			for _, gemInstance in ipairs(socketGroup.gemList) do
-				if gemInstance.fromItem or (gemInstance.gemData and gemInstance.gemData.grantedEffect and gemInstance.gemData.grantedEffect.fromTree) then
-					countGroup = false
-				end
 				if gemInstance.gemData and gemInstance.enabled then
 					if GlobalGemAssignments[gemInstance.gemData.name] then
 						GlobalGemAssignments[gemInstance.gemData.name].count = GlobalGemAssignments[gemInstance.gemData.name].count + 1
