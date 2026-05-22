@@ -1,8 +1,8 @@
 # 上流同期ステータス / Upstream Sync Status
 
 上流: `PathOfBuildingCommunity/PathOfBuilding-PoE2` `dev` ブランチ
-ローカル: `kokagex/PoB2-for-macOS` `pob2macos_stage2` ブランチ
-最終同期: 2026-05-03 (Phase 6, 上流 commit `31dabfaa1`)
+ローカル: `kokagex/PoB2-for-macOS` `main` ブランチ
+最終同期: 2026-05-23 (Phase 7, 上流 commit `f0ed15fd4`)
 
 ---
 
@@ -228,6 +228,96 @@ worktree `.worktrees/upstream-sync-phase6` (branch `sync/upstream-phase6`) で 4
 
 - 全 18 ファイル LuaJIT syntax check PASS (`luajit -bl <file> /dev/null`)
 - busted 単体テスト: 環境に未インストールのため未実施 (要 `luarocks install busted` for LuaJIT)
+- `scripts/build-app.sh --dev` 起動確認: ユーザー側で実施推奨
+
+---
+
+### ✅ Phase 7 — (2026-05-23): upstream/dev f0ed15fd4 まで同期
+
+上流 `31dabfaa1..f0ed15fd4` の 64 commits / 84 files / +17890/-8628 行の差分。
+worktree `.worktrees/upstream-sync-phase7` (branch `sync/upstream-phase7`) で 3 commit に分割。
+**Build comparison tab (#1830, 30 files / +14998/-7838) は Phase 8 へ分離**。
+
+#### Modules (commit `493ddf38d`) — 10 files
+
+| ファイル | 内容 |
+|---|---|
+| `src/Modules/BuildSiteTools.lua` | 末尾改行修正 (fast-forward) |
+| `src/Modules/CalcDefence.lua` | バグ修正各種 (fast-forward, ローカル変更ゼロ) |
+| `src/Modules/CalcOffence.lua` | バグ修正各種 (fast-forward, ローカル変更ゼロ) |
+| `src/Modules/CalcPerform.lua` | バグ修正各種 (fast-forward, ローカル変更ゼロ) |
+| `src/Modules/ConfigOptions.lua` | 設定追加 (fast-forward, ローカル変更ゼロ) |
+| `src/Modules/ModParser.lua` | 大量 unique mod 追加 (fast-forward, ローカル変更ゼロ) |
+| `src/Modules/CalcActiveSkill.lua` | 上流変更 + `skillFlags` 後方互換性パッチ温存 |
+| `src/Modules/ItemTools.lua` | 上流変更 + `i18n.translateModLine` パッチ温存 |
+| `src/Modules/CalcSections.lua` | 上流変更 + `MindOverMatter` modName table 構文修正温存 (Physical/Cold/Fire 3 箇所) |
+| `src/Modules/CalcSetup.lua` | 上流変更 + `gemName` i18n.t() 翻訳 / `srcInstance` 追加パッチ温存 |
+
+#### Data (commit `a71cc5df1`) — 10 files (全 fast-forward)
+
+| ファイル | 主な変更 |
+|---|---|
+| `src/Data/Gems.lua` | Eternal Mark Support export (#1858) |
+| `src/Data/ModCache.lua` | 自動再生成 |
+| `src/Data/SkillStatMap.lua` | Flame Breath attack rate fix (#1912), Zarokh's Revolt (#1811), Inhibitor consumed charge fix |
+| `src/Data/Skills/act_dex.lua` | バグ修正各種 |
+| `src/Data/Skills/act_int.lua` | Dark Effigy DPS scaling (#1939), Palm skills Quarterstaff fix (#1903), Temporal Chains support (#1812) |
+| `src/Data/Skills/act_str.lua` | バグ修正各種 |
+| `src/Data/Skills/other.lua` | バグ修正各種 |
+| `src/Data/Skills/sup_dex.lua` | バグ修正各種 |
+| `src/Data/Skills/sup_int.lua` | Dark Effigy DPS scaling (#1939), Zarokh's Revolt (#1811), Glacial Cascade Final Burst (#1815) |
+| `src/Data/Skills/sup_str.lua` | Stomping Ground / Ferocious Roar Talisman fix (#1901), Lineage supports (#1828), Corrupting Cry fix (#1831) |
+
+#### Classes (commit `8722c9a38`) — 9 files
+
+3-way merge は `git apply --3way` 方式で実施 (`git merge-file -p` は unrelated histories で silent に theirs を採用する罠あり)。i18n.t() / macOS カスタマイズ全て温存確認。
+
+| ファイル | 主な変更 |
+|---|---|
+| `src/Classes/PowerReportListControl.lua` | PoB1 PR #9823 取り込み (#1834) — local 変更ゼロ |
+| `src/Classes/Item.lua` | Charm quality (#1940), Adnonia's Ego crash (#1936), pasted runes (#1877) |
+| `src/Classes/ConfigTab.lua` | Show All Configurations filter (#1892), Corrupted Blood (#1831) |
+| `src/Classes/EditControl.lua` | fractional full DPS (#1916) |
+| `src/Classes/ItemDBControl.lua` | damage taken sort fix (#1889) |
+| `src/Classes/PartyTab.lua` | party member stat decimal parsing (#1872) |
+| `src/Classes/TreeTab.lua` | PoB1 PR #9823 (#1834) |
+| `src/Classes/CalcBreakdownControl.lua` | Commanding Rage / Expendable Army (#1846) |
+| `src/Classes/ModStore.lua` | 手動マージ: `getActor` ヘルパー追加 (上流必須) + `noFloor`/`scalar` 統合 + `replace`/`limitStat` パッチ温存 (Commanding Rage #1846, Deadeye Thrilling Chase #1860) |
+
+#### Phase 8 へ分離 (大型 / 高衝突)
+
+**Build comparison tab (#1830) — 30 files / +14998/-7838**:
+- Modules: Build.lua, Main.lua, BuildList.lua, BuildListHelpers.lua, CalcFormat.lua, Data.lua
+- Classes 新規: Compare{BuySimilar, CalcsHelpers, Entry, PowerReportListControl, Tab, TradeHelpers}.lua
+- Classes 既存改造: CalcSectionControl, ControlHost, ImportTab, ItemsTab, PassiveMasteryControl, PassiveTreeView, TradeQueryGenerator, TradeQueryHelpers
+- Data: ModCharm, ModCorrupted, ModFlask, ModIncursionLimb, ModItem, ModItemExclusive, ModJewel, ModVeiled, Global
+
+理由: Build.lua/Main.lua のローカル独自カスタマイズ +515/+198 行との 3-way merge 衝突リスク、i18n 対応コスト、新 Tab 機能の macOS UI 適合性検証が独立 sprint 必要。
+
+**高衝突 3 files**:
+| ファイル | 上流 PR |
+|---|---|
+| `src/Classes/PassiveSpec.lua` | #1904 weapon set + node color, #1925 crash on old builds |
+| `src/Classes/PoEAPI.lua` | #1922 OAuth error surfacing |
+| `src/Classes/SkillsTab.lua` | #1916 fractional DPS, #1883 item-granted skill socket limit |
+
+`git apply --3way` で conflict 残存。ローカル独自カスタマイズが大きく、Phase 8 で個別 cherry-pick を慎重に検討。
+
+#### スキップ判定 (Phase 7 で取り込まないファイル)
+
+| ファイル | 理由 |
+|---|---|
+| `CONTRIBUTING.md` | Phase 6 と同じく上流 doc 変更は取り込み価値低 |
+| `src/Export/*` (10 ファイル) | Phase 6 と同じく別 sprint で扱う |
+| `spec/*` (10 ファイル) | ローカルに `spec/` ディレクトリ自体なし (test/unit/ 構造) |
+| `.busted`, `.github/workflows/test.yml` | ローカル独自完全カスタマイズ (luajit + test/unit/) と構造ずれ |
+
+#### 検証
+
+- 全 29 ファイル LuaJIT syntax check PASS (`luajit -bl <file> /dev/null`)
+- i18n.t() / macOS カスタマイズ温存確認 (HEAD 出現数と一致):
+  - ConfigTab=10, EditControl=0, ItemDBControl=10, PartyTab=24, TreeTab=1
+- busted 単体テスト: 環境に未インストールのため未実施
 - `scripts/build-app.sh --dev` 起動確認: ユーザー側で実施推奨
 
 ---
