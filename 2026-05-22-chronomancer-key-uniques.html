@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Chronomancer キー装備マップ — PoE2 0.5</title>
+<style>
+  :root {
+    --bg: #16121a;
+    --panel: #221a2a;
+    --panel2: #2b2236;
+    --text: #e8dcc6;
+    --accent: #c9a3ff;
+    --gold: #ffd28a;
+    --green: #6abf4e;
+    --orange: #ff9947;
+    --red: #d9534f;
+    --muted: #8a7e96;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: "Hiragino Sans","Yu Gothic","Meiryo",system-ui,sans-serif; line-height: 1.6; max-width: 1200px; margin: 0 auto; padding: 24px; }
+  h1 { color: var(--accent); border-bottom: 2px solid var(--accent); padding-bottom: 8px; margin-bottom: 4px; }
+  h2 { color: var(--gold); margin-top: 2em; border-left: 4px solid var(--gold); padding-left: 12px; }
+  .meta { color: var(--muted); font-size: 0.85em; margin-bottom: 2em; }
+
+  /* Tier table */
+  .tier-table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+  .tier-table td { padding: 12px; border: 1px solid #00000044; vertical-align: top; }
+  .tier-label { width: 80px; font-size: 1.8em; font-weight: bold; text-align: center; color: #fff; }
+  .tier-S { background: linear-gradient(135deg, #ff6b6b, #c9302c); }
+  .tier-A { background: linear-gradient(135deg, #f0ad4e, #c98028); }
+  .tier-B { background: linear-gradient(135deg, #5cb85c, #449d44); }
+  .tier-C { background: linear-gradient(135deg, #5bc0de, #46a4c0); }
+
+  /* Card grid */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin: 16px 0; }
+  .card { background: var(--panel); border-radius: 8px; padding: 14px 16px; border-top: 4px solid var(--accent); }
+  .card.tS { border-top-color: var(--red); }
+  .card.tA { border-top-color: var(--orange); }
+  .card.tB { border-top-color: var(--green); }
+  .card.tC { border-top-color: #5bc0de; }
+  .card h3 { margin: 0 0 6px 0; font-size: 1.05em; color: var(--gold); }
+  .card .slot { display: inline-block; background: #00000055; padding: 2px 8px; border-radius: 12px; font-size: 0.75em; color: var(--accent); margin-bottom: 8px; }
+  .card .effect { font-size: 0.9em; margin: 6px 0; }
+  .card .why { font-size: 0.85em; color: var(--muted); border-top: 1px solid #ffffff15; padding-top: 6px; margin-top: 8px; }
+  .price { font-size: 0.75em; color: var(--gold); float: right; }
+
+  /* Roadmap flow */
+  .roadmap { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 16px 0; }
+  .stage { background: var(--panel2); padding: 14px 18px; border-radius: 8px; flex: 1; min-width: 180px; position: relative; }
+  .stage .num { position: absolute; top: -10px; left: -10px; background: var(--accent); color: #000; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+  .stage h4 { margin: 0 0 4px 0; color: var(--gold); font-size: 0.95em; }
+  .stage ul { margin: 4px 0; padding-left: 16px; font-size: 0.8em; }
+  .arrow { color: var(--accent); font-size: 1.8em; flex: 0; }
+
+  /* Synergy matrix */
+  .matrix { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.85em; }
+  .matrix th, .matrix td { border: 1px solid #ffffff20; padding: 8px; text-align: center; }
+  .matrix th { background: var(--panel); color: var(--gold); }
+  .matrix td.item { text-align: left; background: var(--panel2); color: var(--gold); }
+  .yes { color: var(--green); font-weight: bold; }
+  .no { color: var(--red); }
+  .partial { color: var(--orange); }
+
+  /* Conflict box */
+  .conflict { background: #2a1a1a; border-left: 4px solid var(--red); padding: 12px 16px; margin: 12px 0; border-radius: 6px; font-size: 0.9em; }
+  .conflict strong { color: var(--red); }
+
+  /* Legend */
+  .legend { display: flex; gap: 16px; font-size: 0.8em; color: var(--muted); margin: 8px 0; }
+  .legend span { display: flex; align-items: center; gap: 4px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+</style>
+</head>
+<body>
+
+<h1>Chronomancer キー装備マップ</h1>
+<p class="meta">PoE2 0.5 Return of the Ancients / 出典: 公式パッチノート Section 17 (New Unique) + Section 22 (Unique Changes)</p>
+
+<h2>🎯 結論先出し: 5 個に絞った優先順位</h2>
+
+<table class="tier-table">
+  <tr>
+    <td class="tier-label tier-S">S</td>
+    <td><strong>Mageblood (Belt)</strong> — リーグ最終目標。flask 4 個常時稼働、Spell sorc の終着点。</td>
+  </tr>
+  <tr>
+    <td class="tier-label tier-A">A</td>
+    <td><strong>The Hollow Mask (Helmet)</strong> / <strong>Reverie (Body Armour, 旧 Husk of Dreams)</strong> — リーグ序盤〜中盤の構築コア。安い割に効果が大きい。</td>
+  </tr>
+  <tr>
+    <td class="tier-label tier-B">B</td>
+    <td><strong>Seed of Cataclysm (Ring)</strong> / <strong>Voices (Jewel)</strong> — Crit / Notable 拡張の中堅枠。中盤以降。</td>
+  </tr>
+  <tr>
+    <td class="tier-label tier-C">C</td>
+    <td><strong>Vertex / Atziri's Rule / Loreweave / Elevore / Megalomaniac</strong> — 構築軸により採否分岐。</td>
+  </tr>
+</table>
+
+<h2>🗺️ ロードマップ (構築フェーズ別)</h2>
+<div class="roadmap">
+  <div class="stage">
+    <div class="num">1</div>
+    <h4>Lv 1-70 (キャンペーン〜A1 Map)</h4>
+    <ul>
+      <li>Rare + Body/Mind Rune で繋ぐ</li>
+      <li>装備依存ゼロで Comet / Frostbolt 通用</li>
+    </ul>
+  </div>
+  <div class="arrow">→</div>
+  <div class="stage">
+    <div class="num">2</div>
+    <h4>Lv 70-85 (T6-T12 Map)</h4>
+    <ul>
+      <li><strong>The Hollow Mask</strong> 確保</li>
+      <li><strong>Reverie</strong> で常時 regen 化</li>
+    </ul>
+  </div>
+  <div class="arrow">→</div>
+  <div class="stage">
+    <div class="num">3</div>
+    <h4>Lv 85-92 (T13-T16 / Pinnacle 入口)</h4>
+    <ul>
+      <li><strong>Seed of Cataclysm</strong></li>
+      <li><strong>Voices</strong> で notable 拡張</li>
+    </ul>
+  </div>
+  <div class="arrow">→</div>
+  <div class="stage">
+    <div class="num">4</div>
+    <h4>Lv 92+ (Fortress / Pinnacle 周回)</h4>
+    <ul>
+      <li><strong>Mageblood</strong></li>
+      <li>軸別に Vertex / Atziri's Rule 追加</li>
+    </ul>
+  </div>
+</div>
+
+<h2>📇 装備カード一覧</h2>
+
+<div class="grid">
+
+  <div class="card tS">
+    <span class="slot">Belt</span><span class="price">超高価</span>
+    <h3>Mageblood</h3>
+    <div class="effect">Magic flask 4 本常時稼働 (PoE1 仕様準拠)</div>
+    <div class="why">Sands of Time × Mana flask 起動 Glowswarm × Pathfinder Charm。Chronomancer の CDR/Skill Speed と全部噛む。</div>
+  </div>
+
+  <div class="card tA">
+    <span class="slot">Helmet</span><span class="price">低〜中</span>
+    <h3>The Hollow Mask (リワーク)</h3>
+    <div class="effect">Wildwood's Gifts スキル + Remnant Reservation Efficiency <strong>80-100%↑</strong> + Ally にも Remnant 効果共有</div>
+    <div class="why">Runes of Aldur が Remnant 中心の league なので、初手の経済構築速度が直接上がる。</div>
+  </div>
+
+  <div class="card tA">
+    <span class="slot">Body Armour</span><span class="price">中</span>
+    <h3>Reverie (旧 Husk of Dreams)</h3>
+    <div class="effect">Non-Unique Life Flask 効果<strong>常時適用</strong> / Life Flask 使用不可 / Recovery 40-60% less</div>
+    <div class="why">Sorceress は ES 主軸 → Life Flask 不要 = デメリット実質無視で永続 regen。Phased Form の遅延ダメージ吸収に最適。</div>
+  </div>
+
+  <div class="card tB">
+    <span class="slot">Ring</span><span class="price">中</span>
+    <h3>Seed of Cataclysm (リワーク)</h3>
+    <div class="effect">Spell Crit を <strong>15-30% Lucky</strong> / 直近 Spell Crit 1 回ごとに 5% reduced Crit Damage Bonus</div>
+    <div class="why">Comet / Spark Crit sorc に直撃。Damage Bonus 減衰デメリットは Inevitable Agony cull で帳消し。</div>
+  </div>
+
+  <div class="card tB">
+    <span class="slot">Jewel</span><span class="price">中〜高</span>
+    <h3>Voices</h3>
+    <div class="effect">(PoE1 仕様) Notable 圏拡張系 cluster 互換</div>
+    <div class="why">Chronomancer の中核は Phased Form / Now and Again / Footprints in the Sand の Notable 連打。Notable 拡張で大化け。</div>
+  </div>
+
+  <div class="card tC">
+    <span class="slot">Helmet (Vaal)</span><span class="price">高</span>
+    <h3>Vertex (リワーク)</h3>
+    <div class="effect"><strong>+3-5 to Level of All Curse Skill Gems</strong> (旧 +2-4 All Skills)</div>
+    <div class="why">Inevitable Agony は Curse でなくなったため直接恩恵なし。<strong>Temporal Chains / Despair 併用構築のみ</strong>採用。</div>
+  </div>
+
+  <div class="card tC">
+    <span class="slot">Staff (Vaal)</span><span class="price">高</span>
+    <h3>Atziri's Rule (リワーク)</h3>
+    <div class="effect">10-20% Life Cost Efficiency (nerf) / Mirror of Refraction が <strong>CDR でスケール</strong></div>
+    <div class="why">Chronomancer は CDR を盛る class → Mirror of Refraction の発動頻度を直接上げられる構造シナジー。</div>
+  </div>
+
+  <div class="card tC">
+    <span class="slot">Body Armour</span><span class="price">中</span>
+    <h3>Loreweave (新規)</h3>
+    <div class="effect">(PoE1 仕様準拠なら) max all res cap 引き上げ</div>
+    <div class="why">ES Recharge 全面 nerf 環境で「resistance cap で生存」軸に振るなら核。Reverie と択一。</div>
+  </div>
+
+  <div class="card tC">
+    <span class="slot">Helmet</span><span class="price">中</span>
+    <h3>Elevore (強化)</h3>
+    <div class="effect">Charm 1 charge/秒 (旧 0.5) / <strong>+1-2 Charm Slot</strong> (旧 +1)</div>
+    <div class="why">Charm 多用 build 専用。Hollow Mask / Vertex と競合枠。</div>
+  </div>
+
+  <div class="card tC">
+    <span class="slot">Jewel</span><span class="price">低 (下落)</span>
+    <h3>Megalomaniac (改善)</h3>
+    <div class="effect"><strong>identified 状態でドロップ</strong></div>
+    <div class="why">即評価 = 価格下落 = 拾いやすい。ニッチ Notable 引き当て用。</div>
+  </div>
+
+</div>
+
+<h2>⚔️ 構築軸 × 装備マトリクス</h2>
+
+<table class="matrix">
+  <tr>
+    <th></th>
+    <th>Crit Spell<br>(Comet/Spark)</th>
+    <th>Inevitable Agony<br>処刑軸</th>
+    <th>Curse 併用<br>(TC/Despair)</th>
+    <th>Totem 派生</th>
+  </tr>
+  <tr>
+    <td class="item">Mageblood</td>
+    <td class="yes">◎</td>
+    <td class="yes">◎</td>
+    <td class="yes">◎</td>
+    <td class="yes">◎</td>
+  </tr>
+  <tr>
+    <td class="item">Hollow Mask</td>
+    <td class="yes">◎</td>
+    <td class="yes">◎</td>
+    <td class="yes">◎</td>
+    <td class="yes">◎</td>
+  </tr>
+  <tr>
+    <td class="item">Reverie</td>
+    <td class="yes">◎</td>
+    <td class="yes">◎</td>
+    <td class="yes">◎</td>
+    <td class="partial">○</td>
+  </tr>
+  <tr>
+    <td class="item">Seed of Cataclysm</td>
+    <td class="yes">◎</td>
+    <td class="partial">○</td>
+    <td class="partial">○</td>
+    <td class="no">✕</td>
+  </tr>
+  <tr>
+    <td class="item">Voices</td>
+    <td class="yes">◎</td>
+    <td class="yes">◎</td>
+    <td class="yes">◎</td>
+    <td class="yes">◎</td>
+  </tr>
+  <tr>
+    <td class="item">Vertex</td>
+    <td class="no">✕</td>
+    <td class="no">✕</td>
+    <td class="yes">◎</td>
+    <td class="no">✕</td>
+  </tr>
+  <tr>
+    <td class="item">Atziri's Rule</td>
+    <td class="partial">○</td>
+    <td class="no">✕</td>
+    <td class="partial">○</td>
+    <td class="no">✕</td>
+  </tr>
+  <tr>
+    <td class="item">Loreweave</td>
+    <td class="yes">◎</td>
+    <td class="yes">◎</td>
+    <td class="yes">◎</td>
+    <td class="yes">◎</td>
+  </tr>
+</table>
+
+<div class="legend">
+  <span><span class="dot" style="background: var(--green);"></span>◎ 核装備</span>
+  <span><span class="dot" style="background: var(--orange);"></span>○ 採用余地あり</span>
+  <span><span class="dot" style="background: var(--red);"></span>✕ 不採用</span>
+</div>
+
+<h2>⚠️ 競合・排他に注意</h2>
+
+<div class="conflict">
+<strong>Reverie ⇔ Zerphi's Genesis</strong> — Reverie は「Cannot use Life Flasks」、Zerphi's Genesis は Life Flask Charge を Charm に流すユニーク。<strong>同時採用不可</strong>。Reverie を選んだ時点で Life Flask 経由のすべての belt 効果が死ぬ。
+</div>
+
+<div class="conflict">
+<strong>Vertex は Inevitable Agony に効かない</strong> — Inevitable Agony は本パッチで Curse ではなくなり、Life Loss debuff になった。Vertex は<strong>他の Curse (Temporal Chains, Despair, Enfeeble) と併用する場合のみ</strong>価値がある。
+</div>
+
+<div class="conflict">
+<strong>Hollow Mask の真価はリーグ早期</strong> — Remnant 経済が動いている期間ほど価値が高い。リーグ末期に拾うと既に Remnant を回しきっていて遅い。<strong>初手キャラほど狙う意味がある</strong>。
+</div>
+
+<h2>📌 一行サマリ</h2>
+<p style="background: var(--panel); padding: 16px; border-radius: 6px; border-left: 4px solid var(--green); font-size: 1.05em;">
+<strong>Hollow Mask → Reverie → Seed of Cataclysm → Voices → Mageblood</strong> の順で揃える。最初の 2 つはリーグ序盤で十分手に届く価格帯、後半の 2 つは中盤、Mageblood はリーグ最終目標。
+</p>
+
+</body>
+</html>
