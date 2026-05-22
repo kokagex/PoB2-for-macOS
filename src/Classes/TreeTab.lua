@@ -960,6 +960,7 @@ function TreeTabClass:BuildPowerReportList(currentStat)
 				x = node.x,
 				y = node.y,
 				type = node.type,
+				sd = node.sd,
 				pathDist = pathDist
 			})
 		end
@@ -988,6 +989,7 @@ function TreeTabClass:BuildPowerReportList(currentStat)
 				pathPowerStr = "--",
 				id = node.id,
 				type = node.type,
+				sd = node.sd,
 				pathDist = "Cluster"
 			})
 		end
