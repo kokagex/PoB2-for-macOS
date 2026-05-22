@@ -2,7 +2,7 @@
 
 上流: `PathOfBuildingCommunity/PathOfBuilding-PoE2` `dev` ブランチ
 ローカル: `kokagex/PoB2-for-macOS` `main` ブランチ
-最終同期: 2026-05-23 (Phase 7, 上流 commit `f0ed15fd4`)
+最終同期: 2026-05-23 (Phase 8, 上流 commit `f0ed15fd4`)
 
 ---
 
@@ -319,6 +319,84 @@ worktree `.worktrees/upstream-sync-phase7` (branch `sync/upstream-phase7`) で 3
   - ConfigTab=10, EditControl=0, ItemDBControl=10, PartyTab=24, TreeTab=1
 - busted 単体テスト: 環境に未インストールのため未実施
 - `scripts/build-app.sh --dev` 起動確認: ユーザー側で実施推奨
+
+---
+
+### ✅ Phase 8 — (2026-05-23): Compare Tab (#1830) + 高衝突 3 files
+
+Phase 7 で分離していた **Compare Tab + PassiveSpec/PoEAPI/SkillsTab** を取り込み。
+来週予定の大型アップデート前に upstream 追従するためユーザー指示で実施。
+worktree `.worktrees/upstream-sync-phase8` (branch `sync/upstream-phase8`) で 2 commit に分割。
+
+#### Phase 8a Compare Tab (commit `3f2ed6ad6`) — 28 files
+
+**git apply --3way** + 手動マージで ローカル独自パッチ温存。
+**`git merge-file -p` は unrelated histories で silent theirs 採用バグあり、`git apply --3way` 必須**。
+
+新規 NEW 9 files (上流から checkout):
+| ファイル | 内容 |
+|---|---|
+| `src/Modules/BuildListHelpers.lua` | buildSortDropList を Compare Tab と共有 |
+| `src/Modules/CalcFormat.lua` | `formatCalcStr` グローバル関数 (Compare Tab で共通利用) |
+| `src/Classes/Compare{BuySimilar, CalcsHelpers, Entry, PowerReportListControl, Tab, TradeHelpers}.lua` | Compare Tab 本体 6 files |
+| `src/Classes/TradeQueryHelpers.lua` | `GetTradeCategory()` 関数化 |
+
+CLEAN fast-forward 11 files (ローカル変更ゼロ):
+| ファイル | 内容 |
+|---|---|
+| `src/Classes/PassiveMasteryControl.lua` | Mastery node 拡張 |
+| `src/Modules/Data.lua`, `src/Classes/ControlHost.lua` | clean --3way apply |
+| `src/Data/{Global, ModCharm, ModCorrupted, ModFlask, ModIncursionLimb, ModItem, ModItemExclusive, ModJewel, ModVeiled}.lua` | 大量 Mod データ更新 (+14000 行) |
+
+手動マージ 8 files:
+| ファイル | 統合内容 |
+|---|---|
+| `src/Modules/BuildList.lua` | BuildListHelpers shared list + i18n.t() label 上書き再適用 |
+| `src/Modules/Main.lua` | isJapanese レイアウト + popupWidth ベース統合 + migrateAugments checkbox 取り込み |
+| `src/Modules/Build.lua` | 7 conflicts 統合: save/saveAs ボタン (i18n) + buildName.x/y 動的 + secondaryAscendDrop (PoE2 alternate ascendancy) + Spec nil-safety + alternate_ascendancies sorting + statSet.skillFlags 経路 + Spectre/Companion 分岐 + buildNameConditional layout |
+| `src/Classes/CalcSectionControl.lua` | displayLabel (i18n) + formatCalcStr (上流 global) 統合 |
+| `src/Classes/ImportTab.lua` | ours (同期 OAuth) 維持 — ローカル PoEAPI と互換性確保 |
+| `src/Classes/ItemsTab.lua` | clean apply + addCompareForSlot 関数の i18n.t() 化 |
+| `src/Classes/TradeQueryGenerator.lua` | theirs 採用 (大量 elseif → tradeHelpers.GetTradeCategory 関数化) |
+
+#### Phase 8b 高衝突 3 files (commit `fee57c35e`) — 2 files (PoEAPI は実質スキップ)
+
+| ファイル | 内容 |
+|---|---|
+| `src/Classes/PassiveSpec.lua` | weapon set alloc + node color (#1904), crash on old builds (#1925), pathRoot + CanPathThroughAllocMode 取り込み (path 関数結果使用に統一)、PRJ-003 pathDist nil-safety + MINIMAL_PASSIVE_TEST (12 件) 温存 |
+| `src/Classes/SkillsTab.lua` | fractional DPS (#1916), item-granted skill socket limit (#1883)、i18n.t (71 件) 温存 |
+| `src/Classes/PoEAPI.lua` | **上流の callback 方式 OAuth は不採用** (LaunchSubScript 方式は ローカル macOS BeginAuth/secure_random_bytes/LaunchServer.lua dofile 実装と互換性なし)。HEAD と完全一致状態で commit にも含まれない (ImportTab と OAuth 方式統一) |
+
+#### Phase 9 へ分離
+
+| ファイル | 理由 |
+|---|---|
+| `src/Classes/PassiveTreeView.lua` | 描画ループ構造が完全に異なる: ローカル Metal/MINIMAL_PASSIVE_TEST + secondaryAscendNameMap + calcsTab nil-safety + Phase 1 描画書き換え と 上流 compareSpec hover + allocMode + jewel art が同領域で根本的衝突。compareSpec ツリー比較は機能しないが Compare Tab 本体 (テキスト比較) は動作 |
+
+#### スキップ判定 (Phase 8 で取り込まないファイル)
+
+Phase 7 と同じ。
+
+#### 検証
+
+- 全 30 files (Phase 8a 28 + Phase 8b 2) LuaJIT syntax check PASS
+- ローカル独自パッチ温存確認 (HEAD 出現数と一致):
+  - isJapanese=4, fontScale=7, deferTooltips=8, MINIMAL_PASSIVE_TEST=14 (PassiveTreeView 温存分含む)
+  - PassiveSpec MINIMAL_PASSIVE_TEST=12, PoEAPI BeginAuth/secure_random_bytes=5, SkillsTab i18n.t=71
+- busted 単体テスト: 環境に未インストールのため未実施
+- `scripts/build-app.sh --dev` 起動確認: ユーザー側で実施推奨
+
+#### i18n 新 UI 文字列の後追い (Phase 8 後の別 sprint)
+
+Compare Tab + 新 UI 機能で英語ラベルが追加された。`ja.lua` への翻訳キー追加が必要:
+- `migrateAugments` checkbox (Main.lua "Copy augments onto display item:")
+- `Anoint 2/3/4` ボタン (ItemsTab.lua)
+- "Auto"/"Manual" levelScaling button (Build.lua の英語ラベル温存)
+- "Import/Export Build" (Build.lua)
+- `gemNameHeader` 系 (SkillsTab i18n.t は温存済、新 UI のみ)
+- Compare Tab 本体 UI ラベル
+
+`MEMORY.md` の翻訳ワークフロー: grep で全使用箇所洗い出し → ja.lua/en.lua にキー追加 → label を i18n.t() に巻き直し。
 
 ---
 
