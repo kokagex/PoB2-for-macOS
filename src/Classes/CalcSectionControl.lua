@@ -248,7 +248,7 @@ function CalcSectionClass:Draw(viewPort, noTooltip)
 			DrawString(x + 3, lineY + 3, "LEFT", 16, "VAR BOLD", textColor..displayLabel..":")
 			if subSec.data.extra then
 				local x = x + 3 + DrawStringWidth(16, "VAR BOLD", displayLabel) + 10
-				DrawString(x, lineY + 3, "LEFT", 16, "VAR", "^7"..self:FormatStr(subSec.data.extra, actor))
+				DrawString(x, lineY + 3, "LEFT", 16, "VAR", "^7"..formatCalcStr(subSec.data.extra, actor))
 			end
 		end
 		-- Draw line below label
@@ -304,7 +304,7 @@ function CalcSectionClass:Draw(viewPort, noTooltip)
 							end
 							local textSize = rowData.textSize or 14
 							SetViewport(colData.x + 3, colData.y, colData.width - 4, colData.height)
-							DrawString(1, 9 - textSize/2, "LEFT", textSize, "VAR", "^7"..self:FormatStr(colData.format, actor, colData))
+							DrawString(1, 9 - textSize/2, "LEFT", textSize, "VAR", "^7"..formatCalcStr(colData.format, actor, colData))
 							SetViewport()
 						end
 					end
