@@ -517,14 +517,6 @@ skills["SupportAncestralWarriorTotemPlayer"] = {
 	addSkillTypes = { SkillType.UsedByTotem, },
 	excludeSkillTypes = { SkillType.Meta, SkillType.Triggered, SkillType.Cooldown, SkillType.Channel, SkillType.Persistent, },
 	ignoreMinionTypes = true,
-	weaponTypes = {
-		["One Hand Axe"] = true,
-		["One Hand Mace"] = true,
-		["One Hand Sword"] = true,
-		["Two Hand Axe"] = true,
-		["Two Hand Mace"] = true,
-		["Two Hand Sword"] = true,
-	},
 	qualityStats = {
 	},
 	levels = {
@@ -5292,10 +5284,6 @@ skills["SupportFerociousRoarPlayer"] = {
 	excludeSkillTypes = { SkillType.Meta, SkillType.InbuiltTrigger, SkillType.Shapeshift, },
 	isTrigger = true,
 	ignoreMinionTypes = true,
-	weaponTypes = {
-		["Bow"] = true,
-		["Spear"] = true,
-	},
 	qualityStats = {
 		{ "warcry_grant_damage_+%_to_exerted_attacks", 1.5 },
 	},
@@ -18733,6 +18721,12 @@ skills["ThunderstormPlayer"] = {
 				["lightning_storm_hit_prevention_duration_ms"] = {
 					skill("maxHitRatePerEnemy", nil),
 					div = 1000,
+				},
+				["thunderstorm_wet_debuff_shock_chance_on_+%_final"] = {
+					mod("EnemyShockChance", "MORE", nil, 0, 0, { type = "GlobalEffect", effectType = "Buff", effectName = "Thunderstorm"}),
+				},
+				["thunderstorm_wet_debuff_hit_damage_freeze_multiplier_+%_final"] = {
+					mod("EnemyFreezeBuildup", "MORE", nil, 0, 0, { type = "GlobalEffect", effectType = "Buff", effectName = "Thunderstorm"}),
 				},
 			},
 			baseFlags = {
