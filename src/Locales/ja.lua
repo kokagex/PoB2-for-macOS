@@ -919,6 +919,7 @@ return {
 			enchant = "^7エンチャント:",
 			enchantN = "^7エンチャント #",
 			modifier = "^7Mod:",
+			sortBy = "^7ソート:",
 			allItems = "^7全アイテム:",
 			rarity = "レアリティ:",
 			type = "タイプ:",
@@ -997,6 +998,7 @@ return {
 			suffix = "サフィックス",
 			essence = "エッセンス",
 			custom = "カスタム",
+			desecrated = "冒涜",
 		},
 		catalyst = {
 			catalyst = "カタリスト",

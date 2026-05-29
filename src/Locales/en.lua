@@ -317,6 +317,7 @@ return {
 			enchant = "^7Enchant:",
 			enchantN = "^7Enchant #",
 			modifier = "^7Modifier:",
+			sortBy = "^7Sort by:",
 			allItems = "^7All items:",
 			rarity = "Rarity:",
 			type = "Type:",
@@ -395,6 +396,7 @@ return {
 			suffix = "Suffix",
 			essence = "Essence",
 			custom = "Custom",
+			desecrated = "Desecrated",
 		},
 		catalyst = {
 			catalyst = "Catalyst",
