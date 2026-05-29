@@ -194,6 +194,8 @@ return {
 			gemName = "Gem name:",
 			level = "Level:",
 			quality = "Quality:",
+			corrupt = "Corrupt:",
+			showLegacy = "Show legacy gems:",
 			label = "Label",
 		},
 		buttons = {
@@ -220,11 +222,9 @@ return {
 		gemLevel = {
 			normalMax = "Normal Maximum",
 			corruptedMax = "Corrupted Maximum",
-			awakenedMax = "Awakened Maximum",
 			matchCharLevel = "Match Character Level",
 			descNormal = "All gems default to their highest valid non-corrupted gem level.",
 			descCorrupted = "Normal gems default to their highest valid corrupted gem level.\nAwakened gems default to their highest valid non-corrupted gem level.",
-			descAwakened = "All gems default to their highest valid corrupted gem level.",
 			descCharacter = "All gems default to their highest valid non-corrupted gem level that your character meets the level requirement for.\nThis hides gems with a minimum level requirement above your character level, preventing them from showing up in the dropdown list.",
 		},
 		dpsSort = {
@@ -246,8 +246,14 @@ return {
 		},
 		supportGems = {
 			all = "All",
-			nonAwakened = "Non-Awakened",
-			awakened = "Awakened",
+			lineage = "Lineage",
+			nonLineage = "Non-Lineage",
+		},
+		corruptOption = {
+			notCorrupted = "Not Corrupted",
+			plusOne = "+1 to Gem Level",
+			corrupted = "Corrupted",
+			minusOne = "-1 to Gem Level",
 		},
 		popups = {
 			deleteAllTitle = "Delete All",
@@ -273,6 +279,8 @@ return {
 			countUsage2 = "multi-hit projectiles (e.g. ball-lightning), traps, mines.",
 			disableGem = "Disabling this gem will give you:",
 			enableGem = "Enabling this gem will give you:",
+			disablingGroup = "^7Disabling this group will give you:",
+			enablingGroup = "^7Enabling this group will give you:",
 			inactiveWeapon = "Note: this group is disabled because it is socketed in the inactive weapon set.",
 			source = "Source: ",
 			activeSkill = "Active Skill #%d:",

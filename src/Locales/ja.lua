@@ -796,6 +796,8 @@ return {
 			gemName = "ジェム名:",
 			level = "レベル:",
 			quality = "品質:",
+			corrupt = "汚染:",
+			showLegacy = "レガシージェムを表示:",
 			label = "ラベル",
 		},
 		buttons = {
@@ -822,11 +824,9 @@ return {
 		gemLevel = {
 			normalMax = "通常最大",
 			corruptedMax = "コラプト最大",
-			awakenedMax = "覚醒最大",
 			matchCharLevel = "キャラクターレベルに合わせる",
 			descNormal = "すべてのジェムが非コラプト最大レベルになります。",
 			descCorrupted = "通常ジェムはコラプト最大レベルになります。\n覚醒ジェムは非コラプト最大レベルになります。",
-			descAwakened = "すべてのジェムがコラプト最大レベルになります。",
 			descCharacter = "キャラクターのレベル要件を満たす最大の非コラプトレベルになります。\nキャラクターレベルより高いレベル要件のジェムはドロップダウンに表示されません。",
 		},
 		dpsSort = {
@@ -848,8 +848,14 @@ return {
 		},
 		supportGems = {
 			all = "すべて",
-			nonAwakened = "非覚醒",
-			awakened = "覚醒",
+			lineage = "リネージ",
+			nonLineage = "非リネージ",
+		},
+		corruptOption = {
+			notCorrupted = "非コラプト",
+			plusOne = "ジェムレベル +1",
+			corrupted = "コラプト",
+			minusOne = "ジェムレベル -1",
 		},
 		popups = {
 			deleteAllTitle = "すべて削除",
@@ -875,6 +881,8 @@ return {
 			countUsage2 = "複数ヒットプロジェクタイル（例: ボールライトニング）、トラップ、地雷に使用。",
 			disableGem = "このジェムを無効にすると:",
 			enableGem = "このジェムを有効にすると:",
+			disablingGroup = "^7このグループを無効にすると:",
+			enablingGroup = "^7このグループを有効にすると:",
 			inactiveWeapon = "注: このグループは非アクティブ武器セットにソケットされているため無効です。",
 			source = "ソース: ",
 			activeSkill = "アクティブスキル #%d:",
