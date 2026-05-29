@@ -30,6 +30,7 @@ pob2macos/simplegraphic/build/
 *.dds.zst
 tree-data/**/*.png
 tree-data/**/*.jpg
+tree-data/**/*.webp
 
 # Standard fonts (install separately, not bundled in repo)
 runtime/fonts/LiberationSans-*.ttf
