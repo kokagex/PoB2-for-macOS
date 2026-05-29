@@ -5,6 +5,7 @@ local dkjson = require "dkjson"
 local scopesOAuth = {
 	"account:profile",
 	"account:characters",
+	"account:trade"
 }
 
 local filename = "poe_api_response.json"
@@ -114,6 +115,7 @@ end
 -- func callback(valid, updateSettings)
 function PoEAPIClass:ValidateAuth(callback)
 	if self.authToken and self.refreshToken and self.tokenExpiry then
+		ConPrintf("Validating auth token")
 		if self.tokenExpiry < os.time() then
 			local formText = "client_id=pob&grant_type=refresh_token&refresh_token=" .. self.refreshToken
 			local response, errMsg = self:HttpRequest("https://www.pathofexile.com/oauth/token", nil, formText)
@@ -336,14 +338,13 @@ function PoEAPIClass:CancelAuth()
 	return true
 end
 
--- func callback(response, errorMsg, updateSettings)
+--- @param endpoint string
+--- @param callback fun(response: table, errorMsg: string, updateSettings: bool)
 function PoEAPIClass:DownloadWithRefresh(endpoint, callback)
 	self:ValidateAuth(function(valid, updateSettings)
 		if not valid then
 			-- Clean info about token and refresh token
-			self.authToken = nil
-			self.refreshToken = nil
-			self.tokenExpiry = nil
+			self:ResetDetails()
 			callback(nil, self.ERROR_NO_AUTH, true)
 			return
 		end
@@ -372,6 +373,10 @@ function PoEAPIClass:DownloadWithRefresh(endpoint, callback)
 	end)
 end
 
+--- @alias DownloadCallback fun(timeOrBody: table|integer, err: string?)
+--- @param policy string
+--- @param url string
+--- @param callback DownloadCallback
 function PoEAPIClass:DownloadWithRateLimit(policy, url, callback)
 	local now = os.time()
 	local timeNext = self.rateLimiter:NextRequestTime(policy, now)
@@ -399,7 +404,7 @@ end
 
 ---Fetches character list from PoE's OAuth api
 ---@param realm string Realm to fetch the list from (always poe2)
----@param callback function callback(response, errorMsg, updateSettings)
+---@param callback DownloadCallback
 function PoEAPIClass:DownloadCharacterList(realm, callback)
 	self:DownloadWithRateLimit("character-list-request-limit-poe2", "/character" .. (realm == "pc" and "" or "/" .. realm), callback)
 end
@@ -408,7 +413,7 @@ end
 ---Fetches character from PoE's OAuth api
 ---@param realm string Realm to fetch the character from (always poe2)
 ---@param name string Character name to fetch
----@param callback function callback(response, errorMsg, updateSettings)
+---@param callback DownloadCallback
 function PoEAPIClass:DownloadCharacter(realm, name, callback)
 	self:DownloadWithRateLimit("character-request-limit-poe2", "/character" .. (realm == "pc" and "" or "/" .. realm) .. "/" .. name, callback)
 end

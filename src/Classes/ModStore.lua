@@ -122,6 +122,19 @@ function ModStoreClass:ReplaceMod(...)
 	end
 end
 
+---ConvertMod
+---  Converts an existing mod to a new name, replacing it in the store.
+---  Finds a mod matching oldName with the same type, flags, keywordFlags, and source as the new mod.
+---  If no matching mod exists, the new mod is added instead.
+---@param oldName string @The name of the existing mod to convert
+---@param ... any @Parameters to be passed along to the modLib.createMod function (new name, type, value, source, ...)
+function ModStoreClass:ConvertMod(oldName, ...)
+	local mod = mod_createMod(...)
+	if not self:ConvertModInternal(oldName, mod) then
+		self:AddMod(mod)
+	end
+end
+
 function ModStoreClass:Combine(modType, cfg, ...)
 	if modType == "MORE" then
 		return self:More(cfg, ...)
@@ -442,15 +455,8 @@ function ModStoreClass:EvalMod(mod, cfg, globalLimits)
 				mult = GetMultiplier(target, tag.var, cfg)
 			end
 			local threshold = tag.threshold or GetMultiplier(tag.thresholdActor and thresholdTarget or target, tag.thresholdVar, cfg)
-			if (tag.upper and mult > threshold) or (tag.equals and mult ~= threshold) or (not (tag.upper and tag.exact) and mult < threshold) then
+			if (tag.upper and mult > threshold) or (tag.equals and mult ~= threshold) or (not tag.upper and mult < threshold) then
 				return
-			end
-			-- scale effects of Multiplier mod
-			if tag.scalar then
-				local scalar = 1 + GetMultiplier(target, tag.scalar, cfg) / 100
-				if scalar > 1 then
-					value = value * scalar
-				end
 			end
 		elseif tag.type == "PerStat" then
 			local base
