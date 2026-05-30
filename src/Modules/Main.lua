@@ -145,9 +145,8 @@ function main:Init()
 	self.slotOnlyTooltips = true
 	self.migrateAugments = true
 	self.notSupportedModTooltips = true
-	self.notSupportedTooltipText = i18n.t("general.notSupportedTooltip")
-	self.POESESSID = ""
-	self.showPublicBuilds = true
+	self.notSupportedTooltipText = " ^8(Not supported in PoB yet)"
+	--self.showPublicBuilds = true
 	self.showFlavourText = true
 	self.showAnimations = true
 	self.showAllItemAffixes = true
@@ -746,11 +745,11 @@ function main:LoadSettings(ignoreBuild)
 				if node.attrib.slotOnlyTooltips then
 					self.slotOnlyTooltips = node.attrib.slotOnlyTooltips == "true"
 				end
+				if node.attrib.migrateAugments then
+					self.migrateAugments = node.attrib.migrateAugments == "true"
+				end
 				if node.attrib.notSupportedModTooltips then
 					self.notSupportedModTooltips = node.attrib.notSupportedModTooltips == "true"
-				end
-				if node.attrib.POESESSID then
-					self.POESESSID = node.attrib.POESESSID or ""
 				end
 				if node.attrib.invertSliderScrollDirection then
 					self.invertSliderScrollDirection = node.attrib.invertSliderScrollDirection == "true"
@@ -899,7 +898,6 @@ function main:SaveSettings()
 		slotOnlyTooltips = tostring(self.slotOnlyTooltips),
 		migrateAugments = tostring(self.migrateAugments),
 		notSupportedModTooltips = tostring(self.notSupportedModTooltips),
-		POESESSID = self.POESESSID,
 		invertSliderScrollDirection = tostring(self.invertSliderScrollDirection),
 		disableDevAutoSave = tostring(self.disableDevAutoSave),
 		showPublicBuilds = tostring(self.showPublicBuilds),
@@ -959,8 +957,9 @@ function main:ChangeUserPath(newUserPath, ignoreBuild)
 	self:LoadSettings(ignoreBuild)
 	self:LoadSharedItems()
 end
-
-function main:OpenOptionsPopup()
+--- Opens the popup for the "Options" menu
+--- @param savedState table|nil optional passing of saved values, in case of reopening `{nodePowerTheme, colorPositive, ...}`
+function main:OpenOptionsPopup(savedState)
 	local controls = { }
 	local s = self.screenScale or 1
 
@@ -1005,8 +1004,7 @@ function main:OpenOptionsPopup()
 	controls.languageLabel = new("LabelControl", { "RIGHT", controls.language, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 * s }, "^7" .. i18n.t("options.language"))
 	controls.language:SelByValue(self.language, "code")
 
-	nextRow()
-	controls.connectionProtocol = new("DropDownControl", { "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 100 * s, 18 * s }, {
+	controls.connectionProtocol = new("DropDownControl", { "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 100, 18 }, {
 		{ label = "Auto", protocol = 0 },
 		{ label = "IPv4", protocol = 1 },
 		{ label = "IPv6", protocol = 2 },
@@ -1018,7 +1016,7 @@ function main:OpenOptionsPopup()
 	controls.connectionProtocol:SelByValue(launch.connectionProtocol, "protocol")
 
 	nextRow()
-	controls.proxyType = new("DropDownControl", { "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 80 * s, 18 * s }, {
+	controls.proxyType = new("DropDownControl", { "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 80, 18 }, {
 		{ label = "HTTP", scheme = "http" },
 		{ label = "SOCKS", scheme = "socks5" },
 		{ label = "SOCKS5H", scheme = "socks5h" },
@@ -1045,6 +1043,9 @@ function main:OpenOptionsPopup()
 	}, function(index, value)
 		self.dpiScaleOverridePercent = value.percent
 		SetDPIScaleOverridePercent(value.percent)
+		self.screenW, self.screenH = GetVirtualScreenSize() -- refresh screen size immediately
+		self:ClosePopup()
+		self:OpenOptionsPopup(savedState)
 	end)
 	controls.dpiScaleOverrideLabel = new("LabelControl", { "RIGHT", controls.dpiScaleOverride, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 * s }, "^7" .. i18n.t("options.app.uiScaling"))
 	controls.dpiScaleOverride.tooltipText = i18n.t("options.app.tooltipDpiScale")
@@ -1071,7 +1072,7 @@ function main:OpenOptionsPopup()
 	controls.nodePowerTheme:SelByValue(self.nodePowerTheme, "theme")
 
 	nextRow()
-	controls.colorPositive = new("EditControl", { "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 100 * s, 18 * s }, tostring(self.colorPositive:gsub('^(^)', '0')), nil, nil, 8, function(buf)
+	controls.colorPositive = new("EditControl", { "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 100, 18 }, tostring(self.colorPositive:gsub('^(^)', '0')), nil, nil, 8, function(buf)
 		local match = string.match(buf, "0x%x+")
 		if match and #match == 8 then
 			updateColorCode("POSITIVE", buf)
@@ -1082,7 +1083,7 @@ function main:OpenOptionsPopup()
 	controls.colorPositive.tooltipText = i18n.t("options.app.tooltipColorPrefix") .. i18n.t("options.app.tooltipColorPositiveDesc") .. i18n.t("options.app.tooltipColorFormat") .. tostring(defaultColorCodes.POSITIVE:gsub('^(^)', '0')) .. i18n.t("options.app.tooltipColorReload")
 
 	nextRow()
-	controls.colorNegative = new("EditControl", { "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 100 * s, 18 * s }, tostring(self.colorNegative:gsub('^(^)', '0')), nil, nil, 8, function(buf)
+	controls.colorNegative = new("EditControl", { "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 100, 18 }, tostring(self.colorNegative:gsub('^(^)', '0')), nil, nil, 8, function(buf)
 		local match = string.match(buf, "0x%x+")
 		if match and #match == 8 then
 			updateColorCode("NEGATIVE", buf)
@@ -1094,7 +1095,7 @@ function main:OpenOptionsPopup()
 
 	nextRow()
 
-	controls.colorHighlight = new("EditControl", { "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 100 * s, 18 * s }, tostring(self.colorHighlight:gsub('^(^)', '0')), nil, nil, 8, function(buf)
+	controls.colorHighlight = new("EditControl", { "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 100, 18 }, tostring(self.colorHighlight:gsub('^(^)', '0')), nil, nil, 8, function(buf)
 		local match = string.match(buf, "0x%x+")
 		if match and #match == 8 then
 			updateColorCode("HIGHLIGHT", buf)
@@ -1145,13 +1146,13 @@ function main:OpenOptionsPopup()
 	controls.showThousandsSeparators.state = self.showThousandsSeparators
 
 	nextRow()
-	controls.thousandsSeparator = new("EditControl", { "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 30 * s, 20 * s }, self.thousandsSeparator, nil, "%w", 1, function(buf)
+	controls.thousandsSeparator = new("EditControl", { "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 30, 20 }, self.thousandsSeparator, nil, "%w", 1, function(buf)
 		self.thousandsSeparator = buf
 	end)
 	controls.thousandsSeparatorLabel = new("LabelControl", { "RIGHT", controls.thousandsSeparator, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 * s }, "^7" .. i18n.t("options.build.thousandsSeparator"))
 
 	nextRow()
-	controls.decimalSeparator = new("EditControl", { "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 30 * s, 20 * s }, self.decimalSeparator, nil, "%w", 1, function(buf)
+	controls.decimalSeparator = new("EditControl", { "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 30, 20 }, self.decimalSeparator, nil, "%w", 1, function(buf)
 		self.decimalSeparator = buf
 	end)
 	controls.decimalSeparatorLabel = new("LabelControl", { "RIGHT", controls.decimalSeparator, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 * s }, "^7" .. i18n.t("options.build.decimalSeparator"))
@@ -1162,21 +1163,28 @@ function main:OpenOptionsPopup()
 	end)
 
 	nextRow()
-	controls.defaultGemQuality = new("EditControl", { "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 80 * s, 20 * s }, self.defaultGemQuality, nil, "%D", 2, function(gemQuality)
+	controls.defaultGemQuality = new("EditControl", { "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 80, 20 }, self.defaultGemQuality, nil, "%D", 2, function(gemQuality)
 		self.defaultGemQuality = m_min(tonumber(gemQuality) or 0, 23)
 	end)
 	controls.defaultGemQuality.tooltipText = i18n.t("options.build.tooltipGemQuality")
 	controls.defaultGemQualityLabel = new("LabelControl", { "RIGHT", controls.defaultGemQuality, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 * s }, "^7" .. i18n.t("options.build.defaultGemQuality"))
 
 	nextRow()
-	controls.defaultCharLevel = new("EditControl", { "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 80 * s, 20 * s }, self.defaultCharLevel, nil, "%D", 3, function(charLevel)
+	controls.defaultItemQuality = new("EditControl", { "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 80, 20 }, self.defaultItemQuality, nil, "%D", 2, function(itemQuality)
+		self.defaultItemQuality = m_min(tonumber(itemQuality) or 0, 20)
+	end)
+	controls.defaultItemQuality.tooltipText = "Set the default quality that will be applied to newly created or pasted items."
+	controls.defaultItemQualityLabel = new("LabelControl", { "RIGHT", controls.defaultItemQuality, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 }, "^7Default item quality:")
+
+	nextRow()
+	controls.defaultCharLevel = new("EditControl", { "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 80, 20 }, self.defaultCharLevel, nil, "%D", 3, function(charLevel)
 		self.defaultCharLevel = m_min(m_max(tonumber(charLevel) or 1, 1), 100)
 	end)
 	controls.defaultCharLevel.tooltipText = i18n.t("options.build.tooltipCharLevel")
 	controls.defaultCharLevelLabel = new("LabelControl", { "RIGHT", controls.defaultCharLevel, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 * s }, "^7" .. i18n.t("options.build.defaultCharLevel"))
 
 	nextRow()
-	controls.defaultItemAffixQualitySlider = new("SliderControl", { "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 200 * s, 20 * s }, function(value)
+	controls.defaultItemAffixQualitySlider = new("SliderControl", { "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 200, 20 }, function(value)
 		self.defaultItemAffixQuality = round(value, 2)
 		controls.defaultItemAffixQualityValue.label = (self.defaultItemAffixQuality * 100) .. "%"
 	end)
@@ -1198,7 +1206,7 @@ function main:OpenOptionsPopup()
 	controls.slotOnlyTooltips.state = self.slotOnlyTooltips
 
 	nextRow()
-	controls.migrateAugments = new("CheckBoxControl", { "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 20 }, "^7Copy augments onto display item:", function(state)
+	controls.migrateAugments = new("CheckBoxControl", { "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 20 }, "^7Copy augments onto display item:", function(state)
 		self.migrateAugments = state
 	end)
 	controls.migrateAugments.tooltipText = "Apply augments and anoints from current gear when comparing new gear, given they are possible to add to the new item."
@@ -1234,31 +1242,9 @@ function main:OpenOptionsPopup()
 	controls.showFlavourText.state = self.showFlavourText
 	controls.showAnimations.state = self.showAnimations
 	controls.showAllItemAffixes.state = self.showAllItemAffixes
-	local initialLanguage = self.language
-	local initialNodePowerTheme = self.nodePowerTheme
-	local initialColorPositive = self.colorPositive
-	local initialColorNegative = self.colorNegative
-	local initialColorHighlight = self.colorHighlight
-	local initialThousandsSeparatorDisplay = self.showThousandsSeparators
-	local initialTitlebarName = self.showTitlebarName
-	local initialThousandsSeparator = self.thousandsSeparator
-	local initialDecimalSeparator = self.decimalSeparator
-	local initialBetaTest = self.betaTest
-	local initialEdgeSearchHighlight = self.edgeSearchHighlight
-	local initialDefaultGemQuality = self.defaultGemQuality or 0
-	local initialDefaultCharLevel = self.defaultCharLevel or 1
-	local initialDefaultItemAffixQuality = self.defaultItemAffixQuality or 0.5
-	local initialShowWarnings = self.showWarnings
-	local initialSlotOnlyTooltips = self.slotOnlyTooltips
-	local initialMigrateAugments = self.migrateAugments
-	local initialNotSupportedModTooltips = self.notSupportedModTooltips
-	local initialInvertSliderScrollDirection = self.invertSliderScrollDirection
-	local initialDisableDevAutoSave = self.disableDevAutoSave
-	local initialShowPublicBuilds = self.showPublicBuilds
-	local initialShowFlavourText = self.showFlavourText
-	local initialShowAnimations = self.showAnimations
-	local initialShowAllItemAffixes = self.showAllItemAffixes
-	local initialDpiScaleOverridePercent = self.dpiScaleOverridePercent
+
+	-- Adjust height in case of two-column layout
+	currentY = m_max(leftColumnMaxY, currentY)
 
 	-- last line with buttons has more spacing
 	nextRow(1.5)
@@ -1303,9 +1289,9 @@ function main:OpenOptionsPopup()
 		self.nodePowerTheme = initialNodePowerTheme
 		self.colorPositive = initialColorPositive
 		updateColorCode("POSITIVE", self.colorPositive)
-		self.colorNegative = initialColorNegative
+		self.colorNegative = savedState.colorNegative
 		updateColorCode("NEGATIVE", self.colorNegative)
-		self.colorHighlight = initialColorHighlight
+		self.colorHighlight = savedState.colorHighlight
 		updateColorCode("HIGHLIGHT", self.colorHighlight)
 		self.showThousandsSeparators = initialThousandsSeparatorDisplay
 		self.thousandsSeparator = initialThousandsSeparator
