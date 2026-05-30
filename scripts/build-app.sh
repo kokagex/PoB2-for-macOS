@@ -72,6 +72,14 @@ fi
 
 # 7. Release: codesign + zip
 if [[ "$mode" == "--release" ]]; then
+  # cp -R copies src/TreeData (a tracked symlink -> ../tree-data) into the bundle
+  # as a dangling symlink pointing outside the bundle. xattr -cr and
+  # codesign --deep both abort on it ("No such file" / "Too many levels of
+  # symbolic links"). The 0.5 tree data is already present as a real copy under
+  # $RES/TreeData, so this in-src link is redundant. Strip any dangling symlinks
+  # before signing.
+  echo "==> Removing dangling symlinks before codesign..."
+  find "$APP" -type l ! -exec test -e {} \; -delete
   echo "==> Codesigning..."
   xattr -cr "$APP"
   codesign --force --deep --sign - "$APP"
