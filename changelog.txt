@@ -1,6 +1,7 @@
 VERSION[0.8.0][2026/05/30]
 
 --- phase9 sync 負債の修正 / phase9 sync debt fixes ---
+* 上流 PathOfBuilding-PoE2 dev を Phase 6〜9 で同期（計算エンジン・データ・0.5 パッシブツリー・Compare/Loadout 機能）
 * 起動3連クラッシュを解消（PassiveTreeView の GemTooltip/TradeHelpers 取込、checkUnlockConstraints/compareJewelsEqual 復元）
 * repo-root の Assets/Data/TreeData 互換 symlink を復活（dylib のアーカイブ機構無効時の FS フォールバック解決）
 * 0_5 ツリーアート（GGG プレリリース由来 webp）を PNG へ変換しノード/背景の描画を修復

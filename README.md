@@ -52,14 +52,6 @@ If you find any bugs or crashes, please report them on [Issues](https://github.c
 
 ---
 
-## PoE2 0.5 アップデートについて / About the PoE2 0.5 Update
-
-本家 PoB2 が 0.5 対応アップデートを出した際に、このmacOS版が追従できるかは現時点では未定です。データ構造やツリーの変更次第では対応に時間がかかる可能性があります。
-
-Whether this macOS port can keep up with the PoE2 0.5 update from the upstream PoB2 is currently uncertain. Depending on changes to data structures and the passive tree, it may take some time to catch up.
-
----
-
 ## 既知の不具合 / Known Issues
 
 - 一部のオイルアイテムのテクスチャが表示されない（DDS圧縮の互換性問題）
@@ -77,6 +69,38 @@ Whether this macOS port can keep up with the PoE2 0.5 update from the upstream P
 ---
 
 ## バージョン履歴 / Version History
+
+### v0.8.0 (2026-05-30)
+
+- 上流 PathOfBuilding-PoE2 dev を Phase 6〜9 で同期（計算エンジン・データ・0.5パッシブツリー・Compare/Loadout 機能）
+- 起動3連クラッシュを解消（PassiveTreeView の GemTooltip/TradeHelpers 取込、checkUnlockConstraints/compareJewelsEqual 復元）
+- 0_5 ツリーアート（GGG プレリリース由来 webp）を PNG へ変換しノード/背景の描画を修復
+- webp→PNG 変換を build パイプライン化（再 sync 後の再発防止）
+- repo-root の Assets/Data/TreeData 互換 symlink を復活（dylib アーカイブ機構無効時の FS フォールバック）
+
+---
+
+- Synced upstream PathOfBuilding-PoE2 dev across Phases 6–9 (calc engine, data, 0.5 passive tree, Compare/Loadout features)
+- Fixed startup triple-crash (PassiveTreeView GemTooltip/TradeHelpers imports, restored checkUnlockConstraints/compareJewelsEqual)
+- Fixed 0_5 tree art rendering by converting GGG pre-release webp assets to PNG
+- Pipelined webp→PNG conversion into the build (prevents regression after re-sync)
+- Restored repo-root Assets/Data/TreeData compatibility symlinks (FS fallback when the dylib archive mechanism is disabled)
+
+### v0.7.2 (2026-05-03)
+
+- PathOfBuilding.app の中身をリポジトリ直下に展開し、.app を build artifact 化（scripts/build-app.sh）
+- dev mode は Lua ソースを symlink 配置（編集即反映）、release mode は cp + codesign + zip
+- i18n 言語ファイルを言語別サブディレクトリ化（src/Locales/ja/*.lua）
+- .gitignore の skills/ ルールが src/Data/Skills/ を巻き込む問題を修正、BUILD.md 新設
+- PassiveTreeView クラッシュ修正（Assets/Data 互換 symlink を build-app.sh で再生成）
+
+---
+
+- Extracted PathOfBuilding.app contents to repo root; the .app is now a build artifact assembled by scripts/build-app.sh
+- Dev mode symlinks Lua sources for instant reload; release mode does cp + codesign + zip
+- Reorganized i18n locales into per-language subdirectories (src/Locales/ja/*.lua)
+- Fixed .gitignore skills/ rule that swallowed src/Data/Skills/; added BUILD.md
+- Fixed PassiveTreeView crash by recreating Assets/Data compatibility symlinks in build-app.sh
 
 ### v0.7.1 (2026-02-21)
 
