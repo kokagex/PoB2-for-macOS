@@ -32,6 +32,12 @@ cp "$ROOT/package/Resources/"*.icns "$RES/"
 cp "$ROOT/package/MacOS/PathOfBuilding" "$APP/Contents/MacOS/PathOfBuilding"
 chmod +x "$APP/Contents/MacOS/PathOfBuilding"
 
+# 3b. Normalize tree art: GGG ships passive-tree sprites as webp, which the
+# macOS dylib's stb_image cannot decode. Convert webp -> PNG content in place
+# (idempotent) before copying/symlinking. Covers both --dev (symlink reads
+# source) and --release (cp copies source). See scripts/convert-tree-webp.sh.
+bash "$ROOT/scripts/convert-tree-webp.sh" "$ROOT/tree-data"
+
 # 4. Lua source, runtime (lua libs + dylibs), tree data
 # Note: dylibs (SimpleGraphic, libSimpleGraphic, CharInput) are tracked in
 # runtime/ as fixed assets — pob2macos/.claude/CLAUDE.md says rebuilding
