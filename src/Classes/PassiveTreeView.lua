@@ -22,6 +22,30 @@ local JEWEL_RADIUS_TINT_NEUTRAL = { 1, 1, 1, 0.7 }
 local JEWEL_RADIUS_TINT_PRIMARY_ONLY = { 1, 0, 0, 0.7 }
 local JEWEL_RADIUS_TINT_COMPARE_ONLY = { 0, 1, 0, 0.7 }
 
+-- phase9d sync: PassiveTreeView の call sites のみ移植され、これらヘルパー定義の
+-- 取り込みが漏れていた。upstream/dev の定義を verbatim で復元 (compareJewelsEqual@dev:129,
+-- checkUnlockConstraints@dev:2095)。local function は使用箇所(L1308)より前に置く必要がある。
+local function compareJewelsEqual(a, b)
+	if not a or not b then
+		return a == b
+	end
+	return a:BuildRaw() == b:BuildRaw()
+end
+
+function checkUnlockConstraints(build, node)
+	if unseenPathHover and node.unlockConstraint and node.unlockConstraint.nodes[1] == 5571 then
+		return true
+	end
+	if node.unlockConstraint then
+			for _, nodeId in ipairs(node.unlockConstraint.nodes) do
+				if nodeId and not build.spec.nodes[nodeId].alloc then
+					return false
+				end
+			end
+	end
+	return true
+end
+
 local PassiveTreeViewClass = newClass("PassiveTreeView", function(self)
 	self.ring = NewImageHandle()
 	self.ring:Load("Assets/ring.png", "CLAMP")
