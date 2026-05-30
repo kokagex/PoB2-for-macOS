@@ -144,7 +144,12 @@ return {
 		aboutCredit = "^7OpenarlのPath of Buildingを基にしています",
 		aboutCreditPoe2db = "^8日本語訳のテキストはPoE2DBの情報を参考にさせていただきました",
 	},
+	tree = {
+		comparedBuild = "比較ビルド: ",
+	},
 	build = {
+		manageLoadouts = "ロードアウト管理",
+		manageDone = "完了",
 		tabLabel = "タブ",
 		underConstruction = "準備中",
 		currentBuild = "ビルド:  ",

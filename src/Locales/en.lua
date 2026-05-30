@@ -144,7 +144,12 @@ return {
 		aboutCredit = "^7Based on Openarl's Path of Building",
 		aboutCreditPoe2db = "^8Japanese translations sourced from poe2db.tw",
 	},
+	tree = {
+		comparedBuild = "Compared build: ",
+	},
 	build = {
+		manageLoadouts = "Manage Loadouts",
+		manageDone = "Done",
 		tabLabel = "Tab",
 		underConstruction = "Under Construction",
 		currentBuild = "Current build:  ",

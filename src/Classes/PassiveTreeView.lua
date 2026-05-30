@@ -1643,7 +1643,7 @@ function PassiveTreeViewClass:AddNodeTooltip(tooltip, node, build, incSmallPassi
 		if not cJewel or not cAllocated then return false end
 		if withLabel then
 			tooltip:AddSeparator(14)
-			tooltip:AddLine(14, colorCodes.DEXTERITY .. "Compared build:")
+			tooltip:AddLine(14, colorCodes.DEXTERITY .. i18n.t("tree.comparedBuild"))
 		end
 		self.compareSpec.build.itemsTab:AddItemTooltip(tooltip, cJewel, socket)
 		return true
