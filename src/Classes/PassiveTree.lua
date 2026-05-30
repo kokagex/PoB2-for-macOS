@@ -138,19 +138,12 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 	end
 
 	self.size = m_min(self.max_x - self.min_x, self.max_y - self.min_y) * self.scaleImage * 1.1
-
-	-- Shift classes from 1-indexed to 0-indexed
-	-- Dynamically detect max index to support both PoE1 (7 classes) and PoE2 (8 classes)
-	local maxClassIndex = 0
-	for k in pairs(self.classes) do
-		if type(k) == "number" and k > maxClassIndex then
-			maxClassIndex = k
-		end
+	
+	local classes = { }
+	for _, class in pairs(self.classes) do
+		classes[class.integerId] = class
 	end
-	for i = 0, maxClassIndex - 1 do
-		self.classes[i] = self.classes[i + 1]
-		self.classes[i + 1] = nil
-	end
+	self.classes = classes
 
 	-- Build maps of class name -> class table
 	self.classNameMap = { }
@@ -234,12 +227,9 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 
 	-- Load passive tree assets (orbits, lines, backgrounds, etc.)
 	ConPrintf("Loading passive tree assets...")
-	local assetsLoaded = 0
-	for _, data in pairs(self.assets or { }) do
-		if type(data) == "table" and data[1] then
-			self:LoadImage(data[1], data, "MIPMAP")
-			assetsLoaded = assetsLoaded + 1
-		end
+	self.assets = self.assets or {}
+	for name, data in pairs(self.assets) do
+		self:LoadImage(data[1], data, "MIPMAP")
 	end
 	ConPrintf("Loaded %d assets", assetsLoaded)
 
@@ -288,7 +278,25 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 	end
 	ConPrintf("Loaded %d DDS texture arrays with %d icons", filesLoaded, iconCount)
 
-	self.nodeOverlay = self.nodeOverlay or { }
+	self.spriteMap = { }
+	self.spriteCoords = self.spriteCoords or {}
+	for file, fileInfo in pairs(self.spriteCoords) do
+		local data = { }
+		self:LoadImage(file, data, "CLAMP")
+		for name, coords in pairs(fileInfo) do
+			self.spriteMap[name] = {
+				found = data.width > 0,
+				handle = data.handle,
+				width = coords.w,
+				height = coords.h,
+				[1] = coords.x / data.width,
+				[2] = coords.y / data.height,
+				[3] = (coords.x + coords.w) / data.width,
+				[4] = (coords.y + coords.h) / data.height
+			}
+		end
+	end
+
 	for type, data in pairs(self.nodeOverlay) do
 		local asset = self:GetAssetByName(data.alloc)
 		local artWidth = asset.width * self.scaleImage
@@ -323,11 +331,7 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 		node.o = node.orbit
 		node.oidx = node.orbitIndex
 		node.dn = node.name
-		node.sd = node.stats
-		-- PoE2: Some nodes use statSets instead of stats
-		if (not node.sd or #node.sd == 0) and node.statSets and node.statSets[1] then
-			node.sd = node.statSets[1].stats or {}
-		end
+		node.sd = node.stats or {}
 
 		node.__index = node
 		node.linkedId = { }
@@ -478,7 +482,7 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 	for nodeId, socket in pairs(self.sockets) do
 		if socket.name == "Charm Socket" then
 			socket.charmSocket = true
-		elseif not socket.containJewelSocket then
+		elseif not socket.containJewelSocket and not socket.noRadius then
 			socket.nodesInRadius = { }
 			socket.attributesInRadius = { }
 			for radiusIndex, _ in ipairs(data.jewelRadius) do
@@ -950,17 +954,14 @@ function PassiveTreeClass:CalcOrbitAngles(nodesInOrbit)
 	return orbitAngles
 end
 
+local alreadyAlertMissingAssetName = {}
 function PassiveTreeClass:GetAssetByName(name, type)
-	local asset = self.ddsMap[name] or self.assets[name]
-	if asset then
-		if not asset._name then
-			asset._name = name
-		end
-		if not asset._source then
-			asset._source = self.ddsMap[name] and "dds" or "png"
-		end
+	local assetData = self.ddsMap[name] or self.assets[name] or self.spriteMap[name]
+	if not assetData and not alreadyAlertMissingAssetName[name] then
+		alreadyAlertMissingAssetName[name] = true
+		ConPrintf("missing asset with name " .. name)
 	end
-	return asset
+	return assetData
 end
 
 function PassiveTreeClass:GetNodeTargetSize(node)

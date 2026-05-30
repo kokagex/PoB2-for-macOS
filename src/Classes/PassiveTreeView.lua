@@ -13,6 +13,14 @@ local m_max = math.max
 local m_floor = math.floor
 local band = AND64 -- bit.band
 local b_rshift = bit.rshift
+--This variable is used to display the Unseen Path nodes in green when unallocated and hovered over
+--When true the checkUnlockConstraint function will return true for the check
+local unseenPathHover = false
+
+local gemTooltip = LoadModule("Classes/GemTooltip")
+local JEWEL_RADIUS_TINT_NEUTRAL = { 1, 1, 1, 0.7 }
+local JEWEL_RADIUS_TINT_PRIMARY_ONLY = { 1, 0, 0, 0.7 }
+local JEWEL_RADIUS_TINT_COMPARE_ONLY = { 0, 1, 0, 0.7 }
 
 local PassiveTreeViewClass = newClass("PassiveTreeView", function(self)
 	self.ring = NewImageHandle()
@@ -29,6 +37,7 @@ local PassiveTreeViewClass = newClass("PassiveTreeView", function(self)
 	self.jewelShadedInnerRingFlipped:Load("Assets/ShadedInnerRingFlipped.png", "CLAMP")
 
 	self.tooltip = new("Tooltip")
+	self.skillTooltip = new("Tooltip")
 
 	self.zoomLevel = 3
 	self.zoom = 1.2 ^ self.zoomLevel
@@ -248,7 +257,7 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 		-- Use spec.nodes so hover matches rendered nodes/allocation state
 		-- (per-frame node iteration debug removed)
 		for nodeId, node in pairs(spec.nodes) do
-			if node.rsq and node.group and not node.isProxy and not node.group.isProxy then
+			if node.rsq and node.group and not node.isProxy and not node.group.isProxy and not node.isAscendancyStart then
 				-- Node has a defined size (i.e. has artwork)
 				local vX = curTreeX - node.x
 				local vY = curTreeY - node.y
@@ -304,6 +313,7 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 	end
 	-- (per-frame hover result debug removed)
 
+	unseenPathHover = hoverNode and hoverNode.id == 5571 and not hoverNode.alloc or false
 	self.hoverNode = hoverNode
 	-- If hovering over a node, find the path to it (if unallocated) or the list of dependent nodes (if allocated)
 	local hoverPath, hoverDep
@@ -339,7 +349,7 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 				end
 			end
 		end
-		-- Use the trace path as the path 
+		-- Use the trace path as the path
 		hoverPath = { }
 		for _, pathNode in pairs(self.tracePath) do
 			hoverPath[pathNode] = true
@@ -357,7 +367,7 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 			hoverDep[depNode] = true
 		end
 	end
-	
+
 	-- switchAttribute true -> allocating an attribute node, possibly with attribute in path -or- hot-swap allocated attribute
 	-- switchAttribute false -> allocating a non-attribute node, possibly with attribute in path
 	-- we always want to keep track of last used attribute
@@ -442,7 +452,8 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 					local targetBaseClass = nil
 
 					-- Check if it's different from current primary or secondary ascendancy
-					if spec.curAscendClassId == 0 or hoverNode.ascendancyName ~= spec.curAscendClassBaseName then
+					-- always check for alternate ascendancy class first
+					if spec.curAscendClassId == 0 or (hoverNode.ascendancyName ~= (spec.curAscendClass.replace or spec.curAscendClassBaseName)) then
 						if not (spec.curSecondaryAscendClass and hoverNode.ascendancyName == spec.curSecondaryAscendClass.id) then
 							isDifferentAscendancy = true
 						end
@@ -786,7 +797,13 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 		connector.c[5], connector.c[6] = treeToScreen(vert[5], vert[6])
 		connector.c[7], connector.c[8] = treeToScreen(vert[7], vert[8])
 
-		if hoverDep and hoverDep[node1] and hoverDep[node2] then
+		if hoverNode and hoverNode.id == 5571 and hoverDep and (hoverDep[node1] or hoverDep[node2]) and not hoverNode.alloc and not connector.ascendancyName then
+			--Used to display Unseen Path nodes green when unallocated and hovered over
+			setConnectorColor(0, 1, 0)
+		elseif hoverDep and (hoverDep[node1] or hoverDep[node2]) and hoverNode.id == 5571 and not hoverNode.isAlloc and not connector.ascendancyName then
+			--Used to display Unseen Path nodes red when allocated and hovered over node
+			setConnectorColor(1, 0, 0)
+		elseif hoverDep and hoverDep[node1] and hoverDep[node2] then
 			-- Both nodes depend on the node currently being hovered over, so color the line red
 			setConnectorColor(1, 0, 0)
 		elseif connector.ascendancyName and connector.ascendancyName ~= spec.curAscendClassBaseName then
@@ -800,9 +817,17 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 
 	-- Draw the connecting lines between nodes
 	SetDrawLayer(nil, 20)
+
 	for _, connector in pairs(tree.connectors) do
-		renderConnector(connector)
+		local node1 = spec.nodes[connector.nodeId1]
+		local node2 = spec.nodes[connector.nodeId2]
+		if not node1.unlockConstraint and not node2.unlockConstraint  then
+			renderConnector(connector)
+		elseif checkUnlockConstraints(build, node1) and checkUnlockConstraints(build, node2) then
+			renderConnector(connector)
+		end
 	end
+
 	for _, subGraph in pairs(spec.subGraphs) do
 		for _, connector in pairs(subGraph.connectors) do
 			renderConnector(connector)
@@ -871,7 +896,7 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 					local cx = node1.x + dx / 2 + perpendicular * (dy / dist)
 					local cy = node1.y + dy / 2 - perpendicular * (dx / dist)
 					local scx, scy = treeToScreen(cx, cy)
-					
+
 					local innerSize = r * scale
 					SetDrawColor(0, 1, 0)
 					DrawImage(self.ring, scx - innerSize, scy - innerSize, innerSize * 2, innerSize * 2)
@@ -1206,6 +1231,44 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 	-- End node draw loop
 
 	-- Draw ring overlays for jewel sockets
+	local function drawJewelRadius(jewel, scrX, scrY, tint)
+		local radData = build.data.jewelRadius[jewel.jewelRadiusIndex]
+		local outerSize = radData.outer * data.gameConstants["PassiveTreeJewelDistanceMultiplier"] * scale
+		local innerSize = radData.inner * data.gameConstants["PassiveTreeJewelDistanceMultiplier"] * scale * 1.06
+		SetDrawColor(tint[1], tint[2], tint[3], tint[4])
+		if jewel.title == "From Nothing" then
+			-- From Nothing ring shows on the allocated Keystone
+			for keystoneName, _ in pairs(jewel.jewelData.fromNothingKeystones) do
+				local keystone = spec.tree.keystoneMap[keystoneName]
+				if keystone and keystone.x and keystone.y then
+					innerSize = 150 * scale
+					local keyX, keyY = treeToScreen(keystone.x, keystone.y)
+					self:DrawImageRotated(self.jewelShadedOuterRing, keyX, keyY, outerSize * 2, outerSize * 2, -0.7)
+					self:DrawImageRotated(self.jewelShadedOuterRingFlipped, keyX, keyY, outerSize * 2, outerSize * 2, 0.7)
+					self:DrawImageRotated(self.jewelShadedInnerRing, keyX, keyY, innerSize * 2, innerSize * 2, -0.7)
+					self:DrawImageRotated(self.jewelShadedInnerRingFlipped, keyX, keyY, innerSize * 2, innerSize * 2, 0.7)
+				end
+			end
+		elseif jewel.jewelData and jewel.jewelData.conqueredBy and jewel.jewelData.conqueredBy.conqueror and jewel.jewelData.conqueredBy.conqueror.type then
+			local conqueror = jewel.jewelData.conqueredBy.conqueror.type
+			if conqueror == "kalguur" then
+				conqueror = "kalguuran"
+			end
+			local circle1 = tree:GetAssetByName("art/textures/interface/2d/2dart/uiimages/ingame/passiveskillscreen".. conqueror .."jewelcircle1.dds")
+			local circle2 = tree:GetAssetByName("art/textures/interface/2d/2dart/uiimages/ingame/passiveskillscreen".. conqueror .."jewelcircle2.dds")
+			if conqueror == "abyss" then
+				circle1 = tree:GetAssetByName("art/textures/interface/2d/2dart/uiimages/ingame/".. conqueror .."/".. conqueror .."passiveskillscreenjewelcircle1.dds")
+				circle2 = circle1
+			end
+			self:DrawImageRotated(circle1.handle, scrX, scrY, outerSize * 2, outerSize * 2, -0.7, unpack(circle1))
+			self:DrawImageRotated(circle2.handle, scrX, scrY, outerSize * 2, outerSize * 2, 0.7, unpack(circle2))
+		else
+			self:DrawImageRotated(self.jewelShadedOuterRing, scrX, scrY, outerSize * 2, outerSize * 2, -0.7)
+			self:DrawImageRotated(self.jewelShadedOuterRingFlipped, scrX, scrY, outerSize * 2, outerSize * 2, 0.7)
+			self:DrawImageRotated(self.jewelShadedInnerRing, scrX, scrY, innerSize * 2, innerSize * 2, -0.7)
+			self:DrawImageRotated(self.jewelShadedInnerRingFlipped, scrX, scrY, innerSize * 2, innerSize * 2, 0.7)
+		end
+	end
 	SetDrawLayer(nil, 25)
 	for nodeId in pairs(tree.sockets) do
 		-- PRJ-003: Use tree.nodes directly instead of spec.nodes
@@ -1218,69 +1281,37 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 				socket, jewel = build.itemsTab:GetSocketAndJewelForNodeID(nodeId)
 			end
 			if node == hoverNode then
-				local isThreadOfHope = jewel and jewel.jewelRadiusLabel == "Variable"
-				if isThreadOfHope then
-					for _, radData in ipairs(build.data.jewelRadius) do
-						local outerSize = radData.outer * data.gameConstants["PassiveTreeJewelDistanceMultiplier"] * scale
-						local innerSize = radData.inner * data.gameConstants["PassiveTreeJewelDistanceMultiplier"] * scale
-						-- Jewel in socket is Thread of Hope or similar, draw it's annulus
+				local effectiveJewel = jewel or cJewel
+				local isThreadOfHope = effectiveJewel and effectiveJewel.jewelRadiusLabel == "Variable"
+				for _, radData in ipairs(build.data.jewelRadius) do
+					local outerSize = radData.outer * data.gameConstants["PassiveTreeJewelDistanceMultiplier"] * scale
+					local innerSize = radData.inner * data.gameConstants["PassiveTreeJewelDistanceMultiplier"] * scale
+					if isThreadOfHope then
+						-- Thread of Hope-like: draw the annulus (only radii with a non-zero inner)
 						if innerSize ~= 0 then
 							SetDrawColor(radData.col)
 							DrawImage(self.ring, scrX - outerSize, scrY - outerSize, outerSize * 2, outerSize * 2)
 							DrawImage(self.ring, scrX - innerSize, scrY - innerSize, innerSize * 2, innerSize * 2)
 						end
-					end
-				else
-					for _, radData in ipairs(build.data.jewelRadius) do
-						local outerSize = radData.outer * data.gameConstants["PassiveTreeJewelDistanceMultiplier"] * scale
-						local innerSize = radData.inner * data.gameConstants["PassiveTreeJewelDistanceMultiplier"] * scale
-						-- Jewel in socket is not Thread of Hope or similar, draw normal jewel radius
+					else
+						-- Standard jewel: draw the full-disc radii (inner == 0)
 						if innerSize == 0 then
 							SetDrawColor(radData.col)
 							DrawImage(self.ring, scrX - outerSize, scrY - outerSize, outerSize * 2, outerSize * 2)
 						end
 					end
 				end
-			elseif node.alloc then
-				if jewel and jewel.jewelRadiusIndex then
-					-- Draw only the selected jewel radius
-					local radData = build.data.jewelRadius[jewel.jewelRadiusIndex]
-					local outerSize = radData.outer * data.gameConstants["PassiveTreeJewelDistanceMultiplier"] * scale
-					local innerSize = radData.inner * data.gameConstants["PassiveTreeJewelDistanceMultiplier"] * scale * 1.06
-					SetDrawColor(1,1,1,0.7)
-					if jewel.title == "From Nothing" then
-						-- From Nothing ring shows on the allocated Keystone
-						for keystoneName, _ in pairs(jewel.jewelData.fromNothingKeystones) do
-							local keystone = spec.tree.keystoneMap[keystoneName]
-							if keystone and keystone.x and keystone.y then
-								innerSize = 150 * scale
-								local keyX, keyY = treeToScreen(keystone.x, keystone.y)
-								self:DrawImageRotated(self.jewelShadedOuterRing, keyX, keyY, outerSize * 2, outerSize * 2,  -0.7)
-								self:DrawImageRotated(self.jewelShadedOuterRingFlipped, keyX, keyY, outerSize * 2, outerSize * 2, 0.7)
-								self:DrawImageRotated(self.jewelShadedInnerRing, keyX, keyY, innerSize * 2, innerSize * 2,  -0.7)
-								self:DrawImageRotated(self.jewelShadedInnerRingFlipped, keyX, keyY, innerSize * 2, innerSize * 2, 0.7)
-							end
-						end
-					elseif jewel.jewelData and jewel.jewelData.conqueredBy and jewel.jewelData.conqueredBy.conqueror and jewel.jewelData.conqueredBy.conqueror.type then
-						local conqueror = jewel.jewelData.conqueredBy.conqueror.type
-						if conqueror == "kalguur" then
-							conqueror = "kalguuran"
-						end
-						local circle1 = tree:GetAssetByName("art/textures/interface/2d/2dart/uiimages/ingame/passiveskillscreen".. conqueror .."jewelcircle1.dds")
-						local circle2 = tree:GetAssetByName("art/textures/interface/2d/2dart/uiimages/ingame/passiveskillscreen".. conqueror .."jewelcircle2.dds")
-						if conqueror == "abyss" then
-							circle1 = tree:GetAssetByName("art/textures/interface/2d/2dart/uiimages/ingame/".. conqueror .."/".. conqueror .."passiveskillscreenjewelcircle1.dds")
-							circle2 = circle1
-						end
-						self:DrawImageRotated(circle1.handle, scrX, scrY, outerSize * 2, outerSize * 2, -0.7, unpack(circle1))
-						self:DrawImageRotated(circle2.handle, scrX, scrY, outerSize * 2, outerSize * 2, 0.7, unpack(circle2))
-					else
-						self:DrawImageRotated(self.jewelShadedOuterRing, scrX, scrY, outerSize * 2, outerSize * 2,  -0.7)
-						self:DrawImageRotated(self.jewelShadedOuterRingFlipped, scrX, scrY, outerSize * 2, outerSize * 2, 0.7)
-
-						self:DrawImageRotated(self.jewelShadedInnerRing, scrX, scrY, innerSize * 2, innerSize * 2, -0.7)
-						self:DrawImageRotated(self.jewelShadedInnerRingFlipped, scrX, scrY, innerSize * 2, innerSize * 2, 0.7)
-					end
+			end
+			if node.alloc or (compareNode and compareNode.alloc) then
+				local pHasRadius = jewel and jewel.jewelRadiusIndex
+				local cHasRadius = cJewel and cJewel.jewelRadiusIndex
+				local sameJewel = compareJewelsEqual(jewel, cJewel)
+				if pHasRadius then
+					local tint = (not self.compareSpec or sameJewel) and JEWEL_RADIUS_TINT_NEUTRAL or JEWEL_RADIUS_TINT_PRIMARY_ONLY
+					drawJewelRadius(jewel, scrX, scrY, tint)
+				end
+				if cHasRadius and not sameJewel then
+					drawJewelRadius(cJewel, scrX, scrY, JEWEL_RADIUS_TINT_COMPARE_ONLY)
 				end
 			end
 		end
@@ -1362,7 +1393,7 @@ function PassiveTreeViewClass:DrawQuadAndRotate(data, xTree, yTree, angleRad, tr
 		local yActive = yTree
 		local widthActive = data.width
 		local heightActive = data.height
-	
+
 		local function rotate(x, y, cx, cy, theta)
 			local translatedX = x - cy
 			local translatedY = y - cy
@@ -1379,7 +1410,20 @@ function PassiveTreeViewClass:DrawQuadAndRotate(data, xTree, yTree, angleRad, tr
 		vertActive[3], vertActive[4] = xActive + widthActive, yActive - heightActive
 		vertActive[5], vertActive[6] = xActive + widthActive, yActive + heightActive
 		vertActive[7], vertActive[8] = xActive - widthActive, yActive + heightActive
-		vertActive[9] = data[1] -- s1
+
+		local lengthData = #data
+		if lengthData == 1 then
+			vertActive[9] = data[1] -- s1 (stack)
+		elseif lengthData == 4 then
+			vertActive[9], vertActive[10] = data[1], data[2] -- top-left
+			vertActive[11], vertActive[12] = data[3], data[2] -- top-right
+			vertActive[13], vertActive[14] = data[3], data[4] -- bottom-right
+			vertActive[15], vertActive[16] = data[1], data[4] -- bottom-left
+		else
+			for iData, vData in ipairs(data) do
+				vertActive[9 + (iData - 1)] = vData
+			end
+		end
 
 		-- rotate the quad
 		vertActive[1], vertActive[2] = treeToScreen(rotate(vertActive[1], vertActive[2], xActive, yActive, angleRad))
@@ -1510,14 +1554,14 @@ function PassiveTreeViewClass:DoesNodeMatchSearchParams(node)
 	end
 
 	-- Check unlock ascendancy
-	if node.unlockConstraint then
+	if node.unlockConstraint and node.unlockConstraint.ascendancy then
 		err, needMatches = PCall(search, node.unlockConstraint.ascendancy:lower(), needMatches)
 		if err then return false end
 		if #needMatches == 0 then
 			return true
 		end
 	end
-	
+
 	-- Check node id for devs
 	if launch.devMode then
 		err, needMatches = PCall(search, tostring(node.id), needMatches)
@@ -1592,17 +1636,31 @@ function PassiveTreeViewClass:AddNodeTooltip(tooltip, node, build, incSmallPassi
 	local fontSizeBig = main.showFlavourText and 18 or 16
 	tooltip.center = true
 	tooltip.maxWidth = 800
+	-- Appends the compare spec's jewel tooltip if it has a jewel in this socket
+	local function addCompareJewelSection(socket, withLabel)
+		local cJewel = self.compareSpec and self:GetCompareJewel(node.id)
+		local cAllocated = self.compareSpec and self.compareSpec.allocNodes and self.compareSpec.allocNodes[node.id]
+		if not cJewel or not cAllocated then return false end
+		if withLabel then
+			tooltip:AddSeparator(14)
+			tooltip:AddLine(14, colorCodes.DEXTERITY .. "Compared build:")
+		end
+		self.compareSpec.build.itemsTab:AddItemTooltip(tooltip, cJewel, socket)
+		return true
+	end
+
 	-- Special case for sockets
 	-- Phase 1: Nil-safety for itemsTab (2026-02-06)
 	if (node.type == "Socket" or node.containJewelSocket) and node.alloc and build.itemsTab then
 		local socket, jewel = build.itemsTab:GetSocketAndJewelForNodeID(node.id)
+		local cJewel = self.compareSpec and self:GetCompareJewel(node.id) or nil
 		if jewel then
 			build.itemsTab:AddItemTooltip(tooltip, jewel, { nodeId = node.id })
 			if node.distanceToClassStart and node.distanceToClassStart > 0 then
 				tooltip:AddSeparator(14)
 				tooltip:AddLine(16, "^7"..i18n.t("tree.tooltip.distanceToStart", {dist = node.distanceToClassStart}))
 			end
-		else
+		elseif not addCompareJewelSection(socket, false) then
 			self:AddNodeName(tooltip, node, build)
 		end
 		tooltip:AddSeparator(14)
@@ -1660,7 +1718,7 @@ function PassiveTreeViewClass:AddNodeTooltip(tooltip, node, build, incSmallPassi
 					line = line .. "  " .. modStr
 				end
 			end
-			
+
 			-- Apply Inc Node scaling from Hulking Form + Radius Jewels only visually
 			if (((incSmallPassiveSkillEffect + localIncEffect) > 0 and node.type == "Normal") or (localIncEffect > 0 and node.type == "Notable")) and not node.isAttribute and not node.ascendancyName and nodeMod.list then
 				local base = (localIncEffect or 0)
@@ -1768,7 +1826,7 @@ function PassiveTreeViewClass:AddNodeTooltip(tooltip, node, build, incSmallPassi
 		build.spec.tree:ProcessStats(mNode)
 		return localIncEffect
 	end
-	
+
 	-- we only want to run the timeLost function on a node that can could be in a jewel socket radius of up to Large
 	-- essentially trying to avoid calling ProcessStats for a Normal/Notable node that can't possibly be affected
 	-- loops potentially every socket (24) until itemsTab is loaded or a jewel socket is hovered, then it will only loop the allocated sockets
@@ -1790,9 +1848,9 @@ function PassiveTreeViewClass:AddNodeTooltip(tooltip, node, build, incSmallPassi
 		end
 		return isInRadius
 	end
-	
+
 	-- If so, check if the left hand tree is unallocated, but the right hand tree is allocated.
-	-- Then continue processing as normal
+	-- Then continue processing as normal<
 	local mNode = copyTableSafe(node, true, true)
 
 	-- This stanza actives for both Mastery and non Mastery tooltips. Proof: add '"Blah "..' to addModInfoToTooltip
@@ -1812,6 +1870,23 @@ function PassiveTreeViewClass:AddNodeTooltip(tooltip, node, build, incSmallPassi
 				displayLine = i18n.translateModLine(line)
 			end
 			addModInfoToTooltip(mNode, i, displayLine, localIncEffect)
+		end
+		-- add child tooltip for skills
+		self.skillTooltip:Clear()
+		for _, mod in ipairs(mNode.finalModList or mNode.modList or {}) do
+			if mod.name == "ExtraSkill" then
+				for grantedEffect, gemId in pairs(data.gemForSkill) do
+					if grantedEffect.id == mod.value.skillId then
+						local gem = data.gems[gemId]
+						local gemInst = { gemData = gem, level = 1, quality = 0, grantedEffect = grantedEffect }
+						gemTooltip.AddGemTooltip(self.skillTooltip, build, gemInst, {
+							levelRange = true,
+							includeQualityRange = true,
+						})
+						break
+					end
+				end
+			end
 		end
 	end
 
@@ -1837,7 +1912,7 @@ function PassiveTreeViewClass:AddNodeTooltip(tooltip, node, build, incSmallPassi
 			tooltip:AddLine(14, "^xA0A080"..line)
 		end
 	end
-	
+
 	-- Flavour text
 	if node.flavourText and main.showFlavourText then
 		tooltip:AddSeparator(14)
