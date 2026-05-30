@@ -7,6 +7,7 @@ local pairs = pairs
 local ipairs = ipairs
 local next = next
 local t_insert = table.insert
+local t_remove = table.remove
 local t_sort = table.sort
 local m_min = math.min
 local m_max = math.max
@@ -777,6 +778,9 @@ function buildMode:Init(dbFileName, buildName, buildXML, convertBuild, importLin
 	self.pantheonMajorGod = "None"
 	self.pantheonMinorGod = "None"
 	self.characterLevelAutoMode = main.defaultCharLevel == 1 or main.defaultCharLevel == nil
+	-- List of loadouts by spec name. Updated on each SyncLoadouts() call.
+	self.loadoutsList = {}
+	self.activeLoadout = nil
 	if buildXML then
 		if self:LoadDB(buildXML, "Unnamed build") then
 			self:CloseBuild()
@@ -893,7 +897,6 @@ function buildMode:Init(dbFileName, buildName, buildXML, convertBuild, importLin
 	end
 	self.controls.pointDisplay = new("Control", {"LEFT",self.anchorTopBarRight,"RIGHT"}, {function() return getPointDisplayX() end, 0, 0, 20})
 	self.controls.pointDisplay.width = function(control)
-		control.str, control.req = self:EstimatePlayerProgress()
 		return DrawStringWidth(16, "FIXED", control.str) + 8
 	end
 	self.controls.pointDisplay.Draw = function(control)
@@ -948,7 +951,7 @@ function buildMode:Init(dbFileName, buildName, buildXML, convertBuild, importLin
 				end
 				if mult > 0.01 then
 					local line = level
-					if level >= 68 then 
+					if level >= 68 then
 						line = line .. string.format(" (Tier %d)", level - 67)
 					end
 					line = line .. string.format(": %.1f%%", mult * 100)
@@ -1017,107 +1020,16 @@ function buildMode:Init(dbFileName, buildName, buildXML, convertBuild, importLin
 			self.controls.buildLoadouts:SetSel(1)
 			return
 		end
-		if value == "^7^7New Loadout" then
-			local controls = { }
-			controls.label = new("LabelControl", nil, {0, 20, 0, 16}, "^7" .. i18n.t("build.enterLoadoutName"))
-			controls.edit = new("EditControl", nil, {0, 40, 350, 20}, "New Loadout", nil, nil, 100, function(buf)
-				controls.save.enabled = buf:match("%S")
-			end)
-			controls.save = new("ButtonControl", nil, {-45, 70, 80, 20}, i18n.t("general.save"), function()
-				local loadout = controls.edit.buf
-
-				local newSpec = new("PassiveSpec", self, latestTreeVersion)
-				newSpec.title = loadout
-				t_insert(self.treeTab.specList, newSpec)
-
-				local itemSet = self.itemsTab:NewItemSet(#self.itemsTab.itemSets + 1)
-				t_insert(self.itemsTab.itemSetOrderList, itemSet.id)
-				itemSet.title = loadout
-
-				local skillSet = self.skillsTab:NewSkillSet(#self.skillsTab.skillSets + 1)
-				t_insert(self.skillsTab.skillSetOrderList, skillSet.id)
-				skillSet.title = loadout
-
-				local configSet = self.configTab:NewConfigSet(#self.configTab.configSets + 1)
-				t_insert(self.configTab.configSetOrderList, configSet.id)
-				configSet.title = loadout
-
-				self:SyncLoadouts()
-				self.modFlag = true
-				main:ClosePopup()
-			end)
-			controls.save.enabled = false
-			controls.cancel = new("ButtonControl", nil, {45, 70, 80, 20}, i18n.t("general.cancel"), function()
-				main:ClosePopup()
-			end)
-			main:OpenPopup(370, 100, i18n.t("build.setName"), controls, "save", "edit", "cancel")
-
-			self.controls.buildLoadouts:SetSel(1)
-			return
+		if value == "^7^7Manage" then
+			self:OpenBuildSetManagePopup()
 		end
 
-		-- item, skill, and config sets have identical structure
-		-- return id as soon as it's found
-		local function findSetId(setOrderList, value, sets, setSpecialLinks)
-			for _, setOrder in ipairs(setOrderList) do
-				if value == (sets[setOrder].title or "Default") then
-					return setOrder
-				else
-					local linkMatch = string.match(value, "%{(%w+)%}")
-					if linkMatch then
-						return setSpecialLinks[linkMatch]["setId"]
-					end
-				end
-			end
-			return nil
-		end
-
-		-- trees have a different structure with id/name pairs
-		-- return id as soon as it's found
-		local function findNamedSetId(treeList, value, setSpecialLinks)
-			for id, spec in ipairs(treeList) do
-				if value == spec then
-					return id
-				else
-					local linkMatch = string.match(value, "%{(%w+)%}")
-					if linkMatch then
-						return setSpecialLinks[linkMatch]["setId"]
-					end
-				end
-			end
-			return nil
-		end
-
-		local oneSkill = self.skillsTab and #self.skillsTab.skillSetOrderList == 1
-		local oneItem = self.itemsTab and #self.itemsTab.itemSetOrderList == 1
-		local oneConfig = self.configTab and #self.configTab.configSetOrderList == 1
-
-		local newSpecId = findNamedSetId(self.treeTab:GetSpecList(), value, self.treeListSpecialLinks)
-		local newItemId = oneItem and 1 or findSetId(self.itemsTab.itemSetOrderList, value, self.itemsTab.itemSets, self.itemListSpecialLinks)
-		local newSkillId = oneSkill and 1 or findSetId(self.skillsTab.skillSetOrderList, value, self.skillsTab.skillSets, self.skillListSpecialLinks)
-		local newConfigId = oneConfig and 1 or findSetId(self.configTab.configSetOrderList, value, self.configTab.configSets, self.configListSpecialLinks)
-
-		-- if exact match nor special grouping cannot find setIds, bail
-		if newSpecId == nil or newItemId == nil or newSkillId == nil or newConfigId == nil then
-			return
-		end
-
-		if newSpecId ~= self.treeTab.activeSpec then
-			self.treeTab:SetActiveSpec(newSpecId)
-		end
-		if newItemId ~= self.itemsTab.activeItemSetId then
-			self.itemsTab:SetActiveItemSet(newItemId)
-		end
-		if newSkillId ~= self.skillsTab.activeSkillSetId then
-			self.skillsTab:SetActiveSkillSet(newSkillId)
-		end
-		if newConfigId ~= self.configTab.activeConfigSetId then
-			self.configTab:SetActiveConfigSet(newConfigId)
-		end
+		local loadout = self:GetLoadoutByName(value)
+		self:SetActiveLoadout(loadout)
 
 		self.controls.buildLoadouts:SelByValue(value)
 	end)
-	
+
 	if buildName == "~~temp~~" then
 		-- Remove temporary build file
 		os.remove(self.dbFileName)
@@ -1138,6 +1050,7 @@ function buildMode:Init(dbFileName, buildName, buildXML, convertBuild, importLin
 
 	self.controls.modeImport = new("ButtonControl", {"TOPLEFT",self.anchorSideBar,"TOPLEFT"}, {0, 0, 134, 20}, i18n.t("tabs.importBuild"), function()
 		self.viewMode = "IMPORT"
+		self.importTab:RefreshAuthStatus()
 	end)
 	self.controls.modeImport.locked = function() return self.viewMode == "IMPORT" end
 	self.controls.modeNotes = new("ButtonControl", {"LEFT",self.controls.modeImport,"RIGHT"}, {4, 0, 58, 20}, i18n.t("tabs.notes"), function()
@@ -1334,7 +1247,7 @@ function buildMode:Init(dbFileName, buildName, buildXML, convertBuild, importLin
 	self.legacyLoaders = { -- Special loaders for legacy sections
 		["Spec"] = self.treeTab,
 	}
-	
+
 	--special rebuild to properly initialise boss placeholders
 	self.configTab:BuildModList()
 	self:UpdateClassDropdowns()
@@ -1467,14 +1380,17 @@ function buildMode:SyncLoadouts()
 	end
 
 	self.controls.buildLoadouts.list = {"No Loadouts"}
+	self.loadoutsList = {}
 
 	local filteredList = {"^7^7Loadouts:"}
+	local filteredSpecs = {}
 	local treeList = {}
 	local itemList = {}
 	local skillList = {}
 	local configList = {}
 	-- used when clicking on the dropdown to set the correct setId for each SetActiveSet()
 	self.treeListSpecialLinks, self.itemListSpecialLinks, self.skillListSpecialLinks, self.configListSpecialLinks = {}, {}, {}, {}
+
 
 	local oneSkill = self.skillsTab and #self.skillsTab.skillSetOrderList == 1
 	local oneItem = self.itemsTab and #self.itemsTab.itemSetOrderList == 1
@@ -1506,7 +1422,7 @@ function buildMode:SyncLoadouts()
 					transferTable = {}
 				end
 			else
-				t_insert(treeList, (spec.treeVersion ~= latestTreeVersion and ("["..treeVersions[spec.treeVersion].display.."] ") or "")..(specTitle))
+				t_insert(filteredSpecs, spec)
 			end
 		end
 
@@ -1539,24 +1455,29 @@ function buildMode:SyncLoadouts()
 		identifyLinks(self.skillsTab.skillSetOrderList, self.skillsTab.skillSets, skillList, self.skillListSpecialLinks, self.treeListSpecialLinks)
 		identifyLinks(self.configTab.configSetOrderList, self.configTab.configSets, configList, self.configListSpecialLinks, self.treeListSpecialLinks)
 
-		-- loop over all for exact match loadouts
-		for id, tree in ipairs(treeList) do
+		for id, spec in ipairs(filteredSpecs) do
+			local specTitle = spec.title or "Default"
+			t_insert(treeList, (spec.treeVersion ~= latestTreeVersion and ("["..treeVersions[spec.treeVersion].display.."] ") or "")..specTitle)
+			local tree = treeList[#treeList]
+			-- only exact match loadouts
 			if (oneItem or itemList[tree]) and (oneSkill or skillList[tree]) and (oneConfig or configList[tree]) then
 				t_insert(filteredList, tree)
+				t_insert(self.loadoutsList, filteredSpecs[id])
 			end
 		end
+
 		-- loop over the identifiers found within braces and set the loadout name to the TreeSet
 		for _, tree in ipairs(sortedTreeListSpecialLinks) do
 			local treeLinkId = tree.linkId
 			if ((oneItem or self.itemListSpecialLinks[treeLinkId]) and (oneSkill or self.skillListSpecialLinks[treeLinkId]) and (oneConfig or self.configListSpecialLinks[treeLinkId])) then
-				t_insert(filteredList, tree.setName .." {"..treeLinkId.."}")
+				t_insert(filteredList, tree.setName .. " {" .. treeLinkId .. "}")
 			end
 		end
 	end
 
 	-- giving the options unique formatting so it can not match with user-created sets
 	t_insert(filteredList, "^7^7-----")
-	t_insert(filteredList, "^7^7New Loadout")
+	t_insert(filteredList, "^7^7Manage")
 	t_insert(filteredList, "^7^7Sync")
 	t_insert(filteredList, "^7^7Help >>")
 
@@ -1580,6 +1501,7 @@ function buildMode:SyncLoadouts()
 
 					if skillMatch and itemMatch and configMatch then
 						self.controls.buildLoadouts:SetSel(i)
+						self.activeLoadout = i - 1
 						return treeList, itemList, skillList, configList
 					end
 				end
@@ -1588,43 +1510,331 @@ function buildMode:SyncLoadouts()
 		end
 	end
 
-	self.controls.buildLoadouts:SetSel(1)
+	self.activeLoadout = 1
+	self.controls.buildLoadouts:SetSel(self.activeLoadout)
 	return treeList, itemList, skillList, configList
 end
 
-function buildMode:EstimatePlayerProgress()
-	local PointsUsed, AscUsed, SecondaryAscUsed = self.spec:CountAllocNodes()
-	local extra = self.calcsTab.mainOutput and self.calcsTab.mainOutput.ExtraPoints or 0
-	local usedMax, ascMax, secondaryAscMax, level, act = 99 + 23 + extra, 8, 8, 1, 0
+function buildMode:NewLoadout(loadoutName)
+	local newSpec = new("PassiveSpec", self, latestTreeVersion)
+	local newItemSet = self.itemsTab:NewItemSet(#self.itemsTab.itemSets + 1, loadoutName)
+	local newSkillSet = self.skillsTab:NewSkillSet(#self.skillsTab.skillSets + 1, loadoutName)
+	local newConfigSet = self.configTab:NewConfigSet(#self.configTab.configSets + 1, loadoutName)
 
-	-- Find estimated act and level based on points used
-	repeat
-		act = act + 1
-		level = m_min(m_max(PointsUsed + 1 - acts[act].questPoints - actExtra(act, extra), acts[act].level), 100)
-	until act == 11 or level <= acts[act + 1].level
-	
-	if self.characterLevelAutoMode and self.characterLevel ~= level then
-		self.characterLevel = level
-		self.controls.characterLevel:SetText(self.characterLevel)
-		self.configTab:BuildModList()
+	newSpec.title = loadoutName
+	t_insert(self.treeTab.specList, newSpec)
+	self:SetActiveLoadout(self:GetLoadoutByName(loadoutName))
+
+	self.modFlag = true
+end
+
+function buildMode:CopyLoadout(copyLoadoutName, loadoutName)
+	local loadout = self:GetLoadoutByName(copyLoadoutName)
+	if not loadout then return end
+
+	local newSpec = self.treeTab:CopyTree(loadout.specId, loadoutName)
+	local newItemSet = self.itemsTab:CopyItemSet(loadout.itemSetId or 1, loadoutName)
+	local newSkillSet = self.skillsTab:CopySkillSet(loadout.skillSetId or 1, loadoutName)
+	local newConfigSet = self.configTab:CopyConfigSet(loadout.configSetId or 1, loadoutName)
+
+	local copyLoadout = self:GetLoadoutByName(loadoutName)
+	self:SetActiveLoadout(copyLoadout)
+
+	self.modFlag = true
+	return newSpec, newItemSet, newSkillSet, newConfigSet
+end
+
+function buildMode:CustomLoadout(specId, itemSetId, skillSetId, configSetId, name)
+	local newSpec
+	if specId == -1 then
+		newSpec = new("PassiveSpec", self, latestTreeVersion)
+		newSpec.id = #self.treeTab.specList + 1
+		t_insert(self.treeTab.specList, newSpec)
+	else
+		newSpec = self.treeTab:CopyTree(specId, name)
+	end
+	newSpec.title = name
+
+	local newItemSet
+	if itemSetId == -1 then
+		newItemSet = self.itemsTab:NewItemSet(#self.itemsTab.itemSets + 1, name)
+	else
+		newItemSet = self.itemsTab:CopyItemSet(itemSetId, name)
 	end
 
-	-- Ascendancy points for lab
-	-- this is a recommendation for beginners who are using Path of Building for the first time and trying to map out progress in PoB
-	local labSuggest = level < 33 and ""
-		or level < 55 and "\nLabyrinth: Normal Lab"
-		or level < 68 and "\nLabyrinth: Cruel Lab"
-		or level < 75 and "\nLabyrinth: Merciless Lab"
-		or level < 90 and "\nLabyrinth: Uber Lab"
-		or ""
+	local newSkillSet
+	if skillSetId == -1 then
+		newSkillSet = self.skillsTab:NewSkillSet(#self.skillsTab.skillSets + 1, name)
+	else
+		newSkillSet = self.skillsTab:CopySkillSet(skillSetId, name)
+	end
+	newSkillSet.title = name
+
+	local newConfigSet
+	if configSetId == -1 then
+		newConfigSet = self.configTab:NewConfigSet(#self.configTab.configSets + 1, name)
+	else
+		newConfigSet = self.configTab:CopyConfigSet(configSetId, name)
+	end
 	
-	if PointsUsed > usedMax then InsertIfNew(self.controls.warnings.lines, "You have too many passive points allocated") end
-	if AscUsed > ascMax then InsertIfNew(self.controls.warnings.lines, "You have too many ascendancy points allocated") end
-	if SecondaryAscUsed > secondaryAscMax then InsertIfNew(self.controls.warnings.lines, "You have too many secondary ascendancy points allocated") end
-	self.Act = level < 90 and act <= 10 and act or "Endgame"
-	
-	return string.format("%s%3d / %3d   %s%d / %d", PointsUsed > usedMax and colorCodes.NEGATIVE or "^7", PointsUsed, usedMax, AscUsed > ascMax and colorCodes.NEGATIVE or "^7", AscUsed, ascMax),
-		"Required Level: "..level.."\nEstimated Progress:\nAct: "..self.Act.."\nQuestpoints: "..acts[act].questPoints.."\nExtra Skillpoints: "..actExtra(act, extra)..labSuggest
+	local customLoadout = self:GetLoadoutByName(name)
+	self:SetActiveLoadout(customLoadout)
+
+	self.modFlag = true
+	return newSpec, newItemSet, newSkillSet, newConfigSet
+end
+
+function buildMode:DeleteLoadout(loadoutName, nextLoadoutName)
+	local function reverseLookup(setOrderList, value)
+		for id, set in ipairs(setOrderList) do
+			if set == value then
+				return id
+			end
+		end
+		return nil
+	end
+
+	local loadout = self:GetLoadoutByName(loadoutName)
+	if loadout.specId then
+		t_remove(self.treeTab.specList, loadout.specId)
+	end
+	if loadout.itemSetId and #self.itemsTab.itemSetOrderList > 1 then
+		local index = reverseLookup(self.itemsTab.itemSetOrderList, loadout.itemSetId)
+		self.itemsTab:DeleteItemSet(loadout.itemSetId, index)
+	end
+	if loadout.skillSetId and #self.skillsTab.skillSetOrderList > 1 then
+		local index = reverseLookup(self.skillsTab.skillSetOrderList, loadout.skillSetId)
+		self.skillsTab:DeleteSkillSet(loadout.skillSetId, index)
+	end
+	if loadout.configSetId and #self.configTab.configSetOrderList > 1 then
+		local index = reverseLookup(self.configTab.configSetOrderList, loadout.configSetId)
+		self.configTab:DeleteConfigSet(loadout.configSetId, index)
+	end
+	self.modFlag = true
+
+	local nextLoadout = self:GetLoadoutByName(nextLoadoutName)
+	self:SetActiveLoadout(nextLoadout)
+end
+
+function buildMode:RenameLoadout(oldName, newName)
+	local loadout = self:GetLoadoutByName(oldName)
+	if loadout.specId then
+		self.treeTab.specList[loadout.specId].title = newName
+		self.treeTab.modFlag = true
+	end
+	if loadout.itemSetId then
+		self.itemsTab:RenameItemSet(loadout.itemSetId, newName)
+	end
+	if loadout.skillSetId then
+		self.skillsTab:RenameSkillSet(loadout.skillSetId, newName)
+	end
+	if loadout.configSetId then
+		self.configTab:RenameConfigSet(loadout.configSetId, newName)
+	end
+	self.modFlag = true
+end
+
+function buildMode:GetLoadoutByName(loadoutName)
+	-- item, skill, and config sets have identical structure
+	-- return id as soon as it's found
+	local function findSetId(setOrderList, value, sets, setSpecialLinks)
+		for _, setOrder in ipairs(setOrderList) do
+			if value == (sets[setOrder].title or "Default") then
+				return setOrder
+			else
+				local linkMatch = string.match(value, "%{(%w+)%}")
+				if linkMatch then
+					return setSpecialLinks[linkMatch]["setId"]
+				end
+			end
+		end
+		return nil
+	end
+
+	-- trees have a different structure with id/name pairs
+	-- return id as soon as it's found
+	local function findNamedSetId(treeList, value, setSpecialLinks)
+		for id, spec in ipairs(treeList) do
+			if value == spec then
+				return id
+			else
+				local linkMatch = string.match(value, "%{(%w+)%}")
+				if linkMatch then
+					return setSpecialLinks[linkMatch]["setId"]
+				end
+			end
+		end
+		return nil
+	end
+
+	local oneSkill = self.skillsTab and #self.skillsTab.skillSetOrderList == 1
+	local oneItem = self.itemsTab and #self.itemsTab.itemSetOrderList == 1
+	local oneConfig = self.configTab and #self.configTab.configSetOrderList == 1
+
+	local specId = findNamedSetId(self.treeTab:GetSpecList(), loadoutName, self.treeListSpecialLinks)
+	local itemId = oneItem and self.itemsTab.itemSetOrderList[1] or findSetId(self.itemsTab.itemSetOrderList, loadoutName, self.itemsTab.itemSets,
+		self.itemListSpecialLinks)
+	local skillId = oneSkill and self.skillsTab.skillSetOrderList[1] or findSetId(self.skillsTab.skillSetOrderList, loadoutName, self.skillsTab.skillSets,
+		self.skillListSpecialLinks)
+	local configId = oneConfig and self.configTab.configSetOrderList[1] or findSetId(self.configTab.configSetOrderList, loadoutName, self.configTab.configSets,
+		self.configListSpecialLinks)
+
+	if not specId and not itemId and not skillId and not configId then
+		return nil
+	end
+
+	return {
+		specId = specId,
+		itemSetId = itemId,
+		skillSetId = skillId,
+		configSetId = configId
+	}
+end
+
+function buildMode:SetActiveLoadout(loadout)
+	if not loadout then
+		return
+	end
+
+	local newSpecId, newItemId, newSkillId, newConfigId = loadout.specId, loadout.itemSetId, loadout.skillSetId,
+		loadout.configSetId
+	if newSpecId == nil then
+		return
+	end
+
+	if newSpecId ~= self.treeTab.activeSpec then
+		self.treeTab:SetActiveSpec(newSpecId, true)
+	end
+	if newItemId ~= self.itemsTab.activeItemSetId then
+		self.itemsTab:SetActiveItemSet(newItemId, true)
+	end
+	if newSkillId ~= self.skillsTab.activeSkillSetId then
+		self.skillsTab:SetActiveSkillSet(newSkillId, true)
+	end
+	if newConfigId ~= self.configTab.activeConfigSetId then
+		self.configTab:SetActiveConfigSet(newConfigId, false, true)
+	end
+	self:SyncLoadouts()
+end
+
+function buildMode:ReorderLoadout(oldIndex, newIndex)
+	if not oldIndex or not newIndex then return end
+	if oldIndex == newIndex then return end
+
+	if oldIndex <= 0 or newIndex < 0 or oldIndex > #self.treeTab.specList or newIndex > #self.treeTab.specList or newIndex > #self.loadoutsList then
+		return
+	end
+
+	local activeTitle = self.treeTab.specList[self.treeTab.activeSpec].title or "Default"
+
+	-- if loadoutsList is the same size as specList, just reorder the specList
+	if #self.treeTab.specList - #self.loadoutsList == 0 then
+		local movedSpec = t_remove(self.treeTab.specList, oldIndex)
+		t_insert(self.treeTab.specList, newIndex, movedSpec)
+
+		self.modFlag = true
+		self:SetActiveLoadout(self:GetLoadoutByName(activeTitle))
+		return
+	end
+
+	-- if loadoutsList contains filtered specs, we'll rebuild the specList to match the order of the loadoutsList
+	local oldSet = {}
+	for _, v in ipairs(self.loadoutsList) do
+		oldSet[v] = true
+	end
+
+	local newSpecList = {}
+	local idx = 1
+	for i = 1, #self.treeTab.specList do
+		if oldSet[self.treeTab.specList[i]] then
+			newSpecList[i] = self.loadoutsList[idx]
+			idx = idx + 1
+		else
+			newSpecList[i] = self.treeTab.specList[i]
+		end
+	end
+
+	self.treeTab.specList = newSpecList
+
+	self.modFlag = true
+	self:SetActiveLoadout(self:GetLoadoutByName(activeTitle))
+end
+
+function buildMode:EstimatePlayerProgress()
+	if self.spec then
+		local PointsUsed, AscUsed, SecondaryAscUsed, socketsUsed, weaponSet1Used, weaponSet2Used = self.spec:CountAllocNodes()
+		local extra = self.calcsTab.mainOutput and self.calcsTab.mainOutput.ExtraPoints or 0
+		local maxWeaponSets = self.maxWeaponSets
+		local extraWeaponSets = self.calcsTab.mainOutput and self.calcsTab.mainOutput.PassivePointsToWeaponSetPoints or 0
+		local usedMax, ascMax, secondaryAscMax, level, act = 99 + maxWeaponSets + extra, 8, 8, 1, 0
+
+		repeat
+			act = act + 1
+			level = m_min(m_max(PointsUsed + 1 -  self.acts[act].questPoints - extra - m_min(weaponSet1Used, weaponSet2Used), self.acts[act].level), 100)
+		until act == self.maxActs or level <= self.acts[act + 1].level
+
+		if self.characterLevelAutoMode and self.characterLevel ~= level then
+			self.characterLevel = level
+			self.controls.characterLevel:SetText(self.characterLevel)
+			self.configTab:BuildModList()
+		end
+
+		-- Ascendancy points for lab
+		-- this is a recommendation for beginners who are using Path of Building for the first time and trying to map out progress in PoB
+		local labSuggest = level < 33 and ""
+			or level < 55 and "\nLabyrinth: Normal Lab"
+			or level < 68 and "\nLabyrinth: Cruel Lab"
+			or level < 75 and "\nLabyrinth: Merciless Lab"
+			or level < 90 and "\nLabyrinth: Uber Lab"
+			or ""
+
+		local normalPassives = PointsUsed - m_min(weaponSet1Used, weaponSet2Used)
+		if normalPassives > usedMax then InsertIfNew(self.controls.warnings.lines, "You have too many passive points allocated") end
+		if AscUsed > ascMax then InsertIfNew(self.controls.warnings.lines, "You have too many ascendancy points allocated") end
+		if SecondaryAscUsed > secondaryAscMax then InsertIfNew(self.controls.warnings.lines, "You have too many secondary ascendancy points allocated") end
+
+		-- if you are using more than maxWeaponSets + extraWeaponSets, you are using too many weapon sets
+		local warningsWeaponSet = false
+		if weaponSet1Used > (maxWeaponSets + extraWeaponSets) then
+			warningsWeaponSet = true
+			InsertIfNew(self.controls.warnings.lines, string.format(
+				"You have allocated %d too many weapon set 1 passives",
+				math.abs((maxWeaponSets + extraWeaponSets) - weaponSet1Used)
+			))
+		end
+		if weaponSet2Used > (maxWeaponSets + extraWeaponSets) then
+			warningsWeaponSet = true
+			InsertIfNew(self.controls.warnings.lines, string.format(
+				"You have allocated %d too many weapon set 2 passives",
+				math.abs((maxWeaponSets + extraWeaponSets) - weaponSet2Used)
+			))
+		end
+
+		if not warningsWeaponSet and weaponSet1Used ~= weaponSet2Used then
+			InsertIfNew(self.controls.warnings.lines, string.format(
+				"You have %d Weapon set 2 passives available",
+				math.abs(weaponSet2Used - weaponSet1Used)
+			))
+		end
+
+		self.Act = act == self.maxActs and "Endgame" or "Act " .. act
+
+		self.controls.pointDisplay.str = string.format(
+			"%s%3d / %3d %s%2d / %2d %s%2d / %2d   %s%d / %d",
+			normalPassives > usedMax and colorCodes.NEGATIVE or "^7",
+			normalPassives, usedMax,
+			colorCodes.NEGATIVE,
+			weaponSet1Used, maxWeaponSets + extraWeaponSets,
+			colorCodes.POSITIVE,
+			weaponSet2Used, maxWeaponSets + extraWeaponSets,
+			AscUsed > ascMax and colorCodes.NEGATIVE or "^7",
+			AscUsed, ascMax
+		)
+		self.controls.pointDisplay.req = string.format(
+			"Required Level: %d\nEstimated Progress:\nAct: %s\nExtra Skillpoints: %d%s",
+			level, self.Act, extra, labSuggest
+		)
+	end
 end
 
 function buildMode:CanExit(mode)
@@ -2394,7 +2604,7 @@ function buildMode:FormatStat(statData, statVal, overCapStatVal, colorOverride)
 	if statData.label == "Unreserved Life" and statVal == 0 then
 		color = colorCodes.NEGATIVE
 	end
-	
+
 	local valStr = s_format("%"..statData.fmt, val)
 	local number, suffix = valStr:match("^([%+%-]?%d+%.%d+)(%D*)$")
 	if number then
@@ -2612,6 +2822,7 @@ function buildMode:RefreshStatList()
 		t_insert(statBoxList, { height = 14, "^8(Stats unavailable: calc engine error)" })
 	end
 	local ok2, err2 = pcall(self.InsertItemWarnings, self)
+	pcall(self.EstimatePlayerProgress, self)
 end
 
 function buildMode:CompareStatList(tooltip, statList, actor, baseOutput, compareOutput, header, nodeCount)
@@ -2837,6 +3048,21 @@ function buildMode:SaveDBFile()
 	elseif action == "UPDATE" then
 		launch:ApplyUpdate(launch.updateAvailable)
 	end
+end
+
+-- Opens the build set manager
+function buildMode:OpenBuildSetManagePopup()
+	main:OpenPopup(400, 290, i18n.t("build.manageLoadouts"), {
+		new("BuildSetListControl", nil, { 0, 50, 380, 200 }, self),
+		new("ButtonControl", nil, { 0, 260, 90, 20 }, i18n.t("build.manageDone"), function()
+			main:ClosePopup()
+			if self.activeLoadout and self.activeLoadout > 0 then
+				self.controls.buildLoadouts:SetSel(self.activeLoadout + 1)
+			else
+				self.controls.buildLoadouts:SetSel(1)
+			end
+		end),
+	})
 end
 
 return buildMode
