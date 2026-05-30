@@ -1,3 +1,11 @@
+VERSION[0.8.0][2026/05/30]
+
+--- phase9 sync 負債の修正 / phase9 sync debt fixes ---
+* 起動3連クラッシュを解消（PassiveTreeView の GemTooltip/TradeHelpers 取込、checkUnlockConstraints/compareJewelsEqual 復元）
+* repo-root の Assets/Data/TreeData 互換 symlink を復活（dylib のアーカイブ機構無効時の FS フォールバック解決）
+* 0_5 ツリーアート（GGG プレリリース由来 webp）を PNG へ変換しノード/背景の描画を修復
+* webp→PNG 変換を build パイプライン化（scripts/convert-tree-webp.sh + build-app.sh）で再 sync 後の再発を防止
+
 VERSION[0.7.2][2026/05/03]
 
 --- リポジトリ整理 / Repository Cleanup ---
