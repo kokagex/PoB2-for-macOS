@@ -13,13 +13,16 @@ export interface Topline {
   Speed: number;
 }
 
+export interface Patch {
+  config?: Record<string, unknown>;
+  enemyLevel?: number;
+  treeURL?: string;
+}
+
 export interface CalcRequest {
+  op?: "calc" | "breakdown" | "export";
   buildXml: string;
-  patch?: {
-    config?: Record<string, unknown>;
-    enemyLevel?: number;
-    treeURL?: string;
-  };
+  patch?: Patch;
 }
 
 // Spawns the persistent luajit worker (boots PoB once) and serializes requests
@@ -57,17 +60,32 @@ export class Worker {
     });
   }
 
-  async calc(req: CalcRequest): Promise<Topline> {
+  // Generic single request/response. Returns the worker's `output` payload.
+  async send(req: CalcRequest): Promise<unknown> {
     await this.ready;
     const line = await new Promise<string>((resolve) => {
       this.queue.push(resolve);
       this.proc.stdin.write(JSON.stringify(req) + "\n");
     });
     const obj = JSON.parse(line) as
-      | { ok: true; output: Topline }
+      | { ok: true; output: unknown }
       | { ok: false; error: string };
     if (!obj.ok) throw new Error(`worker error: ${obj.error}`);
     return obj.output;
+  }
+
+  calc(req: CalcRequest): Promise<Topline> {
+    return this.send({ ...req, op: "calc" }) as Promise<Topline>;
+  }
+
+  breakdown(req: CalcRequest): Promise<Record<string, number>> {
+    return this.send({ ...req, op: "breakdown" }) as Promise<
+      Record<string, number>
+    >;
+  }
+
+  exportCode(req: CalcRequest): Promise<{ code: string }> {
+    return this.send({ ...req, op: "export" }) as Promise<{ code: string }>;
   }
 
   dispose() {

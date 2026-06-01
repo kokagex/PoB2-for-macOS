@@ -17,6 +17,27 @@ function M.readTopline(build)
   return t
 end
 
+-- Richer key set for calc_breakdown: DPS, crit, speed/hit, and per-damage-type
+-- hit averages, so chat can explain "why this number" and find levers. All keys
+-- verified present on a real mainOutput; absent ones default to 0.
+local BREAKDOWN_KEYS = {
+  "FullDPS", "TotalDPS", "CombinedDPS", "AverageDamage", "AverageHit",
+  "CritChance", "CritMultiplier", "CritEffect", "Speed", "AccuracyHitChance",
+  "PhysicalHitAverage", "FireHitAverage", "ColdHitAverage",
+  "LightningHitAverage", "ChaosHitAverage",
+  "BleedDPS", "IgniteDPS", "PoisonDPS",
+  "ManaCost", "LifeCost",
+}
+
+function M.readBreakdown(build)
+  local out = (build.calcsTab and build.calcsTab.mainOutput) or {}
+  local t = {}
+  for _, k in ipairs(BREAKDOWN_KEYS) do
+    t[k] = out[k] or 0
+  end
+  return t
+end
+
 -- Loads a build from XML, fully resetting build-level state. The expensive Data
 -- load stays warm across calls; only the build object is rebuilt.
 function M.loadBuild(xml)
@@ -74,6 +95,9 @@ function M.handle(req)
     return { code = M.exportCode(build) }
   end
   build.calcsTab:BuildOutput()
+  if req.op == "breakdown" then
+    return M.readBreakdown(build)
+  end
   return M.readTopline(build)
 end
 

@@ -24,11 +24,19 @@ modified** — only headless host stubs in `src/HeadlessWrapper.lua`.
     cd mcp/server && npm install && npm run build
 
 ## Tools
-- `calc_topline({ buildPath | buildXml, patch? })` → top-line DPS JSON
-  (`FullDPS, TotalDPS, CombinedDPS, AverageDamage, BleedDPS, IgniteDPS,
-  PoisonDPS, CritChance, Speed`).
-  - `patch`: `{ config?: {key: value}, enemyLevel?: number, treeURL?: string }`
-  - `treeURL` replaces the whole passive tree (a node set; no pathing issues).
+All take a build via `buildPath` or `buildXml`, plus an optional `patch`:
+`{ config?: {key: value}, enemyLevel?: number, treeURL?: string }`
+(`treeURL` replaces the whole passive tree — a node set, no pathing issues).
+
+- `calc_topline(...)` → top-line DPS (`FullDPS, TotalDPS, CombinedDPS,
+  AverageDamage, BleedDPS, IgniteDPS, PoisonDPS, CritChance, Speed`).
+- `calc_breakdown(...)` → richer set: crit (chance/multi/effect), speed, hit
+  chance, per-damage-type hit averages, DoT, mana/life cost — for explaining
+  "why this number" and finding levers.
+- `calc_compare({ ..., patchA?, patchB })` → per-metric `{ a, b, delta, pct }`
+  ("how much does this change help?"). `patchA` omitted = build as-is.
+- `export_build(...)` → PoB import code (base64 `eNr…`) to paste into the GUI.
+  Round-trip verified: regenerated code reloads to an identical DPS.
 
 ## Tests
 - Lua unit:    `eval "$(luarocks --lua-version 5.1 path)"; busted test/unit/test_calc_readout.lua`
@@ -50,6 +58,7 @@ that an upstream re-sync will drop — re-apply it:
 The `ResetViewport` no-op stub is pre-injected in `worker/boot.lua` (not in
 HeadlessWrapper), so it survives syncs on its own.
 
-## Out of scope for Slice 1 (→ Slice 2)
-`calc_breakdown`, `calc_compare`, `export_build` (round-trip import code),
-gem/item patching, name→id resolution.
+## Out of scope (future)
+- gem / item patching (currently patch = config + enemyLevel + full-tree replace)
+- name→id resolution for individual passive nodes / gems / items
+- defense / EHP (CalcDefence)
