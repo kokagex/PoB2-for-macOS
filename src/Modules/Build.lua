@@ -2543,7 +2543,13 @@ function buildMode:RefreshSkillSelectControls(controls, mainGroup, suffix)
 					controls.mainSkillStageCount.buf = tostring(activeEffect.srcInstance["skillStageCount"..suffix] or activeSkill.skillData.stagesMin or 1)
 				end
 				local minionList = activeSkill.minionList or activeEffect.grantedEffect.minionList
-				if not activeSkill.activeEffect.statSet.skillFlags.disable and (activeEffect.grantedEffect.minionList or (minionList and minionList[1])) then
+				-- statSet is nullable across the calc code (e.g. CalcActiveSkill builds
+				-- skillFlags as `statSet and copyTable(statSet.baseFlags) or {}`); a skill
+				-- whose statSet was not built (e.g. an unsupported skill on a mismatched
+				-- tree version) reaches here with statSet == nil. Treat nil as "not
+				-- disabled" to match that calc semantics instead of indexing into nil.
+				local displayStatSet = activeSkill.activeEffect.statSet
+				if (not displayStatSet or not displayStatSet.skillFlags.disable) and (activeEffect.grantedEffect.minionList or (minionList and minionList[1])) then
 					wipeTable(controls.mainSkillMinion.list)
 					if activeEffect.grantedEffect.minionHasItemSet then
 						for _, itemSetId in ipairs(self.itemsTab.itemSetOrderList) do
