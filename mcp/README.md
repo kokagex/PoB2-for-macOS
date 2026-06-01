@@ -40,6 +40,16 @@ modified** — only headless host stubs in `src/HeadlessWrapper.lua`.
   `TotalDPS` is the robust hit-DPS oracle.
 - GUI cross-check (anti-hallucination) is a manual gate — see `spike/GOLDEN.md`.
 
+## ⚠️ Upstream-synced file edit (re-apply after any `src/` sync)
+Headless calc needs one edit to the upstream-synced `src/HeadlessWrapper.lua`
+that an upstream re-sync will drop — re-apply it:
+- **`ConPrintf`**: wrap `string.format` in `pcall` (the real C ConPrintf tolerates
+  nil/mismatched args; the Lua stub crashes Init otherwise). Must live in
+  HeadlessWrapper because it is defined there mid-load.
+
+The `ResetViewport` no-op stub is pre-injected in `worker/boot.lua` (not in
+HeadlessWrapper), so it survives syncs on its own.
+
 ## Out of scope for Slice 1 (→ Slice 2)
 `calc_breakdown`, `calc_compare`, `export_build` (round-trip import code),
 gem/item patching, name→id resolution.

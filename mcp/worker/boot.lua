@@ -13,5 +13,11 @@ probe:close()
 -- the C host normally puts them on the path. Headless must do it itself.
 package.path = "../runtime/lua/?.lua;../runtime/lua/?/init.lua;" .. package.path
 
+-- ResetViewport is a C-host draw function HeadlessWrapper does not stub; Build.lua
+-- OnFrame calls it. Pre-inject a no-op here (rather than editing the upstream-synced
+-- HeadlessWrapper.lua) so this stub survives an upstream re-sync. HeadlessWrapper
+-- never defines ResetViewport, so it won't be overwritten by the dofile below.
+_G.ResetViewport = _G.ResetViewport or function() end
+
 dofile("HeadlessWrapper.lua")
 assert(_G.build, "boot.lua: engine boot failed (build global is nil)")
