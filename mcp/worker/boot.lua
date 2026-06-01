@@ -21,3 +21,10 @@ _G.ResetViewport = _G.ResetViewport or function() end
 
 dofile("HeadlessWrapper.lua")
 assert(_G.build, "boot.lua: engine boot failed (build global is nil)")
+
+-- HeadlessWrapper stubs Deflate/Inflate as no-ops (return ""), which breaks the
+-- PoB import-code round-trip (build:SaveDB("code") -> base64). Swap in real zlib
+-- (FFI -> libz) so exported codes load in the PoB GUI.
+local zlib = dofile("../mcp/worker/zlib.lua")
+_G.Deflate = function(data) return zlib.deflate(data) end
+_G.Inflate = function(data) return zlib.inflate(data) end

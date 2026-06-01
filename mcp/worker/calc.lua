@@ -54,11 +54,25 @@ function M.applyPatch(build, patch)
   build.buildFlag = true
 end
 
--- Full request handler: load -> patch -> recalc -> topline.
+-- Serialise the (possibly patched) build to a PoB import code, so the user can
+-- paste it into the PoB GUI. Format: base64url(zlib_deflate(SaveDB("code"))),
+-- matching ImportTab.lua:130 / Build.lua:2447. Requires real Deflate (boot.lua).
+function M.exportCode(build)
+  local xml = build:SaveDB("code")
+  local b64 = common.base64.encode(Deflate(xml))
+  return (b64:gsub("+", "-"):gsub("/", "_"))
+end
+
+-- Full request handler. req.op selects the operation (default "calc"):
+--   "calc"   -> load -> patch -> recalc -> topline output table
+--   "export" -> load -> patch -> { code = <PoB import code> }
 function M.handle(req)
   assert(req and req.buildXml, "request requires buildXml")
   local build = M.loadBuild(req.buildXml)
   M.applyPatch(build, req.patch)
+  if req.op == "export" then
+    return { code = M.exportCode(build) }
+  end
   build.calcsTab:BuildOutput()
   return M.readTopline(build)
 end
