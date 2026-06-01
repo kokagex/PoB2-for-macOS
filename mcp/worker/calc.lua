@@ -32,13 +32,24 @@ function M.applyPatch(build, patch)
     -- A tree URL imports a complete node set, so there is no pathing problem.
     build.treeTab:LoadURL(patch.treeURL)
   end
+  -- configTab.input is aliased to the active config set's input (ConfigTab.lua:1090),
+  -- so writing here targets the right table. But the compiled config modList is only
+  -- rebuilt by BuildModList() -- buildFlag/BuildOutput alone leaves it stale, which
+  -- silently no-ops the config. So always rebuild after touching config.
+  local configTouched = false
   if patch.config then
     for k, v in pairs(patch.config) do
       build.configTab.input[k] = v
     end
+    configTouched = true
   end
   if patch.enemyLevel then
+    -- UpdateLevel() (called by BuildModList) reads input.enemyLevel (ConfigTab.lua:917).
     build.configTab.input.enemyLevel = patch.enemyLevel
+    configTouched = true
+  end
+  if configTouched then
+    build.configTab:BuildModList()
   end
   build.buildFlag = true
 end
