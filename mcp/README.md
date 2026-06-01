@@ -1,0 +1,45 @@
+# PoB2 Damage Calc MCP (Slice 1)
+
+Headless Path of Building 2 DPS for chat build consultation. A long-lived
+`luajit` worker boots the real PoB calc engine once, then answers calc requests;
+a thin TypeScript MCP server exposes them as tools. **No PoB calc code is
+modified** — only headless host stubs in `src/HeadlessWrapper.lua`.
+
+## Layout
+- `worker/`  — luajit worker (boots PoB, JSON-line protocol on stdin/stdout)
+  - `run.sh`     launcher: sets luarocks paths (lua-utf8), cwd=src/, CI=1
+  - `boot.lua`   headless engine bootstrap
+  - `calc.lua`   loadBuild / applyPatch / readTopline / handle
+  - `server.lua` request loop
+  - `json.lua`   dkjson wrapper
+- `server/`  — TypeScript MCP server (`@modelcontextprotocol/sdk`, stdio)
+- `spike/GOLDEN.md` — validation golden (build + baseline DPS)
+
+## Prerequisites
+- `luajit` on PATH (`brew install luajit`)
+- luarocks 5.1 with `luautf8`: `luarocks --lua-version 5.1 install luautf8`
+- Node 18+
+
+## Build
+    cd mcp/server && npm install && npm run build
+
+## Tools
+- `calc_topline({ buildPath | buildXml, patch? })` → top-line DPS JSON
+  (`FullDPS, TotalDPS, CombinedDPS, AverageDamage, BleedDPS, IgniteDPS,
+  PoisonDPS, CritChance, Speed`).
+  - `patch`: `{ config?: {key: value}, enemyLevel?: number, treeURL?: string }`
+  - `treeURL` replaces the whole passive tree (a node set; no pathing issues).
+
+## Tests
+- Lua unit:    `eval "$(luarocks --lua-version 5.1 path)"; busted test/unit/test_calc_readout.lua`
+- Integration: `./test/integration/smoke_calc.sh`  (headless == recorded baseline)
+- TS:          `cd mcp/server && npx vitest run`
+
+## Notes
+- `FullDPS` is 0 unless the build's skills are flagged "include in Full DPS";
+  `TotalDPS` is the robust hit-DPS oracle.
+- GUI cross-check (anti-hallucination) is a manual gate — see `spike/GOLDEN.md`.
+
+## Out of scope for Slice 1 (→ Slice 2)
+`calc_breakdown`, `calc_compare`, `export_build` (round-trip import code),
+gem/item patching, name→id resolution.
