@@ -16,9 +16,18 @@ Produced by `mcp/worker/server.lua` (no patch):
 - Speed:         1.79
 - FullDPS:       0   <- depends on per-skill "include in Full DPS" flags; 0 here
 
-## GUI cross-check (anti-hallucination oracle)
-> PENDING user confirmation. Open Lich_FotV in PathOfBuilding.app and record the
-> sidebar values. Headless must match within 1%.
+## GUI cross-check (anti-hallucination oracle) — CONFIRMED 2026-06-01
+Read from the PoB GUI sidebar (main skill: アイスノヴァ / Ice Nova). Headless
+matches the GUI to displayed precision -- the tool is correct, not just
+reproducible.
 
-- GUI Total DPS: <pending>
-- GUI Full DPS:  <pending>
+| metric        | GUI        | headless         | verdict |
+|---------------|------------|------------------|---------|
+| Hit DPS       | 25,062.6   | 25062.573899264  | match   |
+| Average Hit   | 14,001.4   | 14001.437932549  | match   |
+| Crit Chance   | 56.52%     | 56.52            | match   |
+| Cast Speed    | 1.79       | 1.79             | match   |
+| Full DPS      | (not shown)| 0                | faithful: GUI shows no Full DPS line (no skill flagged "include in Full DPS") |
+
+Note: the GUI headline figure is "ヒットDPS" (Hit DPS) == headless TotalDPS.
+FullDPS=0 is faithful here, not a bug.
