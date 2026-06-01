@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>brain-spec</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #ffffff;
+  --surface: #f5f5f5;
+  --border: #d0d0d0;
+  --text: #1a1a1a;
+  --text-muted: #666;
+  --accent: #0066cc;
+  --focus-ring: #0066cc;
+  --btn-bg: #f0f0f0;
+  --btn-hover: #e0e0e0;
+  --code-bg: #f8f8f8;
+  --tag-bg: #e8f0fe;
+  --tag-text: #1a56db;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1a1a1a;
+    --surface: #2a2a2a;
+    --border: #444;
+    --text: #e8e8e8;
+    --text-muted: #999;
+    --accent: #4da6ff;
+    --focus-ring: #4da6ff;
+    --btn-bg: #333;
+    --btn-hover: #444;
+    --code-bg: #252525;
+    --tag-bg: #1a2c4d;
+    --tag-text: #7eb8ff;
+  }
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  background: var(--bg);
+  color: var(--text);
+  padding: 0 16px 80px;
+}
+
+#page-wrapper {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* --- header --- */
+header {
+  border-bottom: 2px solid var(--border);
+  padding: 24px 0 16px;
+  margin-bottom: 28px;
+}
+
+#header-topic {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text);
+  outline: none;
+  border-bottom: 1px dashed transparent;
+  display: inline-block;
+  min-width: 200px;
+}
+#header-topic:focus { border-bottom-color: var(--focus-ring); }
+
+.header-meta {
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.meta-field {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 13px;
+}
+.meta-label {
+  color: var(--text-muted);
+  user-select: none;
+}
+.meta-value {
+  color: var(--text);
+  outline: none;
+  border-bottom: 1px dashed transparent;
+  min-width: 40px;
+}
+.meta-value:focus { border-bottom-color: var(--focus-ring); }
+
+/* --- status badge --- */
+#status-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--tag-bg);
+  color: var(--tag-text);
+  outline: none;
+}
+#status-badge:focus { outline: 1px solid var(--focus-ring); }
+#status-badge[data-status="approved"] { background: #d1fae5; color: #065f46; }
+@media (prefers-color-scheme: dark) {
+  #status-badge[data-status="approved"] { background: #064e3b; color: #6ee7b7; }
+}
+
+/* --- layout: main + aside --- */
+#layout {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 720px) {
+  #layout { grid-template-columns: 1fr; }
+}
+
+/* --- sections --- */
+#sections-container { display: flex; flex-direction: column; gap: 20px; }
+
+section.spec-section {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.section-title-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  border-radius: 6px 6px 0 0;
+}
+.section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  outline: none;
+  flex: 1;
+  border-bottom: 1px dashed transparent;
+}
+.section-title:focus { border-bottom-color: var(--focus-ring); }
+.section-type-tag {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--btn-bg);
+  padding: 1px 7px;
+  border-radius: 10px;
+  user-select: none;
+}
+
+.section-body {
+  padding: 12px 14px;
+}
+
+/* markdown sections */
+.section-body[data-type="markdown"] {
+  white-space: pre-wrap;
+  font-size: 14px;
+  min-height: 60px;
+  outline: none;
+  border-radius: 0 0 6px 6px;
+}
+.section-body[data-type="markdown"]:focus { outline: 1px solid var(--focus-ring); outline-offset: -1px; }
+
+/* html-fragment sections */
+.section-body[data-type="html-fragment"] {
+  min-height: 60px;
+  outline: none;
+}
+.section-body[data-type="html-fragment"]:focus { outline: 1px solid var(--focus-ring); outline-offset: -1px; }
+
+/* table sections */
+.section-body[data-type="table"] {
+  overflow-x: auto;
+}
+
+table.spec-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+table.spec-table th,
+table.spec-table td {
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+table.spec-table th {
+  background: var(--btn-bg);
+  font-weight: 600;
+  color: var(--text);
+  user-select: none;
+}
+table.spec-table td[contenteditable="true"] { outline: none; min-width: 60px; }
+table.spec-table td[contenteditable="true"]:focus { background: color-mix(in srgb, var(--focus-ring) 8%, var(--surface)); }
+
+/* code blocks in markdown sections */
+.section-body code {
+  font-family: "SF Mono", "Consolas", "Menlo", monospace;
+  font-size: 12px;
+  background: var(--code-bg);
+  padding: 0 3px;
+  border-radius: 3px;
+}
+.section-body pre {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  font-size: 12px;
+  margin: 4px 0;
+}
+
+/* --- aside --- */
+aside {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.aside-card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+.aside-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  user-select: none;
+}
+.aside-list {
+  list-style: none;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.aside-item {
+  font-size: 13px;
+  color: var(--text);
+  outline: none;
+  border-radius: 3px;
+  padding: 2px 4px;
+}
+.aside-item:focus { outline: 1px solid var(--focus-ring); }
+.aside-item-empty {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 13px;
+  padding: 2px 4px;
+}
+
+/* --- footer toolbar --- */
+footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  padding: 10px 16px;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  z-index: 100;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--btn-bg);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.1s;
+  user-select: none;
+}
+.btn:hover { background: var(--btn-hover); }
+.btn:active { transform: scale(0.98); }
+.btn.primary { background: var(--accent); color: white; border-color: var(--accent); }
+.btn.primary:hover { opacity: 0.9; }
+
+/* --- toast --- */
+#toast {
+  position: fixed;
+  bottom: 64px;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  background: #1a1a1a;
+  color: #fff;
+  padding: 7px 18px;
+  border-radius: 20px;
+  font-size: 13px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+  z-index: 200;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+@media (prefers-color-scheme: dark) {
+  #toast { background: #e8e8e8; color: #1a1a1a; }
+}
+
+/* --- empty state --- */
+#empty-state {
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 20px 0;
+}
+</style>
+</head>
+<body>
+<div id="page-wrapper">
+
+<header>
+  <div id="header-topic" contenteditable="true" data-field="topic" spellcheck="false"></div>
+  <div class="header-meta">
+    <div class="meta-field">
+      <span class="meta-label">date</span>
+      <span class="meta-value" contenteditable="true" data-field="date" spellcheck="false"></span>
+    </div>
+    <div class="meta-field">
+      <span class="meta-label">repo</span>
+      <span class="meta-value" contenteditable="true" data-field="repo" spellcheck="false"></span>
+    </div>
+    <div class="meta-field">
+      <span class="meta-label">status</span>
+      <span id="status-badge" contenteditable="true" data-field="status" spellcheck="false"></span>
+    </div>
+  </div>
+</header>
+
+<div id="layout">
+  <main>
+    <div id="sections-container"></div>
+  </main>
+
+  <aside>
+    <div class="aside-card">
+      <div class="aside-card-title">Scope Out</div>
+      <ul class="aside-list" id="scope-out-list"></ul>
+    </div>
+  </aside>
+</div>
+
+</div><!-- /page-wrapper -->
+
+<footer>
+  <button class="btn primary" id="btn-copy-data">Copy spec data</button>
+  <button class="btn" id="btn-copy-md">Copy as Markdown summary</button>
+  <button class="btn" id="btn-reload">Reload from JSON</button>
+</footer>
+
+<div id="toast"></div>
+
+<!-- DATA LAYER — CLI reads and edits only this block -->
+<script type="application/json" id="spec-data">
+{
+  "kind": "spec",
+  "version": 1,
+  "topic": "PoB2 ダメージ計算 MCP サーバー (チャットビルド相談用)",
+  "date": "2026-06-01",
+  "status": "draft",
+  "repo": "national-operations (pob2macos)",
+  "sections": [
+    {
+      "id": "概要-目的",
+      "title": "概要 / 目的",
+      "type": "markdown",
+      "content": "チャットでのビルド相談中に、Claude が DPS を幻覚せず MCP サーバーに実計算させ、根拠あるブレインストーミングを行うための計算サーバー。\n\n- 計算は再実装しない: src/Modules/Calc*.lua (移植資産) をそのまま使う = ゲーム実態と一致。\n- 大前提 (round-trip): MCP で作った/弄ったビルドは PoB インポートコードでエクスポートでき、GUI のコード読み取りで読み込めること。→ patch は必ず実 PoB build オブジェクトを公式 API で変異させ、build:SaveDB(\"code\") でコード化する (手書き XML 禁止)。\n- 入力: 既存ビルド (インポートコード / pobb.in / .xml) を起点に、構造化 patch (passive ノード集合・ジェムリンク・装備スワップ・config) を適用してから計算。"
+    },
+    {
+      "id": "アーキテクチャ-データフロー",
+      "title": "アーキテクチャ / データフロー",
+      "type": "html-fragment",
+      "content": "<div style='display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;font-size:12px;color:#666;'><span style='padding:2px 8px;border-radius:10px;background:#e8f0fe;color:#1a56db;font-weight:600;'>Claude (chat)</span><span style='padding:2px 8px;border-radius:10px;background:#fff3e0;color:#e65100;font-weight:600;'>MCP server (TS)</span><span style='padding:2px 8px;border-radius:10px;background:#e8f5e9;color:#2e7d32;font-weight:600;'>常駐 luajit worker</span><span style='padding:2px 8px;border-radius:10px;background:#eceff1;color:#455a64;font-weight:600;'>PoB calc engine</span></div><div style='display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:14px;font-weight:600;margin-bottom:14px;'><span style='padding:6px 12px;border-radius:16px;background:#e8f0fe;color:#1a56db;'>Claude</span><span style='color:#999;'>→</span><span style='padding:6px 12px;border-radius:16px;background:#fff3e0;color:#e65100;'>MCP server (TS)</span><span style='color:#999;'>→</span><span style='padding:6px 12px;border-radius:16px;background:#e8f5e9;color:#2e7d32;'>常駐 luajit worker</span><span style='color:#999;'>→</span><span style='padding:6px 12px;border-radius:16px;background:#eceff1;color:#455a64;'>Calc*.lua</span></div><div style='font-size:12px;color:#666;line-height:1.7;margin-bottom:6px;'><b style='color:#e65100;'>MCP (TS)</b>: スキーマ検証 / name→id 解決 / patch 構築 / 結果整形<br><b style='color:#2e7d32;'>worker</b>: Data を1回ロード (821 ファイル) → リクエスト毎に build を fresh load で状態リセット</div><div style='border:1px dashed #999;border-radius:6px;padding:10px 12px;margin-top:10px;font-size:12px;line-height:1.8;'><b>round-trip (大前提)</b><br><b>import</b>: code → base64.decode → Inflate → XML → loadBuildFromXML<br><b>export</b>: build:SaveDB(\"code\") → Deflate → base64 → import code → PoB GUI で読込</div>"
+    },
+    {
+      "id": "step-0-実走-spike",
+      "title": "Step 0: 実走 spike (実装の必須先頭)",
+      "type": "markdown",
+      "content": "コード読み = 実証ではない。dylib 破壊履歴のあるリポなので、headless で実際に DPS が出ることを実走で確かめるまで \"validated\" と書かない。\n\n- 作業中の chronomancer EoW .xml を luajit で loadBuildFromXML → build.calcsTab:BuildOutput() → FullDPS を print。\n- GUI の FullDPS と突き合わせる ← これが MCP の正当性オラクル。「幻覚しないための道具が黙って間違える」のは幻覚より悪い。\n- 状態漏れ検査: A load→calc / B load→calc / A 再 load→calc が A 初回と一致するか (グローバルキャッシュ漏れ検出)。\n- これが通らなければ、アーキより先に初期化 / データロード / 関数欠落を潰す。"
+    },
+    {
+      "id": "mcp-ツール",
+      "title": "MCP ツール (4 つ)",
+      "type": "table",
+      "columns": ["ツール", "入力", "出力"],
+      "rows": [
+        ["calc_topline", "build 参照 + patch", "FullDPS / TotalDPS / AverageDamage / crit / 速度 などの要約 (軽量)"],
+        ["calc_breakdown", "build 参照 + patch", "6-stage 内訳 + per-type + 主要 more/inc 乗数 (なぜ・伸びしろ分析)"],
+        ["calc_compare", "build + patch_A + patch_B (or base vs patch)", "各キーの delta・寄与 (この mod は X% 効く)"],
+        ["export_build", "build 参照 + patch", "PoB インポートコード (GUI に貼って確認 = round-trip)"]
+      ]
+    },
+    {
+      "id": "patch-改変層-本丸",
+      "title": "patch (改変) 層 — 設計の本丸",
+      "type": "markdown",
+      "content": "calc は解決済み。難所は patch 層。\n\n1. name→id 解決層: Claude はノード名 (\"Volatile Catalyst\") / gem nameSpec / item 名で考え、内部 nodeId は知らない → MCP 側で名前解決する。\n2. passive は pathing 制約: AllocNode は本来「到達可能ノードのみ」。孤立ノード追加は無言で失敗する。→ ツリー全体置換 (ノード集合 / PoB tree URL を丸ごと渡す) を基本とし、round-trip も完全。incremental な「1ノード足す」は path 解決が要るので補助的位置づけ。\n3. base + delta: patch が「現ビルド + 差分」を素直に扱えて初めて calc_compare の \"X% 効く\" が成立。"
+    },
+    {
+      "id": "headless-駆動-api",
+      "title": "headless 駆動 API (実コード根拠)",
+      "type": "table",
+      "columns": ["操作", "API", "場所"],
+      "rows": [
+        ["build ロード", "loadBuildFromXML(xml, name)", "HeadlessWrapper.lua:211"],
+        ["build 参照", "build = mainObject.main.modes[\"BUILD\"]", "HeadlessWrapper.lua:204"],
+        ["再計算", "build.calcsTab:BuildOutput()", "CalcsTab.lua:490"],
+        ["結果取得", "build.calcsTab.mainOutput (= mainEnv.player.output)", "CalcsTab.lua:490-521"],
+        ["passive 割当/解除", "build.spec:AllocNode(node) / DeallocNode(node)", "PassiveSpec.lua:1011 / 1111"],
+        ["装備スワップ", "build.itemsTab:EquipItemInSet(item, setId)", "ItemsTab.lua:1454"],
+        ["config 設定", "build.configTab.input.<opt> / .enemyLevel", "ConfigTab.lua:39 / 49"],
+        ["再計算トリガー", "build.buildFlag = true (各改変後)", "—"]
+      ]
+    },
+    {
+      "id": "ラウンドトリップ",
+      "title": "ラウンドトリップ (import / export)",
+      "type": "markdown",
+      "content": "全て pure Lua で headless 到達可能 (dylib 不要)。\n\n- import: Inflate(base64.decode(code)) → XML → loadBuildFromXML(xml)  (ImportTab.lua:258)\n- export: build:SaveDB(\"code\")  (Build.lua:2995) → Deflate → base64.encode → url-safe 置換 (+→-, /→_)  (ImportTab.lua:130 / Build.lua:2447)\n\n実 build オブジェクトを公式 API で変異 → SaveDB(\"code\") でコード化すれば、GUI で読めるコードが保証される。"
+    },
+    {
+      "id": "出力キー-v1",
+      "title": "出力キー (v1: Hit + ailment/DoT)",
+      "type": "table",
+      "columns": ["キー", "意味"],
+      "rows": [
+        ["FullDPS", "全スキル合計 DPS"],
+        ["TotalDPS", "ヒット DPS"],
+        ["CombinedDPS", "複合 DPS"],
+        ["AverageDamage", "平均ヒット"],
+        ["BleedDPS / IgniteDPS / PoisonDPS", "DoT (継続ダメージ) DPS"]
+      ]
+    },
+    {
+      "id": "acceptance-criteria",
+      "title": "acceptance criteria",
+      "type": "markdown",
+      "content": "- Step 0 spike が通る (headless で FullDPS が出る)。\n- MCP の FullDPS が GUI の FullDPS と一致 (正当性オラクル)。\n- round-trip: MCP が出した export_build コードを GUI に貼って (a) 読み込め (b) GUI の FullDPS が MCP の値と一致。\n- 状態漏れなし (同一ビルド再ロードで初回と一致)。\n- patch: ツリー全体置換・ジェム変更・装備スワップ・config 変更が calc に反映される。"
+    }
+  ],
+  "scope_out": [
+    "防御 / EHP / 耐性 (CalcDefence) — v2",
+    "Minion DPS の詳細・トリガー連鎖の網羅 — v1 は主スキル中心",
+    "計算式の再実装 — 常に Calc*.lua を使う",
+    "incremental passive の自動 pathing 解決 — v1 はツリー全体置換が基本",
+    "リアルタイム GUI 連携 / 自動同期"
+  ]
+}
+</script>
+
+<script>
+(function () {
+  'use strict';
+
+  // ---- data model ----
+  var data = {};
+  var debounceTimer = null;
+
+  // ---- utils ----
+  function toast(msg) {
+    var el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(el._timer);
+    el._timer = setTimeout(function () { el.classList.remove('show'); }, 2000);
+  }
+
+  // Escape "<" so a literal U+003C cannot prematurely close the data block.
+  // Also used when serializing back to clipboard so round-trip is safe.
+  function safeJsonStringify(obj) {
+    return JSON.stringify(obj, null, 2).replace(/</g, '\\u003c');
+  }
+
+  // Sanitize html-fragment: remove <script> and <iframe> tags.
+  function sanitizeFragment(html) {
+    return html
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<iframe[\s\S]*?<\/iframe>/gi, '');
+  }
+
+  // ---- DOM render ----
+
+  function renderHeader() {
+    var topicEl = document.getElementById('header-topic');
+    topicEl.textContent = data.topic || '';
+
+    document.querySelector('[data-field="date"]').textContent = data.date || '';
+    document.querySelector('[data-field="repo"]').textContent = data.repo || '';
+
+    var badge = document.getElementById('status-badge');
+    badge.textContent = data.status || 'draft';
+    badge.dataset.status = data.status || 'draft';
+  }
+
+  function renderSection(sec, index) {
+    var section = document.createElement('section');
+    section.className = 'spec-section';
+    section.dataset.sectionId = sec.id || ('s' + index);
+    section.dataset.index = index;
+
+    // title bar
+    var bar = document.createElement('div');
+    bar.className = 'section-title-bar';
+    var titleEl = document.createElement('div');
+    titleEl.className = 'section-title';
+    titleEl.contentEditable = 'true';
+    titleEl.spellcheck = false;
+    titleEl.textContent = sec.title || '';
+    titleEl.dataset.role = 'section-title';
+    var typeTag = document.createElement('span');
+    typeTag.className = 'section-type-tag';
+    typeTag.textContent = sec.type || 'markdown';
+    bar.appendChild(titleEl);
+    bar.appendChild(typeTag);
+    section.appendChild(bar);
+
+    // body
+    var body = document.createElement('div');
+    body.className = 'section-body';
+    body.dataset.type = sec.type || 'markdown';
+    body.dataset.role = 'section-body';
+    body.dataset.index = index;
+
+    if (sec.type === 'table') {
+      body.appendChild(renderTable(sec, index));
+    } else if (sec.type === 'html-fragment') {
+      body.contentEditable = 'true';
+      body.spellcheck = false;
+      body.innerHTML = sanitizeFragment(sec.content || '');
+    } else {
+      // markdown (default)
+      body.contentEditable = 'true';
+      body.spellcheck = false;
+      body.textContent = sec.content || '';
+    }
+
+    section.appendChild(body);
+    return section;
+  }
+
+  function renderTable(sec, sectionIndex) {
+    var table = document.createElement('table');
+    table.className = 'spec-table';
+
+    // header row
+    if (sec.columns && sec.columns.length > 0) {
+      var thead = document.createElement('thead');
+      var headRow = document.createElement('tr');
+      sec.columns.forEach(function (col) {
+        var th = document.createElement('th');
+        th.textContent = col;
+        headRow.appendChild(th);
+      });
+      thead.appendChild(headRow);
+      table.appendChild(thead);
+    }
+
+    // body rows
+    var tbody = document.createElement('tbody');
+    if (sec.rows) {
+      sec.rows.forEach(function (row, ri) {
+        var tr = document.createElement('tr');
+        row.forEach(function (cell, ci) {
+          var td = document.createElement('td');
+          td.contentEditable = 'true';
+          td.spellcheck = false;
+          td.dataset.row = ri;
+          td.dataset.col = ci;
+          td.dataset.sectionIndex = sectionIndex;
+          td.textContent = cell;
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+    }
+    table.appendChild(tbody);
+    return table;
+  }
+
+  function renderAside(listId, items) {
+    var list = document.getElementById(listId);
+    list.innerHTML = '';
+    if (!items || items.length === 0) {
+      var empty = document.createElement('li');
+      empty.className = 'aside-item-empty';
+      empty.textContent = '(none)';
+      list.appendChild(empty);
+      return;
+    }
+    items.forEach(function (text, i) {
+      var li = document.createElement('li');
+      li.className = 'aside-item';
+      li.contentEditable = 'true';
+      li.spellcheck = false;
+      li.dataset.listId = listId;
+      li.dataset.index = i;
+      li.textContent = text;
+      list.appendChild(li);
+    });
+  }
+
+  function renderAll() {
+    renderHeader();
+
+    var container = document.getElementById('sections-container');
+    container.innerHTML = '';
+    if (!data.sections || data.sections.length === 0) {
+      var empty = document.createElement('div');
+      empty.id = 'empty-state';
+      empty.textContent = 'No sections. Reload from JSON to populate.';
+      container.appendChild(empty);
+    } else {
+      data.sections.forEach(function (sec, i) {
+        container.appendChild(renderSection(sec, i));
+      });
+    }
+
+    renderAside('scope-out-list', data.scope_out);
+  }
+
+  // ---- input → data sync (debounced) ----
+
+  function scheduleSync() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(syncDomToData, 200);
+  }
+
+  function syncDomToData() {
+    // header fields
+    var topicEl = document.getElementById('header-topic');
+    if (topicEl) data.topic = topicEl.textContent.trim();
+
+    var dateEl = document.querySelector('[data-field="date"]');
+    if (dateEl) data.date = dateEl.textContent.trim();
+
+    var repoEl = document.querySelector('[data-field="repo"]');
+    if (repoEl) data.repo = repoEl.textContent.trim();
+
+    var statusEl = document.getElementById('status-badge');
+    if (statusEl) {
+      data.status = statusEl.textContent.trim();
+      statusEl.dataset.status = data.status;
+    }
+
+    // sections
+    var sectionEls = document.querySelectorAll('section.spec-section');
+    sectionEls.forEach(function (secEl) {
+      var idx = parseInt(secEl.dataset.index, 10);
+      if (isNaN(idx) || !data.sections[idx]) return;
+      var sec = data.sections[idx];
+
+      var titleEl = secEl.querySelector('[data-role="section-title"]');
+      if (titleEl) sec.title = titleEl.textContent.trim();
+
+      var body = secEl.querySelector('[data-role="section-body"]');
+      if (!body) return;
+
+      if (sec.type === 'table') {
+        // table cells handled via delegated listener (see below)
+      } else if (sec.type === 'html-fragment') {
+        sec.content = sanitizeFragment(body.innerHTML);
+      } else {
+        sec.content = body.textContent;
+      }
+    });
+
+    // aside lists
+    syncAsideList('scope-out-list', 'scope_out');
+  }
+
+  function syncAsideList(listId, field) {
+    var items = document.querySelectorAll('#' + listId + ' .aside-item');
+    data[field] = Array.from(items).map(function (li) { return li.textContent; });
+  }
+
+  // ---- event delegation ----
+
+  document.addEventListener('input', function (e) {
+    var target = e.target;
+
+    // table cell special case — sync immediately (no debounce needed for single cell)
+    if (target.tagName === 'TD' && target.dataset.row !== undefined) {
+      var si = parseInt(target.dataset.sectionIndex, 10);
+      var ri = parseInt(target.dataset.row, 10);
+      var ci = parseInt(target.dataset.col, 10);
+      if (!isNaN(si) && data.sections[si] && data.sections[si].rows) {
+        data.sections[si].rows[ri][ci] = target.textContent;
+      }
+      return;
+    }
+
+    scheduleSync();
+  });
+
+  // ---- clipboard buttons ----
+
+  document.getElementById('btn-copy-data').addEventListener('click', function () {
+    var json = safeJsonStringify(data);
+    navigator.clipboard.writeText(json).then(function () {
+      toast('Copied spec data to clipboard');
+    }).catch(function () {
+      // Fallback for file:// where clipboard may be restricted
+      var ta = document.createElement('textarea');
+      ta.value = json;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      toast('Copied spec data (fallback)');
+    });
+  });
+
+  document.getElementById('btn-copy-md').addEventListener('click', function () {
+    var lines = [];
+    lines.push('# ' + (data.topic || '(no topic)'));
+    lines.push('');
+    if (data.date) lines.push('date: ' + data.date);
+    if (data.status) lines.push('status: ' + data.status);
+    lines.push('');
+
+    if (data.sections) {
+      data.sections.forEach(function (sec) {
+        lines.push('## ' + (sec.title || '(untitled)'));
+        lines.push('');
+        if (sec.type === 'table') {
+          if (sec.columns && sec.columns.length) {
+            lines.push('| ' + sec.columns.join(' | ') + ' |');
+            lines.push('|' + sec.columns.map(function () { return '---|'; }).join(''));
+          }
+          if (sec.rows) {
+            sec.rows.forEach(function (row) {
+              lines.push('| ' + row.join(' | ') + ' |');
+            });
+          }
+        } else {
+          lines.push(sec.content || '');
+        }
+        lines.push('');
+      });
+    }
+
+    if (data.scope_out && data.scope_out.length) {
+      lines.push('## Scope Out');
+      lines.push('');
+      data.scope_out.forEach(function (s) { lines.push('- ' + s); });
+      lines.push('');
+    }
+
+    var md = lines.join('\n');
+    navigator.clipboard.writeText(md).then(function () {
+      toast('Copied Markdown summary to clipboard');
+    }).catch(function () {
+      var ta = document.createElement('textarea');
+      ta.value = md;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      toast('Copied Markdown (fallback)');
+    });
+  });
+
+  document.getElementById('btn-reload').addEventListener('click', function () {
+    loadFromScript();
+    toast('Reloaded from JSON');
+  });
+
+  // ---- initial load ----
+
+  function loadFromScript() {
+    var scriptEl = document.getElementById('spec-data');
+    var raw = scriptEl ? scriptEl.textContent : '{}';
+    try {
+      data = JSON.parse(raw);
+    } catch (err) {
+      data = { kind: 'spec', version: 1, topic: '', date: '', status: 'draft', repo: '', sections: [], scope_out: [] };
+      toast('ERROR: spec-data JSON invalid — ' + err.message);
+    }
+    renderAll();
+  }
+
+  loadFromScript();
+
+})();
+</script>
+
+</body>
+</html>
