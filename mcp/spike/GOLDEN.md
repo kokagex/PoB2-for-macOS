@@ -31,3 +31,10 @@ reproducible.
 
 Note: the GUI headline figure is "ヒットDPS" (Hit DPS) == headless TotalDPS.
 FullDPS=0 is faithful here, not a bug.
+
+## export_build round-trip — CONFIRMED IN REAL PoB GUI 2026-06-01
+`export_build` code (base64 `eNr…`) was pasted into the PoB GUI "インポートビルド"
+tab and imported cleanly: main skill アイスノヴァ, Hit DPS 25,062.6 — identical to
+source. The "older tree version (0_4)" warning is a property of the original
+build, not a round-trip defect. The 大前提 (mutate -> export code -> load in GUI)
+is closed.
