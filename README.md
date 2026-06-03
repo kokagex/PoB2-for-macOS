@@ -70,6 +70,22 @@ If you find any bugs or crashes, please report them on [Issues](https://github.c
 
 ## バージョン履歴 / Version History
 
+### v0.9.0 (2026-06-03)
+
+- 上流 PathOfBuilding-PoE2 dev を Release 0.16.0 → 0.17.1 まで同期（Phase 10、23 commits）
+- 計算/データ層 229 ファイル（Zarokh's Revolt 無限DPS・Aggravated bleeding・Amazon クリティカル・Trarthan Cannon クラッシュ・Rapid Casting III・0.5 新データ/runes/quest rewards 等）
+- 0.17 のツリーアート（`.dds.zst` テクスチャ配列 BC7/BC1）を 2D アトラス PNG へ変換するパイプラインを構築（macOS dylib は stb_image=PNG のみ対応のため、配列レイヤをデコード→アトラス再パック→tree.lua を spriteCoords 化）
+- GUI 実機テストで tree 描画クラッシュ 2 件（ddsCoords 裸キー取りこぼし / `.dds.zst` 拡張子ルーティング）を特定・修正
+- 既存 GUI バグ修正（gem コスト nil クラッシュ、spell tooltip 白背景）
+
+---
+
+- Synced upstream PathOfBuilding-PoE2 dev from Release 0.16.0 to 0.17.1 (Phase 10, 23 commits)
+- Calc/data layer across 229 files (Zarokh's Revolt infinite DPS, Aggravated bleeding, Amazon crit, Trarthan Cannon crash, Rapid Casting III, 0.5 new data/runes/quest rewards, etc.)
+- Built a pipeline converting 0.17 tree art (`.dds.zst` BC7/BC1 texture arrays) into 2D atlas PNGs (the macOS dylib's stb_image decodes PNG only, so array layers are decoded, repacked into an atlas, and tree.lua rewritten to spriteCoords)
+- Fixed two tree-render crashes found in GUI testing (ddsCoords bare-identifier keys, `.dds.zst` extension routing)
+- Fixed pre-existing GUI bugs (gem cost nil crash, spell tooltip white background)
+
 ### v0.8.0 (2026-05-30)
 
 - 上流 PathOfBuilding-PoE2 dev を Phase 6〜9 で同期（計算エンジン・データ・0.5パッシブツリー・Compare/Loadout 機能）
