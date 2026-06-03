@@ -1009,6 +1009,7 @@ function PassiveSpecClass:GetEffectiveAllocationPath(node, altPath)
 end
 
 function PassiveSpecClass:AllocNode(node, altPath)
+	self.build.treeTab.viewer.searchStrCached = ""
 	-- MINIMAL mode: Allow allocation without path (direct node allocation only)
 	if not node.path and not _G.MINIMAL_PASSIVE_TEST then
 		-- Node cannot be connected to the tree as there is no possible path
@@ -1109,6 +1110,7 @@ end
 
 -- Deallocate the given node, and all nodes which depend on it (i.e. which are only connected to the tree through this node)
 function PassiveSpecClass:DeallocNode(node)
+	self.build.treeTab.viewer.searchStrCached = ""
 	for _, depNode in ipairs(node.depends) do
 		-- reset any switched attribute nodes
 		if depNode.isAttribute then
