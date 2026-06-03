@@ -151,6 +151,10 @@ function main:Init()
 	self.showAnimations = true
 	self.showAllItemAffixes = true
 	self.errorReadingSettings = false
+	-- Trade session cookie. Session-only (not persisted in Settings.xml); set via the Trader UI.
+	-- MUST default to "" so consumers can concatenate/compare it before the user enters one
+	-- (Lua: nil ~= "" is true, so an uninitialised nil slips past `~= ""` guards and crashes on concat).
+	self.POESESSID = ""
 
 	if not SetDPIScaleOverridePercent then SetDPIScaleOverridePercent = function(scale) end end
 

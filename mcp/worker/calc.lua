@@ -21,12 +21,23 @@ end
 -- hit averages, so chat can explain "why this number" and find levers. All keys
 -- verified present on a real mainOutput; absent ones default to 0.
 local BREAKDOWN_KEYS = {
+  -- Offence
   "FullDPS", "TotalDPS", "CombinedDPS", "AverageDamage", "AverageHit",
   "CritChance", "CritMultiplier", "CritEffect", "Speed", "AccuracyHitChance",
   "PhysicalHitAverage", "FireHitAverage", "ColdHitAverage",
   "LightningHitAverage", "ChaosHitAverage",
   "BleedDPS", "IgniteDPS", "PoisonDPS",
   "ManaCost", "LifeCost",
+  -- Defence (the PoB engine computes the full mainOutput; these were previously
+  -- not surfaced, which made the worker look offence-only. Key names verified
+  -- against a real mainOutput dump. Absent keys default to 0.)
+  "Life", "LifeUnreserved", "Mana", "EnergyShield", "Ward",
+  "TotalEHP", "EHPSurvivalTime",
+  "Armour", "Evasion", "PhysicalDamageReduction", "MeleeEvadeChance",
+  "FireResist", "ColdResist", "LightningResist", "ChaosResist",
+  "PhysicalMaximumHitTaken", "FireMaximumHitTaken", "ColdMaximumHitTaken",
+  "LightningMaximumHitTaken", "ChaosMaximumHitTaken",
+  "BlockChance", "SpellBlockChance", "BlockChanceMax", "SpellSuppressionChance",
 }
 
 function M.readBreakdown(build)

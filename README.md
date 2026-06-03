@@ -70,6 +70,16 @@ If you find any bugs or crashes, please report them on [Issues](https://github.c
 
 ## バージョン履歴 / Version History
 
+### v0.9.1 (2026-06-03)
+
+- PoE2 0.5（Return of the Ancients）新スキル 93 件の日本語訳を追加
+- Trade セッション cookie（POESESSID）を空文字デフォルト化し未設定時の nil クラッシュを防止
+
+---
+
+- Added Japanese translations for 93 new PoE2 0.5 skills
+- Default the trade session cookie (POESESSID) to "" to prevent nil crashes before it is set
+
 ### v0.9.0 (2026-06-03)
 
 - 上流 PathOfBuilding-PoE2 dev を Release 0.16.0 → 0.17.1 まで同期（Phase 10、23 commits）
