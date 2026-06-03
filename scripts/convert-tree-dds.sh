@@ -31,7 +31,7 @@ converted=0
 for tree in "$TARGET"/*/tree.lua; do
   dir="$(dirname "$tree")"
   # convert_tree_dds.py is a no-op when ddsCoords is already empty (idempotent).
-  if compgen -G "$dir"/*.dds.zst >/dev/null; then
+  if compgen -G "$dir/*.dds.zst" >/dev/null; then
     python3 "$ROOT/scripts/convert_tree_dds.py" "$tree" "$dir"
     converted=$((converted + 1))
   fi

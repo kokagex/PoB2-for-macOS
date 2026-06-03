@@ -50,7 +50,16 @@ def parse_ddscoords(txt):
                 if dd == 0: break
             p += 1
         body = blk[s:p + 1]
-        entries = {k2: int(v) for k2, v in re.findall(r'\["([^"]+)"\]=(\d+)', body)}
+        # ddsCoords entries use TWO Lua key syntaxes, both mapping name->layer:
+        #   ["art/.../Icon.dds"]=N   (quoted path keys)
+        #   JewelFrameAllocated=N    (bare identifier keys — UI frame sprites!)
+        # Capturing only the quoted form silently drops the frame overlays
+        # (PSSkillFrame*, *Frame{Allocated,CanAllocate,Unallocated}) that
+        # nodeOverlay needs, which crashes PassiveTree.lua:302 (nil asset).
+        entries = {}
+        for em in re.finditer(r'(?:\["([^"]+)"\]|([A-Za-z_][\w.-]*))\s*=\s*(\d+)', body):
+            key = em.group(1) if em.group(1) is not None else em.group(2)
+            entries[key] = int(em.group(3))
         sheets[name] = entries
     return sheets, (i, k + 1)  # block span in txt
 
@@ -113,17 +122,17 @@ def main():
     if not any(sheets.values()):
         print("convert_tree_dds: ddsCoords already empty -> already converted, skip")
         return
+    import os
     dctx = zstandard.ZstdDecompressor()
     sprite_coords = {}
     skipped = []
     for sheet, entries in sheets.items():
-        if sheet.startswith("skills-disabled") or not entries:
-            if not entries:
-                skipped.append((sheet, "empty"))
-            else:
-                skipped.append((sheet, "disabled"))
-            continue
         zpath = "%s/%s" % (sheet_dir, sheet)
+        if sheet.startswith("skills-disabled") or not entries:
+            skipped.append((sheet, "empty" if not entries else "disabled"))
+            if os.path.exists(zpath):  # unreferenced raw array -> drop it
+                os.remove(zpath)
+            continue
         raw = dctx.decompress(open(zpath, "rb").read())
         # decode each referenced layer
         tiles = {}
@@ -140,9 +149,17 @@ def main():
             cx, cy = (idx % cols) * tw, (idx // cols) * th
             atlas[cy:cy + th, cx:cx + tw] = tiles[name]
             coords[name] = (cx, cy, tw, th)
-        sprite_coords[sheet] = coords
-        Image.fromarray(atlas, "RGBA").save(zpath, format="PNG")  # PNG content, keep .dds.zst name
-        print("  atlas %-44s %d tiles %dx%d -> %dx%d" % (sheet, n, tw, th, atlas.shape[1], atlas.shape[0]))
+        # The macOS dylib routes image loads by EXTENSION: `.dds.zst` goes to a
+        # zstd+DDS decoder (which chokes on PNG bytes — "Failed to get DDS
+        # decompressed size"), so the atlas must be written as a real `.png`.
+        # spriteCoords is keyed by this `.png` filename; the original `.dds.zst`
+        # is removed (unreferenced after the rewrite).
+        png_name = sheet[:-len(".dds.zst")] + ".png"
+        Image.fromarray(atlas, "RGBA").save("%s/%s" % (sheet_dir, png_name), format="PNG")
+        if os.path.exists(zpath):
+            os.remove(zpath)
+        sprite_coords[png_name] = coords
+        print("  atlas %-44s %d tiles %dx%d -> %dx%d" % (png_name, n, tw, th, atlas.shape[1], atlas.shape[0]))
     print("skipped:", ", ".join("%s(%s)" % s for s in skipped))
 
     # rewrite tree.lua: ddsCoords={}  +  spriteCoords=<generated>

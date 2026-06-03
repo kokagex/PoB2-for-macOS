@@ -1371,7 +1371,7 @@ return {
 	ddsCoords={
 	},
 	spriteCoords={
-		["ascendancy-background_1500_1500_BC7.dds.zst"]={
+		["ascendancy-background_1500_1500_BC7.png"]={
 			["ClassesAbyssal Lich"]={
 				h=1500,
 				w=1500,
@@ -1384,10 +1384,28 @@ return {
 				x=1500,
 				y=0
 			},
-			["ClassesBlood Mage"]={
+			["ClassesAmazon"]={
 				h=1500,
 				w=1500,
 				x=3000,
+				y=0
+			},
+			["ClassesBlood Mage"]={
+				h=1500,
+				w=1500,
+				x=4500,
+				y=0
+			},
+			["ClassesChronomancer"]={
+				h=1500,
+				w=1500,
+				x=6000,
+				y=0
+			},
+			["ClassesDeadeye"]={
+				h=1500,
+				w=1500,
+				x=7500,
 				y=0
 			},
 			["ClassesDisciple of Varashta"]={
@@ -1396,126 +1414,346 @@ return {
 				x=0,
 				y=1500
 			},
-			["ClassesGemling Legionnaire"]={
+			["ClassesDruid"]={
 				h=1500,
 				w=1500,
 				x=1500,
 				y=1500
 			},
-			["ClassesMartial Artist"]={
+			["ClassesDuelist"]={
 				h=1500,
 				w=1500,
 				x=3000,
 				y=1500
 			},
-			["ClassesSmith of Kitava"]={
+			["ClassesGemling Legionnaire"]={
+				h=1500,
+				w=1500,
+				x=4500,
+				y=1500
+			},
+			["ClassesHuntress"]={
+				h=1500,
+				w=1500,
+				x=6000,
+				y=1500
+			},
+			["ClassesInfernalist"]={
+				h=1500,
+				w=1500,
+				x=7500,
+				y=1500
+			},
+			["ClassesInvoker"]={
 				h=1500,
 				w=1500,
 				x=0,
 				y=3000
 			},
-			["ClassesSpirit Walker"]={
+			["ClassesLich"]={
 				h=1500,
 				w=1500,
 				x=1500,
 				y=3000
 			},
+			["ClassesMarauder"]={
+				h=1500,
+				w=1500,
+				x=3000,
+				y=3000
+			},
+			["ClassesMartial Artist"]={
+				h=1500,
+				w=1500,
+				x=4500,
+				y=3000
+			},
+			["ClassesMercenary"]={
+				h=1500,
+				w=1500,
+				x=6000,
+				y=3000
+			},
+			["ClassesMonk"]={
+				h=1500,
+				w=1500,
+				x=7500,
+				y=3000
+			},
+			["ClassesOracle"]={
+				h=1500,
+				w=1500,
+				x=0,
+				y=4500
+			},
+			["ClassesPathfinder"]={
+				h=1500,
+				w=1500,
+				x=1500,
+				y=4500
+			},
+			["ClassesRanger"]={
+				h=1500,
+				w=1500,
+				x=3000,
+				y=4500
+			},
+			["ClassesRitualist"]={
+				h=1500,
+				w=1500,
+				x=4500,
+				y=4500
+			},
+			["ClassesShadow"]={
+				h=1500,
+				w=1500,
+				x=6000,
+				y=4500
+			},
+			["ClassesShaman"]={
+				h=1500,
+				w=1500,
+				x=7500,
+				y=4500
+			},
+			["ClassesSmith of Kitava"]={
+				h=1500,
+				w=1500,
+				x=0,
+				y=6000
+			},
+			["ClassesSorceress"]={
+				h=1500,
+				w=1500,
+				x=1500,
+				y=6000
+			},
+			["ClassesSpirit Walker"]={
+				h=1500,
+				w=1500,
+				x=3000,
+				y=6000
+			},
+			["ClassesStormweaver"]={
+				h=1500,
+				w=1500,
+				x=4500,
+				y=6000
+			},
+			["ClassesTactician"]={
+				h=1500,
+				w=1500,
+				x=6000,
+				y=6000
+			},
+			["ClassesTemplar"]={
+				h=1500,
+				w=1500,
+				x=7500,
+				y=6000
+			},
+			["ClassesTitan"]={
+				h=1500,
+				w=1500,
+				x=0,
+				y=7500
+			},
+			["ClassesWarbringer"]={
+				h=1500,
+				w=1500,
+				x=1500,
+				y=7500
+			},
+			["ClassesWarrior"]={
+				h=1500,
+				w=1500,
+				x=3000,
+				y=7500
+			},
+			["ClassesWitch"]={
+				h=1500,
+				w=1500,
+				x=4500,
+				y=7500
+			},
+			["ClassesWitchhunter"]={
+				h=1500,
+				w=1500,
+				x=6000,
+				y=7500
+			},
 		},
-		["group-background_104_104_BC7.dds.zst"]={
-			["art/textures/interface/2d/2dart/uiimages/ingame/oraclepassiveskillscreenpassiveframeactive.dds"]={
+		["ascendancy-background_4000_4000_BC7.png"]={
+			["BGTree"]={
+				h=4000,
+				w=4000,
+				x=0,
+				y=0
+			},
+			["BGTreeActive"]={
+				h=4000,
+				w=4000,
+				x=4000,
+				y=0
+			},
+		},
+		["background_1024_1024_BC7.png"]={
+			["Background2"]={
+				h=1024,
+				w=1024,
+				x=0,
+				y=0
+			},
+		},
+		["group-background_104_104_BC7.png"]={
+			["PSSkillFrame"]={
 				h=104,
 				w=104,
 				x=0,
 				y=0
 			},
-			["art/textures/interface/2d/2dart/uiimages/ingame/oraclepassiveskillscreenpassiveframecanallocate.dds"]={
+			["PSSkillFrameActive"]={
 				h=104,
 				w=104,
 				x=104,
 				y=0
 			},
-			["art/textures/interface/2d/2dart/uiimages/ingame/oraclepassiveskillscreenpassiveframenormal.dds"]={
+			["PSSkillFrameHighlighted"]={
+				h=104,
+				w=104,
+				x=208,
+				y=0
+			},
+			["art/textures/interface/2d/2dart/uiimages/ingame/oraclepassiveskillscreenpassiveframeactive.dds"]={
 				h=104,
 				w=104,
 				x=0,
 				y=104
 			},
+			["art/textures/interface/2d/2dart/uiimages/ingame/oraclepassiveskillscreenpassiveframecanallocate.dds"]={
+				h=104,
+				w=104,
+				x=104,
+				y=104
+			},
+			["art/textures/interface/2d/2dart/uiimages/ingame/oraclepassiveskillscreenpassiveframenormal.dds"]={
+				h=104,
+				w=104,
+				x=208,
+				y=104
+			},
 		},
-		["group-background_152_156_BC7.dds.zst"]={
-			["art/textures/interface/2d/2dart/uiimages/ingame/abyss/abysslichpassiveskillscreenjewelsocketactive.dds"]={
+		["group-background_152_156_BC7.png"]={
+			["JewelFrameAllocated"]={
 				h=156,
 				w=152,
 				x=0,
 				y=0
 			},
-			["art/textures/interface/2d/2dart/uiimages/ingame/abyss/abysslichpassiveskillscreenjewelsocketcanallocate.dds"]={
+			["JewelFrameCanAllocate"]={
 				h=156,
 				w=152,
 				x=152,
 				y=0
 			},
-			["art/textures/interface/2d/2dart/uiimages/ingame/abyss/abysslichpassiveskillscreenjewelsocketnormal.dds"]={
+			["JewelFrameUnallocated"]={
 				h=156,
 				w=152,
 				x=304,
 				y=0
 			},
-			["art/textures/interface/2d/2dart/uiimages/ingame/deliriumpassiveskillscreenjewelsocketactive.dds"]={
+			["NotableFrameAllocated"]={
 				h=156,
 				w=152,
 				x=456,
 				y=0
+			},
+			["NotableFrameCanAllocate"]={
+				h=156,
+				w=152,
+				x=608,
+				y=0
+			},
+			["NotableFrameUnallocated"]={
+				h=156,
+				w=152,
+				x=0,
+				y=156
+			},
+			["art/textures/interface/2d/2dart/uiimages/ingame/abyss/abysslichpassiveskillscreenjewelsocketactive.dds"]={
+				h=156,
+				w=152,
+				x=152,
+				y=156
+			},
+			["art/textures/interface/2d/2dart/uiimages/ingame/abyss/abysslichpassiveskillscreenjewelsocketcanallocate.dds"]={
+				h=156,
+				w=152,
+				x=304,
+				y=156
+			},
+			["art/textures/interface/2d/2dart/uiimages/ingame/abyss/abysslichpassiveskillscreenjewelsocketnormal.dds"]={
+				h=156,
+				w=152,
+				x=456,
+				y=156
+			},
+			["art/textures/interface/2d/2dart/uiimages/ingame/deliriumpassiveskillscreenjewelsocketactive.dds"]={
+				h=156,
+				w=152,
+				x=608,
+				y=156
 			},
 			["art/textures/interface/2d/2dart/uiimages/ingame/deliriumpassiveskillscreenjewelsocketcanallocate.dds"]={
 				h=156,
 				w=152,
 				x=0,
-				y=156
+				y=312
 			},
 			["art/textures/interface/2d/2dart/uiimages/ingame/deliriumpassiveskillscreenjewelsocketnormal.dds"]={
 				h=156,
 				w=152,
 				x=152,
-				y=156
+				y=312
 			},
 			["art/textures/interface/2d/2dart/uiimages/ingame/lichpassiveskillscreenjewelsocketactive.dds"]={
 				h=156,
 				w=152,
 				x=304,
-				y=156
+				y=312
 			},
 			["art/textures/interface/2d/2dart/uiimages/ingame/lichpassiveskillscreenjewelsocketcanallocate.dds"]={
 				h=156,
 				w=152,
 				x=456,
-				y=156
+				y=312
 			},
 			["art/textures/interface/2d/2dart/uiimages/ingame/lichpassiveskillscreenjewelsocketnormal.dds"]={
 				h=156,
 				w=152,
-				x=0,
+				x=608,
 				y=312
 			},
 			["art/textures/interface/2d/2dart/uiimages/ingame/oraclepassiveskillscreennotableframeactive.dds"]={
 				h=156,
 				w=152,
-				x=152,
-				y=312
+				x=0,
+				y=468
 			},
 			["art/textures/interface/2d/2dart/uiimages/ingame/oraclepassiveskillscreennotableframecanallocate.dds"]={
 				h=156,
 				w=152,
-				x=304,
-				y=312
+				x=152,
+				y=468
 			},
 			["art/textures/interface/2d/2dart/uiimages/ingame/oraclepassiveskillscreennotableframenormal.dds"]={
 				h=156,
 				w=152,
-				x=456,
-				y=312
+				x=304,
+				y=468
 			},
 		},
-		["group-background_156_156_BC7.dds.zst"]={
+		["group-background_156_156_BC7.png"]={
 			["art/textures/interface/2d/2dart/uiimages/ingame/delirium/voicesjewel/voicesjewelframe.dds"]={
 				h=156,
 				w=156,
@@ -1523,7 +1761,7 @@ return {
 				y=0
 			},
 		},
-		["group-background_160_160_BC7.dds.zst"]={
+		["group-background_160_160_BC7.png"]={
 			["art/textures/interface/2d/2dart/uiimages/ingame/anointpassiveskillscreenframelargeallocated.dds"]={
 				h=160,
 				w=160,
@@ -1543,7 +1781,7 @@ return {
 				y=160
 			},
 		},
-		["group-background_160_164_BC7.dds.zst"]={
+		["group-background_160_164_BC7.png"]={
 			["Abyssal LichFrameSmallAllocated"]={
 				h=164,
 				w=160,
@@ -1577,119 +1815,389 @@ return {
 			["Acolyte of ChayulaFrameSmallNormal"]={
 				h=164,
 				w=160,
-				x=0,
-				y=164
+				x=800,
+				y=0
+			},
+			["AmazonFrameSmallAllocated"]={
+				h=164,
+				w=160,
+				x=960,
+				y=0
+			},
+			["AmazonFrameSmallCanAllocate"]={
+				h=164,
+				w=160,
+				x=1120,
+				y=0
+			},
+			["AmazonFrameSmallNormal"]={
+				h=164,
+				w=160,
+				x=1280,
+				y=0
 			},
 			["Blood MageFrameSmallAllocated"]={
 				h=164,
 				w=160,
-				x=160,
+				x=0,
 				y=164
 			},
 			["Blood MageFrameSmallCanAllocate"]={
 				h=164,
 				w=160,
-				x=320,
+				x=160,
 				y=164
 			},
 			["Blood MageFrameSmallNormal"]={
 				h=164,
 				w=160,
+				x=320,
+				y=164
+			},
+			["ChronomancerFrameSmallAllocated"]={
+				h=164,
+				w=160,
 				x=480,
+				y=164
+			},
+			["ChronomancerFrameSmallCanAllocate"]={
+				h=164,
+				w=160,
+				x=640,
+				y=164
+			},
+			["ChronomancerFrameSmallNormal"]={
+				h=164,
+				w=160,
+				x=800,
+				y=164
+			},
+			["DeadeyeFrameSmallAllocated"]={
+				h=164,
+				w=160,
+				x=960,
+				y=164
+			},
+			["DeadeyeFrameSmallCanAllocate"]={
+				h=164,
+				w=160,
+				x=1120,
+				y=164
+			},
+			["DeadeyeFrameSmallNormal"]={
+				h=164,
+				w=160,
+				x=1280,
 				y=164
 			},
 			["Disciple of VarashtaFrameSmallAllocated"]={
 				h=164,
 				w=160,
-				x=640,
-				y=164
+				x=0,
+				y=328
 			},
 			["Disciple of VarashtaFrameSmallCanAllocate"]={
 				h=164,
 				w=160,
-				x=0,
+				x=160,
 				y=328
 			},
 			["Disciple of VarashtaFrameSmallNormal"]={
 				h=164,
 				w=160,
-				x=160,
+				x=320,
 				y=328
 			},
 			["Gemling LegionnaireFrameSmallAllocated"]={
 				h=164,
 				w=160,
-				x=320,
+				x=480,
 				y=328
 			},
 			["Gemling LegionnaireFrameSmallCanAllocate"]={
 				h=164,
 				w=160,
-				x=480,
+				x=640,
 				y=328
 			},
 			["Gemling LegionnaireFrameSmallNormal"]={
 				h=164,
 				w=160,
-				x=640,
+				x=800,
 				y=328
+			},
+			["InfernalistFrameSmallAllocated"]={
+				h=164,
+				w=160,
+				x=960,
+				y=328
+			},
+			["InfernalistFrameSmallCanAllocate"]={
+				h=164,
+				w=160,
+				x=1120,
+				y=328
+			},
+			["InfernalistFrameSmallNormal"]={
+				h=164,
+				w=160,
+				x=1280,
+				y=328
+			},
+			["InvokerFrameSmallAllocated"]={
+				h=164,
+				w=160,
+				x=0,
+				y=492
+			},
+			["InvokerFrameSmallCanAllocate"]={
+				h=164,
+				w=160,
+				x=160,
+				y=492
+			},
+			["InvokerFrameSmallNormal"]={
+				h=164,
+				w=160,
+				x=320,
+				y=492
+			},
+			["LichFrameSmallAllocated"]={
+				h=164,
+				w=160,
+				x=480,
+				y=492
+			},
+			["LichFrameSmallCanAllocate"]={
+				h=164,
+				w=160,
+				x=640,
+				y=492
+			},
+			["LichFrameSmallNormal"]={
+				h=164,
+				w=160,
+				x=800,
+				y=492
 			},
 			["Martial ArtistFrameSmallAllocated"]={
 				h=164,
 				w=160,
-				x=0,
+				x=960,
 				y=492
 			},
 			["Martial ArtistFrameSmallCanAllocate"]={
 				h=164,
 				w=160,
-				x=160,
+				x=1120,
 				y=492
 			},
 			["Martial ArtistFrameSmallNormal"]={
 				h=164,
 				w=160,
-				x=320,
+				x=1280,
 				y=492
 			},
-			["Smith of KitavaFrameSmallAllocated"]={
-				h=164,
-				w=160,
-				x=480,
-				y=492
-			},
-			["Smith of KitavaFrameSmallCanAllocate"]={
-				h=164,
-				w=160,
-				x=640,
-				y=492
-			},
-			["Smith of KitavaFrameSmallNormal"]={
+			["OracleFrameSmallAllocated"]={
 				h=164,
 				w=160,
 				x=0,
 				y=656
 			},
-			["Spirit WalkerFrameSmallAllocated"]={
+			["OracleFrameSmallCanAllocate"]={
 				h=164,
 				w=160,
 				x=160,
 				y=656
 			},
-			["Spirit WalkerFrameSmallCanAllocate"]={
+			["OracleFrameSmallNormal"]={
 				h=164,
 				w=160,
 				x=320,
 				y=656
 			},
-			["Spirit WalkerFrameSmallNormal"]={
+			["PathfinderFrameSmallAllocated"]={
 				h=164,
 				w=160,
 				x=480,
 				y=656
 			},
+			["PathfinderFrameSmallCanAllocate"]={
+				h=164,
+				w=160,
+				x=640,
+				y=656
+			},
+			["PathfinderFrameSmallNormal"]={
+				h=164,
+				w=160,
+				x=800,
+				y=656
+			},
+			["RitualistFrameSmallAllocated"]={
+				h=164,
+				w=160,
+				x=960,
+				y=656
+			},
+			["RitualistFrameSmallCanAllocate"]={
+				h=164,
+				w=160,
+				x=1120,
+				y=656
+			},
+			["RitualistFrameSmallNormal"]={
+				h=164,
+				w=160,
+				x=1280,
+				y=656
+			},
+			["ShamanFrameSmallAllocated"]={
+				h=164,
+				w=160,
+				x=0,
+				y=820
+			},
+			["ShamanFrameSmallCanAllocate"]={
+				h=164,
+				w=160,
+				x=160,
+				y=820
+			},
+			["ShamanFrameSmallNormal"]={
+				h=164,
+				w=160,
+				x=320,
+				y=820
+			},
+			["Smith of KitavaFrameSmallAllocated"]={
+				h=164,
+				w=160,
+				x=480,
+				y=820
+			},
+			["Smith of KitavaFrameSmallCanAllocate"]={
+				h=164,
+				w=160,
+				x=640,
+				y=820
+			},
+			["Smith of KitavaFrameSmallNormal"]={
+				h=164,
+				w=160,
+				x=800,
+				y=820
+			},
+			["Spirit WalkerFrameSmallAllocated"]={
+				h=164,
+				w=160,
+				x=960,
+				y=820
+			},
+			["Spirit WalkerFrameSmallCanAllocate"]={
+				h=164,
+				w=160,
+				x=1120,
+				y=820
+			},
+			["Spirit WalkerFrameSmallNormal"]={
+				h=164,
+				w=160,
+				x=1280,
+				y=820
+			},
+			["StormweaverFrameSmallAllocated"]={
+				h=164,
+				w=160,
+				x=0,
+				y=984
+			},
+			["StormweaverFrameSmallCanAllocate"]={
+				h=164,
+				w=160,
+				x=160,
+				y=984
+			},
+			["StormweaverFrameSmallNormal"]={
+				h=164,
+				w=160,
+				x=320,
+				y=984
+			},
+			["TacticianFrameSmallAllocated"]={
+				h=164,
+				w=160,
+				x=480,
+				y=984
+			},
+			["TacticianFrameSmallCanAllocate"]={
+				h=164,
+				w=160,
+				x=640,
+				y=984
+			},
+			["TacticianFrameSmallNormal"]={
+				h=164,
+				w=160,
+				x=800,
+				y=984
+			},
+			["TitanFrameSmallAllocated"]={
+				h=164,
+				w=160,
+				x=960,
+				y=984
+			},
+			["TitanFrameSmallCanAllocate"]={
+				h=164,
+				w=160,
+				x=1120,
+				y=984
+			},
+			["TitanFrameSmallNormal"]={
+				h=164,
+				w=160,
+				x=1280,
+				y=984
+			},
+			["WarbringerFrameSmallAllocated"]={
+				h=164,
+				w=160,
+				x=0,
+				y=1148
+			},
+			["WarbringerFrameSmallCanAllocate"]={
+				h=164,
+				w=160,
+				x=160,
+				y=1148
+			},
+			["WarbringerFrameSmallNormal"]={
+				h=164,
+				w=160,
+				x=320,
+				y=1148
+			},
+			["WitchhunterFrameSmallAllocated"]={
+				h=164,
+				w=160,
+				x=480,
+				y=1148
+			},
+			["WitchhunterFrameSmallCanAllocate"]={
+				h=164,
+				w=160,
+				x=640,
+				y=1148
+			},
+			["WitchhunterFrameSmallNormal"]={
+				h=164,
+				w=160,
+				x=800,
+				y=1148
+			},
 		},
-		["group-background_208_208_BC7.dds.zst"]={
+		["group-background_208_208_BC7.png"]={
 			["Abyssal LichFrameLargeAllocated"]={
 				h=208,
 				w=208,
@@ -1723,119 +2231,467 @@ return {
 			["Acolyte of ChayulaFrameLargeNormal"]={
 				h=208,
 				w=208,
-				x=0,
-				y=208
+				x=1040,
+				y=0
+			},
+			["AmazonFrameLargeAllocated"]={
+				h=208,
+				w=208,
+				x=1248,
+				y=0
+			},
+			["AmazonFrameLargeCanAllocate"]={
+				h=208,
+				w=208,
+				x=1456,
+				y=0
+			},
+			["AmazonFrameLargeNormal"]={
+				h=208,
+				w=208,
+				x=1664,
+				y=0
 			},
 			["Blood MageFrameLargeAllocated"]={
 				h=208,
 				w=208,
-				x=208,
+				x=0,
 				y=208
 			},
 			["Blood MageFrameLargeCanAllocate"]={
 				h=208,
 				w=208,
-				x=416,
+				x=208,
 				y=208
 			},
 			["Blood MageFrameLargeNormal"]={
 				h=208,
 				w=208,
+				x=416,
+				y=208
+			},
+			["ChronomancerFrameLargeAllocated"]={
+				h=208,
+				w=208,
 				x=624,
+				y=208
+			},
+			["ChronomancerFrameLargeCanAllocate"]={
+				h=208,
+				w=208,
+				x=832,
+				y=208
+			},
+			["ChronomancerFrameLargeNormal"]={
+				h=208,
+				w=208,
+				x=1040,
+				y=208
+			},
+			["DeadeyeFrameLargeAllocated"]={
+				h=208,
+				w=208,
+				x=1248,
+				y=208
+			},
+			["DeadeyeFrameLargeCanAllocate"]={
+				h=208,
+				w=208,
+				x=1456,
+				y=208
+			},
+			["DeadeyeFrameLargeNormal"]={
+				h=208,
+				w=208,
+				x=1664,
 				y=208
 			},
 			["Disciple of VarashtaFrameLargeAllocated"]={
 				h=208,
 				w=208,
-				x=832,
-				y=208
+				x=0,
+				y=416
 			},
 			["Disciple of VarashtaFrameLargeCanAllocate"]={
 				h=208,
 				w=208,
-				x=0,
+				x=208,
 				y=416
 			},
 			["Disciple of VarashtaFrameLargeNormal"]={
 				h=208,
 				w=208,
-				x=208,
+				x=416,
 				y=416
 			},
 			["Gemling LegionnaireFrameLargeAllocated"]={
 				h=208,
 				w=208,
-				x=416,
+				x=624,
 				y=416
 			},
 			["Gemling LegionnaireFrameLargeCanAllocate"]={
 				h=208,
 				w=208,
-				x=624,
+				x=832,
 				y=416
 			},
 			["Gemling LegionnaireFrameLargeNormal"]={
 				h=208,
 				w=208,
-				x=832,
+				x=1040,
 				y=416
+			},
+			["InfernalistFrameLargeAllocated"]={
+				h=208,
+				w=208,
+				x=1248,
+				y=416
+			},
+			["InfernalistFrameLargeCanAllocate"]={
+				h=208,
+				w=208,
+				x=1456,
+				y=416
+			},
+			["InfernalistFrameLargeNormal"]={
+				h=208,
+				w=208,
+				x=1664,
+				y=416
+			},
+			["InvokerFrameLargeAllocated"]={
+				h=208,
+				w=208,
+				x=0,
+				y=624
+			},
+			["InvokerFrameLargeCanAllocate"]={
+				h=208,
+				w=208,
+				x=208,
+				y=624
+			},
+			["InvokerFrameLargeNormal"]={
+				h=208,
+				w=208,
+				x=416,
+				y=624
+			},
+			["LichFrameLargeAllocated"]={
+				h=208,
+				w=208,
+				x=624,
+				y=624
+			},
+			["LichFrameLargeCanAllocate"]={
+				h=208,
+				w=208,
+				x=832,
+				y=624
+			},
+			["LichFrameLargeNormal"]={
+				h=208,
+				w=208,
+				x=1040,
+				y=624
 			},
 			["Martial ArtistFrameLargeAllocated"]={
 				h=208,
 				w=208,
-				x=0,
+				x=1248,
 				y=624
 			},
 			["Martial ArtistFrameLargeCanAllocate"]={
 				h=208,
 				w=208,
-				x=208,
+				x=1456,
 				y=624
 			},
 			["Martial ArtistFrameLargeNormal"]={
 				h=208,
 				w=208,
-				x=416,
+				x=1664,
 				y=624
 			},
-			["Smith of KitavaFrameLargeAllocated"]={
-				h=208,
-				w=208,
-				x=624,
-				y=624
-			},
-			["Smith of KitavaFrameLargeCanAllocate"]={
-				h=208,
-				w=208,
-				x=832,
-				y=624
-			},
-			["Smith of KitavaFrameLargeNormal"]={
+			["OracleFrameLargeAllocated"]={
 				h=208,
 				w=208,
 				x=0,
 				y=832
 			},
-			["Spirit WalkerFrameLargeAllocated"]={
+			["OracleFrameLargeCanAllocate"]={
 				h=208,
 				w=208,
 				x=208,
 				y=832
 			},
-			["Spirit WalkerFrameLargeCanAllocate"]={
+			["OracleFrameLargeNormal"]={
 				h=208,
 				w=208,
 				x=416,
 				y=832
 			},
-			["Spirit WalkerFrameLargeNormal"]={
+			["PathfinderFrameLargeAllocated"]={
 				h=208,
 				w=208,
 				x=624,
 				y=832
 			},
+			["PathfinderFrameLargeCanAllocate"]={
+				h=208,
+				w=208,
+				x=832,
+				y=832
+			},
+			["PathfinderFrameLargeNormal"]={
+				h=208,
+				w=208,
+				x=1040,
+				y=832
+			},
+			["RitualistFrameLargeAllocated"]={
+				h=208,
+				w=208,
+				x=1248,
+				y=832
+			},
+			["RitualistFrameLargeCanAllocate"]={
+				h=208,
+				w=208,
+				x=1456,
+				y=832
+			},
+			["RitualistFrameLargeNormal"]={
+				h=208,
+				w=208,
+				x=1664,
+				y=832
+			},
+			["ShamanFrameLargeAllocated"]={
+				h=208,
+				w=208,
+				x=0,
+				y=1040
+			},
+			["ShamanFrameLargeCanAllocate"]={
+				h=208,
+				w=208,
+				x=208,
+				y=1040
+			},
+			["ShamanFrameLargeNormal"]={
+				h=208,
+				w=208,
+				x=416,
+				y=1040
+			},
+			["Smith of KitavaFrameLargeAllocated"]={
+				h=208,
+				w=208,
+				x=624,
+				y=1040
+			},
+			["Smith of KitavaFrameLargeCanAllocate"]={
+				h=208,
+				w=208,
+				x=832,
+				y=1040
+			},
+			["Smith of KitavaFrameLargeNormal"]={
+				h=208,
+				w=208,
+				x=1040,
+				y=1040
+			},
+			["Spirit WalkerFrameLargeAllocated"]={
+				h=208,
+				w=208,
+				x=1248,
+				y=1040
+			},
+			["Spirit WalkerFrameLargeCanAllocate"]={
+				h=208,
+				w=208,
+				x=1456,
+				y=1040
+			},
+			["Spirit WalkerFrameLargeNormal"]={
+				h=208,
+				w=208,
+				x=1664,
+				y=1040
+			},
+			["StormweaverFrameLargeAllocated"]={
+				h=208,
+				w=208,
+				x=0,
+				y=1248
+			},
+			["StormweaverFrameLargeCanAllocate"]={
+				h=208,
+				w=208,
+				x=208,
+				y=1248
+			},
+			["StormweaverFrameLargeNormal"]={
+				h=208,
+				w=208,
+				x=416,
+				y=1248
+			},
+			["TacticianFrameLargeAllocated"]={
+				h=208,
+				w=208,
+				x=624,
+				y=1248
+			},
+			["TacticianFrameLargeCanAllocate"]={
+				h=208,
+				w=208,
+				x=832,
+				y=1248
+			},
+			["TacticianFrameLargeNormal"]={
+				h=208,
+				w=208,
+				x=1040,
+				y=1248
+			},
+			["TitanFrameLargeAllocated"]={
+				h=208,
+				w=208,
+				x=1248,
+				y=1248
+			},
+			["TitanFrameLargeCanAllocate"]={
+				h=208,
+				w=208,
+				x=1456,
+				y=1248
+			},
+			["TitanFrameLargeNormal"]={
+				h=208,
+				w=208,
+				x=1664,
+				y=1248
+			},
+			["WarbringerFrameLargeAllocated"]={
+				h=208,
+				w=208,
+				x=0,
+				y=1456
+			},
+			["WarbringerFrameLargeCanAllocate"]={
+				h=208,
+				w=208,
+				x=208,
+				y=1456
+			},
+			["WarbringerFrameLargeNormal"]={
+				h=208,
+				w=208,
+				x=416,
+				y=1456
+			},
+			["WitchhunterFrameLargeAllocated"]={
+				h=208,
+				w=208,
+				x=624,
+				y=1456
+			},
+			["WitchhunterFrameLargeCanAllocate"]={
+				h=208,
+				w=208,
+				x=832,
+				y=1456
+			},
+			["WitchhunterFrameLargeNormal"]={
+				h=208,
+				w=208,
+				x=1040,
+				y=1456
+			},
 		},
-		["jewel-sockets_152_156_BC7.dds.zst"]={
+		["group-background_220_224_BC7.png"]={
+			["KeystoneFrameAllocated"]={
+				h=224,
+				w=220,
+				x=0,
+				y=0
+			},
+			["KeystoneFrameCanAllocate"]={
+				h=224,
+				w=220,
+				x=220,
+				y=0
+			},
+			["KeystoneFrameUnallocated"]={
+				h=224,
+				w=220,
+				x=0,
+				y=224
+			},
+		},
+		["group-background_360_360_BC7.png"]={
+			["PSGroupBackground1"]={
+				h=360,
+				w=360,
+				x=0,
+				y=0
+			},
+			["PSGroupBackgroundSmallBlank"]={
+				h=360,
+				w=360,
+				x=360,
+				y=0
+			},
+		},
+		["group-background_468_468_BC7.png"]={
+			["PSGroupBackground2"]={
+				h=468,
+				w=468,
+				x=0,
+				y=0
+			},
+			["PSGroupBackgroundMediumBlank"]={
+				h=468,
+				w=468,
+				x=468,
+				y=0
+			},
+		},
+		["group-background_528_528_BC7.png"]={
+			["PSStartNodeBackgroundInactive"]={
+				h=528,
+				w=528,
+				x=0,
+				y=0
+			},
+		},
+		["group-background_740_376_BC7.png"]={
+			["PSGroupBackground3"]={
+				h=376,
+				w=740,
+				x=0,
+				y=0
+			},
+			["PSGroupBackgroundLargeBlank"]={
+				h=376,
+				w=740,
+				x=740,
+				y=0
+			},
+		},
+		["group-background_92_92_BC7.png"]={
+			["AscendancyMiddle"]={
+				h=92,
+				w=92,
+				x=0,
+				y=0
+			},
+		},
+		["jewel-sockets_152_156_BC7.png"]={
 			["Against the Darkness"]={
 				h=156,
 				w=152,
@@ -1848,80 +2704,116 @@ return {
 				x=152,
 				y=0
 			},
-			["Flesh Crucible"]={
+			["Diamond"]={
 				h=156,
 				w=152,
 				x=304,
+				y=0
+			},
+			["Emerald"]={
+				h=156,
+				w=152,
+				x=456,
+				y=0
+			},
+			["Flesh Crucible"]={
+				h=156,
+				w=152,
+				x=608,
 				y=0
 			},
 			["From Nothing"]={
 				h=156,
 				w=152,
-				x=456,
-				y=0
+				x=0,
+				y=156
 			},
 			["Heart of the Well"]={
 				h=156,
 				w=152,
-				x=0,
+				x=152,
 				y=156
 			},
 			["Heroic Tragedy"]={
 				h=156,
 				w=152,
-				x=152,
+				x=304,
+				y=156
+			},
+			["Megalomaniac"]={
+				h=156,
+				w=152,
+				x=456,
 				y=156
 			},
 			["Prism of Belief"]={
 				h=156,
 				w=152,
-				x=304,
+				x=608,
 				y=156
+			},
+			["Ruby"]={
+				h=156,
+				w=152,
+				x=0,
+				y=312
+			},
+			["Sapphire"]={
+				h=156,
+				w=152,
+				x=152,
+				y=312
 			},
 			["The Adorned"]={
 				h=156,
 				w=152,
-				x=456,
-				y=156
+				x=304,
+				y=312
 			},
 			["Time-Lost Diamond"]={
 				h=156,
 				w=152,
-				x=0,
+				x=456,
 				y=312
 			},
 			["Time-Lost Emerald"]={
 				h=156,
 				w=152,
-				x=152,
+				x=608,
 				y=312
 			},
 			["Time-Lost Ruby"]={
 				h=156,
 				w=152,
-				x=304,
-				y=312
-			},
-			["Time-Lost Sapphire"]={
-				h=156,
-				w=152,
-				x=456,
-				y=312
-			},
-			["Timeless Jewel"]={
-				h=156,
-				w=152,
 				x=0,
 				y=468
 			},
-			["Undying Hate"]={
+			["Time-Lost Sapphire"]={
 				h=156,
 				w=152,
 				x=152,
 				y=468
 			},
+			["Timeless Jewel"]={
+				h=156,
+				w=152,
+				x=304,
+				y=468
+			},
+			["Undying Hate"]={
+				h=156,
+				w=152,
+				x=456,
+				y=468
+			},
+			["Voices"]={
+				h=156,
+				w=152,
+				x=608,
+				y=468
+			},
 		},
-		["legion_1024_1024_BC7.dds.zst"]={
+		["legion_1024_1024_BC7.png"]={
 			["art/textures/interface/2d/2dart/uiimages/ingame/abyss/abysspassiveskillscreenjewelcircle1.dds"]={
 				h=1024,
 				w=1024,
@@ -1929,7 +2821,7 @@ return {
 				y=0
 			},
 		},
-		["legion_128_128_BC1.dds.zst"]={
+		["legion_128_128_BC1.png"]={
 			["Art/2DArt/SkillIcons/passives/AbyssDexNotable.dds"]={
 				h=128,
 				w=128,
@@ -2165,7 +3057,7 @@ return {
 				y=640
 			},
 		},
-		["legion_564_564_BC7.dds.zst"]={
+		["legion_564_564_BC7.png"]={
 			["art/textures/interface/2d/2dart/uiimages/ingame/passiveskillscreeneternalempirejewelcircle1.dds"]={
 				h=564,
 				w=564,
@@ -2239,7 +3131,7 @@ return {
 				y=1128
 			},
 		},
-		["legion_64_64_BC1.dds.zst"]={
+		["legion_64_64_BC1.png"]={
 			["Art/2DArt/SkillIcons/passives/AbyssJewelNode.dds"]={
 				h=64,
 				w=64,
@@ -2271,7 +3163,7 @@ return {
 				y=64
 			},
 		},
-		["mastery-active-effect_776_768_BC7.dds.zst"]={
+		["mastery-active-effect_776_768_BC7.png"]={
 			["Art/2DArt/UIImages/InGame/PassiveMastery/MasteryBackgroundGraphic/MasteryAccuracyPattern"]={
 				h=768,
 				w=776,
@@ -2633,7 +3525,87 @@ return {
 				y=5376
 			},
 		},
-		["skills_128_128_BC1.dds.zst"]={
+		["oils_108_108_RGBA.png"]={
+			["Contempt"]={
+				h=108,
+				w=108,
+				x=0,
+				y=0
+			},
+			["Despair"]={
+				h=108,
+				w=108,
+				x=108,
+				y=0
+			},
+			["Disgust"]={
+				h=108,
+				w=108,
+				x=216,
+				y=0
+			},
+			["Envy"]={
+				h=108,
+				w=108,
+				x=324,
+				y=0
+			},
+			["Fear"]={
+				h=108,
+				w=108,
+				x=0,
+				y=108
+			},
+			["Ferocity"]={
+				h=108,
+				w=108,
+				x=108,
+				y=108
+			},
+			["Greed"]={
+				h=108,
+				w=108,
+				x=216,
+				y=108
+			},
+			["Guilt"]={
+				h=108,
+				w=108,
+				x=324,
+				y=108
+			},
+			["Ire"]={
+				h=108,
+				w=108,
+				x=0,
+				y=216
+			},
+			["Isolation"]={
+				h=108,
+				w=108,
+				x=108,
+				y=216
+			},
+			["Melancholy"]={
+				h=108,
+				w=108,
+				x=216,
+				y=216
+			},
+			["Paranoia"]={
+				h=108,
+				w=108,
+				x=324,
+				y=216
+			},
+			["Suffering"]={
+				h=108,
+				w=108,
+				x=0,
+				y=324
+			},
+		},
+		["skills_128_128_BC1.png"]={
 			["Art/2DArt/SkillIcons/passives/AcolyteofChayula/AcolyteOfChayulaBreachFlameDoubles.dds"]={
 				h=128,
 				w=128,
@@ -4747,7 +5719,7 @@ return {
 				y=2304
 			},
 		},
-		["skills_172_172_BC1.dds.zst"]={
+		["skills_172_172_BC1.png"]={
 			["Art/2DArt/SkillIcons/passives/MasteryBlank.dds"]={
 				h=172,
 				w=172,
@@ -4755,7 +5727,7 @@ return {
 				y=0
 			},
 		},
-		["skills_176_176_BC1.dds.zst"]={
+		["skills_176_176_BC1.png"]={
 			["Art/2DArt/SkillIcons/passives/Infernalist/Fireblood.dds"]={
 				h=176,
 				w=176,
@@ -4763,7 +5735,7 @@ return {
 				y=0
 			},
 		},
-		["skills_64_64_BC1.dds.zst"]={
+		["skills_64_64_BC1.png"]={
 			["Art/2DArt/SkillIcons/ExplosiveGrenade.dds"]={
 				h=64,
 				w=64,
