@@ -43,6 +43,22 @@ bash "$ROOT/scripts/convert-tree-webp.sh" "$ROOT/tree-data"
 # so the stb_image-only dylib can render it. Idempotent. See convert-tree-dds.sh.
 bash "$ROOT/scripts/convert-tree-dds.sh" "$ROOT/tree-data"
 
+# 3d. Compile the Metal autoreleasepool-drain interposer (libpob_poolfix.dylib),
+# injected via DYLD_INSERT_LIBRARIES in the launcher to fix the per-frame Metal
+# object leak that crashes the AMD driver under heavy tree rendering. The dylib is
+# also committed under runtime/; recompiled here when clang is available so the
+# binary stays in sync with package/poolfix/pob_poolfix.c.
+if command -v clang >/dev/null 2>&1 && [[ -f "$ROOT/package/poolfix/pob_poolfix.c" ]]; then
+  GLFW_LIB="$(ls /usr/local/opt/glfw/lib/libglfw.3.dylib /usr/local/Cellar/glfw/*/lib/libglfw.3.4.dylib 2>/dev/null | head -1)"
+  if [[ -n "$GLFW_LIB" ]]; then
+    echo "==> Compiling libpob_poolfix.dylib..."
+    clang -arch x86_64 -dynamiclib -O2 -install_name @rpath/libpob_poolfix.dylib \
+      -o "$ROOT/runtime/libpob_poolfix.dylib" "$ROOT/package/poolfix/pob_poolfix.c" \
+      -lobjc "$GLFW_LIB"
+    codesign --force --sign - "$ROOT/runtime/libpob_poolfix.dylib"
+  fi
+fi
+
 # 4. Lua source, runtime (lua libs + dylibs), tree data
 # Note: dylibs (SimpleGraphic, libSimpleGraphic, CharInput) are tracked in
 # runtime/ as fixed assets — pob2macos/.claude/CLAUDE.md says rebuilding

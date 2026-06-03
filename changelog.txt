@@ -1,3 +1,16 @@
+VERSION[0.9.2][2026/06/04]
+
+--- Metal autoreleasepool リーク修正（ツリー操作の枯渇クラッシュ解消）/ Fix Metal autoreleasepool leak (passive-tree memory-exhaustion crash) ---
+* パッシブツリー操作中にメモリが急増し数分でクラッシュする問題を修正。SimpleGraphic.dylib の Metal 描画ループに per-frame autoreleasepool が無く、autorelease された Metal オブジェクト（command encoder/buffer/drawable）が毎フレーム蓄積していた（実測: ツリー操作 10 秒で +500MB → 8GB 枯渇で AMD Metal ドライバが SIGBUS）
+* dylib は再ビルド不可のため、glfwPollEvents（毎フレーム先頭で呼ばれる）を interpose する注入 dylib（libpob_poolfix.dylib）を DYLD_INSERT_LIBRARIES でロードし、フレーム先頭の安全な点で pool を排出（runtime/libpob_poolfix.dylib, package/poolfix/pob_poolfix.c）
+* 検証: 同一ツリー操作で MALLOC_NANO が未修正 1.0G→1.5G に対し、修正版は 512M→512M でフラット・クラッシュ無し
+* ※ランチャ＋新 dylib を含むため zip の再ダウンロード（再インストール）が必要。アプリ内アップデートでは反映されません
+
+* Fixed a crash where memory ballooned and the app died within minutes while manipulating the passive tree. SimpleGraphic.dylib's Metal render loop had no per-frame autoreleasepool, so autoreleased Metal objects (command encoder/buffer/drawable) accumulated every frame (~500MB in 10s of tree manipulation → 8GB exhaustion → AMD Metal driver SIGBUS).
+* Since the dylib cannot be rebuilt, a small injected dylib (libpob_poolfix.dylib) interposes glfwPollEvents (called at the top of each frame) and drains the autorelease pool at that safe point, loaded via DYLD_INSERT_LIBRARIES.
+* Verified: under identical tree manipulation MALLOC_NANO stays flat (512M→512M) vs unfixed (1.0G→1.5G), no crash.
+* Note: requires re-downloading the zip (reinstall); not deliverable via in-app update (it touches the launcher and adds a dylib).
+
 VERSION[0.9.1][2026/06/03]
 
 --- 0.5 スキル日本語翻訳 + Trade nil-safety / 0.5 skill JP translations + trade nil-safety ---
