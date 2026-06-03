@@ -782,7 +782,7 @@ function GemSelectClass:AddGrantedEffectInfo(gemInstance, grantedEffect, addReq)
 			self.tooltip:AddLine(fontSizeBig, "^x7F7F7F" .. string.format(i18n.t("gemTooltip.reservationPercent"), "^7" .. string.format("%.1f", grantedEffectLevel.spiritReservationPercent)), "FONTIN SC")
 		end
 		local cost
-		for _, res in ipairs(self.costs) do
+		for _, res in ipairs(data.costs) do
 			if grantedEffectLevel.cost and grantedEffectLevel.cost[res.Resource] then
 				cost = (cost and (cost..", ") or "") .. costResourceDisplay(res.ResourceString):gsub("{0}", string.format("%g", round(grantedEffectLevel.cost[res.Resource] / res.Divisor, 2)))
 			end

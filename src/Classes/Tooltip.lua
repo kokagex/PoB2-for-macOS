@@ -665,10 +665,17 @@ function TooltipClass:Draw(x, y, w, h, viewPort)
 				self.gemIconBorder = NewImageHandle()
 				self.gemIconBorder:Load("Assets/skillpanelskilliconframe.png")
 			end
-			DrawImage(self.gemHeaderImage, headerX, headerY, 375, 59)
+			-- fork(macOS): gem header assets (gemhovertitle.png 等) はこの配布に存在しない。
+			-- 無効ハンドルを DrawImage すると dummyWhite で白矩形になるため IsValid でガードする
+			-- (mod 行背景の同パターンは下の line ~745 を参照)。
+			if self.gemHeaderImage:IsValid() then
+				DrawImage(self.gemHeaderImage, headerX, headerY, 375, 59)
+			end
 			if gemIconImage then
 				DrawImage(gemIconImage.handle, headerX + 21, headerY + 6, 46, 46, unpack(gemIconImage))
-				DrawImage(self.gemIconBorder, headerX + 21, headerY + 6, 48, 48)
+				if self.gemIconBorder:IsValid() then
+					DrawImage(self.gemIconBorder, headerX + 21, headerY + 6, 48, 48)
+				end
 			end
 			if gemBGImage then
 				DrawImage(gemBGImage.handle, headerX + headerTotalWidth -500, headerY, 500, 266, unpack(gemBGImage))
@@ -677,7 +684,9 @@ function TooltipClass:Draw(x, y, w, h, viewPort)
 					self.gemEmptyImage = NewImageHandle()
 					self.gemEmptyImage:Load("Assets/gemhoverimageempty.png")
 				end
-				DrawImage(self.gemEmptyImage, headerX + headerTotalWidth -500, headerY, 500, 266)
+				if self.gemEmptyImage:IsValid() then
+					DrawImage(self.gemEmptyImage, headerX + headerTotalWidth -500, headerY, 500, 266)
+				end
 			end
 		end
 	end
