@@ -38,6 +38,11 @@ chmod +x "$APP/Contents/MacOS/PathOfBuilding"
 # source) and --release (cp copies source). See scripts/convert-tree-webp.sh.
 bash "$ROOT/scripts/convert-tree-webp.sh" "$ROOT/tree-data"
 
+# 3c. Normalize 0.5+ tree art shipped as `.dds.zst` texture arrays (BC7/BC1):
+# decode + repack into 2D atlas PNGs and rewrite tree.lua ddsCoords->spriteCoords
+# so the stb_image-only dylib can render it. Idempotent. See convert-tree-dds.sh.
+bash "$ROOT/scripts/convert-tree-dds.sh" "$ROOT/tree-data"
+
 # 4. Lua source, runtime (lua libs + dylibs), tree data
 # Note: dylibs (SimpleGraphic, libSimpleGraphic, CharInput) are tracked in
 # runtime/ as fixed assets — pob2macos/.claude/CLAUDE.md says rebuilding
