@@ -5,4 +5,8 @@ LOG_DIR="${POB_LOG_DIR:-${HOME:-/tmp}/Library/Logs/pob2macos}"
 mkdir -p "$LOG_DIR"
 LOG="$LOG_DIR/passive_tree_app.log"
 echo "=== RUN $(date) ===" >> "$LOG"
+# Inject the Metal autoreleasepool-drain interposer (fixes the per-frame Metal
+# object leak that crashes the AMD driver under heavy passive-tree rendering).
+POOLFIX="$(pwd)/runtime/libpob_poolfix.dylib"
+[ -f "$POOLFIX" ] && export DYLD_INSERT_LIBRARIES="$POOLFIX"
 exec /usr/local/bin/luajit "./pob2_launch.lua" >> "$LOG" 2>&1
