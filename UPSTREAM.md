@@ -2,7 +2,7 @@
 
 上流: `PathOfBuildingCommunity/PathOfBuilding-PoE2` `dev` ブランチ
 ローカル: `kokagex/PoB2-for-macOS` `main` ブランチ
-最終同期: 2026-05-23 (Phase 8, 上流 commit `f0ed15fd4`)
+最終同期: 2026-06-03 (Phase 10, 上流 commit `adda26750` / Release 0.17.1)
 
 ---
 
@@ -397,6 +397,80 @@ Compare Tab + 新 UI 機能で英語ラベルが追加された。`ja.lua` へ�
 - Compare Tab 本体 UI ラベル
 
 `MEMORY.md` の翻訳ワークフロー: grep で全使用箇所洗い出し → ja.lua/en.lua にキー追加 → label を i18n.t() に巻き直し。
+
+---
+
+### ✅ Phase 9 — v0.8.0 (2026-05-30): upstream/dev `9c2bf0316` (Release 0.16.0) まで同期
+
+上流 `f0ed15fd4..9c2bf0316` を取り込み。0.5 ツリー大型更新。
+worktree `.worktrees/upstream-sync-phase9` で分割 commit、main へ merge 済 (release v0.8.0)。
+
+主な取り込み:
+- `#1865` Loadout management UI (ItemSet/SkillSet サービス化、Build.lua fork機能/i18n 保全)
+- `#1984` 0.5 JSON skill tree サポート + `#1998` orbit 値修正/node overlay
+- `#1841` Tooltip multi-column (fork descFrame 統合)
+- Modules 計算エンジン 13 files、SkillsTab/ItemsTab/Item/ConfigTab i18n 移植
+- PassiveTree + PassiveTreeView: 0.5 JSONツリー採用 + macOS Metal 描画/MINIMAL_PASSIVE_TEST 保全
+
+> 注: 当時 UPSTREAM.md への記録が漏れていたため Phase 10 で遡及記載。
+
+### ✅ Phase 10 — v0.9.0 (2026-06-03): upstream/dev `adda26750` (Release 0.17.1) まで同期
+
+上流 `9c2bf0316..adda26750` の 23 commits を取り込み。worktree `.worktrees/upstream-sync-phase10`
+(branch `feature/upstream-sync-phase10`) で 3 commit に分割。
+
+#### Phase 10a 計算/データ層 (commit `ad00e4f0f`) — 229 files
+
+clean fast-forward 219 files (`git diff 9c2bf0316 upstream/dev | git apply --index`):
+- Data/Bases/*, Mod*, Skills/*, StatDescriptions/* (再生成), Costs/Essence/Gems/Global/
+  Minions/Misc/ModCache/QueryMods/QuestRewards/Rares/SkillStatMap/FlavourText/
+  LegionPassives/Uniques/gloves。soulcore.lua は Bases→Uniques 移動。
+- Modules: CalcDefence/CalcOffence/ConfigOptions/ModParser (ローカル変更ゼロ)
+
+3-way merge 10 files (ローカル i18n/macOS パッチ温存):
+- Build.lua/PassiveSpec.lua: `#2023` searchStrCached リセット + MINIMAL ガード温存
+- ItemsTab.lua: 11衝突全て ours (i18n.t 136 + textInputActive ガード、`#2019`/`#2035` はクリーン適用部)
+- ImportTab/Item/CalcActiveSkill/CalcSetup/Common/HeadlessWrapper: clean 3way
+- PassiveTreeView.lua: `#2023`(Unseen Path search hide)のみ → Metal描画/deferred tooltip 保全でローカル版維持
+
+主要 upstream 修正: Zarokh's Revolt inf DPS `#2045`, Aggravated bleeding `#2054`,
+Amazon crit `#2039`, Trarthan Cannon crash `#2048`, Rapid Casting III `#1965`,
+New Loadout Link `#2038`, 0.5新Data `#2035`/runes `#2019`/quest rewards `#2027`。
+
+検証: 全229 LuaJIT syntax PASS。不変量 HEAD一致。headless calc golden (TotalDPS 25062.57) 一致。
+
+#### Phase 10b tree texture-array → 2D atlas 変換 (commit `cfb90bf81` + fix `1aeb2821c`)
+
+upstream 0.17 はツリーアートを `.dds.zst` テクスチャ配列(BC7/BC1/RGBA, 1アイコン=1配列レイヤ)で
+配布し tree.lua は `ddsCoords[sheet][name]=layerIndex` で参照。macOS dylib は stb_image=2D画像のみ
+(配列DDS不可, dylibリビルド禁止)。0.16以前の `spriteCoords[sheet][name]={x,y,w,h}` 2D blit が唯一の実績。
+
+変換パイプライン (レンダラ無改変):
+- `scripts/dds_to_png.py`: 単一DDS(BC1/BC7/RGBA)→PNG デコーダ (imagecodecs + Pillow)
+- `scripts/convert_tree_dds.py`: 各シートの配列レイヤをデコード→2Dアトラス PNG に再パック →
+  tree.lua を ddsCoords→spriteCoords 書換 (冪等)。skills-disabled は除外(レンダラが desaturate)。
+- `scripts/convert-tree-dds.sh` + build-app.sh 統合 (webp変換の直後、冪等)
+- 26シート→.png atlas (skills/group-background/legion/oils/jewel-sockets/mastery 等)
+
+GUI 実機テストで判明し fix `1aeb2821c` で修正した2バグ:
+1. ddsCoords の裸識別子キー(`JewelFrameAllocated=16` 等の frame sprite)をパーサが取りこぼし
+   → nodeOverlay 解決不能で PassiveTree.lua:302 クラッシュ。両キー構文捕捉で解決(166/166)。
+2. atlas を `.dds.zst` 名で出力 → dylib が拡張子で DDS 経路に回し読込失敗 → `.png` 名出力に修正。
+
+検証: 実機 dist build で OnInit 完走 + フレーム描画継続、全 atlas 読込成功、ユーザー目視で
+ツリー描画 OK。node.icon 528/579 (欠落51=mastery, upstream ddsCoords自体に不在で専用描画経路)。
+
+> 既知の非致命: `CharacterPlanned_orbit_*.png` は upstream が 0_4 のみ配布・0_5 未同梱 (上流不整合)。
+> planned node の orbit overlay のみ未描画、ツリー本体に影響なし。
+
+#### tree-data の同期モデル
+- `tree-data/0_5/tree.lua` は tracked (spriteCoords 形式の renderable 版を commit)。
+- 画像アセット(`.dds.zst`/`.png`/`.webp`)は gitignore のビルド入力。同期時に upstream から
+  `.dds.zst` を取得 → convert-tree-dds で .png atlas 生成。fresh checkout は同期ワークフローで再生成。
+
+#### スキップ判定 (Phase 10 で取り込まないファイル)
+- `src/Export/*` (spec.lua +64k 等): ローカル独自改造のため別 sprint (Phase 6-9 と同じ)
+- gem-icons texture array (`src/Data/Skills/gem-icons_64_64_BC1.dds.zst`): 同方式で別途対応可
 
 ---
 
