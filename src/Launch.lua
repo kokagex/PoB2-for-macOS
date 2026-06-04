@@ -114,6 +114,10 @@ function launch:OnExit()
 end
 
 function launch:OnFrame()
+	-- Deliver results from synchronous sub-scripts queued on previous frames
+	if DrainSubScripts then
+		DrainSubScripts()
+	end
 	if self.main then
 		if self.main.OnFrame then
 			local errMsg = PCall(self.main.OnFrame, self.main)
@@ -312,6 +316,8 @@ function launch:DownloadPage(url, callback, params)
 		easy:setopt(curl.OPT_USERAGENT, "Path of Building/]]..self.versionNumber..[[")
 		easy:setopt(curl.OPT_ACCEPT_ENCODING, "")
 		easy:setopt(curl.OPT_FOLLOWLOCATION, 1)
+		easy:setopt(curl.OPT_CONNECTTIMEOUT, 10)
+		easy:setopt(curl.OPT_TIMEOUT, 30)
 		if requestBody then
 			easy:setopt(curl.OPT_POST, true)
 			easy:setopt(curl.OPT_POSTFIELDS, requestBody)
@@ -378,26 +384,14 @@ function launch:ApplyUpdate(mode)
 end
 
 function launch:CheckForUpdate(inBackground)
-	if self.updateCheckRunning then
-		return
-	end
-	self.updateCheckBackground = inBackground
-	self.updateMsg = "Initialising..."
-	self.updateProgress = "Checking..."
+	-- macOS (pob2macos): self-update is unsupported. ApplyUpdate relies on
+	-- SpawnProcess of the Update runtime + re-codesigning the .app, which this
+	-- fork cannot do, so UpdateCheck.lua would only block startup on a network
+	-- request and surface an inapplicable "update available" prompt. Updates
+	-- ship by rebuilding the app. No-op.
 	self.lastUpdateCheck = GetTime()
-	local update = io.open("UpdateCheck.lua", "r")
-	if not update then
-		ConPrintf("UpdateCheck.lua not found, skipping update check")
-		return
-	end
-	local id = LaunchSubScript(update:read("*a"), "GetScriptPath,GetRuntimePath,GetWorkDir,MakeDir", "ConPrintf,UpdateProgress", self.connectionProtocol, self.proxyURL, self.noSSL or false)
-	if id then
-		self.subScripts[id] = {
-			type = "UPDATE"
-		}
-		self.updateCheckRunning = true
-	end
-	update:close()
+	self.updateAvailable = nil
+	self.updateCheckRunning = false
 end
 
 function launch:ShowPrompt(r, g, b, str, func)

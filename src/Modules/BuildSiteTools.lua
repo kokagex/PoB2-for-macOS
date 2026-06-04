@@ -57,6 +57,8 @@ function buildSites.UploadBuild(buildCode, websiteInfo)
 			easy:setopt(curl.OPT_POSTFIELDS, ']]..websiteInfo.postFields..[['..code)
 			easy:setopt(curl.OPT_ACCEPT_ENCODING, "")
 			easy:setopt(curl.OPT_FOLLOWLOCATION, 1)
+			easy:setopt(curl.OPT_CONNECTTIMEOUT, 10)
+			easy:setopt(curl.OPT_TIMEOUT, 30)
 			if connectionProtocol then
 				easy:setopt(curl.OPT_IPRESOLVE, connectionProtocol)
 			end

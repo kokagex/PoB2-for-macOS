@@ -1,3 +1,20 @@
+VERSION[0.9.3][2026/06/05]
+
+--- LaunchSubScript クラッシュ修正（オンライン機能の復旧）/ Fix LaunchSubScript crash (restores online features) ---
+* OnFrame 中に `bad argument #2 to 'LaunchSubScript' (cannot convert 'string' to 'void *')` で落ちる問題を修正。macOS の dylib バインディングが 2 引数スタブ（scriptName, luaState）のままで、PoB 本来の多引数呼び出しと型が合わず FFI チェックで即クラッシュしていた（stage4 以来の潜在バグ。サブスクリプトを使う全機能＝ビルドのインポート/エクスポート、Pastebin/pobb.in/Maxroll/poe.ninja ダウンロード、PoB Archives 類似ビルド、ツリー PoEURL 解決が起動直後やそれら操作時に落ちていた）
+* dylib は再ビルド不可のため、`_G.LaunchSubScript` を pure-Lua の同期シムに差し替え（pob2_launch.lua）。スクリプトをメイン Lua state で同期実行し、結果を毎フレーム OnFrame の `DrainSubScripts()` で遅延配送（コールバック登録が呼び出し後に行われる Pattern 2 にも対応）。9 箇所の呼び出し全てを単一の choke point でカバー
+* 起動時/12時間ごと/Ctrl-U の自動アップデート確認（CheckForUpdate）が同じ経路でクラッシュしていたため no-op 化。macOS ポートはアプリ内自己アップデート非対応のため実害なし
+* curl 経路に接続/全体タイムアウト（CONNECTTIMEOUT 10s / TIMEOUT 30s）を追加し、ダウンロード hang を防止（Launch.lua, BuildSiteTools.lua, PoBArchivesProvider.lua, TreeTab.lua）
+* 注意: ダウンロードは現状メイン state で同期実行のため、取得中は最大タイムアウト分 UI が一時停止します
+* ※Lua のみの変更。zip の再ダウンロード（再インストール）が必要です
+
+* Fixed a crash in OnFrame: `bad argument #2 to 'LaunchSubScript' (cannot convert 'string' to 'void *')`. The macOS dylib binding was still a 2-arg stub (scriptName, luaState), which mismatched PoB's multi-arg calling convention and crashed at the FFI type check (a latent bug since stage4 — every sub-script feature crashed: build import/export, Pastebin/pobb.in/Maxroll/poe.ninja downloads, PoB Archives similar builds, and tree PoEURL resolution).
+* Since the dylib cannot be rebuilt, `_G.LaunchSubScript` is replaced with a pure-Lua synchronous shim (pob2_launch.lua). Scripts run synchronously in the main Lua state and results are delivered deferred via `DrainSubScripts()` each frame in OnFrame (also handles Pattern 2 callers that register their callback after the call returns). A single choke point covers all 9 call sites.
+* The auto update-check (CheckForUpdate, fired at startup / every 12h / Ctrl-U) crashed via the same path, so it is now a no-op. Harmless on the macOS port, which does not support in-app self-update.
+* Added connect/total timeouts (CONNECTTIMEOUT 10s / TIMEOUT 30s) to the curl paths to prevent download hangs (Launch.lua, BuildSiteTools.lua, PoBArchivesProvider.lua, TreeTab.lua).
+* Note: downloads currently run synchronously in the main state, so the UI pauses for up to the timeout while fetching.
+* Note: Lua-only change, but requires re-downloading the zip (reinstall).
+
 VERSION[0.9.2][2026/06/04]
 
 --- Metal autoreleasepool リーク修正（ツリー操作の枯渇クラッシュ解消）/ Fix Metal autoreleasepool leak (passive-tree memory-exhaustion crash) ---
