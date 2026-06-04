@@ -1,3 +1,16 @@
+VERSION[0.9.4][2026/06/05]
+
+--- スキルパネル操作時のログ氾濫と長時間フリーズを修正 / Fix log flooding and a long freeze around the skill panel ---
+* 「五万行のエラー」の正体だった、毎フレームのデバッグ print 氾濫を停止。描画ループが `GetScreenSize: physical=...`（ノーガード、1 セッションで約 97 万行）と `Frame N: ...` 系（約 38 万行）を毎フレーム出力し、ランチャの `>> "$LOG"` でログが 87MB／143 万行に肥大していた。全ての per-frame print を環境変数フラグ `POB_DEBUG_FRAME`（デフォルト off、診断時のみ `=1` で再有効化）の背後に gate（pob2_launch.lua）。OnFrame の pcall エラー出力など正当なログは維持
+* 約 67 秒のフリーズを修正。`main:WrapString` の CJK 分岐は 1 行を `DrawStringWidth` で繰り返し測りながら折り返すため文字列長 L に対し O(L²) で、数十万バイトの異常文字列が渡ると秒オーダーで固まっていた。WrapString 先頭で 10000 バイト超の文字列を 2000 バイトに clamp し、レンダラ到達前に長さを断つガードを追加（src/Modules/Main.lua）
+* PoE2 に存在しない「Find Timeless Jewel」ボタンを非表示化。「Show Node Power」チェックボックスと重なって入力を奪っていた問題を解消（src/Classes/TreeTab.lua）
+* ※Lua のみの変更。zip の再ダウンロード（再インストール）が必要です
+
+* Stopped the per-frame debug-print flood behind the user-reported "50,000-line error". The render loop printed `GetScreenSize: physical=...` (ungated, ~974K lines per session) and `Frame N: ...` variants (~378K lines) every frame, bloating the log to 87MB / 1.43M lines via the launcher's `>> "$LOG"`. All per-frame prints are now gated behind the `POB_DEBUG_FRAME` env flag (off by default; set `=1` to re-enable for diagnostics) in pob2_launch.lua. Legitimate logging such as OnFrame pcall errors is preserved.
+* Fixed a ~67-second freeze. `main:WrapString`'s CJK branch re-measures each line via `DrawStringWidth` while wrapping — O(L²) in line length L — so a malformed multi-hundred-KB string froze the app for seconds. Added a guard at the top of WrapString that clamps any >10000-byte string to 2000 bytes before it reaches the renderer (src/Modules/Main.lua).
+* Hid the "Find Timeless Jewel" button, which does not exist in PoE2 and overlapped the "Show Node Power" checkbox, stealing its input (src/Classes/TreeTab.lua).
+* Note: Lua-only change, but requires re-downloading the zip (reinstall).
+
 VERSION[0.9.3][2026/06/05]
 
 --- LaunchSubScript クラッシュ修正（オンライン機能の復旧）/ Fix LaunchSubScript crash (restores online features) ---

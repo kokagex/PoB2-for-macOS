@@ -156,6 +156,11 @@ _G.ProcessEvents = sg.ProcessEvents
 _G.SetWindowTitle = function(title)
     sg.SetWindowTitle(normalizeTextArg(title))
 end
+-- Debug logging flag: per-frame / per-call diagnostics flood the log. GetScreenSize alone
+-- (called every frame by render code) emitted ~974K lines in one long session, the bulk of
+-- the user-reported "五万行のエラー". Off by default; set POB_DEBUG_FRAME=1 to re-enable.
+local DEBUG_FRAME_LOG = os.getenv("POB_DEBUG_FRAME") == "1"
+
 -- GetScreenSize: Returns logical pixels (physical / dpi_scale)
 _G.GetScreenSize = function()
     local w = ffi.new("int[1]")
@@ -164,7 +169,9 @@ _G.GetScreenSize = function()
     local scale = getDpiScale()
     local logW = math.floor(w[0] / scale)
     local logH = math.floor(h[0] / scale)
-    print(string.format("GetScreenSize: physical=%dx%d, scale=%.2f, logical=%dx%d", w[0], h[0], scale, logW, logH))
+    if DEBUG_FRAME_LOG then
+        print(string.format("GetScreenSize: physical=%dx%d, scale=%.2f, logical=%dx%d", w[0], h[0], scale, logW, logH))
+    end
     return logW, logH
 end
 
@@ -441,6 +448,29 @@ _G.SwitchFontFile = function(langCode)
 	return true
 end
 
+-- Permanent guard: clamp pathologically long text before it reaches the renderer.
+-- main:WrapString measures a growing substring once per character (O(L^2) per line),
+-- so a single very long string with sparse break points -- a corrupted backslash run,
+-- or any runaway dynamically-built line -- freezes the UI thread for tens of seconds
+-- (observed 67s; stackshot 99/99 in DrawStringWidth). Legitimate stat/tooltip lines are
+-- well under 2KB, so clamping anything past 10000 bytes can never affect normal rendering.
+-- The first occurrences per session are logged (len + prefix + traceback) so the upstream
+-- producer stays recoverable if this ever fires in the field.
+local clampDrawTextLogged = 0
+_G.__clampDrawText = function(tag, s)
+    if type(s) ~= "string" or #s <= 10000 then return s end
+    if clampDrawTextLogged < 30 then
+        clampDrawTextLogged = clampDrawTextLogged + 1
+        local f = io.open("/tmp/pob_oversize_text.log", "a")
+        if f then
+            f:write("=== " .. tostring(tag) .. " len=" .. #s .. " ===\nPREFIX: " ..
+                    s:sub(1, 200) .. "\nTRACE:\n" .. debug.traceback("", 2) .. "\n\n")
+            f:close()
+        end
+    end
+    return s:sub(1, 2000)
+end
+
 -- DrawString: Logical→Physical conversion + alignment mapping + viewport offset
 _G.DrawString = function(left, top, align, height, font, text)
     local alignMap = {
@@ -455,6 +485,7 @@ _G.DrawString = function(left, top, align, height, font, text)
         alignInt = alignMap[align:upper()] or 0
     end
     text = normalizeTextArg(text)
+    text = _G.__clampDrawText("DRAWSTRING", text)
     local scale = getDpiScale()
     sg.DrawString(math.floor((left + viewportOffX) * scale), math.floor((top + viewportOffY) * scale),
                   alignInt, math.floor(height * scale * fontScale), font, text)
@@ -462,6 +493,7 @@ end
 -- DrawStringWidth: Scale font height up, scale result back to logical
 _G.DrawStringWidth = function(height, font, text)
     text = normalizeTextArg(text)
+    text = _G.__clampDrawText("DRAWSTRINGWIDTH", text)
     local scale = getDpiScale()
     local w = sg.DrawStringWidth(math.floor(height * scale * fontScale), font, text)
     if fontScale < 1.0 then
@@ -1474,7 +1506,7 @@ while IsUserTerminated() == 0 do
     frame_count = frame_count + 1
 
     -- Debug: Log every frame for first 10 frames, then every 10 frames
-    if frame_count <= 10 or frame_count % 10 == 0 then
+    if DEBUG_FRAME_LOG and (frame_count <= 10 or frame_count % 10 == 0) then
         print(string.format("Frame %d: IsUserTerminated() = 0, calling ProcessEvents()...", frame_count))
     end
 
@@ -1488,7 +1520,7 @@ while IsUserTerminated() == 0 do
 
     ProcessEvents()
 
-    if frame_count <= 10 or frame_count % 10 == 0 then
+    if DEBUG_FRAME_LOG and (frame_count <= 10 or frame_count % 10 == 0) then
         print(string.format("Frame %d: ProcessEvents() complete, polling input...", frame_count))
     end
 
@@ -1499,7 +1531,7 @@ while IsUserTerminated() == 0 do
 
     -- Call OnFrame
     if launch.OnFrame then
-        if frame_count <= 10 or frame_count % 10 == 0 then
+        if DEBUG_FRAME_LOG and (frame_count <= 10 or frame_count % 10 == 0) then
             print(string.format("Frame %d: Calling launch:OnFrame()...", frame_count))
         end
 
@@ -1519,13 +1551,13 @@ while IsUserTerminated() == 0 do
             break
         end
 
-        if frame_count <= 10 or frame_count % 10 == 0 then
+        if DEBUG_FRAME_LOG and (frame_count <= 10 or frame_count % 10 == 0) then
             print(string.format("Frame %d: OnFrame() complete", frame_count))
         end
     end
 
     -- Log progress every 60 frames (once per second at 60 FPS)
-    if frame_count % 60 == 0 then
+    if DEBUG_FRAME_LOG and frame_count % 60 == 0 then
         print(string.format("Frame %d - App running (%.1f seconds)",
                            frame_count, frame_count / 60.0))
     end

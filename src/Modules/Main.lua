@@ -1820,6 +1820,11 @@ do
 		else return 4 end
 	end
 	function main:WrapString(str, height, width)
+		-- Guard: this routine is O(L^2) per line (it re-measures a growing substring once
+		-- per character in the CJK branch), so a single pathologically long input -- a
+		-- corrupted backslash run, or any runaway built line -- freezes the UI thread.
+		-- Clamp at the entry so the whole wrap is bounded. See __clampDrawText in pob2_launch.lua.
+		if _G.__clampDrawText then str = _G.__clampDrawText("WRAPSTRING", str) end
 		wipeTable(wrapTable)
 		if not hasCJK(str) then
 			-- Original space-based wrapping for non-CJK text

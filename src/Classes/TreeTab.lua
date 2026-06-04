@@ -178,6 +178,10 @@ local TreeTabClass = newClass("TreeTab", "ControlHost", function(self, build)
 	self.controls.findTimelessJewel = new("ButtonControl", { "LEFT", self.controls.treeSearch, "RIGHT" }, { 8, 0, 150, 20 }, "Find Timeless Jewel", function()
 		self:FindTimelessJewel()
 	end)
+	-- PoE2 にタイムレスジュエルは存在しないため非表示。レイアウト側 (treeHeatMap の +130 アンカー / 幅計算からの除外) は
+	-- 既にボタン非表示を前提に組まれている。表示すると Show Node Power ラベルと重なり入力も奪うため shown=false で除外する。
+	-- 上流が PoE2 のタイムレスジュエル機能を実装したら、本行と TreeTab レイアウト (幅計算・アンカー) のコメントアウトを戻す。
+	self.controls.findTimelessJewel.shown = false
 
 	-- Show Node Power Checkbox
 	self.controls.treeHeatMap = new("CheckBoxControl", { "LEFT", self.controls.findTimelessJewel, "RIGHT" }, { 130, 0, 20 }, "Show Node Power:", function(state)
