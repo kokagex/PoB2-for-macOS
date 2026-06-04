@@ -843,10 +843,98 @@ _G.ConPrintTable = function(tbl, indent)
     end
 end
 
--- Lua integration (sub-scripts)
-_G.LaunchSubScript = sg.LaunchSubScript
-_G.AbortSubScript = sg.AbortSubScript
-_G.IsSubScriptRunning = sg.IsSubScriptRunning
+-- Lua integration (sub-scripts): pure-Lua synchronous shim.
+-- The dylib's LaunchSubScript(const char*, void*) is an unfinished 2-arg stub,
+-- incompatible with PoB's LaunchSubScript(script, funcList, subList, ...args)
+-- convention, so the FFI type check crashes every caller ("cannot convert
+-- 'string' to 'void *'"). There is no working background-thread mechanism in the
+-- macOS dylib, so run the sub-script synchronously on the main thread and deliver
+-- its result on a later frame via DrainSubScripts() — callers register
+-- subScripts[id] only after LaunchSubScript returns, so delivery must be deferred.
+do
+    local idCounter = 0
+    local pending = {}      -- queued {id, ok, results|err} awaiting delivery
+    local running = {}      -- id -> true while not yet delivered (for IsSubScriptRunning/Abort)
+
+    local function splitNames(list)
+        local names = {}
+        if list and list ~= "" then
+            for name in tostring(list):gmatch("[^,]+") do
+                names[#names + 1] = name
+            end
+        end
+        return names
+    end
+
+    _G.LaunchSubScript = function(scriptText, funcList, subList, ...)
+        idCounter = idCounter + 1
+        local id = idCounter
+        running[id] = true
+
+        local fn, compileErr = loadstring(scriptText, "=SubScript")
+        if not fn then
+            pending[#pending + 1] = { id = id, ok = false, err = compileErr or "Failed to compile sub-script" }
+            return id
+        end
+
+        -- Sandbox: inherit globals; route subList names through OnSubCall so the
+        -- main object handles them (e.g. UpdateProgress). Writes stay in `env`.
+        local env = setmetatable({}, { __index = _G })
+        for _, name in ipairs(splitNames(subList)) do
+            local fname = name
+            env[fname] = function(...)
+                if launch and launch.OnSubCall then return launch:OnSubCall(fname, ...) end
+            end
+        end
+        setfenv(fn, env)
+
+        local n = select("#", ...)
+        local args = { ... }
+        local res = { pcall(fn, unpack(args, 1, n)) }
+        local ok = table.remove(res, 1)
+        if ok then
+            pending[#pending + 1] = { id = id, ok = true, results = res }
+        else
+            pending[#pending + 1] = { id = id, ok = false, err = res[1] }
+        end
+        return id
+    end
+
+    _G.AbortSubScript = function(id)
+        running[id] = nil
+        for i = #pending, 1, -1 do
+            if pending[i].id == id then table.remove(pending, i) end
+        end
+    end
+
+    _G.IsSubScriptRunning = function(id)
+        return running[id] == true
+    end
+
+    -- Deliver queued results to the main object once it has registered
+    -- subScripts[id]. Called once per frame from launch:OnFrame.
+    _G.DrainSubScripts = function()
+        if #pending == 0 then return end
+        if not launch or not launch.subScripts then return end
+        local queue = pending
+        pending = {}
+        for _, item in ipairs(queue) do
+            if not running[item.id] then
+                -- aborted before delivery; drop
+            elseif launch.subScripts[item.id] then
+                running[item.id] = nil
+                if item.ok then
+                    launch:OnSubFinished(item.id, unpack(item.results))
+                else
+                    launch:OnSubError(item.id, item.err)
+                end
+            else
+                -- caller has not registered yet; retry next frame
+                pending[#pending + 1] = item
+            end
+        end
+    end
+end
 
 -- Compression (using macOS system zlib via FFI)
 do

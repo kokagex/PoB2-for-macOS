@@ -56,6 +56,8 @@ function PoBArchivesProviderClass:GetRecommendations(buildCode, postURL)
 			easy:setopt(curl.OPT_USERAGENT, "Path of Building/]]..launch.versionNumber..[[")
 			easy:setopt(curl.OPT_POSTFIELDS, ']].."importCode="..[['..code)
 			easy:setopt(curl.OPT_ACCEPT_ENCODING, "")
+			easy:setopt(curl.OPT_CONNECTTIMEOUT, 10)
+			easy:setopt(curl.OPT_TIMEOUT, 30)
 			if connectionProtocol then
 				easy:setopt(curl.OPT_IPRESOLVE, connectionProtocol)
 			end

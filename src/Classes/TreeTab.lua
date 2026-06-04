@@ -745,6 +745,8 @@ function TreeTabClass:OpenImportPopup()
 				local curl = require("lcurl.safe")
 				local easy = curl.easy()
 				easy:setopt_url(treeLink)
+				easy:setopt(curl.OPT_CONNECTTIMEOUT, 10)
+				easy:setopt(curl.OPT_TIMEOUT, 30)
 				easy:setopt_writefunction(function(data)
 					return true
 				end)
