@@ -1,3 +1,16 @@
+VERSION[0.10.1][2026/06/06]
+
+--- 上流 PoB2 バグ修正 2 件を同期（Hollow Form／Deflect 上限）/ Sync 2 upstream PoB2 bugfixes (Hollow Form / Deflect cap) ---
+* Hollow Form サポート（Mantra of Illusions）のステータスマッピングを上流修正に追随。トリガースキルの「攻撃速度+%（最終）」と「ダメージ+%（最終）」の MORE mod が入れ違っていたのを修正（src/Data/Skills/other.lua）
+* Deflect 確率が上限（DeflectionChanceCap）でクランプされず上限を超過し得た計算を上流修正に追随（src/Modules/CalcDefence.lua）
+* ※上流 dev 2df5a7433 まで同期（Release 0.18.0 + bugfix 3 件のうち、macOS フォークに該当する 2 件を適用）
+* ※Lua のみの変更。zip の再ダウンロード（再インストール）が必要です
+
+* Followed the upstream fix for the Hollow Form support (Mantra of Illusions) stat mapping: the triggered skill's "attack speed +% (final)" and "damage +% (final)" MORE mods were swapped (src/Data/Skills/other.lua).
+* Followed the upstream fix for Deflect chance not being clamped to the cap (DeflectionChanceCap), which could let it exceed the cap (src/Modules/CalcDefence.lua).
+* Note: synced up to upstream dev 2df5a7433 (Release 0.18.0 + 3 bugfixes; applied the 2 relevant to the macOS fork).
+* Note: Lua-only change; requires re-downloading the zip (reinstall).
+
 VERSION[0.10.0][2026/06/05]
 
 --- 上流 PoB2 0.18.0 を同期（ゲームデータ・計算の最新化）/ Sync upstream PoB2 0.18.0 (latest game data & calculations) ---
