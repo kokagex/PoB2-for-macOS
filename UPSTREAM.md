@@ -2,7 +2,7 @@
 
 上流: `PathOfBuildingCommunity/PathOfBuilding-PoE2` `dev` ブランチ
 ローカル: `kokagex/PoB2-for-macOS` `main` ブランチ
-最終同期: 2026-06-03 (Phase 10, 上流 commit `adda26750` / Release 0.17.1)
+最終同期: 2026-06-05 (Phase 11, 上流 commit `470dc5389` / Release 0.18.0)
 
 ---
 
@@ -471,6 +471,41 @@ GUI 実機テストで判明し fix `1aeb2821c` で修正した2バグ:
 #### スキップ判定 (Phase 10 で取り込まないファイル)
 - `src/Export/*` (spec.lua +64k 等): ローカル独自改造のため別 sprint (Phase 6-9 と同じ)
 - gem-icons texture array (`src/Data/Skills/gem-icons_64_64_BC1.dds.zst`): 同方式で別途対応可
+
+### ✅ Phase 11 — v0.10.0 (2026-06-05): upstream `470dc5389` (Release 0.18.0) まで同期
+
+上流 0.17.1 (`adda26750`) → 0.18.0 (`470dc5389`) を取り込み。worktree
+`.worktrees/upstream-sync-phase11` (branch `feature/upstream-sync-phase11`) で 2 commit に分割し
+main へ fast-forward マージ (`a63ff8a79..05a1ed506`, 59 files, +85980/−23950)。
+
+#### Phase 11a 計算/データ層 (commit `8762bb97a`) — 47 files
+
+計算・データ層はコンフリクトなし (`git apply --3way` / fast-forward, ローカル変更ゼロ):
+- Modules (12): CalcActiveSkill, CalcDefence, CalcOffence, CalcPerform, CalcSections,
+  CalcSetup, CalcTools, Common, ConfigOptions, ItemTools, ModParser, StatDescriber
+- Data (20): Bases/gloves, Gems, Global, Minions, ModCache, ModItemExclusive, ModJewel,
+  ModVeiled, QueryMods, Skills/{act_int,act_str,minion,other,spectre,sup_int,sup_str},
+  SkillStatMap, Spectres, WorldAreas, +TradeSiteStats.lua (新規)
+- Assets (15): runicitemsheader{foil,magic,rare,unique,white}{left,middle,right}.png
+  — SGPAK (assets.sgpak) にパック。build-app.sh --release で rebuild_archives.sh が再構築
+
+#### Phase 11b Classes 3-way merge (commit `05a1ed506`) — 12 files
+
+UI/タブ層を 0.18.0 同期。大半は `git apply --3way` でクリーン適用。2 ファイルは手動 3-way:
+- ItemsTab.lua: armour tooltip を上流の `item:GetArmourDataValue(name, level)` API に追随
+  (Item.lua:1639 に level 引数追加) しつつ macOS の i18n ラベルを保全
+- ConfigTab.lua: ifFlag ハンドラに上流 0.18.0 の minion-flag 分岐を nil-safety 付きで統合
+  (mainSkill 不在時 false、minion.mainSkill も nil-safe)
+- clean 3way (10): CompareTab, EditControl, ImportTab, Item, MinionListControl,
+  NotesTab, SkillsTab, Tooltip, TradeHelpers, TradeQueryRequests
+
+主要 upstream 修正: minion crit chance (`470dc5389`)。
+
+#### スキップ判定 / Phase 12 へ deferred
+- `src/Modules/Build.lua` / `src/Classes/TradeQuery.lua` / `src/Classes/TradeQueryGenerator.lua`:
+  trade 系の大規模改修のため Phase 12 へ持ち越し (**既知ギャップ**)。TradeHelpers.lua /
+  TradeQueryRequests.lua のみ先行同期したため、trade タブの実機起動確認が必要。
+- `src/Export/*`: ローカル独自改造のため別 sprint (Phase 6-10 と同じ)
 
 ---
 
