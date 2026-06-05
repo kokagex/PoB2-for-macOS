@@ -2,7 +2,7 @@
 
 上流: `PathOfBuildingCommunity/PathOfBuilding-PoE2` `dev` ブランチ
 ローカル: `kokagex/PoB2-for-macOS` `main` ブランチ
-最終同期: 2026-06-05 (Phase 11, 上流 commit `470dc5389` / Release 0.18.0)
+最終同期: 2026-06-06 (Phase 12, 上流 commit `2df5a7433` / dev = Release 0.18.0 + bugfix 3件)
 
 ---
 
@@ -506,6 +506,46 @@ UI/タブ層を 0.18.0 同期。大半は `git apply --3way` でクリーン適�
   trade 系の大規模改修のため Phase 12 へ持ち越し (**既知ギャップ**)。TradeHelpers.lua /
   TradeQueryRequests.lua のみ先行同期したため、trade タブの実機起動確認が必要。
 - `src/Export/*`: ローカル独自改造のため別 sprint (Phase 6-10 と同じ)
+
+### ✅ Phase 12 — (2026-06-06): upstream/dev `2df5a7433` まで同期
+
+上流 0.18.0 (`470dc5389`) → dev HEAD (`2df5a7433`) の 4 commits (bugfix 3件 + master→dev マージ)
+を取り込み。デルタは 4 files / +8/−8 と小規模なため worktree を使わず main へ直接適用。
+対象 2 ファイルは local==base のクリーン状態で、`git checkout 2df5a7433 -- <file>` で upstream の
+正確な diff を取り込み (手打ち転記リスク回避)。
+
+#### 取り込み (2 files)
+
+| ファイル | commit | 内容 |
+|---|---|---|
+| `src/Modules/CalcDefence.lua` | `46bce3c46` (#2100) | Deflect chance が 95% cap されないバグ修正。`100 - m_max(m_min(round(x), cap), 0)` → `m_max(m_min(100 - round(x), cap), 0)` (cap を超過確率にも適用) |
+| `src/Data/Skills/other.lua` | `7e9d26bf3` (#2099) | Hollow Form (`SupportHollowFormPlayer`) の statMap 2エントリが入れ替わっていたのを修正。`attack_speed_+%_final` → `Speed/Attack`、`damage_+%_final` → `Damage` |
+
+#### スキップ判定 (Phase 12 で取り込まないファイル)
+
+| ファイル | commit | 理由 |
+|---|---|---|
+| `src/Classes/ImportTab.lua` | `2df5a7433` (#2098) | **N/A — fork に対象コードが存在しない**。#2098 は「Facebreaker 装備キャラ import 時の `items[weapon1Sel].base.type` nil 参照クラッシュ」を Mace Strike デフォルト武器ジェム解決ブロックに nil ガード追加で修正するもの。fork の `funcGetGemInstance` は PoE2 向けに独自書き換え済み (`Spectre:`/`Companion:` ミニオン import 分岐) で、武器種別デフォルトジェム解決ブロック自体が不在 (`weapon1Sel`/`One Hand Mace`/`SkillGemPlayerDefault` grep 0件)。クラッシュ経路が無いため適用不要 |
+| `src/Export/Skills/other.txt` | `7e9d26bf3` (#2099) | ローカルに不在。fork は `src/Export/*` を trim 済 (GGPK→Lua 生成ソース、ランタイム非使用)。runtime 修正は `src/Data/Skills/other.lua` 側に適用済 (Phase 6-11 と同じ方針) |
+| `b49fb4bab` master→dev マージ | — | ファイル変更なし |
+
+> **既知の上流乖離 (Phase 13 候補)**: fork の `funcGetGemInstance` は upstream の Mace Strike
+> デフォルト武器ジェム解決ブロックを持たず PoE2 ミニオン import に書き換えられている。
+> 将来 upstream がこの領域を更に変更した場合、3-way reconcile が必要になる可能性あり。
+
+#### Phase 13 へ持ち越し (Phase 11 から継続)
+
+Phase 11 で「Phase 12 へ deferred」とした **trade 系大規模改修**
+(`src/Modules/Build.lua` / `src/Classes/TradeQuery.lua` / `src/Classes/TradeQueryGenerator.lua`)
+は本 Phase 12 (dev デルタ同期) とは別案件のため **Phase 13 へ再持ち越し**。TradeHelpers.lua /
+TradeQueryRequests.lua のみ先行同期済のため、trade タブの実機起動確認が引き続き必要。
+
+#### 検証
+
+- 両ファイル LuaJIT syntax check PASS (`luajit -bl <file> /dev/null`)
+- `git diff` で #2100 reorder / #2099 2エントリ swap のみ取り込み確認 (余分な変更なし)
+- dylib リビルド不要 (Lua はソースから実行)。deflect 計算式 + support statMap swap は構文チェック +
+  upstream テスト済 diff とバイト一致で担保
 
 ---
 
