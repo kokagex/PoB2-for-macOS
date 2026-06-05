@@ -64,7 +64,7 @@ local ItemClass = newClass("Item", function(self, raw, rarity, highQuality)
 end)
 
 local lineFlags = {
-	["custom"] = true, ["fractured"] = true, ["desecrated"] = true, ["mutated"] = true, ["enchant"] = true, ["implicit"] = true, ["rune"] = true, ["unscalable"] = true
+	["custom"] = true, ["crafted"] = true, ["fractured"] = true, ["desecrated"] = true, ["mutated"] = true, ["enchant"] = true, ["implicit"] = true, ["rune"] = true, ["unscalable"] = true
 }
 
 local function baseHasImplicitLine(base, line)
@@ -300,6 +300,7 @@ function ItemClass:ParseRaw(raw, rarity, highQuality)
 	self.rarity = rarity or "UNIQUE"
 	self.charmLimit = nil
 	self.spiritValue = nil
+	self.runicItem = nil
 	self.quality = nil
 	self.rawLines = { }
 	-- Find non-blank lines and trim whitespace
@@ -796,6 +797,9 @@ function ItemClass:ParseRaw(raw, rarity, highQuality)
 					baseName = "Two-Toned Boots (Armour/Energy Shield)"
 				end
 				local base = data.itemBases[baseName]
+				if baseName:find("Runeforged") or baseName:find("Runemastered") then
+					self.runicItem = true
+				end
 				if base then
 					-- Items with variants can have multiple bases
 					self.baseLines[baseName] = { line = baseName, variantList = modLine.variantList }
@@ -1361,6 +1365,9 @@ function ItemClass:BuildRaw()
 		if modLine.mutated then
 			line = "{mutated}" .. line
 		end
+		if modLine.crafted then
+			line = "{crafted}" .. line
+		end
 		if modLine.unscalable then
 			line = "{unscalable}" .. line
 		end
@@ -1511,10 +1518,11 @@ function ItemClass:UpdateRunes()
 			for _, mod in ipairs(gatheredMods) do
 				for i, modLine in ipairs(mod) do
 					local order = mod.statOrder[i]
-					if statOrder[order] then
+					local orderKey = modLine:match("^Bonded:") and "Bonded:"..order or order
+					if statOrder[orderKey] then
 						-- Combine stats
 						local start = 1
-						statOrder[order].line = statOrder[order].line:gsub("(%d%.?%d*)", function(num)
+						statOrder[orderKey].line = statOrder[orderKey].line:gsub("(%d%.?%d*)", function(num)
 							local s, e, other = mod[i]:find("(%d%.?%d*)", start)
 							start = e + 1
 							return tonumber(num) + tonumber(other)
@@ -1527,7 +1535,7 @@ function ItemClass:UpdateRunes()
 								break
 							end
 						end
-						statOrder[order] = modLine
+						statOrder[orderKey] = modLine
 					end
 				end
 			end
@@ -1626,6 +1634,14 @@ function ItemClass:GetPrimarySlot()
 	else
 		return self.type
 	end
+end
+
+function ItemClass:GetArmourDataValue(name, level)
+	local armourData = self.armourData
+	if not armourData then
+		return 0
+	end
+	return (armourData[name] or 0) + round((armourData[name.."PerLevel"] or 0) * (level or 0))
 end
 
 -- Calculate local modifiers, and removes them from the modifier list
@@ -1777,6 +1793,9 @@ function ItemClass:BuildModListForSlotNum(baseList, slotNum)
 		local energyShieldBase = calcLocal(modList, "EnergyShield", "BASE", 0) + (self.base.armour.EnergyShield or 0)
 		local armourEnergyShieldBase = calcLocal(modList, "ArmourAndEnergyShield", "BASE", 0)
 		local wardBase = calcLocal(modList, "Ward", "BASE", 0) + (self.base.armour.Ward or 0)
+		local evasionPerLevel = calcLocal(modList, "EvasionPerLevel", "BASE", 0)
+		local energyShieldPerLevel = calcLocal(modList, "EnergyShieldPerLevel", "BASE", 0)
+		local wardPerLevel = calcLocal(modList, "WardPerLevel", "BASE", 0)
 		local armourInc = calcLocal(modList, "Armour", "INC", 0)
 		local armourEvasionInc = calcLocal(modList, "ArmourAndEvasion", "INC", 0)
 		local evasionInc = calcLocal(modList, "Evasion", "INC", 0)
@@ -1794,6 +1813,9 @@ function ItemClass:BuildModListForSlotNum(baseList, slotNum)
 		armourData.Evasion = round((evasionBase + armourEvasionBase + evasionEnergyShieldBase) * (1 + (evasionInc + armourEvasionInc + evasionEnergyShieldInc + defencesInc) / 100) * (1 + (qualityScalar / 100)))
 		armourData.EnergyShield = round((energyShieldBase + evasionEnergyShieldBase + armourEnergyShieldBase) * (1 + (energyShieldInc + armourEnergyShieldInc + evasionEnergyShieldInc + defencesInc) / 100) * (1 + (qualityScalar / 100)))
 		armourData.Ward = round((wardBase) * (1 + (wardInc + defencesInc) / 100) * (1 + (qualityScalar / 100)))
+		armourData.EvasionPerLevel = evasionPerLevel * (1 + (evasionInc + armourEvasionInc + evasionEnergyShieldInc + defencesInc) / 100) * (1 + (qualityScalar / 100))
+		armourData.EnergyShieldPerLevel = energyShieldPerLevel * (1 + (energyShieldInc + armourEnergyShieldInc + evasionEnergyShieldInc + defencesInc) / 100) * (1 + (qualityScalar / 100))
+		armourData.WardPerLevel = wardPerLevel * (1 + (wardInc + defencesInc) / 100) * (1 + (qualityScalar / 100))
 
 		if self.base.armour.BlockChance then
 			armourData.BlockChance = m_floor((self.base.armour.BlockChance * (1 + calcLocal(modList, "BlockChance", "INC", 0) / 100) + calcLocal(modList, "BlockChance", "BASE", 0)))

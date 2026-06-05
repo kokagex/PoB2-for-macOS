@@ -496,7 +496,19 @@ local ConfigTabClass = newClass("ConfigTab", "UndoHandler", "ControlHost", "Cont
 					local skillFlags = mainSkill.activeEffect and mainSkill.activeEffect.statSet and mainSkill.activeEffect.statSet.skillFlags
 					if not skillFlags then return false end
 					-- Check both the skill mods for flags and flags that are set via calcPerform
-					return skillFlags[ifOption] or (skillModList and skillModList:Flag(nil, ifOption))
+					if skillFlags[ifOption] or (skillModList and skillModList:Flag(nil, ifOption)) then
+						return true
+					end
+					-- macOS port: integrate upstream 0.18.0 minion-flag branch with nil-safety
+					if mainEnv.minion then
+						local minionSkill = mainEnv.minion.mainSkill
+						skillModList = minionSkill and minionSkill.skillModList
+						skillFlags = minionSkill and minionSkill.activeEffect and minionSkill.activeEffect.statSet and minionSkill.activeEffect.statSet.skillFlags
+						if skillFlags then
+							return skillFlags[ifOption] or (skillModList and skillModList:Flag(nil, ifOption))
+						end
+					end
+					return false
 				end))
 			end
 			if varData.ifMod then
