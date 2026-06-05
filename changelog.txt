@@ -1,3 +1,18 @@
+VERSION[0.10.0][2026/06/05]
+
+--- 上流 PoB2 0.18.0 を同期（ゲームデータ・計算の最新化）/ Sync upstream PoB2 0.18.0 (latest game data & calculations) ---
+* 上流 PathOfBuilding-PoE2 0.17.1 → 0.18.0 を取り込み（59 ファイル）。計算エンジン（CalcOffence／CalcDefence／CalcPerform／ModParser ほか 12 Modules）、ゲームデータ（ジェム／ミニオン／スペクター／ベース／ModCache／WorldAreas ほか 20 Data）、UI タブ（ConfigTab／ItemsTab／ImportTab／SkillsTab ほか 12 Classes）、新アイテムヘッダー画像 15 枚（ルーンアイテム枠）を更新
+* ミニオンのクリティカル率計算を上流修正に追随
+* アイテムのアーマー／回避／エネルギーシールド／ワードのツールチップ値を、上流の新 API（レベル依存計算）に追随しつつ日本語ラベルを保全
+* ※トレード系の大規模改修（TradeQuery 一式）は次バージョンへ持ち越し（既知ギャップ）
+* ※zip の再ダウンロード（再インストール）が必要です
+
+* Synced upstream PathOfBuilding-PoE2 0.17.1 → 0.18.0 (59 files): the calculation engine (CalcOffence/CalcDefence/CalcPerform/ModParser and 12 Modules in total), game data (gems, minions, spectres, bases, ModCache, WorldAreas and 20 Data files), UI tabs (ConfigTab/ItemsTab/ImportTab/SkillsTab and 12 Classes), and 15 new item-header images (runic item frames).
+* Followed the upstream fix for minion critical strike chance.
+* Updated item Armour/Evasion/Energy Shield/Ward tooltip values to the upstream level-aware API while preserving Japanese labels.
+* Note: the large trade-subsystem rework (the TradeQuery set) is deferred to the next release (a known gap).
+* Note: requires re-downloading the zip (reinstall).
+
 VERSION[0.9.4][2026/06/05]
 
 --- スキルパネル操作時のログ氾濫と長時間フリーズを修正 / Fix log flooding and a long freeze around the skill panel ---
