@@ -1,3 +1,16 @@
+VERSION[0.10.3][2026/06/06]
+
+--- 耐性貫通を除外する Config を追加、Options 画面のクラッシュを修正 / Add a config to exclude resistance penetration, fix the Options popup crash ---
+* Configuration の敵セクションに「耐性貫通を除外する」チェックボックスを追加。PoE2 では map の白モブ／通常モブの耐性が 0 のため、耐性貫通が「Show Node Power」などのダメージ評価で実態より過大に評価される。ON にするとプレイヤー側の全貫通（火炎／冷気／雷／混沌）をダメージ計算から除外する。曝露などの敵側耐性低下はそのまま有効（src/Modules/CalcOffence.lua／ConfigOptions.lua）
+* Options 画面を開くと「attempt to perform arithmetic on global 'currentX' (a nil value)」でクラッシュする問題を修正。上流 sync（phase9c）で 2 カラムレイアウト由来の行を取り込んだ際に変数定義（currentX／leftColumnMaxY）が落ちていた（src/Modules/Main.lua）
+* アプリ実行中に build-app.sh で再ビルドすると、実行中プロセスの作業ディレクトリが unlink され「Module not found: Data/StatDescriptions/...」エラーになる問題への再発防止ガードを追加（scripts/build-app.sh）
+* ※Lua のみの変更。zip の再ダウンロード（再インストール）が必要です
+
+* Added an "Exclude Resistance Penetration?" checkbox to the enemy section of the Configuration tab. In PoE2 white/regular map mobs have 0 resistance, so resistance penetration is overvalued in damage evaluations such as "Show Node Power". When enabled, all player-side penetration (Fire/Cold/Lightning/Chaos) is excluded from damage calculations; Exposure and other enemy-side resistance reductions still apply (src/Modules/CalcOffence.lua / ConfigOptions.lua).
+* Fixed a crash ("attempt to perform arithmetic on global 'currentX' (a nil value)") when opening the Options popup. The phase9c upstream sync adopted two-column-layout lines without their variable definitions (currentX / leftColumnMaxY) (src/Modules/Main.lua).
+* Added a guard to build-app.sh against rebuilding while the app is running, which unlinked the live process's working directory and caused "Module not found: Data/StatDescriptions/..." errors (scripts/build-app.sh).
+* Note: Lua-only change; requires re-downloading the zip (reinstall).
+
 VERSION[0.10.2][2026/06/06]
 
 --- ツリー表示時の CPU 過負荷を削減し、0_4 ツリーのクラッシュを修正 / Reduce passive-tree CPU load and fix a 0_4-tree crash ---
