@@ -20,6 +20,15 @@ VERSION="${VERSION:-dev}"
 echo "==> mode=$mode  app=$APP"
 
 # 1. Clean and create skeleton (runtime/ is created by section 4 below)
+# Guard: rebuilding while the app is running unlinks the live process's cwd
+# (Resources/), so every later relative-path load in that process fails —
+# e.g. lazy-loaded Data/StatDescriptions/* → "Module not found" in OnFrame.
+for pid in $(pgrep -f "pob2_launch.lua" 2>/dev/null || true); do
+  if lsof -a -p "$pid" -d cwd 2>/dev/null | grep -qF "$APP"; then
+    echo "ERROR: PathOfBuilding is running (PID $pid) from $APP — quit it before rebuilding." >&2
+    exit 1
+  fi
+done
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$RES"
 
