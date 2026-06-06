@@ -694,7 +694,15 @@ end
 _G.GetMouseWheelDelta = function()
     return sg.GetMouseWheelDelta()
 end
-_G.GetTime = sg.GetTime
+-- Normalize GetTime() to MILLISECONDS at the GUI boundary.
+-- sg.GetTime() returns SECONDS on macOS (sg_core.cpp: clock_gettime tv_sec + tv_nsec/1e9),
+-- but every upstream src/ consumer assumes milliseconds (Windows PoB semantics): coroutine
+-- yields `GetTime() - start > 100`, animation multipliers `* 0.003` / `* 0.00003`, cursor
+-- blink `% 1000`, the 12h update check, etc. Without this ×1000 those all run 1000x off —
+-- e.g. CalcsTab PowerBuilder's 100ms yield becomes 100s, so the full-tree node-power calc
+-- never yields and freezes a whole frame (CPU spike on every heatMap rebuild). Wrapping the
+-- global here fixes all consumers at once and needs no per-site patching on upstream sync.
+_G.GetTime = function() return sg.GetTime() * 1000 end
 -- LoadModule: Load a Lua module and return its result
 _G.LoadModule = function(moduleName, ...)
     local searchPaths = {
@@ -1350,9 +1358,22 @@ local input_prev = { }
 local last_click_time = 0
 local last_click_x = 0
 local last_click_y = 0
-local DOUBLE_CLICK_TIME = 0.30
-local DOUBLE_CLICK_DIST = 4
+local DOUBLE_CLICK_TIME = 300          -- ms (GetTime() is ms-normalized at the boundary)
+local DOUBLE_CLICK_DIST = 4            -- pixels
 local wheel_accum = 0
+
+-- Adaptive frame pacing: cut CPU when the tree is shown but the user is idle.
+-- The old loop slept a fixed 16.6ms (~60 FPS) every frame unconditionally, so an
+-- idle foreground window still burned ~50% CPU redrawing identical frames. We now
+-- throttle the sleep once there has been no input for IDLE_GRACE.
+-- GetTime() is ms-normalized at the GUI boundary (see _G.GetTime wrap above), so all the
+-- timestamps below are milliseconds — matching upstream Windows PoB semantics.
+local last_cursor_x, last_cursor_y     -- nil until the first poll
+local g_last_activity = 0              -- ms; (re)set to GetTime() on any input
+local IDLE_GRACE = 500                 -- ms of no input before throttling down
+local SLEEP_ACTIVE = 16666            -- usleep us, ~60 FPS while interacting
+local SLEEP_IDLE_ANIM = 50000        -- usleep us, ~20 FPS idle with animations on
+local SLEEP_IDLE_STILL = 100000      -- usleep us, ~10 FPS idle with animations off
 
 local input_keys = {
     "LEFTBUTTON", "RIGHTBUTTON", "MIDDLEBUTTON",
@@ -1411,11 +1432,20 @@ local function poll_input_events()
 
     local cursorX, cursorY = GetCursorPos()
 
+    -- Cursor movement counts as activity (keeps hover/drag at full frame rate)
+    if last_cursor_x == nil then
+        last_cursor_x, last_cursor_y = cursorX, cursorY
+    elseif cursorX ~= last_cursor_x or cursorY ~= last_cursor_y then
+        last_cursor_x, last_cursor_y = cursorX, cursorY
+        g_last_activity = GetTime()
+    end
+
     -- Key events
     for _, key in ipairs(input_keys) do
         local down = IsKeyDown(key) == 1
         local was_down = input_prev[key] and true or false
         if down ~= was_down then
+            g_last_activity = GetTime()
             local double_click = false
             if down and key == "LEFTBUTTON" then
                 local now = GetTime()
@@ -1436,7 +1466,11 @@ local function poll_input_events()
     end
 
     -- Mouse wheel events
-    wheel_accum = wheel_accum + GetMouseWheelDelta()
+    local wheel_delta = GetMouseWheelDelta()
+    if wheel_delta ~= 0 then
+        g_last_activity = GetTime()
+    end
+    wheel_accum = wheel_accum + wheel_delta
     if wheel_accum >= 1 then
         if launch and launch.OnKeyUp then
             launch:OnKeyUp("WHEELUP")
@@ -1454,6 +1488,7 @@ local function poll_input_events()
         while true do
             local ch = char_input_lib.GetCharInput()
             if ch == 0 then break end
+            g_last_activity = GetTime()
             debug_char(string.format("DEBUG CHAR: codepoint=%d (0x%02X)", ch, ch))
             if ch >= 32 and ch ~= 127 then
                 local char_str
@@ -1501,6 +1536,10 @@ if visual_test_mode then
         { frame = 300, name = "tree_view", path = "screenshots/test_tree_view.png" },
     }
 end
+
+-- Start active so the loading/startup frames render at full speed; the loop
+-- decays to idle throttle once IDLE_GRACE passes with no input.
+g_last_activity = GetTime()
 
 while IsUserTerminated() == 0 do
     frame_count = frame_count + 1
@@ -1577,7 +1616,19 @@ while IsUserTerminated() == 0 do
         end
     end
 
-    ffi.C.usleep(16666)  -- ~60 FPS
+    -- Adaptive frame pacing: full speed while interacting, throttle when idle.
+    -- visual_test_mode always runs at 60 FPS so screenshot frame counts stay exact.
+    if visual_test_mode then
+        ffi.C.usleep(SLEEP_ACTIVE)
+    elseif (GetTime() - g_last_activity) > IDLE_GRACE then
+        if main and main.showAnimations then
+            ffi.C.usleep(SLEEP_IDLE_ANIM)  -- animations still move, just slower
+        else
+            ffi.C.usleep(SLEEP_IDLE_STILL)
+        end
+    else
+        ffi.C.usleep(SLEEP_ACTIVE)
+    end
 
     -- Output test results after first 3 seconds
     if ENABLE_DRAW_PARAM_TEST and _G.draw_param_test and frame_count == 180 then

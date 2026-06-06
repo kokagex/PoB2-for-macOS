@@ -264,11 +264,20 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 				iconCount = iconCount + 1
 			end
 		else
-			-- Map failed icons as not found
+			-- Map failed icons as not found.
+			-- handle MUST be the (valid, empty) data.handle that LoadImage always
+			-- creates via NewImageHandle() -- NOT nil. Storing nil breaks the asset
+			-- invariant ("every asset record carries a non-nil handle") that the
+			-- success branch and every spriteMap entry uphold. Consumers call
+			-- handle:ImageSize(); on a failed load that returns 0,0 (img->width is
+			-- calloc-zeroed and only set on valid==true paths -- sg_image.cpp:487),
+			-- so width stays 0 and the "if width > 0" draw guards skip cleanly.
+			-- A nil handle here is what crashed PassiveTreeView/Tooltip on 0_4 trees
+			-- whose .dds.zst textures cannot be loaded by the macOS port.
 			for name, position in pairs(fileInfo) do
 				self.ddsMap[name] = {
 					found = false,
-					handle = nil,
+					handle = data.handle,
 					width = 0,
 					height = 0,
 					[1] = position
@@ -294,6 +303,26 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 				[3] = (coords.x + coords.w) / data.width,
 				[4] = (coords.y + coords.h) / data.height
 			}
+		end
+	end
+
+	-- Load-time asset invariant (recurrence guard for the ddsMap nil-handle crash).
+	-- Every ddsMap / spriteMap record MUST carry a non-nil image handle: LoadImage
+	-- always assigns data.handle = NewImageHandle() (non-nil) for any non-nil imgName,
+	-- and the ddsCoords / spriteCoords keys driving these loops come from pairs() so
+	-- they are structurally never nil. A nil handle therefore means a population site
+	-- regressed to the handle=nil defect that crashed PassiveTreeView:664 / :1368 /
+	-- Tooltip:47 on 0_4 trees (consumers call handle:ImageSize() unguarded). Fail loud
+	-- HERE -- at load time, with the offending asset name -- instead of as an opaque
+	-- per-frame nil-deref. This is a detector, not a nil-fallback: it never substitutes
+	-- a value, and never fires in correct operation (proven non-nil above).
+	for _, map in ipairs({ { "ddsMap", self.ddsMap }, { "spriteMap", self.spriteMap } }) do
+		local mapName, mapTable = map[1], map[2]
+		for assetName, record in pairs(mapTable) do
+			if record.handle == nil then
+				error(("PassiveTree asset invariant violated: %s['%s'] has a nil image handle "
+					.."(a population site regressed to the handle=nil defect)"):format(mapName, assetName))
+			end
 		end
 	end
 
