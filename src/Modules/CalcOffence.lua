@@ -4142,6 +4142,12 @@ function calcs.offence(env, actor, activeSkill)
 							end
 						end
 
+						-- Config option: exclude all player-side resistance penetration from damage calc
+						if env.configInput.ignoreResistPenetration then
+							pen = 0
+							minPen = 0
+						end
+
 						local invertChance = m_max(m_min(skillModList:Sum("CHANCE", cfg, "HitsInvertEleResChance"), 1), 0)
 						if isElemental[damageType] and invertChance > 0 then
 							-- resist = (1 - invertChance) * resist + invertChance * (-1 * resist)

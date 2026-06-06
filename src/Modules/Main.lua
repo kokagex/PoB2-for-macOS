@@ -968,6 +968,7 @@ function main:OpenOptionsPopup(savedState)
 	local s = self.screenScale or 1
 
 	local currentY = 20 * s
+	local currentX = 0 -- initialized at `0`, only used for two-column layouts (single-column here)
 	local isJapanese = (i18n and i18n.getLocale and i18n.getLocale() == "ja")
 	local popupWidth = isJapanese and (800 * s) or (600 * s)
 
@@ -1142,6 +1143,7 @@ function main:OpenOptionsPopup(savedState)
 	controls.showAllItemAffixes.tooltipText = i18n.t("options.build.tooltipShowAllAffixes")
 
 	nextRow()
+	local leftColumnMaxY = currentY -- store left column height (no-op in single-column layout)
 	drawSectionHeader("build", i18n.t("options.build.header"))
 
 	controls.showThousandsSeparators = new("CheckBoxControl", { "TOPLEFT", nil, "TOPLEFT"}, { defaultLabelPlacementX, currentY, 20 * s }, "^7" .. i18n.t("options.build.showThousandsSeparators"), function(state)

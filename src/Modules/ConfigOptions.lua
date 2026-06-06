@@ -2158,6 +2158,7 @@ Huge sets the radius to 11.
 	{ var = "enemyMaxResist", type = "check", label = "Enemy Max Resistance is always 75%", tooltip = "Enemy Maximum resistance is increased by the resistance configurations \nThis locks it at the default value", apply = function(val, modList, enemyModList)
 		enemyModList:NewMod("DoNotChangeMaxResFromConfig", "FLAG", true, "EnemyConfig")
 	end },
+	{ var = "ignoreResistPenetration", type = "check", label = "Exclude Resistance Penetration?", tooltip = "Excludes all player-side resistance penetration (Fire/Cold/Lightning/Chaos)\nfrom damage calculations, including Show Node Power.\nExposure and other enemy resistance reductions still apply." },
 	{ var = "enemyBlockChance", type = "countAllowZero", label = "Enemy Block Chance:", apply = function(val, modList, enemyModList)
 		enemyModList:NewMod("BlockChance", "BASE", val, "Config")
 	end },
