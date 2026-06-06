@@ -1,3 +1,14 @@
+VERSION[0.10.2][2026/06/06]
+
+--- ツリー表示時の CPU 過負荷を削減し、0_4 ツリーのクラッシュを修正 / Reduce passive-tree CPU load and fix a 0_4-tree crash ---
+* パッシブツリー表示時（特に「Show Node Power」／ヒートマップ）の CPU 過負荷とフリーズを解消。macOS では sg.GetTime() が秒を返すのに上流 src/ の全消費側はミリ秒前提で書かれており、(1) アイドル検出が秒スケールのため常にスロットルされず約 49% の CPU を消費、(2) CalcsTab のノードパワー再計算の協調的 yield ゲート（GetTime() - start > 100 が 100 秒の意味になる）が約 2 秒の全ツリー走査中に一度も yield せず 1 フレームでフリーズ、という 2 症状が同一原因から発生していた。GUI 境界で `_G.GetTime` を ms 正規化（×1000）する 1 箇所のラップで全消費側を一括修正（pob2_launch.lua）
+* 0_4（以前）のパッシブツリーで「PassiveTreeView.lua:664: attempt to index field 'handle' (a nil value)」クラッシュを修正。これらのツリーは .dds.zst テクスチャ配列を使い macOS ポートではロードできず、ロード失敗側の分岐で handle=nil を格納してアセット不変条件（全レコードが非 nil の画像ハンドルを持つ）を破っていた。失敗時も LoadImage が常に生成する空ハンドル（data.handle）を格納するよう修正し、ロード時に nil ハンドルがあれば error する不変条件チェックを追加（src/Classes/PassiveTree.lua）
+* ※Lua のみの変更。zip の再ダウンロード（再インストール）が必要です
+
+* Fixed excessive CPU use and freezes while the passive tree is shown (especially "Show Node Power" / the heat map). On macOS sg.GetTime() returns seconds, but every upstream src/ consumer assumes milliseconds, so two symptoms shared one root cause: (1) idle detection on a seconds scale never throttled and burned ~49% CPU, and (2) the CalcsTab node-power recalc's cooperative yield gate (GetTime() - start > 100 became 100 seconds) never yielded during the ~2-second full-tree walk and froze a whole frame. Fixed all consumers with a single ms-normalizing wrap of `_G.GetTime` (×1000) at the GUI boundary (pob2_launch.lua).
+* Fixed a "PassiveTreeView.lua:664: attempt to index field 'handle' (a nil value)" crash on 0_4 (and older) passive trees. Those trees use .dds.zst texture arrays the macOS port cannot load, and the failed-load branch stored handle=nil, breaking the asset invariant that every record carries a non-nil image handle. It now stores the empty handle LoadImage always creates (data.handle) even on failure, plus a load-time invariant check that errors if any record has a nil handle (src/Classes/PassiveTree.lua).
+* Note: Lua-only change; requires re-downloading the zip (reinstall).
+
 VERSION[0.10.1][2026/06/06]
 
 --- 上流 PoB2 バグ修正 2 件を同期（Hollow Form／Deflect 上限）/ Sync 2 upstream PoB2 bugfixes (Hollow Form / Deflect cap) ---
