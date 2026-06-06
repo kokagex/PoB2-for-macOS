@@ -238,6 +238,7 @@ return {
 		enemyFireResist = "敵の^xB97123火耐性:",
 		enemyChaosResist = "敵の^xD02090混沌耐性:",
 		enemyMaxResist = "敵の最大耐性は常に75%",
+		ignoreResistPenetration = "耐性貫通を除外する",
 		enemyBlockChance = "敵のブロック率:",
 		enemyEvasion = "敵の基本^x33FF77回避力:",
 		enemyArmour = "敵の基本アーマー:",
