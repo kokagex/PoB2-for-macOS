@@ -1,40 +1,52 @@
 # Headless calc — validation golden
 
-Build used for the feasibility spike and the regression smoke test.
+Regression baseline for the headless calc worker and MCP server tests.
 
-- build file: /Users/kokage/Library/Application Support/Path of Building/Builds/Lich_FotV.xml
-- class: Witch / Abyssal Lich
-- date: 2026-06-01
+- build file: mcp/server/test/fixtures/golden_build.xml
+- class: Sorceress / Chronomancer (Chrono_RotA snapshot)
+- date: 2026-06-07
+
+The build XML is snapshotted INTO the repo (fixtures/). Earlier goldens pointed
+at the user's live PoB build folder, and the referenced file got overwritten by
+a different build in the GUI, silently invalidating the baseline (discovered
+2026-06-07). Tests must never depend on files PoB itself rewrites.
 
 ## Headless-measured baseline (regression guard)
-Produced by `mcp/worker/server.lua` (no patch):
+Produced by `mcp/worker/server.lua` (no patch). Saved main skill group is 5
+(Orb of Storms):
 
-- TotalDPS:      25062.573899264   <- primary oracle (hit DPS)
-- CombinedDPS:   25062.573899264
-- AverageDamage: 14001.437932549
-- CritChance:    56.52
-- Speed:         1.79
-- FullDPS:       0   <- depends on per-skill "include in Full DPS" flags; 0 here
+- TotalDPS:      5138.74456875   <- primary oracle (hit DPS)
 
-## GUI cross-check (anti-hallucination oracle) — CONFIRMED 2026-06-01
-Read from the PoB GUI sidebar (main skill: アイスノヴァ / Ice Nova). Headless
-matches the GUI to displayed precision -- the tool is correct, not just
-reproducible.
+## patch.skillName golden
+Selecting the main skill by gem name (case-insensitive). Cross-checked exactly
+(diff = 0) against the sed workaround that rewrote mainSocketGroup in the XML:
 
-| metric        | GUI        | headless         | verdict |
-|---------------|------------|------------------|---------|
-| Hit DPS       | 25,062.6   | 25062.573899264  | match   |
-| Average Hit   | 14,001.4   | 14001.437932549  | match   |
-| Crit Chance   | 56.52%     | 56.52            | match   |
-| Cast Speed    | 1.79       | 1.79             | match   |
-| Full DPS      | (not shown)| 0                | faithful: GUI shows no Full DPS line (no skill flagged "include in Full DPS") |
+- skillName "Eye of Winter" -> TotalDPS: 576.5486741573
 
-Note: the GUI headline figure is "ヒットDPS" (Hit DPS) == headless TotalDPS.
-FullDPS=0 is faithful here, not a bug.
+Unknown names must be a hard worker error ("not found in build" + gem list),
+never silently ignored — that silent ignore was the original calc bug.
 
-## export_build round-trip — CONFIRMED IN REAL PoB GUI 2026-06-01
-`export_build` code (base64 `eNr…`) was pasted into the PoB GUI "インポートビルド"
-tab and imported cleanly: main skill アイスノヴァ, Hit DPS 25,062.6 — identical to
-source. The "older tree version (0_4)" warning is a property of the original
-build, not a round-trip defect. The 大前提 (mutate -> export code -> load in GUI)
-is closed.
+---
+
+## History: 2026-06-01 golden (Lich_FotV) — INVALIDATED
+
+Original golden was the user's live `Lich_FotV.xml` (Witch / Abyssal Lich, main
+skill Ice Nova): TotalDPS(old) 25062.573899264, AverageDamage(old)
+14001.437932549, CritChance(old) 56.52, Speed(old) 1.79, FullDPS(old) 0.
+
+Two oracles from that round remain valid as one-time confirmations of the
+engine glue (the conclusions hold even though the build file is gone):
+
+- **GUI cross-check (anti-hallucination) — CONFIRMED 2026-06-01**: headless
+  matched the PoB GUI sidebar to displayed precision (Hit DPS 25,062.6 /
+  Average Hit 14,001.4 / Crit 56.52% / Cast Speed 1.79). GUI headline
+  "ヒットDPS" == headless TotalDPS. FullDPS=0 was faithful (GUI showed no Full
+  DPS line; no skill flagged "include in Full DPS").
+- **export_build round-trip — CONFIRMED IN REAL PoB GUI 2026-06-01**: the
+  export code imported cleanly with identical numbers. The "older tree version
+  (0_4)" warning was a property of the original build, not a round-trip defect.
+
+The file at `~/Library/Application Support/Path of Building/Builds/Lich_FotV.xml`
+was overwritten in the GUI with the Chronomancer build sometime before
+2026-06-06 18:58 (identical bytes to Chrono_RotA.xml); the original Lich build
+XML is not recoverable from disk.

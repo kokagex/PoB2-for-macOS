@@ -17,6 +17,7 @@ export interface Patch {
   config?: Record<string, unknown>;
   enemyLevel?: number;
   treeURL?: string;
+  skillName?: string;
 }
 
 export interface CalcRequest {

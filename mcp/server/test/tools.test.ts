@@ -4,7 +4,8 @@ import { readFileSync } from "node:fs";
 
 const repoRoot = new URL("../../../", import.meta.url).pathname;
 const golden = readFileSync(`${repoRoot}mcp/spike/GOLDEN.md`, "utf8");
-const buildPath = /build file: (.+)/.exec(golden)![1].trim();
+// build file is repo-relative (snapshotted fixture; see GOLDEN.md).
+const buildPath = repoRoot + /build file: (.+)/.exec(golden)![1].trim();
 const buildXml = readFileSync(buildPath, "utf8");
 
 const worker = new Worker(repoRoot);
@@ -15,7 +16,7 @@ describe("Slice 2 worker ops", () => {
     const b = await worker.breakdown({ buildXml });
     expect(b.TotalDPS).toBeGreaterThan(0);
     expect(b.CritMultiplier).toBeGreaterThan(0);
-    expect(b.ColdHitAverage).toBeGreaterThan(0); // Lich build deals cold damage
+    expect(b.ColdHitAverage).toBeGreaterThan(0); // golden build deals cold (Ice Bite / Biting Frost)
   }, 60_000);
 
   it("a config patch moves TotalDPS (compare-style delta)", async () => {

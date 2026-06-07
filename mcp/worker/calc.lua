@@ -56,13 +56,46 @@ function M.loadBuild(xml)
   return _G.build
 end
 
--- Slice 1 patch surface: config input keys, enemyLevel, full passive-tree replace.
---   patch = { config = {k=v,...}, enemyLevel = N, treeURL = "https://..." }
+-- Resolve a gem name to its socket-group index. mainOutput is computed for the
+-- group build.mainSocketGroup points at (CalcSetup.lua:1606, mode "MAIN"), so
+-- selecting a skill by name means moving that pointer. Matching is
+-- case-insensitive on gem nameSpec; the FIRST matching group wins, and the
+-- group's main active skill stays whatever the build saved (a name that only
+-- appears as a support still selects its group). Unknown names are a hard
+-- error -- silently keeping the XML's group is exactly the bug this fixes.
+function M.resolveSkillGroup(build, skillName)
+  local want = skillName:lower()
+  local seen, names = {}, {}
+  for index, group in ipairs(build.skillsTab.socketGroupList) do
+    for _, gem in ipairs(group.gemList or {}) do
+      local name = gem.nameSpec
+      if name and name ~= "" then
+        if name:lower() == want then
+          return index
+        end
+        if not seen[name] then
+          seen[name] = true
+          names[#names + 1] = name
+        end
+      end
+    end
+  end
+  error(string.format("skillName %q not found in build; gems present: %s",
+    skillName, table.concat(names, ", ")))
+end
+
+-- Slice 1 patch surface: config input keys, enemyLevel, full passive-tree
+-- replace, main-skill select by gem name.
+--   patch = { config = {k=v,...}, enemyLevel = N, treeURL = "https://...",
+--             skillName = "Eye of Winter" }
 function M.applyPatch(build, patch)
   if not patch then return end
   if patch.treeURL and patch.treeURL ~= "" then
     -- A tree URL imports a complete node set, so there is no pathing problem.
     build.treeTab:LoadURL(patch.treeURL)
+  end
+  if patch.skillName and patch.skillName ~= "" then
+    build.mainSocketGroup = M.resolveSkillGroup(build, patch.skillName)
   end
   -- configTab.input is aliased to the active config set's input (ConfigTab.lua:1090),
   -- so writing here targets the right table. But the compiled config modList is only
