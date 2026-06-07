@@ -471,6 +471,155 @@ _G.__clampDrawText = function(tag, s)
     return s:sub(1, 2000)
 end
 
+-- ===== UTF-8 sanitiser + glyph→byte caret conversion (support-gem-swap hang fix) =====
+-- Root cause of the 76s UI hang (spindump 2026-06-07): sg_utf8_decode
+-- (sg_text.cpp:23-55) returns 0xFFFD WITHOUT advancing the text pointer for any
+-- invalid byte -- a bad lead byte, or a lead byte whose continuation bytes are
+-- missing/wrong (e.g. a multi-byte character cut in half by a byte-index sub()).
+-- All four decode loops in sg_text.cpp only break on codepoint==0, so a single
+-- invalid byte spins one C call forever. The dylib cannot be rebuilt (see
+-- CLAUDE.md), so every wrapper sanitises text before it crosses the FFI boundary.
+--
+-- Invalid bytes are replaced ONE-FOR-ONE with '?' -- byte-count preservation is
+-- load-bearing: EditControl indexes its ORIGINAL buffer with byte positions
+-- derived from the sanitised string, so all offsets must stay aligned.
+-- Termination argument: every sequence this scanner accepts is also advanced by
+-- the C decoder (the strict accept set is a subset of C's advance set -- C
+-- additionally advances overlong C0/C1 and F5-F7 leads, but those become '?'
+-- here, and '?' is ASCII, which always advances). A NUL byte ends the C loop.
+-- Hence the C loop always terminates on sanitised input.
+
+local s_byte = string.byte
+
+-- Returns the index just past the valid UTF-8 sequence starting at i, or nil if
+-- the byte at i does not start one (strict: rejects stray continuations
+-- 0x80-0xBF, overlong leads 0xC0/0xC1, and leads 0xF5-0xFF).
+local function utf8SeqEnd(s, i)
+    local b = s_byte(s, i)
+    if b < 0x80 then return i + 1 end
+    local len
+    if b >= 0xC2 and b <= 0xDF then
+        len = 2
+    elseif b >= 0xE0 and b <= 0xEF then
+        len = 3
+    elseif b >= 0xF0 and b <= 0xF4 then
+        len = 4
+    else
+        return nil
+    end
+    for k = i + 1, i + len - 1 do
+        local c = s_byte(s, k)
+        if not c or c < 0x80 or c > 0xBF then return nil end
+    end
+    return i + len
+end
+
+-- Returns the byte index of the first invalid UTF-8 byte, or nil if valid.
+local function utf8FirstInvalid(s)
+    local i, n = 1, #s
+    while i <= n do
+        local j = utf8SeqEnd(s, i)
+        if not j then return i end
+        i = j
+    end
+    return nil
+end
+
+local invalidUTF8Logged = 0
+_G.__sanitiseUTF8 = function(s)
+    -- Fast path: a pure-ASCII string (the vast majority of draw calls) cannot
+    -- contain an invalid sequence; the C-level pattern scan beats a Lua byte loop.
+    if not s:find("[\128-\255]") then return s end
+    local firstBad = utf8FirstInvalid(s)
+    if not firstBad then return s end
+    if invalidUTF8Logged < 30 then
+        invalidUTF8Logged = invalidUTF8Logged + 1
+        local f = io.open("/tmp/pob_invalid_utf8.log", "a")
+        if f then
+            f:write("=== invalid UTF-8 byte at " .. firstBad .. " len=" .. #s .. " ===\nPREFIX: " ..
+                    s:sub(1, 200) .. "\nTRACE:\n" .. debug.traceback("", 2) .. "\n\n")
+            f:close()
+        end
+    end
+    -- Rebuild with each invalid byte replaced by '?' (same total byte count).
+    local parts = { s:sub(1, firstBad - 1), "?" }
+    local count = 2
+    local n = #s
+    local i = firstBad + 1
+    local runStart = i
+    while i <= n do
+        local j = utf8SeqEnd(s, i)
+        if j then
+            i = j
+        else
+            count = count + 1
+            parts[count] = s:sub(runStart, i - 1)
+            count = count + 1
+            parts[count] = "?"
+            i = i + 1
+            runStart = i
+        end
+    end
+    parts[count + 1] = s:sub(runStart)
+    return table.concat(parts)
+end
+
+-- Convert the 0-based glyph index returned by sg.DrawStringCursorIndex into the
+-- 1-based byte insertion position every Lua caller expects (Windows PoB
+-- semantics: buf:sub(1, ret-1) is the text left of the caret). Walks the string
+-- EXACTLY like the C loop (sg_text.cpp:597-645): escape codes are skipped with
+-- sg_parse_escape_code's rules BEFORE the glyph check, every decoded codepoint
+-- counts as one glyph (C increments char_index even when the glyph fails to
+-- load), and the walk stops at an embedded NUL just as while(*s) does.
+-- Contract: must receive the SAME (sanitised) string that was passed to C.
+local function cursorGlyphToBytePos(text, glyphIndex)
+    local pos, n, glyphs = 1, #text, 0
+    while pos <= n do
+        local b = s_byte(text, pos)
+        local consumed = false
+        if b == 94 then -- '^': sg_parse_escape_code (sg_text.cpp:59-109)
+            local b2 = s_byte(text, pos + 1)
+            if b2 and b2 >= 48 and b2 <= 57 then -- ^0-^9: skip 2
+                pos = pos + 2
+                consumed = true
+            elseif b2 == 120 and pos + 7 <= n then
+                -- ^xRRGGBB: C requires strlen from 'x' >= 7 (six non-NUL bytes
+                -- after the 'x') and sscanf(hex6, "%06x") success. sscanf
+                -- accepts leading whitespace + at least one hex digit.
+                local hex6 = text:sub(pos + 2, pos + 7)
+                if not hex6:find("\0", 1, true) and hex6:match("^%s*%x") then
+                    pos = pos + 8
+                    consumed = true
+                end
+            end
+            -- any other '^' falls through and renders as a normal glyph
+        end
+        if not consumed then
+            if glyphs >= glyphIndex then
+                return pos -- insertion point: caret sits before this glyph
+            end
+            if b == 0 then
+                return pos -- C's while(*s) stops here
+            end
+            glyphs = glyphs + 1
+            -- advance one sequence using the same lead-byte classes as the C
+            -- decoder; sanitised input guarantees every class below advances
+            if b < 0x80 then
+                pos = pos + 1
+            elseif b < 0xE0 then
+                pos = pos + 2 -- C0-DF
+            elseif b < 0xF0 then
+                pos = pos + 3 -- E0-EF
+            elseif b < 0xF8 then
+                pos = pos + 4 -- F0-F7
+            else
+                pos = pos + 1 -- F8-FF: cannot occur after sanitising
+            end
+        end
+    end
+    return n + 1 -- caret past the last glyph
+end
+
 -- DrawString: Logical→Physical conversion + alignment mapping + viewport offset
 _G.DrawString = function(left, top, align, height, font, text)
     local alignMap = {
@@ -486,6 +635,7 @@ _G.DrawString = function(left, top, align, height, font, text)
     end
     text = normalizeTextArg(text)
     text = _G.__clampDrawText("DRAWSTRING", text)
+    text = _G.__sanitiseUTF8(text) -- after clamp: repairs a mid-character cut
     local scale = getDpiScale()
     sg.DrawString(math.floor((left + viewportOffX) * scale), math.floor((top + viewportOffY) * scale),
                   alignInt, math.floor(height * scale * fontScale), font, text)
@@ -494,6 +644,7 @@ end
 _G.DrawStringWidth = function(height, font, text)
     text = normalizeTextArg(text)
     text = _G.__clampDrawText("DRAWSTRINGWIDTH", text)
+    text = _G.__sanitiseUTF8(text) -- after clamp: repairs a mid-character cut
     local scale = getDpiScale()
     local w = sg.DrawStringWidth(math.floor(height * scale * fontScale), font, text)
     if fontScale < 1.0 then
@@ -501,12 +652,23 @@ _G.DrawStringWidth = function(height, font, text)
     end
     return math.floor(w / scale)
 end
--- DrawStringCursorIndex: Scale font height and cursor coords to physical (viewport-adjusted)
+-- DrawStringCursorIndex: Scale font height and cursor coords to physical (viewport-adjusted).
+-- The C call returns a 0-based GLYPH index, but every Lua caller treats the
+-- result as a 1-based BYTE insertion position. On multi-byte text the raw glyph
+-- index lands mid-character, the caller's sub() then fabricates invalid UTF-8,
+-- and the next DrawStringWidth call would spin the C decoder forever -- this was
+-- the support-gem-swap hang trigger (click a ja gem name in EditControl).
+-- NOTE: no __clampDrawText here -- clamping would desync the returned byte
+-- offsets from the caller's original string. The C walk is linear, so length is
+-- not a hang risk; only invalid UTF-8 is, which __sanitiseUTF8 repairs
+-- byte-for-byte (offsets stay valid in the caller's original buffer).
 _G.DrawStringCursorIndex = function(height, font, text, cursorX, cursorY)
     text = normalizeTextArg(text)
+    text = _G.__sanitiseUTF8(text)
     local scale = getDpiScale()
-    return sg.DrawStringCursorIndex(math.floor(height * scale * fontScale), font, text,
+    local glyphIndex = sg.DrawStringCursorIndex(math.floor(height * scale * fontScale), font, text,
                                      math.floor((cursorX - viewportOffX) * scale), math.floor((cursorY - viewportOffY) * scale))
+    return cursorGlyphToBytePos(text, glyphIndex)
 end
 -- DrawImage: Wrapper to handle wrapped ImageHandle objects
 _G.DrawImage = function(imageHandle, left, top, width, height, tcLeft, tcTop, tcRight, tcBottom)

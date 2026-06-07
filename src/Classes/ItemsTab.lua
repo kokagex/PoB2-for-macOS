@@ -2090,7 +2090,10 @@ function ItemsTabClass:UpdateCustomControls()
 					self.controls["displayItemCustomModifierRemove"..i].shown = true
 					local label = itemLib.formatModLine(modLine)
 					if DrawStringCursorIndex(16, "VAR", label, 330, 10) < #label then
-						label = label:sub(1, DrawStringCursorIndex(16, "VAR", label, 310, 10)) .. "..."
+						-- DrawStringCursorIndex returns a 1-based byte insertion position;
+						-- sub(1, pos - 1) keeps exactly the glyphs left of it. Without the
+						-- -1 this cut multi-byte text mid-character (invalid UTF-8).
+						label = label:sub(1, DrawStringCursorIndex(16, "VAR", label, 310, 10) - 1) .. "..."
 					end
 					self.controls["displayItemCustomModifier"..i].label = label
 					self.controls["displayItemCustomModifierLabel"..i].label = " ^7Custom:"
