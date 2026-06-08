@@ -921,7 +921,20 @@ _G.SetMainObject = function(obj)
     _G.__MAIN_OBJECT = obj
 end
 _G.ConExecute = sg.ConExecute
-_G.ConPrintf = sg.ConPrintf
+-- 安全な ConPrintf ラッパー (クラッシュクラス再発防止)
+-- LuaJIT FFI は C 可変長引数に Lua number を double で渡すため、C printf の %d/%f が
+-- レジスタずれを起こし、後続の %s が不正ポインタを strlen して SIGSEGV する (既知地雷)。
+-- 書式整形を Lua の string.format で行い (Lua 値を正しく扱う)、C には常に ("%s", 整形済み)
+-- だけを渡すことで、format に %d/%f が混じっても、データ文字列に % が含まれても落ちない。
+local _rawConPrintf = sg.ConPrintf
+_G.ConPrintf = function(fmt, ...)
+    if select("#", ...) == 0 then
+        _rawConPrintf("%s", tostring(fmt))
+    else
+        local ok, s = pcall(string.format, fmt, ...)
+        _rawConPrintf("%s", ok and s or tostring(fmt))
+    end
+end
 _G.ConClear = sg.ConClear
 _G.GetScriptPath = function()
     return ffi.string(sg.GetWorkDir())

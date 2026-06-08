@@ -323,19 +323,8 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 			end
 		end
 	end
-	-- Periodic diagnostic for hover detection (every 120 frames)
-	if not self._hoverDiagCount then self._hoverDiagCount = 0 end
-	self._hoverDiagCount = self._hoverDiagCount + 1
-	if mOver and self._hoverDiagCount % 120 == 0 then
-		ConPrintf("DIAG[%d]: cursor=(%s,%s) nearestPx=%s distPxSq=%s radiusPx=%s hover=%s",
-			self._hoverDiagCount,
-			tostring(cursorX), tostring(cursorY),
-			nearestNodePx and tostring(nearestNodePx.dn) or "nil",
-			tostring(nearestDistPxSq),
-			nearestNodePx and tostring(m_min(160, m_max(40, (nearestNodePx.size or 70) * scale * 0.6))) or "nil",
-			hoverNode and tostring(hoverNode.dn) or "nil")
-	end
-	-- (per-frame hover result debug removed)
+	-- (hover detection diagnostic removed: ConPrintf %d on a Lua double misaligned C
+	--  varargs and SIGSEGV'd in strlen on hover; also spammed the log every 120 frames)
 
 	unseenPathHover = hoverNode and hoverNode.id == 5571 and not hoverNode.alloc or false
 	self.hoverNode = hoverNode
