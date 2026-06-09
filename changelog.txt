@@ -1,3 +1,18 @@
+VERSION[0.11.0][2026/06/09]
+
+--- 上流 PoE2 0.5.1 データを同期 + パッシブツリー日本語化を完全網羅 + クラッシュ 2 件を修正 / Sync PoE2 0.5.1 upstream data, complete passive-tree JP localization, fix 2 crashes ---
+* 上流 PathOfBuilding-PoE2 v0.19.0（PoE2 0.5.1）のパッシブツリー・スキル・Mod・ユニークデータを同期（Phase 13）。0.5.1 で追加／変更されたノード・スキル・アイテムが反映される
+* パッシブツリーの日本語化を完全網羅。未訳ノードを全訳、0.5.1 の新規ノタブル 9 件を翻訳、glossary（用語集）を統一、ルーン日本語名を poe2db 公式訳に統一（未訳 22 件を追加）
+* サポートジェム入れ替え時にアプリがハングする問題を修正。不正な UTF-8 バイトで C 側の文字列デコーダが無限ループしていた（GemSelectControl 操作時）
+* パッシブツリーのノードにカーソルを合わせるとクラッシュ（SIGSEGV）する問題を修正。hover 検出のデバッグ出力が ConPrintf に数値を %d で渡し C 可変長引数がずれていた。ConPrintf 全体に再発防止ラッパーを導入
+* ※データ変更を含みます。zip の再ダウンロード（再インストール）が必要です
+
+* Synced passive tree, skills, mods, and unique data from upstream PathOfBuilding-PoE2 v0.19.0 (PoE2 0.5.1) (Phase 13). Nodes, skills, and items added or changed in 0.5.1 are now reflected.
+* Completed the Japanese localization of the passive tree: translated all remaining nodes, the 9 new 0.5.1 notables, unified the glossary, and aligned rune names with the official poe2db translations (22 missing entries added).
+* Fixed an app hang when swapping support gems: an invalid UTF-8 byte made the C-side string decoder loop forever (during GemSelectControl interaction).
+* Fixed a crash (SIGSEGV) when hovering passive-tree nodes: the hover-detection debug output passed a number to ConPrintf with %d, misaligning the C varargs. Added a recurrence-prevention wrapper around ConPrintf.
+* Note: includes data changes; re-downloading the zip (reinstall) is required.
+
 VERSION[0.10.3][2026/06/06]
 
 --- 耐性貫通を除外する Config を追加、Options 画面のクラッシュを修正 / Add a config to exclude resistance penetration, fix the Options popup crash ---
