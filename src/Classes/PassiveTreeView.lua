@@ -78,17 +78,28 @@ end)
 
 function PassiveTreeViewClass:Load(xml, fileName)
 	if xml.attrib.zoomLevel then
-		self.zoomLevel = tonumber(xml.attrib.zoomLevel)
-		-- PRJ-003 Fix: Clamp zoom level to valid range to prevent extreme zoom values
-		if self.zoomLevel > 20 or self.zoomLevel < 0 then
-			ConPrintf("WARNING [PassiveTreeView:Load]: zoomLevel %d is out of bounds, clamping to [0, 20]", self.zoomLevel)
-			self.zoomLevel = m_max(0, m_min(20, self.zoomLevel))
+		-- 入口バリデーション: 壊れた XML では tonumber が nil を返し、
+		-- 直後の比較で nil クラッシュするため数値でなければ既定値のまま進める
+		local zoomLevel = tonumber(xml.attrib.zoomLevel)
+		if zoomLevel then
+			self.zoomLevel = zoomLevel
+			-- PRJ-003 Fix: Clamp zoom level to valid range to prevent extreme zoom values
+			if self.zoomLevel > 20 or self.zoomLevel < 0 then
+				-- %d は LuaJIT で非整数を受けると bad argument になるため %s を使う
+				ConPrintf("WARNING [PassiveTreeView:Load]: zoomLevel %s is out of bounds, clamping to [0, 20]", tostring(self.zoomLevel))
+				self.zoomLevel = m_max(0, m_min(20, self.zoomLevel))
+			end
+			self.zoom = 1.2 ^ self.zoomLevel
+		else
+			ConPrintf("WARNING [PassiveTreeView:Load]: zoomLevel %s is not a number, ignoring", tostring(xml.attrib.zoomLevel))
 		end
-		self.zoom = 1.2 ^ self.zoomLevel
 	end
 	if xml.attrib.zoomX and xml.attrib.zoomY then
-		self.zoomX = tonumber(xml.attrib.zoomX)
-		self.zoomY = tonumber(xml.attrib.zoomY)
+		local zoomX, zoomY = tonumber(xml.attrib.zoomX), tonumber(xml.attrib.zoomY)
+		if zoomX and zoomY then
+			self.zoomX = zoomX
+			self.zoomY = zoomY
+		end
 	end
 	if xml.attrib.searchStr then
 		self.searchStr = xml.attrib.searchStr
@@ -881,7 +892,7 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 		end
 	end
 
-	if launch.devModeAlt and hoverNode then
+	if launch.devModeAlt and hoverNode and hoverNode.group and hoverNode.group.orbits then
 		-- Draw orbits of the group node
 		local groupNode = hoverNode.group
 		SetDrawLayer(nil, 80)

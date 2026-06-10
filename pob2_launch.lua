@@ -1376,9 +1376,22 @@ SetWorkDir(script_path)
 print("Working directory set to: " .. script_path)
 print("")
 
+-- Archive API capability check: ffi.cdef は宣言するだけで、シンボル解決は
+-- 初回呼び出し時の dlsym まで遅延される。本番 dylib (リビルド禁止) は
+-- SG_Archive* を export していないため、呼び出し時に毎回
+-- "dlsym: symbol not found" の WARNING が出ていた (2026-06-10 修正)。
+-- 起動時に一度だけ probe して、無ければアーカイブ機能を明示的に無効化する。
+-- loose ファイル (src/Assets/, TreeData/) は dist に全て同梱されているので
+-- 機能上の退行はない。
+local hasArchiveAPI = pcall(function()
+    -- cdata へのフィールドアクセスが dlsym を発火させる
+    return sg.SG_ArchiveOpen, sg.SG_ArchiveContains, sg.ImageHandle_LoadFromArchive
+end)
+
 -- Archive loader: register custom package.loaders entry for SGPAK archives
 -- require("archive.assets") → opens archives/assets.sgpak
 -- Registered after SetWorkDir so relative paths resolve correctly.
+if hasArchiveAPI then
 table.insert(package.loaders, function(modname)
     local name = modname:match("^archive%.(.+)$")
     if not name then return end
@@ -1392,6 +1405,7 @@ table.insert(package.loaders, function(modname)
         return handle
     end
 end)
+end
 
 -- Archive mapping: prefix → archive module name
 -- Order matters: more specific prefixes first
@@ -1408,6 +1422,9 @@ local archiveMapping = {
 -- Design: returns after the first matching prefix. Each prefix bucket is
 -- self-contained, so TreeData/0_1/ files won't fall through to TreeData/.
 getArchiveForPath = function(fileName)
+    if not hasArchiveAPI then
+        return nil  -- disk loose files にフォールバック (機能差なし)
+    end
     for _, mapping in ipairs(archiveMapping) do
         if fileName:sub(1, #mapping.prefix) == mapping.prefix then
             -- Check cached failure sentinel to avoid repeated require retries
@@ -1431,7 +1448,11 @@ getArchiveForPath = function(fileName)
     return nil
 end
 
-print("✓ Archive loader registered")
+if hasArchiveAPI then
+    print("✓ Archive loader registered")
+else
+    print("✓ Archive API not exported by SimpleGraphic.dylib — using loose files")
+end
 print("")
 
 -- Don't call RenderInit here - let Launch.lua do it

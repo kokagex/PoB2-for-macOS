@@ -144,7 +144,10 @@ function DropDownClass:SelByValue(value, key)
 end
 
 function DropDownClass:GetSelValueByKey(key)
-	return self.list[self.selIndex][key]
+	-- 空リスト時は選択値が存在しない (selIndex=1 でも list[1] が nil) ため
+	-- nil を返す。無条件 index だと nil deref でクラッシュする
+	local selVal = self.list[self.selIndex]
+	return type(selVal) == "table" and selVal[key] or nil
 end
 
 function DropDownClass:GetSelValue()
@@ -511,6 +514,11 @@ function DropDownClass:SetList(textList)
 	if textList then
 		wipeTable(self.list)
 		self.list = textList
+		-- 不変条件の維持: リストが短くなった場合に selIndex が範囲外のまま残ると
+		-- GetSelValue 系が nil を踏む。常に 1 <= selIndex <= max(1, #list) に収める
+		if self.selIndex > #self.list then
+			self.selIndex = m_max(1, #self.list)
+		end
 		  --check width on new list
 		self:CheckDroppedWidth(self.enableDroppedWidth)
 	end

@@ -516,7 +516,10 @@ function TooltipClass:Draw(x, y, w, h, viewPort)
 	end
 	-- spell-checker: disable
 	local headerInfluence = {
-		Fractured = "Assets/fractureditemsymbol.png",
+		-- fork(macOS): fractureditemsymbol.png はこの配布に存在しない。
+		-- 実在する fracturedicon.png を使う (producer 側は現在コメントアウト中だが
+		-- 再有効化されたときに白矩形にならないように)。
+		Fractured = "Assets/fracturedicon.png",
 		Desecrated = "Assets/veileditemsymbol.png",
 		Mutated = "Assets/vaalitemicon.png",
 	}
@@ -624,21 +627,32 @@ function TooltipClass:Draw(x, y, w, h, viewPort)
 		local headerTotalWidth = ttW - 2 * BORDER_WIDTH
 		local headerMiddleAreaWidth = m_max(0, headerTotalWidth - 2 * headerSideWidth)
 		if self.influenceHeader1 then
-			self.influenceIcon1 = NewImageHandle()
-			self.influenceIcon1:Load(headerInfluence[self.influenceHeader1])
-			self.influenceIcon2 = NewImageHandle()
-			self.influenceIcon2:Load(headerInfluence[self.influenceHeader2])
+			-- fork(macOS): headerLeft と同様にパスでキャッシュする。
+			-- キャッシュなしだと tooltip 表示中に毎フレーム NewImageHandle+Load が
+			-- 走り、画像 I/O とログ出力がフレーム毎に発生する。
+			local influenceKey = tostring(self.influenceHeader1) .. "/" .. tostring(self.influenceHeader2)
+			if not self.influenceIcon1 or self.influenceIconKey ~= influenceKey then
+				self.influenceIcon1 = NewImageHandle()
+				self.influenceIcon1:Load(headerInfluence[self.influenceHeader1])
+				self.influenceIcon2 = NewImageHandle()
+				self.influenceIcon2:Load(headerInfluence[self.influenceHeader2])
+				self.influenceIconKey = influenceKey
+			end
 		end
 
 		if self.tooltipHeader ~= "GEM" then
+			-- fork(macOS): 無効ハンドルを DrawImage すると dummyWhite で白矩形になるため
+			-- 全ヘッダー描画を IsValid でガードする (GEM パス・mod 行背景と同パターン)。
 			-- Draw left cap first, then influence icon on top
-			DrawImage(self.headerLeft, headerX, headerY, headerSideWidth, headerHeight)
-			if self.influenceHeader1 and config.allowInfluenceIcon then
+			if self.headerLeft:IsValid() then
+				DrawImage(self.headerLeft, headerX, headerY, headerSideWidth, headerHeight)
+			end
+			if self.influenceHeader1 and config.allowInfluenceIcon and self.influenceIcon1:IsValid() then
 				DrawImage(self.influenceIcon1, headerX + 2, headerY + (headerHeight - (headerHeight/2))/2, headerHeight/2, headerHeight/2)
 			end
 
 			-- Draw middle fill
-			if headerMiddleAreaWidth > 0 then
+			if headerMiddleAreaWidth > 0 and self.headerMiddle:IsValid() then
 				local drawX = headerX + headerSideWidth
 				local endX = headerX + headerTotalWidth - headerSideWidth
 				while drawX + headerMiddleWidth <= endX do
@@ -652,13 +666,21 @@ function TooltipClass:Draw(x, y, w, h, viewPort)
 			end
 
 			-- Draw right cap
-			DrawImage(self.headerRight, headerX + headerTotalWidth - headerSideWidth, headerY, headerSideWidth, headerHeight)
-			if self.influenceHeader2 and config.allowInfluenceIcon then
+			if self.headerRight:IsValid() then
+				DrawImage(self.headerRight, headerX + headerTotalWidth - headerSideWidth, headerY, headerSideWidth, headerHeight)
+			end
+			if self.influenceHeader2 and config.allowInfluenceIcon and self.influenceIcon2:IsValid() then
 				DrawImage(self.influenceIcon2, headerX + headerTotalWidth - (headerHeight/2) - 2, headerY + (headerHeight - (headerHeight/2))/2, headerHeight/2, headerHeight/2)
 			end
 		elseif self.tooltipHeader == "GEM" then
+			-- fork(macOS): SkillAssets の .dds.zst は stb_image でデコードできず
+			-- found=false (handle 無効) のままエントリが返る。無効ハンドルを
+			-- DrawImage すると dummyWhite で白矩形 (gemBG は 500x266 の白背景) に
+			-- なるため、found のものだけ採用する。
 			local gemIconImage = getSkillAssetByName(self.gemIcon)
+			if gemIconImage and not gemIconImage.found then gemIconImage = nil end
 			local gemBGImage = getSkillAssetByName(self.gemBackground)
+			if gemBGImage and not gemBGImage.found then gemBGImage = nil end
 			local headerPath = self.isUniqueGem and "Assets/gemhovertitleunique.png" or "Assets/gemhovertitle.png"
 			if not self.gemHeaderImage or self.gemHeaderImagePath ~= headerPath then
 				self.gemHeaderImage = NewImageHandle()

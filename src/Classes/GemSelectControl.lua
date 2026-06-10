@@ -588,7 +588,7 @@ function GemSelectClass:Draw(viewPort, noTooltip)
 				if calcsTab and calcsTab.miscCalculator then
 					calcFunc, calcBase = calcsTab:GetMiscCalculator()
 				end
-				if calcFunc then
+				if calcFunc and self.skillsTab.displayGroup then
 					local output = self:CalcOutputWithThisGem(calcFunc, gemData, self.skillsTab.sortGemsByDPSField == "FullDPS", nil, calcBase)
 					self.tooltip:AddSeparator(10)
 					self.skillsTab.build:AddStatComparesToTooltip(self.tooltip, calcBase, output, "^7" .. i18n.t("statCompare.selectingGem"))
