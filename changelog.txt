@@ -1,3 +1,28 @@
+VERSION[0.11.1][2026/06/10]
+
+--- 全域バグ監査: 9 件修正 + 再発防止テスト 3 種を導入 / Full-repo bug audit: 9 fixes + 3 new regression guards ---
+* スキル（スペル）ツールチップにジェムアイコン／背景の代わりに白い矩形（500x266 など）が表示される問題を修正。.dds.zst をデコードできず無効になった画像ハンドルが DrawImage のダミー白テクスチャにフォールバックしていた（src/Classes/Tooltip.lua）。アートの実表示は dds 変換パイプライン適用後の対応（tasks/260610-gem-icon-dds-assets.md）
+* ツールチップの Fractured ヘッダーアイコンが存在しないファイルパスを参照していたのを修正し、影響アイコンを毎フレーム再ロードしていた無駄を解消（src/Classes/Tooltip.lua）
+* 英語ロケールから欠落していた 67 キー（ツリーツールチップ 37・ステータス比較・Config UI）を git 履歴から復元。英語 UI でキーパスがそのまま表示されていた（src/Locales/en.lua）
+* ビルド保存ファイルの zoomLevel が数値でない場合に起動クラッシュする問題を修正（src/Classes/PassiveTreeView.lua）
+* devMode の Alt 表示でノードに orbit 情報がないとクラッシュする問題を修正（src/Classes/PassiveTreeView.lua）
+* ジェム選択時、displayGroup 未設定だと比較計算でクラッシュする問題を修正（src/Classes/GemSelectControl.lua）
+* DropDownControl の GetSelValueByKey が範囲外 selIndex で例外を投げる問題と、SetList 後に selIndex がリスト件数を超えたまま残る問題を修正（src/Classes/DropDownControl.lua）
+* Archive API 非搭載 dylib でのアーカイブローダー登録をケイパビリティ判定でゲートし、起動時の dlsym 失敗を防止（pob2_launch.lua）
+* 再発防止: ロケールキー網羅テスト（i18n.t() 全キーの en/ja 解決とプレースホルダ整合を検証）、dylib シンボル整合テスト（ffi.cdef と nm エクスポートの突き合わせ）、起動 smoke テスト（起動ログの Lua エラー機械検知）を追加。ユニットテストは 104 → 111 件
+* ※Lua のみの変更。zip の再ダウンロード（再インストール）が必要です
+
+* Fixed white rectangles (e.g. 500x266) appearing in skill (spell) tooltips instead of gem icons/backgrounds: image handles invalidated by undecodable .dds.zst fell back to DrawImage's dummy white texture (src/Classes/Tooltip.lua). Actual art display awaits the dds conversion pipeline (tasks/260610-gem-icon-dds-assets.md).
+* Fixed the tooltip Fractured header icon pointing at a nonexistent file path, and stopped reloading influence icons every frame (src/Classes/Tooltip.lua).
+* Restored 67 keys missing from the English locale (37 tree-tooltip, stat-compare, and config-UI keys) from git history; the English UI was showing raw key paths (src/Locales/en.lua).
+* Fixed a startup crash when a saved build's zoomLevel is not a number (src/Classes/PassiveTreeView.lua).
+* Fixed a devMode Alt-view crash when a node has no orbit info (src/Classes/PassiveTreeView.lua).
+* Fixed a crash in gem-selection comparison calculations when no displayGroup is set (src/Classes/GemSelectControl.lua).
+* Fixed DropDownControl's GetSelValueByKey throwing on an out-of-range selIndex, and selIndex staying beyond the list length after SetList (src/Classes/DropDownControl.lua).
+* Gated archive-loader registration behind a capability probe so dylibs without the Archive API no longer fail dlsym at startup (pob2_launch.lua).
+* Regression guards: added a locale-key coverage test (every i18n.t() key resolves in en/ja with matching placeholders), a dylib symbol parity test (ffi.cdef vs. nm exports), and a launch smoke test (mechanical Lua-error detection in startup logs). Unit tests grew from 104 to 111.
+* Note: Lua-only change; requires re-downloading the zip (reinstall).
+
 VERSION[0.11.0][2026/06/09]
 
 --- 上流 PoE2 0.5.1 データを同期 + パッシブツリー日本語化を完全網羅 + クラッシュ 2 件を修正 / Sync PoE2 0.5.1 upstream data, complete passive-tree JP localization, fix 2 crashes ---
