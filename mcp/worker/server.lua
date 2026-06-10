@@ -16,6 +16,7 @@ dofile("../mcp/worker/boot.lua")
 package.path = "../mcp/worker/?.lua;" .. package.path
 local json = require("json")
 local calc = require("calc")
+local query = require("query")
 
 io.stdout:setvbuf("line")
 -- Tell the parent the (slow) boot finished and we are ready for requests.
@@ -25,6 +26,11 @@ for line in io.lines() do
   if line ~= "" then
     local ok, result = pcall(function()
       local req = json.decode(line)
+      -- data_* ops query static game data and need no build; everything else
+      -- is build-scoped and goes through calc.
+      if req and query.knows(req.op) then
+        return query.handle(req)
+      end
       return calc.handle(req)
     end)
     if ok then

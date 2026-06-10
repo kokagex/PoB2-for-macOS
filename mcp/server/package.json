@@ -1,9 +1,9 @@
 {
-  "name": "pob2-damage-calc-mcp",
-  "version": "0.1.0",
+  "name": "pob2-advisor-mcp",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
-  "bin": { "pob2-damage-calc-mcp": "dist/index.js" },
+  "bin": { "pob2-advisor-mcp": "dist/index.js" },
   "scripts": {
     "build": "tsc",
     "test": "vitest run",

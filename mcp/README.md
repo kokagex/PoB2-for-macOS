@@ -1,15 +1,17 @@
-# PoB2 Damage Calc MCP (Slice 1)
+# PoB2Advisor MCP
 
-Headless Path of Building 2 DPS for chat build consultation. A long-lived
-`luajit` worker boots the real PoB calc engine once, then answers calc requests;
-a thin TypeScript MCP server exposes them as tools. **No PoB calc code is
-modified** — only headless host stubs in `src/HeadlessWrapper.lua`.
+Headless Path of Building 2 for chat build consultation: real-engine DPS calc
+plus read access to the full game database (gems, uniques, item bases, passive
+tree). A long-lived `luajit` worker boots the real PoB calc engine once, then
+answers requests; a thin TypeScript MCP server exposes them as tools. **No PoB
+calc code is modified** — only headless host stubs in `src/HeadlessWrapper.lua`.
 
 ## Layout
 - `worker/`  — luajit worker (boots PoB, JSON-line protocol on stdin/stdout)
   - `run.sh`     launcher: sets luarocks paths (lua-utf8), cwd=src/, CI=1
   - `boot.lua`   headless engine bootstrap
-  - `calc.lua`   loadBuild / applyPatch / readTopline / handle
+  - `calc.lua`   loadBuild / applyPatch / readTopline / readInfo / handle
+  - `query.lua`  build-independent game-data queries (data_* ops)
   - `server.lua` request loop
   - `json.lua`   dkjson wrapper
 - `server/`  — TypeScript MCP server (`@modelcontextprotocol/sdk`, stdio)
@@ -23,20 +25,49 @@ modified** — only headless host stubs in `src/HeadlessWrapper.lua`.
 ## Build
     cd mcp/server && npm install && npm run build
 
-## Tools
+## Calc tools
 All take a build via `buildPath` or `buildXml`, plus an optional `patch`:
-`{ config?: {key: value}, enemyLevel?: number, treeURL?: string }`
-(`treeURL` replaces the whole passive tree — a node set, no pathing issues).
+
+    { config?: {key: value}, enemyLevel?: number, treeURL?: string,
+      skillName?: string,
+      items?: [{ slot, raw }],            // equip raw PoB item text
+      allocNodes?: [name | id, ...],      // incremental tree edits;
+      deallocNodes?: [name | id, ...] }   // alloc pays the travel path
+
+`treeURL` replaces the whole passive tree; `allocNodes`/`deallocNodes` edit it
+incrementally (exact node name, case-insensitive, or numeric id — ambiguous
+names error with the candidate ids). `items[].raw` accepts the `raw` field
+from `data_uniques` detail verbatim. All resolution failures are hard errors,
+never silently ignored.
 
 - `calc_topline(...)` → top-line DPS (`FullDPS, TotalDPS, CombinedDPS,
   AverageDamage, BleedDPS, IgniteDPS, PoisonDPS, CritChance, Speed`).
 - `calc_breakdown(...)` → richer set: crit (chance/multi/effect), speed, hit
-  chance, per-damage-type hit averages, DoT, mana/life cost — for explaining
-  "why this number" and finding levers.
+  chance, per-damage-type hit averages, DoT, costs, defence/EHP — for
+  explaining "why this number" and finding levers.
 - `calc_compare({ ..., patchA?, patchB })` → per-metric `{ a, b, delta, pct }`
   ("how much does this change help?"). `patchA` omitted = build as-is.
+- `build_info(...)` → structural summary: character, items per slot, socket
+  groups with gems, keystones/notables, config. Patch applies first, so it
+  also previews variants.
 - `export_build(...)` → PoB import code (base64 `eNr…`) to paste into the GUI.
   Round-trip verified: regenerated code reloads to an identical DPS.
+
+## Data tools (no build needed)
+List modes return `{ total, returned, results }` (default limit 20) so a
+capped list is never mistaken for the full set; detail lookups by exact name
+hard-error when nothing matches.
+
+- `data_gems({ search?, gemType?, name?, limit? })` — gem database; detail
+  (`name`) returns requirements, description, granted effects, per-level costs.
+- `data_uniques({ search?, textSearch?, type?, name?, limit? })` — unique
+  database; `textSearch` greps mod text; detail returns implicits/mods plus
+  `raw`, ready for `patch.items`.
+- `data_passives({ search?, type?, ascendancy?, limit? })` — passive tree
+  (latest version); `search` matches names and stat lines; returns ids for
+  `patch.allocNodes`.
+- `data_itembases({ search?, type?, subType?, limit? })` — item bases with
+  armour/weapon stats.
 
 ## Tests
 - Lua unit:    `eval "$(luarocks --lua-version 5.1 path)"; busted test/unit/test_calc_readout.lua`
@@ -59,6 +90,6 @@ The `ResetViewport` no-op stub is pre-injected in `worker/boot.lua` (not in
 HeadlessWrapper), so it survives syncs on its own.
 
 ## Out of scope (future)
-- gem / item patching (currently patch = config + enemyLevel + full-tree replace)
-- name→id resolution for individual passive nodes / gems / items
-- defense / EHP (CalcDefence)
+- gem patching (add/remove/level gems in socket groups)
+- jewel socketing into tree sockets (slot `Jewel <nodeId>`)
+- defence-focused compare presets (EHP-first reporting)

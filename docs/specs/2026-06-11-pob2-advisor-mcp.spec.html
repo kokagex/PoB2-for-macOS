@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PoB2Advisor MCP spec</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #ffffff;
+  --surface: #f5f5f5;
+  --border: #d0d0d0;
+  --text: #1a1a1a;
+  --text-muted: #666;
+  --accent: #0066cc;
+  --focus-ring: #0066cc;
+  --btn-bg: #f0f0f0;
+  --btn-hover: #e0e0e0;
+  --code-bg: #f8f8f8;
+  --tag-bg: #e8f0fe;
+  --tag-text: #1a56db;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1a1a1a;
+    --surface: #2a2a2a;
+    --border: #444;
+    --text: #e8e8e8;
+    --text-muted: #999;
+    --accent: #4da6ff;
+    --focus-ring: #4da6ff;
+    --btn-bg: #333;
+    --btn-hover: #444;
+    --code-bg: #252525;
+    --tag-bg: #1a2c4d;
+    --tag-text: #7eb8ff;
+  }
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  background: var(--bg);
+  color: var(--text);
+  padding: 0 16px 80px;
+}
+
+#page-wrapper {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* --- header --- */
+header {
+  border-bottom: 2px solid var(--border);
+  padding: 24px 0 16px;
+  margin-bottom: 28px;
+}
+
+#header-topic {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text);
+  outline: none;
+  border-bottom: 1px dashed transparent;
+  display: inline-block;
+  min-width: 200px;
+}
+#header-topic:focus { border-bottom-color: var(--focus-ring); }
+
+.header-meta {
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.meta-field {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 13px;
+}
+.meta-label {
+  color: var(--text-muted);
+  user-select: none;
+}
+.meta-value {
+  color: var(--text);
+  outline: none;
+  border-bottom: 1px dashed transparent;
+  min-width: 40px;
+}
+.meta-value:focus { border-bottom-color: var(--focus-ring); }
+
+/* --- status badge --- */
+#status-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--tag-bg);
+  color: var(--tag-text);
+  outline: none;
+}
+#status-badge:focus { outline: 1px solid var(--focus-ring); }
+#status-badge[data-status="approved"] { background: #d1fae5; color: #065f46; }
+@media (prefers-color-scheme: dark) {
+  #status-badge[data-status="approved"] { background: #064e3b; color: #6ee7b7; }
+}
+
+/* --- layout: main + aside --- */
+#layout {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 720px) {
+  #layout { grid-template-columns: 1fr; }
+}
+
+/* --- sections --- */
+#sections-container { display: flex; flex-direction: column; gap: 20px; }
+
+section.spec-section {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.section-title-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  border-radius: 6px 6px 0 0;
+}
+.section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  outline: none;
+  flex: 1;
+  border-bottom: 1px dashed transparent;
+}
+.section-title:focus { border-bottom-color: var(--focus-ring); }
+.section-type-tag {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--btn-bg);
+  padding: 1px 7px;
+  border-radius: 10px;
+  user-select: none;
+}
+
+.section-body {
+  padding: 12px 14px;
+}
+
+/* markdown sections */
+.section-body[data-type="markdown"] {
+  white-space: pre-wrap;
+  font-size: 14px;
+  min-height: 60px;
+  outline: none;
+  border-radius: 0 0 6px 6px;
+}
+.section-body[data-type="markdown"]:focus { outline: 1px solid var(--focus-ring); outline-offset: -1px; }
+
+/* html-fragment sections */
+.section-body[data-type="html-fragment"] {
+  min-height: 60px;
+  outline: none;
+}
+.section-body[data-type="html-fragment"]:focus { outline: 1px solid var(--focus-ring); outline-offset: -1px; }
+
+/* table sections */
+.section-body[data-type="table"] {
+  overflow-x: auto;
+}
+
+table.spec-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+table.spec-table th,
+table.spec-table td {
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+table.spec-table th {
+  background: var(--btn-bg);
+  font-weight: 600;
+  color: var(--text);
+  user-select: none;
+}
+table.spec-table td[contenteditable="true"] { outline: none; min-width: 60px; }
+table.spec-table td[contenteditable="true"]:focus { background: color-mix(in srgb, var(--focus-ring) 8%, var(--surface)); }
+
+/* code blocks in markdown sections */
+.section-body code {
+  font-family: "SF Mono", "Consolas", "Menlo", monospace;
+  font-size: 12px;
+  background: var(--code-bg);
+  padding: 0 3px;
+  border-radius: 3px;
+}
+.section-body pre {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  font-size: 12px;
+  margin: 4px 0;
+}
+
+/* --- aside --- */
+aside {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.aside-card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+.aside-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  user-select: none;
+}
+.aside-list {
+  list-style: none;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.aside-item {
+  font-size: 13px;
+  color: var(--text);
+  outline: none;
+  border-radius: 3px;
+  padding: 2px 4px;
+}
+.aside-item:focus { outline: 1px solid var(--focus-ring); }
+.aside-item-empty {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 13px;
+  padding: 2px 4px;
+}
+
+/* --- footer toolbar --- */
+footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  padding: 10px 16px;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  z-index: 100;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--btn-bg);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.1s;
+  user-select: none;
+}
+.btn:hover { background: var(--btn-hover); }
+.btn:active { transform: scale(0.98); }
+.btn.primary { background: var(--accent); color: white; border-color: var(--accent); }
+.btn.primary:hover { opacity: 0.9; }
+
+/* --- toast --- */
+#toast {
+  position: fixed;
+  bottom: 64px;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  background: #1a1a1a;
+  color: #fff;
+  padding: 7px 18px;
+  border-radius: 20px;
+  font-size: 13px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+  z-index: 200;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+@media (prefers-color-scheme: dark) {
+  #toast { background: #e8e8e8; color: #1a1a1a; }
+}
+
+/* --- empty state --- */
+#empty-state {
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 20px 0;
+}
+</style>
+</head>
+<body>
+<div id="page-wrapper">
+
+<header>
+  <div id="header-topic" contenteditable="true" data-field="topic" spellcheck="false"></div>
+  <div class="header-meta">
+    <div class="meta-field">
+      <span class="meta-label">date</span>
+      <span class="meta-value" contenteditable="true" data-field="date" spellcheck="false"></span>
+    </div>
+    <div class="meta-field">
+      <span class="meta-label">repo</span>
+      <span class="meta-value" contenteditable="true" data-field="repo" spellcheck="false"></span>
+    </div>
+    <div class="meta-field">
+      <span class="meta-label">status</span>
+      <span id="status-badge" contenteditable="true" data-field="status" spellcheck="false"></span>
+    </div>
+  </div>
+</header>
+
+<div id="layout">
+  <main>
+    <div id="sections-container"></div>
+  </main>
+
+  <aside>
+    <div class="aside-card">
+      <div class="aside-card-title">Scope Out</div>
+      <ul class="aside-list" id="scope-out-list"></ul>
+    </div>
+  </aside>
+</div>
+
+</div><!-- /page-wrapper -->
+
+<footer>
+  <button class="btn primary" id="btn-copy-data">Copy spec data</button>
+  <button class="btn" id="btn-copy-md">Copy as Markdown summary</button>
+  <button class="btn" id="btn-reload">Reload from JSON</button>
+</footer>
+
+<div id="toast"></div>
+
+<!-- DATA LAYER — CLI reads and edits only this block -->
+<script type="application/json" id="spec-data">
+{
+  "kind": "spec",
+  "version": 1,
+  "topic": "PoB2Advisor MCP — 全データ参照 + 計算アドバイザー",
+  "date": "2026-06-11",
+  "status": "implemented",
+  "repo": "national-operations",
+  "sections": [
+    {
+      "id": "background",
+      "title": "背景 / 目的",
+      "type": "markdown",
+      "content": "pob2-damage-calc MCP は計算 4 ツール (calc_topline / calc_breakdown / calc_compare / export_build) のみ公開しており、Claude がチャットでビルド相談に乗る際「どのユニーク / パッシブノード / ジェムが存在するか」を知る手段がなかった。PoB エンジンは worker 起動時に全ゲームデータをロード済みなので、それを照会するツール群と、照会結果をそのまま計算に流し込める patch 拡張を追加し、サーバー名を PoB2Advisor に改名する。\n\nゴール: 「データ照会 → 仮説 → calc_compare で定量検証」のループが MCP ツールだけで完結すること。\n\n例: data_uniques で body ユニークを探す → detail の raw を patch.items に渡す → calc_compare で装備前後の DPS/EHP 差分を見る。"
+    },
+    {
+      "id": "architecture",
+      "title": "アーキテクチャ / データフロー",
+      "type": "html-fragment",
+      "content": "\u003cdiv style=\"display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;font-size:12px\">\u003cspan style=\"display:inline-flex;align-items:center;gap:5px\">\u003cspan style=\"width:10px;height:10px;border-radius:3px;background:#1a56db;display:inline-block\">\u003c/span>TypeScript MCP サーバー\u003c/span>\u003cspan style=\"display:inline-flex;align-items:center;gap:5px\">\u003cspan style=\"width:10px;height:10px;border-radius:3px;background:#c2660a;display:inline-block\">\u003c/span>プロトコル\u003c/span>\u003cspan style=\"display:inline-flex;align-items:center;gap:5px\">\u003cspan style=\"width:10px;height:10px;border-radius:3px;background:#047857;display:inline-block\">\u003c/span>Lua worker (PoB エンジン常駐)\u003c/span>\u003c/div>\u003cdiv style=\"display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px\">\u003cspan style=\"padding:5px 12px;border-radius:16px;background:#555;color:#fff;font-size:13px\">Claude\u003c/span>\u003cspan>→\u003c/span>\u003cspan style=\"padding:5px 12px;border-radius:16px;background:#1a56db;color:#fff;font-size:13px\">McpServer \"PoB2Advisor\" (zod 検証)\u003c/span>\u003cspan>→\u003c/span>\u003cspan style=\"padding:5px 12px;border-radius:16px;background:#c2660a;color:#fff;font-size:13px\">stdin/stdout JSON lines\u003c/span>\u003cspan>→\u003c/span>\u003cspan style=\"padding:5px 12px;border-radius:16px;background:#047857;color:#fff;font-size:13px\">server.lua dispatch\u003c/span>\u003c/div>\u003cdiv style=\"display:flex;flex-direction:column;gap:10px\">\u003cdiv style=\"display:flex;align-items:center;gap:8px;flex-wrap:wrap\">\u003cspan style=\"font-size:12px;color:#888;min-width:120px\">op = data_* (ビルド不要)\u003c/span>\u003cspan style=\"padding:4px 10px;border-radius:14px;background:#047857;color:#fff;font-size:12px\">query.lua\u003c/span>\u003cspan>→\u003c/span>\u003cspan style=\"padding:4px 10px;border-radius:14px;border:1px solid #047857;font-size:12px\">data.gems / data.uniques / data.itemBases / main:LoadTree(latest)\u003c/span>\u003c/div>\u003cdiv style=\"display:flex;align-items:center;gap:8px;flex-wrap:wrap\">\u003cspan style=\"font-size:12px;color:#888;min-width:120px\">op = calc / breakdown / info / export\u003c/span>\u003cspan style=\"padding:4px 10px;border-radius:14px;background:#047857;color:#fff;font-size:12px\">calc.lua\u003c/span>\u003cspan>→\u003c/span>\u003cspan style=\"padding:4px 10px;border-radius:14px;border:1px solid #047857;font-size:12px\">loadBuild → applyPatch → BuildOutput / readInfo\u003c/span>\u003c/div>\u003c/div>"
+    },
+    {
+      "id": "tools",
+      "title": "ツール一覧 (9 種)",
+      "type": "table",
+      "columns": [
+        "ツール",
+        "種別",
+        "入力",
+        "出力"
+      ],
+      "rows": [
+        [
+          "calc_topline",
+          "計算",
+          "buildPath|buildXml + patch?",
+          "トップライン DPS 9 キー"
+        ],
+        [
+          "calc_breakdown",
+          "計算",
+          "同上",
+          "攻防 40+ キー (crit / 属性別 / EHP / 耐性)"
+        ],
+        [
+          "calc_compare",
+          "計算",
+          "patchA? + patchB (必須)",
+          "per-metric { a, b, delta, pct }"
+        ],
+        [
+          "export_build",
+          "計算",
+          "buildPath|buildXml + patch?",
+          "PoB import code (base64)"
+        ],
+        [
+          "build_info",
+          "読取",
+          "buildPath|buildXml + patch?",
+          "キャラ / スロット別装備 / socket groups / keystones+notables / config"
+        ],
+        [
+          "data_gems",
+          "データ",
+          "search / gemType / name / limit",
+          "ジェム一覧 or 詳細 (要求値・説明・レベル別コスト)"
+        ],
+        [
+          "data_uniques",
+          "データ",
+          "search / textSearch / type / name / limit",
+          "ユニーク一覧 or 詳細 (implicits / mods / raw)"
+        ],
+        [
+          "data_passives",
+          "データ",
+          "search / type / ascendancy / limit",
+          "ノード id / name / type / ascendancy / stats"
+        ],
+        [
+          "data_itembases",
+          "データ",
+          "search / type / subType / limit",
+          "ベース名 + armour/weapon stats + 要求 Lv"
+        ]
+      ]
+    },
+    {
+      "id": "patch",
+      "title": "patch 仕様 (計算系 5 ツール共通)",
+      "type": "markdown",
+      "content": "patch = {\n  config, enemyLevel, treeURL, skillName,   -- 既存 (Slice 1)\n  items = { { slot, raw } },                -- raw PoB item text を装備。data_uniques detail の raw をそのまま渡せる\n  allocNodes = { \"ノード名\" | id, ... },    -- 増分ツリー編集。alloc は経路コストを実払い (リスペックと同じ)\n  deallocNodes = { \"ノード名\" | id, ... },  -- 依存ノードも連動して外れる\n}\n\n適用順: treeURL → deallocNodes → allocNodes → items → skillName → config。\n(treeURL でツリーを差し替えてから増分編集できる)\n\nノード名解決: 大文字小文字無視の完全一致。同名ノードが複数ある場合 (小ノード \"Cast Speed\" 等) は操作の目的状態で絞り込む — alloc は未取得ノード、dealloc は取得済みノードを優先。それでも曖昧なら候補 id を列挙してハードエラー (id 指定でリトライ)。"
+    },
+    {
+      "id": "error-design",
+      "title": "エラー設計",
+      "type": "markdown",
+      "content": "skillName 方式 (06/01 設計判断) を全面踏襲: 解決失敗は必ずハードエラー、サイレント無視は禁止 (無視すると「変化なしの比較結果」がもっともらしく返る事故になる)。\n\n- 未知ノード名/id、曖昧な同名ノード (候補 id 列挙)、経路が繋がらない alloc\n- 既取得ノードの alloc / 未取得ノードの dealloc (no-op patch の検知)\n- 未知 slot (有効 slot 名を列挙)、parse 不能な item raw、slot 不適合 item\n- 未知の gem / unique 名 (detail モード)\n\nlist 系レスポンスは { total, returned, results } 形式で切り詰めを明示 (silent cap 禁止)。data_uniques / data_itembases は有効な type 一覧も返す。"
+    },
+    {
+      "id": "tests",
+      "title": "テスト",
+      "type": "markdown",
+      "content": "mcp/server/test/advisor.test.ts — 15 ケース追加 (全体 30/30 pass):\n\n- data_gems: gemType フィルタ + limit/total、Eye of Winter 詳細、未知名エラー\n- data_uniques: 一覧 + types、detail の raw が patch.items に使えること\n- data_passives: Keystone 検索、stat 文検索 (\"cast speed\")\n- data_itembases: type フィルタ\n- build_info: キャラ / 装備 / main socket group / passives\n- allocNodes/deallocNodes: dealloc で allocated 減少、dealloc→alloc 往復、未知名 / 既取得エラー\n- patch.items: body ユニーク装備で build_info に反映、未知 slot エラー\n\ngolden ビルド (mcp/spike/GOLDEN.md) を使用。既存の DPS ベースライン (1% 以内) テストも全て pass。"
+    },
+    {
+      "id": "phases",
+      "title": "実装フェーズ",
+      "type": "table",
+      "columns": [
+        "フェーズ",
+        "内容",
+        "状態"
+      ],
+      "rows": [
+        [
+          "1",
+          "リネーム: .mcp.json キー pob2-advisor / McpServer name PoB2Advisor / package pob2-advisor-mcp v0.2.0",
+          "done"
+        ],
+        [
+          "2",
+          "query.lua 新設 + data_gems / data_uniques / data_passives / data_itembases",
+          "done"
+        ],
+        [
+          "3",
+          "build_info (calc.lua readInfo / op=info)",
+          "done"
+        ],
+        [
+          "4",
+          "patch 拡張: items / allocNodes / deallocNodes (状態考慮の名前解決つき)",
+          "done"
+        ]
+      ]
+    }
+  ],
+  "scope_out": [
+    "ジェム編集 patch (socket group へのジェム追加 / レベル・品質変更)",
+    "ジュエルのツリーソケット装着 (Jewel \u003cnodeId> slot)",
+    "ツリーバージョン選択 (data_passives は latest 固定)",
+    "防御特化 compare プリセット (EHP ファースト報告)",
+    "PoE1 残存データの照会 (翻訳ルール同様 PoE2 のみ対象)"
+  ]
+}
+</script>
+
+<script>
+(function () {
+  'use strict';
+
+  // ---- data model ----
+  var data = {};
+  var debounceTimer = null;
+
+  // ---- utils ----
+  function toast(msg) {
+    var el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(el._timer);
+    el._timer = setTimeout(function () { el.classList.remove('show'); }, 2000);
+  }
+
+  // Escape "<" so a literal U+003C cannot prematurely close the data block.
+  // Also used when serializing back to clipboard so round-trip is safe.
+  function safeJsonStringify(obj) {
+    return JSON.stringify(obj, null, 2).replace(/</g, '\\u003c');
+  }
+
+  // Sanitize html-fragment: remove <script> and <iframe> tags.
+  function sanitizeFragment(html) {
+    return html
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<iframe[\s\S]*?<\/iframe>/gi, '');
+  }
+
+  // ---- DOM render ----
+
+  function renderHeader() {
+    var topicEl = document.getElementById('header-topic');
+    topicEl.textContent = data.topic || '';
+
+    document.querySelector('[data-field="date"]').textContent = data.date || '';
+    document.querySelector('[data-field="repo"]').textContent = data.repo || '';
+
+    var badge = document.getElementById('status-badge');
+    badge.textContent = data.status || 'draft';
+    badge.dataset.status = data.status || 'draft';
+  }
+
+  function renderSection(sec, index) {
+    var section = document.createElement('section');
+    section.className = 'spec-section';
+    section.dataset.sectionId = sec.id || ('s' + index);
+    section.dataset.index = index;
+
+    // title bar
+    var bar = document.createElement('div');
+    bar.className = 'section-title-bar';
+    var titleEl = document.createElement('div');
+    titleEl.className = 'section-title';
+    titleEl.contentEditable = 'true';
+    titleEl.spellcheck = false;
+    titleEl.textContent = sec.title || '';
+    titleEl.dataset.role = 'section-title';
+    var typeTag = document.createElement('span');
+    typeTag.className = 'section-type-tag';
+    typeTag.textContent = sec.type || 'markdown';
+    bar.appendChild(titleEl);
+    bar.appendChild(typeTag);
+    section.appendChild(bar);
+
+    // body
+    var body = document.createElement('div');
+    body.className = 'section-body';
+    body.dataset.type = sec.type || 'markdown';
+    body.dataset.role = 'section-body';
+    body.dataset.index = index;
+
+    if (sec.type === 'table') {
+      body.appendChild(renderTable(sec, index));
+    } else if (sec.type === 'html-fragment') {
+      body.contentEditable = 'true';
+      body.spellcheck = false;
+      body.innerHTML = sanitizeFragment(sec.content || '');
+    } else {
+      // markdown (default)
+      body.contentEditable = 'true';
+      body.spellcheck = false;
+      body.textContent = sec.content || '';
+    }
+
+    section.appendChild(body);
+    return section;
+  }
+
+  function renderTable(sec, sectionIndex) {
+    var table = document.createElement('table');
+    table.className = 'spec-table';
+
+    // header row
+    if (sec.columns && sec.columns.length > 0) {
+      var thead = document.createElement('thead');
+      var headRow = document.createElement('tr');
+      sec.columns.forEach(function (col) {
+        var th = document.createElement('th');
+        th.textContent = col;
+        headRow.appendChild(th);
+      });
+      thead.appendChild(headRow);
+      table.appendChild(thead);
+    }
+
+    // body rows
+    var tbody = document.createElement('tbody');
+    if (sec.rows) {
+      sec.rows.forEach(function (row, ri) {
+        var tr = document.createElement('tr');
+        row.forEach(function (cell, ci) {
+          var td = document.createElement('td');
+          td.contentEditable = 'true';
+          td.spellcheck = false;
+          td.dataset.row = ri;
+          td.dataset.col = ci;
+          td.dataset.sectionIndex = sectionIndex;
+          td.textContent = cell;
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+    }
+    table.appendChild(tbody);
+    return table;
+  }
+
+  function renderAside(listId, items) {
+    var list = document.getElementById(listId);
+    list.innerHTML = '';
+    if (!items || items.length === 0) {
+      var empty = document.createElement('li');
+      empty.className = 'aside-item-empty';
+      empty.textContent = '(none)';
+      list.appendChild(empty);
+      return;
+    }
+    items.forEach(function (text, i) {
+      var li = document.createElement('li');
+      li.className = 'aside-item';
+      li.contentEditable = 'true';
+      li.spellcheck = false;
+      li.dataset.listId = listId;
+      li.dataset.index = i;
+      li.textContent = text;
+      list.appendChild(li);
+    });
+  }
+
+  function renderAll() {
+    renderHeader();
+
+    var container = document.getElementById('sections-container');
+    container.innerHTML = '';
+    if (!data.sections || data.sections.length === 0) {
+      var empty = document.createElement('div');
+      empty.id = 'empty-state';
+      empty.textContent = 'No sections. Reload from JSON to populate.';
+      container.appendChild(empty);
+    } else {
+      data.sections.forEach(function (sec, i) {
+        container.appendChild(renderSection(sec, i));
+      });
+    }
+
+    renderAside('scope-out-list', data.scope_out);
+  }
+
+  // ---- input → data sync (debounced) ----
+
+  function scheduleSync() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(syncDomToData, 200);
+  }
+
+  function syncDomToData() {
+    // header fields
+    var topicEl = document.getElementById('header-topic');
+    if (topicEl) data.topic = topicEl.textContent.trim();
+
+    var dateEl = document.querySelector('[data-field="date"]');
+    if (dateEl) data.date = dateEl.textContent.trim();
+
+    var repoEl = document.querySelector('[data-field="repo"]');
+    if (repoEl) data.repo = repoEl.textContent.trim();
+
+    var statusEl = document.getElementById('status-badge');
+    if (statusEl) {
+      data.status = statusEl.textContent.trim();
+      statusEl.dataset.status = data.status;
+    }
+
+    // sections
+    var sectionEls = document.querySelectorAll('section.spec-section');
+    sectionEls.forEach(function (secEl) {
+      var idx = parseInt(secEl.dataset.index, 10);
+      if (isNaN(idx) || !data.sections[idx]) return;
+      var sec = data.sections[idx];
+
+      var titleEl = secEl.querySelector('[data-role="section-title"]');
+      if (titleEl) sec.title = titleEl.textContent.trim();
+
+      var body = secEl.querySelector('[data-role="section-body"]');
+      if (!body) return;
+
+      if (sec.type === 'table') {
+        // table cells handled via delegated listener (see below)
+      } else if (sec.type === 'html-fragment') {
+        sec.content = sanitizeFragment(body.innerHTML);
+      } else {
+        sec.content = body.textContent;
+      }
+    });
+
+    // aside lists
+    syncAsideList('scope-out-list', 'scope_out');
+  }
+
+  function syncAsideList(listId, field) {
+    var items = document.querySelectorAll('#' + listId + ' .aside-item');
+    data[field] = Array.from(items).map(function (li) { return li.textContent; });
+  }
+
+  // ---- event delegation ----
+
+  document.addEventListener('input', function (e) {
+    var target = e.target;
+
+    // table cell special case — sync immediately (no debounce needed for single cell)
+    if (target.tagName === 'TD' && target.dataset.row !== undefined) {
+      var si = parseInt(target.dataset.sectionIndex, 10);
+      var ri = parseInt(target.dataset.row, 10);
+      var ci = parseInt(target.dataset.col, 10);
+      if (!isNaN(si) && data.sections[si] && data.sections[si].rows) {
+        data.sections[si].rows[ri][ci] = target.textContent;
+      }
+      return;
+    }
+
+    scheduleSync();
+  });
+
+  // ---- clipboard buttons ----
+
+  document.getElementById('btn-copy-data').addEventListener('click', function () {
+    var json = safeJsonStringify(data);
+    navigator.clipboard.writeText(json).then(function () {
+      toast('Copied spec data to clipboard');
+    }).catch(function () {
+      // Fallback for file:// where clipboard may be restricted
+      var ta = document.createElement('textarea');
+      ta.value = json;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      toast('Copied spec data (fallback)');
+    });
+  });
+
+  document.getElementById('btn-copy-md').addEventListener('click', function () {
+    var lines = [];
+    lines.push('# ' + (data.topic || '(no topic)'));
+    lines.push('');
+    if (data.date) lines.push('date: ' + data.date);
+    if (data.status) lines.push('status: ' + data.status);
+    lines.push('');
+
+    if (data.sections) {
+      data.sections.forEach(function (sec) {
+        lines.push('## ' + (sec.title || '(untitled)'));
+        lines.push('');
+        if (sec.type === 'table') {
+          if (sec.columns && sec.columns.length) {
+            lines.push('| ' + sec.columns.join(' | ') + ' |');
+            lines.push('|' + sec.columns.map(function () { return '---|'; }).join(''));
+          }
+          if (sec.rows) {
+            sec.rows.forEach(function (row) {
+              lines.push('| ' + row.join(' | ') + ' |');
+            });
+          }
+        } else {
+          lines.push(sec.content || '');
+        }
+        lines.push('');
+      });
+    }
+
+    if (data.scope_out && data.scope_out.length) {
+      lines.push('## Scope Out');
+      lines.push('');
+      data.scope_out.forEach(function (s) { lines.push('- ' + s); });
+      lines.push('');
+    }
+
+    var md = lines.join('\n');
+    navigator.clipboard.writeText(md).then(function () {
+      toast('Copied Markdown summary to clipboard');
+    }).catch(function () {
+      var ta = document.createElement('textarea');
+      ta.value = md;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      toast('Copied Markdown (fallback)');
+    });
+  });
+
+  document.getElementById('btn-reload').addEventListener('click', function () {
+    loadFromScript();
+    toast('Reloaded from JSON');
+  });
+
+  // ---- initial load ----
+
+  function loadFromScript() {
+    var scriptEl = document.getElementById('spec-data');
+    var raw = scriptEl ? scriptEl.textContent : '{}';
+    try {
+      data = JSON.parse(raw);
+    } catch (err) {
+      data = { kind: 'spec', version: 1, topic: '', date: '', status: 'draft', repo: '', sections: [], scope_out: [] };
+      toast('ERROR: spec-data JSON invalid — ' + err.message);
+    }
+    renderAll();
+  }
+
+  loadFromScript();
+
+})();
+</script>
+
+</body>
+</html>

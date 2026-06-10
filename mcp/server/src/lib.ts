@@ -12,6 +12,18 @@ export const patchShape = z.object({
   // the build's socket groups; first matching group wins). Unknown names are
   // a hard worker error listing the gems present — never silently ignored.
   skillName: z.string().optional(),
+  // Equip items from raw PoB item text (data_uniques detail returns `raw`
+  // ready to use). slot is required ("Body Armour", "Ring 1", ...); unknown
+  // slots and slot/item mismatches are hard worker errors.
+  items: z
+    .array(z.object({ slot: z.string(), raw: z.string() }))
+    .optional(),
+  // Incremental passive-tree edits by node name (exact, case-insensitive) or
+  // numeric node id. Allocation pays the travel path like a real respec.
+  // Unknown/ambiguous names, unreachable nodes, and redundant ops are hard
+  // worker errors — never silently ignored.
+  allocNodes: z.array(z.union([z.string(), z.number()])).optional(),
+  deallocNodes: z.array(z.union([z.string(), z.number()])).optional(),
 });
 export const patchSchema = patchShape.optional();
 

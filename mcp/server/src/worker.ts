@@ -14,17 +14,37 @@ export type Topline = {
   Speed: number;
 };
 
+export interface ItemPatch {
+  slot: string;
+  raw: string;
+}
+
 export interface Patch {
   config?: Record<string, unknown>;
   enemyLevel?: number;
   treeURL?: string;
   skillName?: string;
+  items?: ItemPatch[];
+  allocNodes?: (string | number)[];
+  deallocNodes?: (string | number)[];
 }
 
 export interface CalcRequest {
-  op?: "calc" | "breakdown" | "export";
+  op?: "calc" | "breakdown" | "export" | "info";
   buildXml: string;
   patch?: Patch;
+}
+
+// Build-independent game-data lookups served by worker/query.lua.
+export type QueryOp =
+  | "data_gems"
+  | "data_uniques"
+  | "data_passives"
+  | "data_itembases";
+
+export interface QueryRequest {
+  op: QueryOp;
+  args?: Record<string, unknown>;
 }
 
 interface Pending {
@@ -103,7 +123,7 @@ export class Worker {
   }
 
   // Generic single request/response. Returns the worker's `output` payload.
-  async send(req: CalcRequest): Promise<unknown> {
+  async send(req: CalcRequest | QueryRequest): Promise<unknown> {
     await this.ready;
     if (this.died) throw this.died;
     const line = await new Promise<string>((resolve, reject) => {
@@ -129,6 +149,16 @@ export class Worker {
 
   exportCode(req: CalcRequest): Promise<{ code: string }> {
     return this.send({ ...req, op: "export" }) as Promise<{ code: string }>;
+  }
+
+  info(req: CalcRequest): Promise<Record<string, unknown>> {
+    return this.send({ ...req, op: "info" }) as Promise<
+      Record<string, unknown>
+    >;
+  }
+
+  query(op: QueryOp, args?: Record<string, unknown>): Promise<unknown> {
+    return this.send({ op, args });
   }
 
   dispose() {
