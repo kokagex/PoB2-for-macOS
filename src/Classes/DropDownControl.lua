@@ -38,8 +38,9 @@ local DropDownClass = newClass("DropDownControl", "Control", "ControlHost", "Too
 		return self.dropped and self.controls.scrollBar.enabled
 	end
 	self.dropHeight = 0
-	self:SetList(list or { })
+	-- selIndex は SetList が範囲クランプで参照するため、SetList より先に確立する
 	self.selIndex = 1
+	self:SetList(list or { })
 	self.selFunc = selFunc
 	-- Current value of the width of the dropped component
 	self.droppedWidth = self.width
@@ -515,10 +516,13 @@ function DropDownClass:SetList(textList)
 		wipeTable(self.list)
 		self.list = textList
 		-- 不変条件の維持: リストが短くなった場合に selIndex が範囲外のまま残ると
-		-- GetSelValue 系が nil を踏む。常に 1 <= selIndex <= max(1, #list) に収める
-		if self.selIndex > #self.list then
-			self.selIndex = m_max(1, #self.list)
+		-- GetSelValue 系が nil を踏む。常に 1 <= selIndex <= max(1, #list) に収める。
+		-- nil 許容 (→1) は呼び出し側の初期化順に依存しないための防御
+		local selIndex = self.selIndex or 1
+		if selIndex > #self.list then
+			selIndex = m_max(1, #self.list)
 		end
+		self.selIndex = selIndex
 		  --check width on new list
 		self:CheckDroppedWidth(self.enableDroppedWidth)
 	end
