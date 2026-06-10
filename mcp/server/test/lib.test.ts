@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { z } from "zod";
-import { diffTopline, resolveXml, compareInputShape } from "../src/lib.js";
+import {
+  diffTopline,
+  resolveXml,
+  compareInputShape,
+  DEFENCE_KEYS,
+} from "../src/lib.js";
 
 describe("diffTopline", () => {
   it("computes delta and pct per metric", () => {
@@ -18,6 +23,31 @@ describe("diffTopline", () => {
     const cmp = diffTopline({ CritChance: 0 }, { CritChance: 5 });
     expect(cmp.CritChance.delta).toBe(5);
     expect(cmp.CritChance.pct).toBeNull();
+  });
+});
+
+describe("diffTopline defence preset", () => {
+  it("filters to the given keys in the given order (EHP first)", () => {
+    const a = { TotalEHP: 1000, Life: 500, TotalDPS: 9999 };
+    const b = { TotalEHP: 1200, Life: 600, TotalDPS: 8888 };
+    const cmp = diffTopline(a, b, DEFENCE_KEYS);
+    const keys = Object.keys(cmp);
+    expect(keys[0]).toBe("TotalEHP");
+    expect(keys).toContain("Life");
+    expect(keys).not.toContain("TotalDPS");
+    expect(cmp.TotalEHP.delta).toBe(200);
+  });
+
+  it("null-pads defence keys absent from both sides", () => {
+    const cmp = diffTopline({}, {}, ["TotalEHP"]);
+    expect(cmp.TotalEHP).toEqual({ a: null, b: null, delta: null, pct: null });
+  });
+
+  it("DEFENCE_KEYS leads with EHP and excludes offence metrics", () => {
+    expect(DEFENCE_KEYS[0]).toBe("TotalEHP");
+    expect(DEFENCE_KEYS).toContain("Life");
+    expect(DEFENCE_KEYS).toContain("FireResist");
+    expect(DEFENCE_KEYS).not.toContain("TotalDPS");
   });
 });
 

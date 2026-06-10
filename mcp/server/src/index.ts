@@ -5,6 +5,7 @@ import { Worker, type CalcRequest, type Patch } from "./worker.js";
 import {
   buildSource,
   compareInputShape,
+  DEFENCE_KEYS,
   diffTopline,
   patchSchema,
   resolveXml,
@@ -18,7 +19,7 @@ function jsonResult(obj: unknown) {
   return { content: [{ type: "text" as const, text: JSON.stringify(obj, null, 2) }] };
 }
 
-const server = new McpServer({ name: "PoB2Advisor", version: "0.2.0" });
+const server = new McpServer({ name: "PoB2Advisor", version: "0.3.0" });
 
 server.tool(
   "calc_topline",
@@ -52,15 +53,26 @@ server.tool(
   "Compare two variants of a PoB2 build and report the per-metric delta — answers " +
     "'how much does this change help?'. patchA is the baseline (omit for the build " +
     "as-is); patchB is the variant and is REQUIRED. Each accepts { config, " +
-    "enemyLevel, treeURL, skillName }. Returns each metric as { a, b, delta, pct }.",
-  compareInputShape,
-  async ({ buildPath, buildXml, patchA, patchB }) => {
+    "enemyLevel, treeURL, skillName, items, gems, allocNodes, deallocNodes }. " +
+    "metrics picks the report: 'offence' (default, DPS top-line), 'defence' " +
+    "(EHP-first: EHP, life/ES, resists, max hits, block), 'full' (everything). " +
+    "Returns each metric as { a, b, delta, pct }.",
+  {
+    ...compareInputShape,
+    metrics: z.enum(["offence", "defence", "full"]).optional(),
+  },
+  async ({ buildPath, buildXml, patchA, patchB, metrics }) => {
     const xml = resolveXml(buildPath, buildXml);
+    const mode = metrics ?? "offence";
+    const run =
+      mode === "offence"
+        ? (patch?: Patch) => worker.calc({ buildXml: xml, patch })
+        : (patch?: Patch) => worker.breakdown({ buildXml: xml, patch });
     const [a, b] = await Promise.all([
-      worker.calc({ buildXml: xml, patch: patchA as Patch | undefined }),
-      worker.calc({ buildXml: xml, patch: patchB as Patch }),
+      run(patchA as Patch | undefined),
+      run(patchB as Patch),
     ]);
-    return jsonResult(diffTopline(a, b));
+    return jsonResult(diffTopline(a, b, mode === "defence" ? DEFENCE_KEYS : undefined));
   },
 );
 
@@ -138,11 +150,12 @@ server.tool(
 
 server.tool(
   "data_passives",
-  "Search the PoE2 passive tree (no build needed; latest tree). Filters: " +
+  "Search the PoE2 passive tree (no build needed). Filters: " +
     "search (node name or stat text substring), type ('Notable'|'Keystone'|" +
     "'Normal'|'Socket'), ascendancy (name substring; omit to include all " +
-    "nodes). Returns id/name/type/ascendancy/stats per node — ids feed " +
-    "patch.allocNodes/deallocNodes.",
+    "nodes), version (tree version like '0_4'; default latest — unknown " +
+    "versions error listing the valid set). Returns id/name/type/ascendancy/" +
+    "stats per node — ids feed patch.allocNodes/deallocNodes.",
   {
     search: z
       .string()
@@ -153,11 +166,21 @@ server.tool(
       .string()
       .optional()
       .describe("Ascendancy name substring, e.g. 'Chronomancer'"),
+    version: z
+      .string()
+      .optional()
+      .describe("Tree version, e.g. '0_4' (default: latest)"),
     limit,
   },
-  async ({ search, type, ascendancy, limit }) =>
+  async ({ search, type, ascendancy, version, limit }) =>
     jsonResult(
-      await worker.query("data_passives", { search, type, ascendancy, limit }),
+      await worker.query("data_passives", {
+        search,
+        type,
+        ascendancy,
+        version,
+        limit,
+      }),
     ),
 );
 

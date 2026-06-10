@@ -31,22 +31,30 @@ All take a build via `buildPath` or `buildXml`, plus an optional `patch`:
     { config?: {key: value}, enemyLevel?: number, treeURL?: string,
       skillName?: string,
       items?: [{ slot, raw }],            // equip raw PoB item text
+      gems?: [{ name, group?, level?, quality?, enabled?, remove? }],
       allocNodes?: [name | id, ...],      // incremental tree edits;
       deallocNodes?: [name | id, ...] }   // alloc pays the travel path
 
 `treeURL` replaces the whole passive tree; `allocNodes`/`deallocNodes` edit it
 incrementally (exact node name, case-insensitive, or numeric id — ambiguous
 names error with the candidate ids). `items[].raw` accepts the `raw` field
-from `data_uniques` detail verbatim. All resolution failures are hard errors,
-never silently ignored.
+from `data_uniques` detail verbatim; `items[].slot` also accepts tree jewel
+sockets as `Jewel <nodeId>` (the socket node must be allocated — `build_info`
+lists allocated socket ids under `passives.sockets`). `gems` edits socket
+groups: a name already in the target group is modified (level/quality/enabled)
+or removed; an absent name is added (exact match against the gem database).
+`group` is a 1-based index or a gem name in the group; default is the main
+group. All resolution failures are hard errors, never silently ignored.
 
 - `calc_topline(...)` → top-line DPS (`FullDPS, TotalDPS, CombinedDPS,
   AverageDamage, BleedDPS, IgniteDPS, PoisonDPS, CritChance, Speed`).
 - `calc_breakdown(...)` → richer set: crit (chance/multi/effect), speed, hit
   chance, per-damage-type hit averages, DoT, costs, defence/EHP — for
   explaining "why this number" and finding levers.
-- `calc_compare({ ..., patchA?, patchB })` → per-metric `{ a, b, delta, pct }`
-  ("how much does this change help?"). `patchA` omitted = build as-is.
+- `calc_compare({ ..., patchA?, patchB, metrics? })` → per-metric
+  `{ a, b, delta, pct }` ("how much does this change help?"). `patchA`
+  omitted = build as-is. `metrics`: `offence` (default, DPS top-line),
+  `defence` (EHP-first: EHP, life/ES, resists, max hits, block), `full`.
 - `build_info(...)` → structural summary: character, items per slot, socket
   groups with gems, keystones/notables, config. Patch applies first, so it
   also previews variants.
@@ -63,9 +71,10 @@ hard-error when nothing matches.
 - `data_uniques({ search?, textSearch?, type?, name?, limit? })` — unique
   database; `textSearch` greps mod text; detail returns implicits/mods plus
   `raw`, ready for `patch.items`.
-- `data_passives({ search?, type?, ascendancy?, limit? })` — passive tree
-  (latest version); `search` matches names and stat lines; returns ids for
-  `patch.allocNodes`.
+- `data_passives({ search?, type?, ascendancy?, version?, limit? })` —
+  passive tree; `version` selects the tree version (e.g. `0_4`, default
+  latest; unknown versions error listing the valid set); `search` matches
+  names and stat lines; returns ids for `patch.allocNodes`.
 - `data_itembases({ search?, type?, subType?, limit? })` — item bases with
   armour/weapon stats.
 
@@ -90,6 +99,4 @@ The `ResetViewport` no-op stub is pre-injected in `worker/boot.lua` (not in
 HeadlessWrapper), so it survives syncs on its own.
 
 ## Out of scope (future)
-- gem patching (add/remove/level gems in socket groups)
-- jewel socketing into tree sockets (slot `Jewel <nodeId>`)
-- defence-focused compare presets (EHP-first reporting)
+- PoE1 残存データの照会 (翻訳ルール同様 PoE2 のみ対象)

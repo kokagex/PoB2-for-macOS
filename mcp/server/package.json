@@ -1,6 +1,6 @@
 {
   "name": "pob2-advisor-mcp",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "bin": { "pob2-advisor-mcp": "dist/index.js" },

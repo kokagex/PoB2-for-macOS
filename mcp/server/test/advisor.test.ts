@@ -152,6 +152,158 @@ describe("patch.allocNodes / deallocNodes", () => {
   }, 60_000);
 });
 
+describe("patch.gems", () => {
+  it("adds a support gem to the main socket group", async () => {
+    const supports = (await worker.query("data_gems", {
+      gemType: "support",
+      limit: 1,
+    })) as ListResult;
+    const gemName = supports.results[0].name as string;
+    const info = (await worker.info({
+      buildXml,
+      patch: { gems: [{ name: gemName }] },
+    })) as Record<string, any>;
+    const main = info.skills.find((g: any) => g.isMain);
+    expect(main.gems.map((g: any) => g.name)).toContain(gemName);
+  }, 60_000);
+
+  it("sets level and quality of an existing gem", async () => {
+    const base = (await worker.info({ buildXml })) as Record<string, any>;
+    const mainGem = base.skills.find((g: any) => g.isMain).gems[0];
+    const info = (await worker.info({
+      buildXml,
+      patch: { gems: [{ name: mainGem.name, level: 1, quality: 13 }] },
+    })) as Record<string, any>;
+    const patched = info.skills
+      .find((g: any) => g.isMain)
+      .gems.find((g: any) => g.name === mainGem.name);
+    expect(patched.level).toBe(1);
+    expect(patched.quality).toBe(13);
+  }, 60_000);
+
+  it("removes an existing gem from its group", async () => {
+    const base = (await worker.info({ buildXml })) as Record<string, any>;
+    const mainGroup = base.skills.find((g: any) => g.isMain);
+    const victim = mainGroup.gems[mainGroup.gems.length - 1].name;
+    const info = (await worker.info({
+      buildXml,
+      patch: { gems: [{ name: victim, group: mainGroup.index, remove: true }] },
+    })) as Record<string, any>;
+    const patched = info.skills.find((g: any) => g.index === mainGroup.index);
+    expect(patched.gems.map((g: any) => g.name)).not.toContain(victim);
+  }, 60_000);
+
+  it("adding an unknown gem name is a hard error", async () => {
+    await expect(
+      worker.info({ buildXml, patch: { gems: [{ name: "No Such Gem" }] } }),
+    ).rejects.toThrow(/"No Such Gem" not found/);
+  }, 60_000);
+
+  it("removing a gem that is not in the group is a hard error", async () => {
+    const supports = (await worker.query("data_gems", {
+      gemType: "support",
+      limit: 1,
+    })) as ListResult;
+    const gemName = supports.results[0].name as string;
+    await expect(
+      worker.info({
+        buildXml,
+        patch: { gems: [{ name: gemName, remove: true }] },
+      }),
+    ).rejects.toThrow(/not in socket group/);
+  }, 60_000);
+
+  it("out-of-range group index is a hard error", async () => {
+    await expect(
+      worker.info({
+        buildXml,
+        patch: { gems: [{ name: "x", group: 999 }] },
+      }),
+    ).rejects.toThrow(/group 999/);
+  }, 60_000);
+});
+
+describe("patch.items into jewel sockets", () => {
+  it("build_info lists allocated jewel sockets", async () => {
+    const info = (await worker.info({ buildXml })) as Record<string, any>;
+    expect(info.passives.sockets.length).toBeGreaterThan(0);
+    expect(typeof info.passives.sockets[0]).toBe("number");
+  }, 60_000);
+
+  it("equips a unique jewel into an allocated tree socket", async () => {
+    const base = (await worker.info({ buildXml })) as Record<string, any>;
+    const socketId = base.passives.sockets[0];
+    const list = (await worker.query("data_uniques", {
+      type: "jewel",
+      limit: 1,
+    })) as ListResult;
+    const detail = (await worker.query("data_uniques", {
+      name: list.results[0].name as string,
+    })) as Record<string, unknown>;
+    const info = (await worker.info({
+      buildXml,
+      patch: {
+        items: [{ slot: `Jewel ${socketId}`, raw: detail.raw as string }],
+      },
+    })) as Record<string, any>;
+    const slot = info.items.find((i: any) => i.slot === `Jewel ${socketId}`);
+    expect(slot.name).toContain(list.results[0].name as string);
+  }, 60_000);
+
+  it("equipping into an unallocated socket is a hard error", async () => {
+    const base = (await worker.info({ buildXml })) as Record<string, any>;
+    const allocated = new Set(base.passives.sockets);
+    const all = (await worker.query("data_passives", {
+      type: "Socket",
+      limit: 200,
+    })) as ListResult;
+    const free = all.results.find(
+      (n) => !allocated.has(n.id) && !n.ascendancy,
+    )!;
+    const list = (await worker.query("data_uniques", {
+      type: "jewel",
+      limit: 1,
+    })) as ListResult;
+    const detail = (await worker.query("data_uniques", {
+      name: list.results[0].name as string,
+    })) as Record<string, unknown>;
+    await expect(
+      worker.info({
+        buildXml,
+        patch: {
+          items: [{ slot: `Jewel ${free.id}`, raw: detail.raw as string }],
+        },
+      }),
+    ).rejects.toThrow(/not allocated/);
+  }, 60_000);
+});
+
+describe("data_passives version", () => {
+  it("queries an older tree version and reports it", async () => {
+    const out = (await worker.query("data_passives", {
+      type: "Keystone",
+      version: "0_4",
+      limit: 5,
+    })) as ListResult & { version?: string };
+    expect(out.total).toBeGreaterThan(0);
+    expect(out.version).toBe("0_4");
+  }, 120_000);
+
+  it("defaults to the latest tree version", async () => {
+    const out = (await worker.query("data_passives", {
+      type: "Keystone",
+      limit: 1,
+    })) as ListResult & { version?: string };
+    expect(out.version).toBe("0_5");
+  }, 60_000);
+
+  it("unknown version is a hard error listing valid versions", async () => {
+    await expect(
+      worker.query("data_passives", { version: "9_9" }),
+    ).rejects.toThrow(/0_5/);
+  }, 60_000);
+});
+
 describe("patch.items", () => {
   it("equips a unique from data_uniques raw text into a slot", async () => {
     const list = (await worker.query("data_uniques", {

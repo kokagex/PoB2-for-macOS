@@ -19,12 +19,22 @@ export interface ItemPatch {
   raw: string;
 }
 
+export interface GemPatch {
+  name: string;
+  group?: number | string;
+  level?: number;
+  quality?: number;
+  enabled?: boolean;
+  remove?: boolean;
+}
+
 export interface Patch {
   config?: Record<string, unknown>;
   enemyLevel?: number;
   treeURL?: string;
   skillName?: string;
   items?: ItemPatch[];
+  gems?: GemPatch[];
   allocNodes?: (string | number)[];
   deallocNodes?: (string | number)[];
 }

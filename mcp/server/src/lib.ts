@@ -18,6 +18,22 @@ export const patchShape = z.object({
   items: z
     .array(z.object({ slot: z.string(), raw: z.string() }))
     .optional(),
+  // Gem edits inside socket groups. A name already in the target group is
+  // modified (level/quality/enabled) or removed; an absent name is added
+  // (exact match against the gem database — unknown names are hard worker
+  // errors). group: 1-based index or a gem name in the group; default main.
+  gems: z
+    .array(
+      z.object({
+        name: z.string(),
+        group: z.union([z.number(), z.string()]).optional(),
+        level: z.number().optional(),
+        quality: z.number().optional(),
+        enabled: z.boolean().optional(),
+        remove: z.boolean().optional(),
+      }),
+    )
+    .optional(),
   // Incremental passive-tree edits by node name (exact, case-insensitive) or
   // numeric node id. Allocation pays the travel path like a real respec.
   // Unknown/ambiguous names, unreachable nodes, and redundant ops are hard
@@ -60,6 +76,18 @@ export function resolveXml(buildPath?: string, buildXml?: string): string {
   throw new Error("Provide buildPath or buildXml.");
 }
 
+// Defence metrics for calc_compare's "defence" preset, EHP first so the
+// headline number leads the report. Names match worker BREAKDOWN_KEYS.
+export const DEFENCE_KEYS = [
+  "TotalEHP", "EHPSurvivalTime",
+  "Life", "LifeUnreserved", "EnergyShield", "Ward", "Mana",
+  "Armour", "Evasion", "PhysicalDamageReduction", "MeleeEvadeChance",
+  "FireResist", "ColdResist", "LightningResist", "ChaosResist",
+  "PhysicalMaximumHitTaken", "FireMaximumHitTaken", "ColdMaximumHitTaken",
+  "LightningMaximumHitTaken", "ChaosMaximumHitTaken",
+  "BlockChance", "SpellBlockChance", "BlockChanceMax", "SpellSuppressionChance",
+];
+
 export interface MetricDelta {
   a: number | null;
   b: number | null;
@@ -69,12 +97,15 @@ export interface MetricDelta {
 
 // Per-metric delta over the union of both result sets, so a key returned by
 // only one variant shows up null-padded instead of being silently dropped.
+// `keys` restricts and ORDERS the report (e.g. DEFENCE_KEYS puts EHP first);
+// keys absent from both sides stay visible as all-null rows.
 export function diffTopline(
   a: Record<string, number>,
   b: Record<string, number>,
+  keys?: string[],
 ): Record<string, MetricDelta> {
   const cmp: Record<string, MetricDelta> = {};
-  for (const key of new Set([...Object.keys(a), ...Object.keys(b)])) {
+  for (const key of keys ?? new Set([...Object.keys(a), ...Object.keys(b)])) {
     const av = typeof a[key] === "number" ? a[key] : null;
     const bv = typeof b[key] === "number" ? b[key] : null;
     cmp[key] = {

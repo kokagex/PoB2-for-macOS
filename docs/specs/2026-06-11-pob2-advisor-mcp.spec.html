@@ -426,8 +426,8 @@ footer {
         [
           "calc_compare",
           "計算",
-          "patchA? + patchB (必須)",
-          "per-metric { a, b, delta, pct }"
+          "patchA? + patchB (必須) + metrics? (offence|defence|full)",
+          "per-metric { a, b, delta, pct } — defence は EHP ファースト順"
         ],
         [
           "export_build",
@@ -456,8 +456,8 @@ footer {
         [
           "data_passives",
           "データ",
-          "search / type / ascendancy / limit",
-          "ノード id / name / type / ascendancy / stats"
+          "search / type / ascendancy / version / limit",
+          "ノード id / name / type / ascendancy / stats + version (使用ツリー)"
         ],
         [
           "data_itembases",
@@ -471,7 +471,7 @@ footer {
       "id": "patch",
       "title": "patch 仕様 (計算系 5 ツール共通)",
       "type": "markdown",
-      "content": "patch = {\n  config, enemyLevel, treeURL, skillName,   -- 既存 (Slice 1)\n  items = { { slot, raw } },                -- raw PoB item text を装備。data_uniques detail の raw をそのまま渡せる\n  allocNodes = { \"ノード名\" | id, ... },    -- 増分ツリー編集。alloc は経路コストを実払い (リスペックと同じ)\n  deallocNodes = { \"ノード名\" | id, ... },  -- 依存ノードも連動して外れる\n}\n\n適用順: treeURL → deallocNodes → allocNodes → items → skillName → config。\n(treeURL でツリーを差し替えてから増分編集できる)\n\nノード名解決: 大文字小文字無視の完全一致。同名ノードが複数ある場合 (小ノード \"Cast Speed\" 等) は操作の目的状態で絞り込む — alloc は未取得ノード、dealloc は取得済みノードを優先。それでも曖昧なら候補 id を列挙してハードエラー (id 指定でリトライ)。"
+      "content": "patch = {\n  config, enemyLevel, treeURL, skillName,   -- 既存 (Slice 1)\n  items = { { slot, raw } },                -- raw PoB item text を装備。data_uniques detail の raw をそのまま渡せる\n  gems = { { name, group?, level?, quality?, enabled?, remove? } },  -- socket group のジェム編集 (v0.3)\n  allocNodes = { \"ノード名\" | id, ... },    -- 増分ツリー編集。alloc は経路コストを実払い (リスペックと同じ)\n  deallocNodes = { \"ノード名\" | id, ... },  -- 依存ノードも連動して外れる\n}\n\n適用順: treeURL → deallocNodes → allocNodes → items → gems → skillName → config。\n(treeURL でツリーを差し替えてから増分編集でき、追加したジェムを同一 patch の skillName で main に選択できる)\n\nノード名解決: 大文字小文字無視の完全一致。同名ノードが複数ある場合 (小ノード \"Cast Speed\" 等) は操作の目的状態で絞り込む — alloc は未取得ノード、dealloc は取得済みノードを優先。それでも曖昧なら候補 id を列挙してハードエラー (id 指定でリトライ)。\n\ngems 解決 (v0.3): 対象 group は 1-based index | group 内ジェム名 | 省略=main group。name が group 内に既存なら変更 (level/quality/enabled) or remove、未存在なら追加 (data.gems への厳密名一致を検証、未知名はハードエラー)。追加ジェムの level 既定は naturalMaxLevel。\n\nジュエル装着 (v0.3): items[].slot に \"Jewel <nodeId>\" を受理。未割当ソケットはハードエラー (未割当は計算から除外されるため silent no-op になる罠)。build_info の passives.sockets が割当済みソケット id を列挙する。"
     },
     {
       "id": "error-design",
@@ -483,7 +483,7 @@ footer {
       "id": "tests",
       "title": "テスト",
       "type": "markdown",
-      "content": "mcp/server/test/advisor.test.ts — 15 ケース追加 (全体 30/30 pass):\n\n- data_gems: gemType フィルタ + limit/total、Eye of Winter 詳細、未知名エラー\n- data_uniques: 一覧 + types、detail の raw が patch.items に使えること\n- data_passives: Keystone 検索、stat 文検索 (\"cast speed\")\n- data_itembases: type フィルタ\n- build_info: キャラ / 装備 / main socket group / passives\n- allocNodes/deallocNodes: dealloc で allocated 減少、dealloc→alloc 往復、未知名 / 既取得エラー\n- patch.items: body ユニーク装備で build_info に反映、未知 slot エラー\n\ngolden ビルド (mcp/spike/GOLDEN.md) を使用。既存の DPS ベースライン (1% 以内) テストも全て pass。"
+      "content": "mcp/server/test/advisor.test.ts — 15 ケース追加 (全体 30/30 pass):\n\n- data_gems: gemType フィルタ + limit/total、Eye of Winter 詳細、未知名エラー\n- data_uniques: 一覧 + types、detail の raw が patch.items に使えること\n- data_passives: Keystone 検索、stat 文検索 (\"cast speed\")\n- data_itembases: type フィルタ\n- build_info: キャラ / 装備 / main socket group / passives\n- allocNodes/deallocNodes: dealloc で allocated 減少、dealloc→alloc 往復、未知名 / 既取得エラー\n- patch.items: body ユニーク装備で build_info に反映、未知 slot エラー\n\ngolden ビルド (mcp/spike/GOLDEN.md) を使用。既存の DPS ベースライン (1% 以内) テストも全て pass。\n\nv0.3 追加 (15 ケース、全体 45/45 pass):\n- patch.gems: support 追加 / level+quality 変更 / remove / 未知名・group 外 remove・範囲外 group index の各ハードエラー\n- ジュエル装着: passives.sockets 列挙、割当済みソケットへの unique jewel 装備、未割当ソケットのハードエラー\n- data_passives version: 0_4 照会 + version 返却、既定 0_5、未知 version のハードエラー\n- defence プリセット: DEFENCE_KEYS の順序 (TotalEHP 先頭)・フィルタ・null-pad (lib unit)"
     },
     {
       "id": "phases",
@@ -514,15 +514,16 @@ footer {
           "4",
           "patch 拡張: items / allocNodes / deallocNodes (状態考慮の名前解決つき)",
           "done"
+        ],
+        [
+          "5 (v0.3)",
+          "前回スコープ外 4 件: patch.gems / ジュエル装着 (Jewel <nodeId> + 未割当検証) / data_passives version / calc_compare metrics (defence = EHP ファースト)",
+          "done"
         ]
       ]
     }
   ],
   "scope_out": [
-    "ジェム編集 patch (socket group へのジェム追加 / レベル・品質変更)",
-    "ジュエルのツリーソケット装着 (Jewel \u003cnodeId> slot)",
-    "ツリーバージョン選択 (data_passives は latest 固定)",
-    "防御特化 compare プリセット (EHP ファースト報告)",
     "PoE1 残存データの照会 (翻訳ルール同様 PoE2 のみ対象)"
   ]
 }

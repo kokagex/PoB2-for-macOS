@@ -134,6 +134,9 @@ end
 -- Equip items given as raw PoB item text (e.g. data_uniques detail `raw`).
 -- Each entry needs an explicit slot; fit is validated before equipping so a
 -- mismatched slot errors instead of silently calculating the old item.
+-- Tree jewel sockets are addressed as "Jewel <nodeId>" and must be allocated:
+-- an unallocated socket is excluded from the calc (ItemsTab activeSocketList),
+-- so equipping there would silently change nothing.
 local function applyItems(build, items)
   local itemsTab = build.itemsTab
   for _, entry in ipairs(items) do
@@ -146,8 +149,14 @@ local function applyItems(build, items)
         if not s.nodeId then names[#names + 1] = name end
       end
       table.sort(names)
-      error(string.format("slot %q not found; slots: %s",
+      error(string.format(
+        "slot %q not found; slots: %s (tree jewel sockets: \"Jewel <nodeId>\")",
         tostring(entry.slot), table.concat(names, ", ")))
+    end
+    if slot.nodeId and not build.spec.allocNodes[slot.nodeId] then
+      error(string.format(
+        "jewel socket %q is not allocated; allocate node %d first (patch.allocNodes)",
+        entry.slot, slot.nodeId))
     end
     local item = new("Item", entry.raw)
     if not item.base then
@@ -160,6 +169,90 @@ local function applyItems(build, items)
     end
     itemsTab:AddItem(item, true)
     slot:SetSelItemId(item.id)
+  end
+end
+
+-- Resolve a gems entry's target socket group: 1-based index, a gem name in
+-- the group (via resolveSkillGroup), or the build's main group when omitted.
+local function resolveGemGroup(build, ref)
+  if ref == nil then
+    local group = build.skillsTab.socketGroupList[build.mainSocketGroup]
+    if not group then
+      error("build has no main socket group; pass gems[].group explicitly")
+    end
+    return group
+  end
+  if type(ref) == "number" then
+    local group = build.skillsTab.socketGroupList[ref]
+    if not group then
+      error(string.format("socket group %d not found (build has %d groups)",
+        ref, #build.skillsTab.socketGroupList))
+    end
+    return group
+  end
+  return build.skillsTab.socketGroupList[M.resolveSkillGroup(build, tostring(ref))]
+end
+
+-- Edit gems inside socket groups. A name already in the target group is
+-- modified (level/quality/enabled) or removed; an absent name is added after
+-- exact-name validation against data.gems -- a typo must error, not insert a
+-- dead gem the calc silently ignores. ProcessSocketGroup re-resolves gemData
+-- afterwards so the edit is visible to the next BuildOutput.
+local function applyGems(build, gems)
+  local touched = {}
+  for _, entry in ipairs(gems) do
+    assert(type(entry) == "table" and entry.name, "patch.gems entries require { name }")
+    local group = resolveGemGroup(build, entry.group)
+    local want = entry.name:lower()
+    local found
+    for _, gemInstance in ipairs(group.gemList or {}) do
+      if gemInstance.nameSpec and gemInstance.nameSpec:lower() == want then
+        found = gemInstance
+        break
+      end
+    end
+    if entry.remove then
+      if not found then
+        error(string.format("gem %q is not in socket group; nothing to remove",
+          entry.name))
+      end
+      for i, gemInstance in ipairs(group.gemList) do
+        if gemInstance == found then
+          table.remove(group.gemList, i)
+          break
+        end
+      end
+    elseif found then
+      if entry.level then found.level = entry.level end
+      if entry.quality then found.quality = entry.quality end
+      if entry.enabled ~= nil then found.enabled = entry.enabled end
+    else
+      local gemData
+      for _, gem in pairs(data.gems) do
+        if gem.name and gem.name:lower() == want then
+          gemData = gem
+          break
+        end
+      end
+      if not gemData then
+        error(string.format(
+          "gem %q not found in gem database; data_gems lists valid names",
+          entry.name))
+      end
+      group.gemList[#group.gemList + 1] = {
+        nameSpec = gemData.name,
+        level = entry.level or gemData.naturalMaxLevel or 20,
+        quality = entry.quality or 0,
+        enabled = entry.enabled ~= false,
+        count = 1,
+        enableGlobal1 = true,
+        enableGlobal2 = true,
+      }
+    end
+    touched[group] = true
+  end
+  for group in pairs(touched) do
+    build.skillsTab:ProcessSocketGroup(group)
   end
 end
 
@@ -212,6 +305,11 @@ function M.applyPatch(build, patch)
   if patch.items then
     applyItems(build, patch.items)
   end
+  if patch.gems then
+    -- After items (slots exist), before skillName so a freshly added gem can
+    -- be selected as the main skill in the same patch.
+    applyGems(build, patch.gems)
+  end
   if patch.skillName and patch.skillName ~= "" then
     build.mainSocketGroup = M.resolveSkillGroup(build, patch.skillName)
   end
@@ -246,7 +344,10 @@ function M.readInfo(build)
   local items = {}
   for slotName, slot in pairs(build.itemsTab.slots) do
     local id = slot.selItemId
-    if id and id ~= 0 and not slot.nodeId then
+    -- Tree jewel sockets ("Jewel <nodeId>") are included only while their
+    -- node is allocated -- that matches what the calc actually uses.
+    local active = not slot.nodeId or spec.allocNodes[slot.nodeId]
+    if id and id ~= 0 and active then
       local item = build.itemsTab.items[id]
       if item then
         items[#items + 1] = {
@@ -280,13 +381,17 @@ function M.readInfo(build)
     }
   end
 
-  local allocated, keystones, notables = 0, {}, {}
+  local allocated, keystones, notables, sockets = 0, {}, {}, {}
   for _, node in pairs(spec.allocNodes) do
     local name = node.dn or node.name
     if node.type == "Keystone" then
       keystones[#keystones + 1] = name
     elseif node.type == "Notable" then
       notables[#notables + 1] = name
+    elseif node.type == "Socket" then
+      -- Allocated jewel sockets: these ids are valid patch.items slots
+      -- ("Jewel <id>").
+      sockets[#sockets + 1] = node.id
     end
     if node.type ~= "ClassStart" and node.type ~= "AscendClassStart" then
       allocated = allocated + 1
@@ -294,6 +399,7 @@ function M.readInfo(build)
   end
   table.sort(keystones)
   table.sort(notables)
+  table.sort(sockets)
 
   local config = {}
   for k, v in pairs(build.configTab.input) do
@@ -312,6 +418,7 @@ function M.readInfo(build)
       allocated = allocated,
       keystones = keystones,
       notables = notables,
+      sockets = sockets,
     },
     config = config,
   }

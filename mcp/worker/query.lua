@@ -148,7 +148,19 @@ end
 local SKIP_NODE_TYPES = { OnlyImage = true, ClassStart = true, AscendClassStart = true }
 
 function M.passives(args)
-  local tree = main:LoadTree(latestTreeVersion)
+  -- Tree version is selectable (default: latest). Unknown versions are a hard
+  -- error listing the valid set -- a silent fallback to latest would answer a
+  -- question that was not asked.
+  local version = args.version or latestTreeVersion
+  local known = false
+  for _, v in ipairs(treeVersionList) do
+    if v == version then known = true break end
+  end
+  if not known then
+    error(string.format("tree version %q not found; versions: %s",
+      tostring(version), table.concat(treeVersionList, ", ")))
+  end
+  local tree = main:LoadTree(version)
   local list = {}
   for id, node in pairs(tree.nodes) do
     local ntype = node.type
@@ -174,7 +186,9 @@ function M.passives(args)
       end
     end
   end
-  return capped(list, args.limit, "name")
+  local out = capped(list, args.limit, "name")
+  out.version = version
+  return out
 end
 
 -- ---------------------------------------------------------------------------
