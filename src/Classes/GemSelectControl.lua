@@ -20,6 +20,16 @@ local function gemDisplayName(gemData)
 	return val ~= key and val or gemData.name
 end
 
+-- True when the edit buffer matches a gem's English name OR its localized display name.
+-- selIndex resolution (OnFocusGained) and the focus-lost delete guard (UpdateGem) must agree;
+-- comparing only against the English name deletes a set gem on cancel under non-English locales,
+-- where the buffer holds the translated display name (translateGemName).
+local function bufMatchesGemData(buf, gemData)
+	if not gemData then return false end
+	local lower = buf:lower()
+	return lower == gemData.name:lower() or lower == gemDisplayName(gemData):lower()
+end
+
 -- Translate gemType (e.g., "Attack" → "攻撃")
 local function gemTypeDisplay(gemType)
 	if not gemType then return "" end
@@ -457,7 +467,7 @@ function GemSelectClass:UpdateGem(setText, addUndo, focusLost)
 	local gemId = self.list[m_max(self.selIndex, 1)]
 	-- don't process unless the buffer equals an actual gem, whether typed, clicked, or navigated with arrows
 	-- we don't nil the gemId here if it doesn't match because the imbuedGemSelect and slotGemSelect have different paths
-	local bufMatchesGem = (self.gems[gemId] and self.buf:lower() == self.gems[gemId].name:lower())
+	local bufMatchesGem = bufMatchesGemData(self.buf, self.gems[gemId])
 
 	if self.buf:match("%S") and self.gems[gemId] then
 		self.gemId = gemId
@@ -939,7 +949,7 @@ function GemSelectClass:OnFocusGained()
 	self:UpdateSortCache()
 	self:BuildList("")
 	for index, gemId in pairs(self.list) do
-		if self.gems[gemId].name == self.buf or gemDisplayName(self.gems[gemId]) == self.buf then
+		if bufMatchesGemData(self.buf, self.gems[gemId]) then
 			self.selIndex = index
 			self:ScrollSelIntoView()
 			break
