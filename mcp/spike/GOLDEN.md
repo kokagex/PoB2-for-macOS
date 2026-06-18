@@ -21,7 +21,17 @@ Produced by `mcp/worker/server.lua` (no patch). Saved main skill group is 5
 Selecting the main skill by gem name (case-insensitive). Cross-checked exactly
 (diff = 0) against the sed workaround that rewrote mainSocketGroup in the XML:
 
-- skillName "Eye of Winter" -> TotalDPS: 576.5486741573
+- skillName "Eye of Winter" -> TotalDPS: 458.86838961039
+
+Re-baselined 2026-06-19 after the upstream 0.5.2 data sync (v0.18.0 → v0.21.0):
+0.5.2 reworked the Biting Frost / Ice Bite cold support gems (SkillConsumesFreeze
+/ SupportedByBitingFrost skill types), which lowered this build's Eye of Winter
+hit DPS from 576.5486741573 → 458.86838961039 (-20.4%). Confirmed a faithful data
+change, NOT a calc-merge defect: reverting the calc-layer sync (CalcOffence /
+CalcActiveSkill et al.) left the value at 458.15 (the calc merge moves it only
+0.16%), and the synced data files (act_int / sup_int / SkillStatMap) match
+upstream v0.21.0 byte-for-byte. The primary oracle (Orb of Storms 5138.74) stayed
+within 1%, so it is left as-is.
 
 Unknown names must be a hard worker error ("not found in build" + gem list),
 never silently ignored — that silent ignore was the original calc bug.
