@@ -156,6 +156,7 @@ return {
 		auto = "自動",
 		manual = "手動",
 		manageSpectres = "スペクター管理...",
+		manageBeasts = "コンパニオン管理...",
 		enterLoadoutName = "ロードアウト名を入力:",
 		setName = "名前設定",
 		convertTo = "変換先: ",

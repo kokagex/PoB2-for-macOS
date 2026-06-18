@@ -697,6 +697,9 @@ function buildMode:InitMinimal(dbFileName, buildName)
 	self.controls.mainSkillMinionLibrary = new("ButtonControl", {"LEFT",self.controls.mainSkillMinion,"RIGHT"}, {2, 0, 120, 18}, i18n.t("build.manageSpectres"), function()
 		self:OpenSpectreLibrary()
 	end)
+	self.controls.mainSkillBeastLibrary = new("ButtonControl", {"LEFT",self.controls.mainSkillMinion,"RIGHT"}, {2, 0, 120, 18}, i18n.t("build.manageBeasts"), function()
+		self:OpenSpectreLibrary()
+	end)
 	self.controls.mainSkillMinionSkill = new("DropDownControl", {"TOPLEFT",self.controls.mainSkillMinion,"BOTTOMLEFT",true}, {0, 2, 200, 16}, nil, function(index, value)
 		local mainSocketGroup = self.skillsTab and self.skillsTab.socketGroupList and self.skillsTab.socketGroupList[self.mainSocketGroup]
 		if mainSocketGroup and mainSocketGroup.displaySkillList and mainSocketGroup.displaySkillList[mainSocketGroup.mainActiveSkill] then
@@ -1174,6 +1177,9 @@ function buildMode:Init(dbFileName, buildName, buildXML, convertBuild, importLin
 		end
 	end
 	self.controls.mainSkillMinionLibrary = new("ButtonControl", {"LEFT",self.controls.mainSkillMinion,"RIGHT"}, {2, 0, 120, 18}, i18n.t("build.manageSpectres"), function()
+		self:OpenSpectreLibrary()
+	end)
+	self.controls.mainSkillBeastLibrary = new("ButtonControl", {"LEFT",self.controls.mainSkillMinion,"RIGHT"}, {2, 0, 120, 18}, i18n.t("build.manageBeasts"), function()
 		self:OpenSpectreLibrary()
 	end)
 	self.controls.mainSkillMinionSkill = new("DropDownControl", {"TOPLEFT",self.controls.mainSkillMinion,"BOTTOMLEFT",true}, {0, 2, 200, 16}, nil, function(index, value)
@@ -2521,6 +2527,7 @@ function buildMode:RefreshSkillSelectControls(controls, mainGroup, suffix)
 		controls.mainSkillStageCount.shown = false
 		controls.mainSkillMinion.shown = false
 		controls.mainSkillMinionLibrary.shown = false
+		controls.mainSkillBeastLibrary.shown = false
 		controls.mainSkillMinionSkill.shown = false
 		if displaySkillList[1] then
 			local activeSkill = displaySkillList[mainActiveSkill]

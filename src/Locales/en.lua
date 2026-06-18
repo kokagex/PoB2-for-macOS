@@ -207,6 +207,7 @@ return {
 		auto = "Auto",
 		manual = "Manual",
 		manageSpectres = "Manage Spectres...",
+		manageBeasts = "Manage Beasts...",
 		enterLoadoutName = "Enter name for this loadout:",
 		setName = "Set Name",
 		convertTo = "Convert to ",
