@@ -84842,8 +84842,9 @@ return {
 			},
 			skill=34908,
 			stats={
-				[1]="Deflected Hits cannot inflict Maim on you",
-				[2]="Deflected Hits cannot inflict Bleeding on you"
+				[1]="Gain Deflection Rating equal to 8% of Evasion Rating",
+				[2]="Deflected Hits cannot inflict Maim on you",
+				[3]="Deflected Hits cannot inflict Bleeding on you"
 			}
 		},
 		[34912]={
