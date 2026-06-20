@@ -1,3 +1,26 @@
+VERSION[0.13.0][2026/06/20]
+
+--- 上流 PoE2 0.5.3 (PathOfBuilding v0.21.1) データ同期 + calc 修正 / Upstream PoE2 0.5.3 (PoB v0.21.1) data sync + calc fixes ---
+* 上流 PathOfBuilding-PoE2 を v0.21.0 (0.5.2) → v0.21.1 (0.5.3) へ同期。データ層 30 ファイル（Bases / Mod 各種 / Minions / Spectres / Rares / スキルジェム / stat description 他）を wholesale 取り込み（段階 sync: データ→ツリー→calc）
+* パッシブツリー: ノード 34908「Staunch Deflection」に「回避力の 8% を Deflection Rating として獲得」を追加（PoE2 0.5.3 のリワーク反映）
+* calc 修正: 武器の「+% クリティカルダメージボーナス」をその武器ローカルへ正しく限定（CritMultiplier のグローバル誤適用を修正）
+* calc 修正: Daze 状態の対象に Heavy Stun Buildup 50% more を適用（上流 0.5.3 の Daze 修正）
+* calc 修正: Minion ビルドの FullDPS パワーレポートが演算子優先順位バグで分岐が死んでいた問題を修正（`not stat == "FullDPS"` → `stat ~= "FullDPS"`）
+* calc 修正: スロット mod リストが nil の場合のクラッシュガードを追加
+* 検証: golden DPS 回帰テスト全 45 件 green。Eye of Winter ヒット DPS は 0.5.3 で不変（458.87）、Orb of Storms は -0.13%（1% 許容内）で再 baseline 不要
+* 既知の未取込: 上流 0.5.3 の取引（Trade）機能修正（FilterToSafeItems クラッシュガード等）は本フォークの i18n 高乖離・副次機能のため未取り込み（次回検討）
+* ※データ／ツリー／Lua のみの変更。zip の再ダウンロード（再インストール）が必要です
+
+* Synced upstream PathOfBuilding-PoE2 v0.21.0 (0.5.2) -> v0.21.1 (0.5.3): 30 data files (bases / mods / minions / spectres / rares / skill gems / stat descriptions, etc.) taken wholesale (staged sync: data -> tree -> calc).
+* Passive tree: node 34908 "Staunch Deflection" gained "Gain Deflection Rating equal to 8% of Evasion Rating" (PoE2 0.5.3 rework).
+* Calc fix: weapon "+% to Critical Damage Bonus" now correctly localised to that weapon (was applying globally via CritMultiplier).
+* Calc fix: Heavy Stun Buildup 50% more now applies to Dazed targets (upstream 0.5.3 Daze fix).
+* Calc fix: Minion FullDPS power report branch was dead due to an operator-precedence bug (`not stat == "FullDPS"` -> `stat ~= "FullDPS"`).
+* Calc fix: added a nil crash guard for slot mod lists.
+* Verified: all 45 golden DPS regression tests green. Eye of Winter hit DPS unchanged in 0.5.3 (458.87); Orb of Storms moved -0.13% (within 1%), so no re-baseline needed.
+* Known not-ported: upstream 0.5.3 trade fixes (FilterToSafeItems crash guard, etc.) were not taken in, as this fork's trade code diverges heavily for i18n and trade is a secondary feature (to be revisited).
+* Note: data / tree / Lua-only changes. A fresh zip download (reinstall) is required.
+
 VERSION[0.11.1][2026/06/10]
 
 --- 全域バグ監査: 9 件修正 + 再発防止テスト 3 種を導入 / Full-repo bug audit: 9 fixes + 3 new regression guards ---
