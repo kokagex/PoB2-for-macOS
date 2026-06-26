@@ -628,6 +628,7 @@ function GemSelectClass:Draw(viewPort, noTooltip)
 			local gemInstance = self.skillsTab.displayGroup and self.skillsTab.displayGroup.gemList and self.skillsTab.displayGroup.gemList[self.index]
 			local cursorX, cursorY = GetCursorPos()
 			self.tooltip:Clear()
+			self.tooltip.maxWidth = 600
 			if gemInstance and gemInstance.gemData then
 				self:AddGemTooltip(gemInstance)
 			else

@@ -42,7 +42,8 @@ local function getActor(self, actorType)
 	end
 end
 
-function ModStoreClass:ScaleAddMod(mod, scale, replace)
+-- roundToNearest is reserved for effects that the game rounds instead of truncates.
+function ModStoreClass:ScaleAddMod(mod, scale, roundToNearest)
 	local unscalable = false
 	for _, effects in ipairs(mod) do
 		if effects.unscalable then
@@ -71,15 +72,13 @@ function ModStoreClass:ScaleAddMod(mod, scale, replace)
 			if precision then
 				local power = 10 ^ precision
 				subMod.value = m_floor(subMod.value * scale * power) / power
+			elseif roundToNearest then
+				subMod.value = roundSymmetric(subMod.value * scale)
 			else
 				subMod.value = m_modf(round(subMod.value * scale, 2))
 			end
 		end
-		if replace then
-			self:ReplaceModInternal(scaledMod)
-		else
-			self:AddMod(scaledMod)
-		end
+		self:AddMod(scaledMod)
 	end
 end
 
@@ -89,12 +88,12 @@ function ModStoreClass:CopyList(modList)
 	end
 end
 
-function ModStoreClass:ScaleAddList(modList, scale, replace)
+function ModStoreClass:ScaleAddList(modList, scale, roundToNearest)
 	if scale == 1 then
 		self:AddList(modList)
 	else
 		for i = 1, #modList do
-			self:ScaleAddMod(modList[i], scale, replace)
+			self:ScaleAddMod(modList[i], scale, roundToNearest)
 		end
 	end
 end
@@ -578,8 +577,8 @@ function ModStoreClass:EvalMod(mod, cfg, globalLimits)
 			local stat
 			if tag.statList then
 				stat = 0
-				for _, stat in ipairs(tag.statList) do
-					stat = stat + GetStat(self, stat, cfg)
+				for _, statName in ipairs(tag.statList) do
+					stat = stat + GetStat(self, statName, cfg)
 				end
 			else
 				stat = GetStat(self, tag.stat, cfg)
@@ -610,7 +609,8 @@ function ModStoreClass:EvalMod(mod, cfg, globalLimits)
 				end
 			end
 		elseif tag.type == "Limit" then
-			value = m_min(value, tag.limit or GetMultiplier(self, tag.limitVar, cfg))
+			local limit = tag.limit or GetMultiplier(self, tag.limitVar, cfg)
+			value = tag.neg and m_max(value, -limit) or m_min(value, limit)
 		elseif tag.type == "Condition" then
 			local match = false
 			local allOneH = ((self.actor.weaponData1 and self.actor.weaponData1.countsAsAll1H) and self.actor.weaponData1) or ((self.actor.weaponData2 and self.actor.weaponData2.countsAsAll1H) and self.actor.weaponData2)
@@ -846,6 +846,25 @@ function ModStoreClass:EvalMod(mod, cfg, globalLimits)
 				end
 			else
 				match = cfg and cfg.skillTypes and cfg.skillTypes[tag.skillType]
+			end
+			if tag.neg then
+				match = not match
+			end
+			if not match then
+				return
+			end
+		elseif tag.type == "GemTag" then
+			local match = false
+			local gemTags = cfg and cfg.skillGem and cfg.skillGem.tags
+			if tag.gemTagList then
+				for _, gemTag in pairs(tag.gemTagList) do
+					if gemTags and gemTags[gemTag:lower()] then
+						match = true
+						break
+					end
+				end
+			else
+				match = gemTags and gemTags[tag.gemTag:lower()]
 			end
 			if tag.neg then
 				match = not match

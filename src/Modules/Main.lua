@@ -150,6 +150,7 @@ function main:Init()
 	self.showFlavourText = true
 	self.showAnimations = true
 	self.showAllItemAffixes = true
+	self.disableScrollControlInteraction = false
 	self.errorReadingSettings = false
 	-- Trade session cookie. Session-only (not persisted in Settings.xml); set via the Trader UI.
 	-- MUST default to "" so consumers can concatenate/compare it before the user enters one
@@ -773,6 +774,9 @@ function main:LoadSettings(ignoreBuild)
 				if node.attrib.showAllItemAffixes then
 					self.showAllItemAffixes = node.attrib.showAllItemAffixes == "true"
 				end
+				if node.attrib.disableScrollControlInteraction then
+					self.disableScrollControlInteraction = node.attrib.disableScrollControlInteraction == "true"
+				end
 				if node.attrib.dpiScaleOverridePercent then
 					self.dpiScaleOverridePercent = tonumber(node.attrib.dpiScaleOverridePercent) or 0
 					SetDPIScaleOverridePercent(self.dpiScaleOverridePercent)
@@ -908,6 +912,7 @@ function main:SaveSettings()
 		showFlavourText = tostring(self.showFlavourText),
 		showAnimations = tostring(self.showAnimations),
 		showAllItemAffixes = tostring(self.showAllItemAffixes),
+		disableScrollControlInteraction = tostring(self.disableScrollControlInteraction),
 		dpiScaleOverridePercent = tostring(self.dpiScaleOverridePercent),
 	} })
 	local res, errMsg = common.xml.SaveXMLFile(setXML, self.userPath.."Settings.xml")
@@ -1143,6 +1148,12 @@ function main:OpenOptionsPopup(savedState)
 	controls.showAllItemAffixes.tooltipText = i18n.t("options.build.tooltipShowAllAffixes")
 
 	nextRow()
+	controls.disableScrollControlInteraction = new("CheckBoxControl", { "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 20 }, "^7Disable control scroll interaction:", function(state)
+		self.disableScrollControlInteraction = state
+	end)
+	controls.disableScrollControlInteraction.tooltipText = "Disable changing the values in controls such as dropdowns or numeric inputs when using the scroll wheel."
+
+	nextRow()
 	local leftColumnMaxY = currentY -- store left column height (no-op in single-column layout)
 	drawSectionHeader("build", i18n.t("options.build.header"))
 
@@ -1248,6 +1259,7 @@ function main:OpenOptionsPopup(savedState)
 	controls.showFlavourText.state = self.showFlavourText
 	controls.showAnimations.state = self.showAnimations
 	controls.showAllItemAffixes.state = self.showAllItemAffixes
+	controls.disableScrollControlInteraction.state = self.disableScrollControlInteraction
 
 	-- Adjust height in case of two-column layout
 	currentY = m_max(leftColumnMaxY, currentY)
