@@ -1,3 +1,26 @@
+VERSION[0.14.0][2026/06/27]
+
+--- 上流 PoE2 0.5.4 (PathOfBuilding dev) データ同期 + calc/UI リファクタ取込 / Upstream PoE2 0.5.4 (PoB dev) data sync + calc/UI refactor ---
+* 上流 PathOfBuilding-PoE2 を v0.21.1 (0.5.3) → dev (0.5.4 Export, a7dec3f5a) へ同期。データ層 33 ファイルを wholesale 取り込み + 新規 3 ファイル（Liquid Emotions データ等）。段階 sync（データ→ツリー→calc→ビルド）
+* パッシブツリー: notable「Arsonist」を「Pyromancer」へリネーム（PoE2 0.5.4 反映）
+* calc リファクタ: パワーレポートの stat 取得を GetFromOutput API 化（Trade 重み計算・Notable DB の stat 列挙を関数キー対応にリファクタ、上流 0.5.4 準拠）
+* calc: ModStore のスケール適用に roundToNearest（対称丸め）を導入（上流 0.5.4 のジェムタグ／flat mod スケーリング修正）
+* 新オプション:「Disable control scroll interaction」— ドロップダウンや数値入力でスクロールホイールによる値変更を無効化（設定ポップアップに追加）
+* アイテム: Liquid Emotions（ジュエル）の mod ソース「Emotion」に対応
+* 検証: golden DPS 回帰テスト全 45 件 green。Eye of Winter ヒット DPS は不変（458.87）、Orb of Storms は 0.5.4 のデータ再調整で -0.13%（1% 許容内）→ 再 baseline 不要。calc 層自体のドリフトはゼロ
+* 既知の未ローカライズ: 新オプション「Disable control scroll interaction」のラベル／ツールチップと、ジュエルソース「Emotion」の表示は英語のまま（次回 i18n 対応予定）
+* ※データ／ツリー／Lua のみの変更。zip の再ダウンロード（再インストール）が必要です
+
+* Synced upstream PathOfBuilding-PoE2 v0.21.1 (0.5.3) -> dev (0.5.4 Export, a7dec3f5a): 33 data files taken wholesale + 3 new files (Liquid Emotions data, etc.). Staged sync (data -> tree -> calc -> build).
+* Passive tree: notable "Arsonist" renamed to "Pyromancer" (PoE2 0.5.4).
+* Calc refactor: power-report stat lookups now go through a GetFromOutput API (trade stat weighting and Notable-DB stat enumeration refactored to accept function keys, per upstream 0.5.4).
+* Calc: ModStore scaling now supports roundToNearest (symmetric rounding) for upstream 0.5.4's gem-tag / flat-mod scaling fixes.
+* New option: "Disable control scroll interaction" — stops the scroll wheel from changing values in dropdowns and numeric inputs (added to the options popup).
+* Items: added the "Emotion" mod source for Liquid Emotions jewels.
+* Verified: all 45 golden DPS regression tests green. Eye of Winter hit DPS unchanged (458.87); Orb of Storms moved -0.13% due to the 0.5.4 data rebalance (within 1%), so no re-baseline needed. The calc layer itself introduced zero drift.
+* Known not-localised: the new "Disable control scroll interaction" label/tooltip and the "Emotion" jewel source are left in English for now (to be localised next).
+* Note: data / tree / Lua-only changes. A fresh zip download (reinstall) is required.
+
 VERSION[0.13.0][2026/06/20]
 
 --- 上流 PoE2 0.5.3 (PathOfBuilding v0.21.1) データ同期 + calc 修正 / Upstream PoE2 0.5.3 (PoB v0.21.1) data sync + calc fixes ---
