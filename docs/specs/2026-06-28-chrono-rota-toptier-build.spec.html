@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>brain-spec</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #ffffff;
+  --surface: #f5f5f5;
+  --border: #d0d0d0;
+  --text: #1a1a1a;
+  --text-muted: #666;
+  --accent: #0066cc;
+  --focus-ring: #0066cc;
+  --btn-bg: #f0f0f0;
+  --btn-hover: #e0e0e0;
+  --code-bg: #f8f8f8;
+  --tag-bg: #e8f0fe;
+  --tag-text: #1a56db;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1a1a1a;
+    --surface: #2a2a2a;
+    --border: #444;
+    --text: #e8e8e8;
+    --text-muted: #999;
+    --accent: #4da6ff;
+    --focus-ring: #4da6ff;
+    --btn-bg: #333;
+    --btn-hover: #444;
+    --code-bg: #252525;
+    --tag-bg: #1a2c4d;
+    --tag-text: #7eb8ff;
+  }
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  background: var(--bg);
+  color: var(--text);
+  padding: 0 16px 80px;
+}
+
+#page-wrapper {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* --- header --- */
+header {
+  border-bottom: 2px solid var(--border);
+  padding: 24px 0 16px;
+  margin-bottom: 28px;
+}
+
+#header-topic {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text);
+  outline: none;
+  border-bottom: 1px dashed transparent;
+  display: inline-block;
+  min-width: 200px;
+}
+#header-topic:focus { border-bottom-color: var(--focus-ring); }
+
+.header-meta {
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.meta-field {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 13px;
+}
+.meta-label {
+  color: var(--text-muted);
+  user-select: none;
+}
+.meta-value {
+  color: var(--text);
+  outline: none;
+  border-bottom: 1px dashed transparent;
+  min-width: 40px;
+}
+.meta-value:focus { border-bottom-color: var(--focus-ring); }
+
+/* --- status badge --- */
+#status-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--tag-bg);
+  color: var(--tag-text);
+  outline: none;
+}
+#status-badge:focus { outline: 1px solid var(--focus-ring); }
+#status-badge[data-status="approved"] { background: #d1fae5; color: #065f46; }
+@media (prefers-color-scheme: dark) {
+  #status-badge[data-status="approved"] { background: #064e3b; color: #6ee7b7; }
+}
+
+/* --- layout: main + aside --- */
+#layout {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 720px) {
+  #layout { grid-template-columns: 1fr; }
+}
+
+/* --- sections --- */
+#sections-container { display: flex; flex-direction: column; gap: 20px; }
+
+section.spec-section {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.section-title-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  border-radius: 6px 6px 0 0;
+}
+.section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  outline: none;
+  flex: 1;
+  border-bottom: 1px dashed transparent;
+}
+.section-title:focus { border-bottom-color: var(--focus-ring); }
+.section-type-tag {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--btn-bg);
+  padding: 1px 7px;
+  border-radius: 10px;
+  user-select: none;
+}
+
+.section-body {
+  padding: 12px 14px;
+}
+
+/* markdown sections */
+.section-body[data-type="markdown"] {
+  white-space: pre-wrap;
+  font-size: 14px;
+  min-height: 60px;
+  outline: none;
+  border-radius: 0 0 6px 6px;
+}
+.section-body[data-type="markdown"]:focus { outline: 1px solid var(--focus-ring); outline-offset: -1px; }
+
+/* html-fragment sections */
+.section-body[data-type="html-fragment"] {
+  min-height: 60px;
+  outline: none;
+}
+.section-body[data-type="html-fragment"]:focus { outline: 1px solid var(--focus-ring); outline-offset: -1px; }
+
+/* table sections */
+.section-body[data-type="table"] {
+  overflow-x: auto;
+}
+
+table.spec-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+table.spec-table th,
+table.spec-table td {
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+table.spec-table th {
+  background: var(--btn-bg);
+  font-weight: 600;
+  color: var(--text);
+  user-select: none;
+}
+table.spec-table td[contenteditable="true"] { outline: none; min-width: 60px; }
+table.spec-table td[contenteditable="true"]:focus { background: color-mix(in srgb, var(--focus-ring) 8%, var(--surface)); }
+
+/* code blocks in markdown sections */
+.section-body code {
+  font-family: "SF Mono", "Consolas", "Menlo", monospace;
+  font-size: 12px;
+  background: var(--code-bg);
+  padding: 0 3px;
+  border-radius: 3px;
+}
+.section-body pre {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  font-size: 12px;
+  margin: 4px 0;
+}
+
+/* --- aside --- */
+aside {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.aside-card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+.aside-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  user-select: none;
+}
+.aside-list {
+  list-style: none;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.aside-item {
+  font-size: 13px;
+  color: var(--text);
+  outline: none;
+  border-radius: 3px;
+  padding: 2px 4px;
+}
+.aside-item:focus { outline: 1px solid var(--focus-ring); }
+.aside-item-empty {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 13px;
+  padding: 2px 4px;
+}
+
+/* --- footer toolbar --- */
+footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  padding: 10px 16px;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  z-index: 100;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--btn-bg);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.1s;
+  user-select: none;
+}
+.btn:hover { background: var(--btn-hover); }
+.btn:active { transform: scale(0.98); }
+.btn.primary { background: var(--accent); color: white; border-color: var(--accent); }
+.btn.primary:hover { opacity: 0.9; }
+
+/* --- toast --- */
+#toast {
+  position: fixed;
+  bottom: 64px;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  background: #1a1a1a;
+  color: #fff;
+  padding: 7px 18px;
+  border-radius: 20px;
+  font-size: 13px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+  z-index: 200;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+@media (prefers-color-scheme: dark) {
+  #toast { background: #e8e8e8; color: #1a1a1a; }
+}
+
+/* --- empty state --- */
+#empty-state {
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 20px 0;
+}
+</style>
+</head>
+<body>
+<div id="page-wrapper">
+
+<header>
+  <div id="header-topic" contenteditable="true" data-field="topic" spellcheck="false"></div>
+  <div class="header-meta">
+    <div class="meta-field">
+      <span class="meta-label">date</span>
+      <span class="meta-value" contenteditable="true" data-field="date" spellcheck="false"></span>
+    </div>
+    <div class="meta-field">
+      <span class="meta-label">repo</span>
+      <span class="meta-value" contenteditable="true" data-field="repo" spellcheck="false"></span>
+    </div>
+    <div class="meta-field">
+      <span class="meta-label">status</span>
+      <span id="status-badge" contenteditable="true" data-field="status" spellcheck="false"></span>
+    </div>
+  </div>
+</header>
+
+<div id="layout">
+  <main>
+    <div id="sections-container"></div>
+  </main>
+
+  <aside>
+    <div class="aside-card">
+      <div class="aside-card-title">Scope Out</div>
+      <ul class="aside-list" id="scope-out-list"></ul>
+    </div>
+  </aside>
+</div>
+
+</div><!-- /page-wrapper -->
+
+<footer>
+  <button class="btn primary" id="btn-copy-data">Copy spec data</button>
+  <button class="btn" id="btn-copy-md">Copy as Markdown summary</button>
+  <button class="btn" id="btn-reload">Reload from JSON</button>
+</footer>
+
+<div id="toast"></div>
+
+<!-- DATA LAYER — CLI reads and edits only this block -->
+<script type="application/json" id="spec-data">
+{
+  "kind": "spec",
+  "version": 1,
+  "topic": "Chrono_RotA → トップティア構築アドバイス（subtractive 帰属 + reference 超え +14.6%）",
+  "date": "2026-06-28",
+  "status": "approved",
+  "repo": "national-operations",
+  "sections": [
+    {
+      "id": "diagnosis",
+      "title": "診断",
+      "type": "markdown",
+      "content": "- ナヴィラの破砕 ヒットDPS: 現状 151,802 / sample 1,298,012 = 8.55x（平均ダメージ 6.87x、速度 1.24x）。GUI/calc 一致確認済み。\n- 差の主因はミニオンのクリティカル: クリ率 32.4%→60.96%、クリ倍率 2.7→6.47。\n- ミニオンスキルレベルは両方 +12 で同一（ここは差ではない）。\n- ジュエルソケット: 現状 [7960,21984,61419] 3枠、sample [7960,21984,26196,61419] 4枠。"
+    },
+    {
+      "id": "gear-diff",
+      "title": "装備差分（slot 別）",
+      "type": "table",
+      "columns": ["slot", "現状", "sample(トップティア)", "要点"],
+      "rows": [
+        ["Jewel 7960", "Blight Shine (Sapphire)", "From Nothing (Diamond)", "Conduit範囲を接続なし取得"],
+        ["Jewel 21984", "Vivid Stone (Sapphire)", "Brood Creed (Time-Lost Sapphire)", "範囲内notableに ミニオンクリダメ+14%/クリ率+12%"],
+        ["Jewel 61419", "Armageddon Essence (Sapphire)", "Eagle Vessel (Time-Lost Sapphire)", "同上 + notable効果+25%"],
+        ["Jewel 26196", "未取得", "Megalomaniac (Diamond)", "4枠目を増設"],
+        ["Ring1", "Evergrasping Ring (unique)", "Behemoth Twirl (Breach Ring, rare)", "ミニオンダメ/クリ rare"],
+        ["Ring2", "Evergrasping Ring (unique)", "Kalandra's Touch", "反対指輪mod複製→Behemoth二重化"],
+        ["Amulet", "Rift Clasp (Wolf Pack/rarity)", "Beast Medallion", "+4 minion lv, ミニオン28% CDR"],
+        ["Helmet", "Rune Visage", "Brood Crest", "+2 minion lv, Gigantic Following"],
+        ["Belt", "Loath Lash (minion life)", "Headhunter", "周回(レアmod奪取)"],
+        ["Body", "Grim Curtain", "Demon Carapace (916 ES)", "ES↑"],
+        ["Weapon1", "Behemoth Breaker (Sceptre)", "Victory Breaker (Sceptre)", "global ミニオン倍率厚い"],
+        ["Weapon2", "Empyrean Call (Focus)", "Storm Refuge (Focus)", "ES↑"]
+      ]
+    },
+    {
+      "id": "skills-support",
+      "title": "スキル(support)差分 — メインのナヴィラ群",
+      "type": "markdown",
+      "content": "- 現状: Navira + Bidding III / Hulking Minions / Encroaching Ground / Frost Nexus / Muster\n- sample: Navira + Bidding II / Frost Nexus / Muster / Tul's Stillness / Rakiata's Flow（=ラキアタ）\n- → 生存寄りの Hulking Minions 等を Rakiata's Flow + Tul's Stillness に入替（純DPS support）。"
+    },
+    {
+      "id": "passive-defense",
+      "title": "パッシブ・防御",
+      "type": "markdown",
+      "content": "パッシブ:\n- 現状150ノード(keystone: CI + Whispers of Doom) / sample 129ノード(CIのみ)。少ないノードで上位DPS = Time-Lostジュエルが各notableを増幅 + Megalomaniac/From Nothing の押し上げ。\n- sample はコールド/クリ寄りクラスタ: Brain Freeze, Brain Storm, Heavy Frost, Harsh Winter, Thin Ice, Frozen Limit, Storm Driven, Shattered Crystal, Ice Walls。\n- Whispers of Doom(2カース目)は sample 不採用 → 現状の二重カース(Blasphemy+Temporal Chains+Despair)は整理候補。\n\n防御:\n- 三耐性 55/66/59(未キャップ) → 75/75/75キャップ(overcap)。ES 7,530→12,000+。EHP 16k→29k。両方 CI。"
+    },
+    {
+      "id": "priority-actions",
+      "title": "優先度順アクション（コスパ順）",
+      "type": "markdown",
+      "content": "- P0 ジュエル: 21984/61419 の通常Sapphire→Time-Lost Sapphire(ミニオンクリダメ/クリ率 notable変換)。半径Very Largeをミニオンnotable密集帯へ。socket 26196 を増設し4枠目。← クリ倍率/率の桁違い差の源。最大効果。\n- P1 主スキルsupport: ナヴィラ群に Rakiata's Flow + Tul's Stillness を投入。\n- P2 指輪: Behemoth Twirl(rare) + Kalandra's Touch で二重化。\n- P3 アミュ/兜: +minion lv & ミニオンCDR付きへ(攻撃速度0.54→0.67はCDR由来)。\n- P4 防御: 耐性キャップ→ES底上げ。火力より先。\n- P5 ツリー: コールド/クリクラスタへ寄せ、汎用notable整理、Whispers of Doom外す。"
+    },
+    {
+      "id": "subtractive-attribution",
+      "title": "検証 — subtractive 帰属（sample から1レバーずつ current に戻す / 各行は加算不可）",
+      "type": "table",
+      "columns": ["戻すレバー(→current)", "MinionDPS", "低下幅", "クリ率", "クリ倍率", "EHP", "耐性"],
+      "rows": [
+        ["0 SAMPLE(target)", "1,298,012", "—", "61.0", "6.47", "29,666", "75/75/75"],
+        ["Time-Lost ジュエル → plain Sapphire", "589,008", "−709k (−55%)", "34.2", "3.75", "25,100", "75/75/75"],
+        ["amulet/helm/weapon → current", "805,094", "−493k (−38%)", "65.0", "6.08", "20,599", "38/75/39"],
+        ["指輪 → Evergrasping×2", "812,289", "−486k (−37%)", "48.0", "5.51", "29,666", "75/75/75"],
+        ["supports (Rakiata's Flow を空ソケットに外す)", "614,848", "−683k (−53%)", "61.0", "6.47", "—", "—"],
+        ["From Nothing → Blight Shine", "916,501", "−382k (−29%)", "48.8", "5.11", "25,503", "75/75/75"],
+        ["ツリー → current (test T)", "953,882", "−344k (−27%)", "46.0", "4.90", "42,414", "75/75/75"]
+      ]
+    },
+    {
+      "id": "attribution-reading",
+      "title": "帰属の読み筋 + 機構（Time-Lost × ツリー共設計）",
+      "type": "markdown",
+      "content": "- Time-Lost ジュエル(−55%)が最大の単体レバー — クリ率/倍率を一気に崩す(61→34, 6.47→3.75)。ただしツリーと共設計(ジュエルが変換器、ツリーが変換される notable を供給)。\n- ツリー(−27%)は決定的だが防御トレード: current ツリーに戻すと DPS は落ちるが EHP は 29,666→42,414 に上昇。sample のツリーは EHP を削ってクリ密度を買っている。\n- amulet/helm/weapon(−38%)は火力と防御を兼ねる — 戻すと耐性が Fire 75→38/Lightning 75→39 に崩落。火力単独レバーではない。\n- 指輪(−37%)は純火力(EHP 不変)。From Nothing(−29%)も純火力寄り。\n- 注: supports 行は Rakiata's Flow を空ソケットに外した値で、current の support gem に戻していない(apples-to-apples でない)。それでも単体 ~53% の大レバー。\n\n機構（Time-Lost Sapphire × ツリー notable 密集の共設計）:\n- Brood Creed / Eagle Vessel（共に Time-Lost Sapphire, Radius: Very Large）が radius 内 notable 1個ごとに「ミニオン クリダメ+14% / クリ率+12% / notable効果+25%」を付与。\n- sample のツリーは socket 21984/61419 の Very Large radius に notable を密集させてクリを最大化。current ツリーは密集がなく、同じジュエルでもクリ率61→46/倍率6.47→4.90 に崩れる。\n- トップティア化の本丸 = Time-Lost ジュエル + ソケット radius に notable を詰めたツリー設計（ジュエル単体でもツリー単体でもなく両者の積）。"
+    },
+    {
+      "id": "beyond-reference",
+      "title": "構築 — reference 超え（net-0 ポイント再配分 / calc + round-trip 検証済み）",
+      "type": "table",
+      "columns": ["構成", "MinionDPS", "net", "クリ率", "クリ倍率", "EHP", "耐性", "used"],
+      "rows": [
+        ["sample(参照)", "1,298,012", "—", "61.0", "6.47", "29,666", "75/75/75", "121"],
+        ["+1 notable (Int 11248→Ice Storm)", "1,359,447", "+4.7%", "62.8", "6.64", "29,666", "75/75/75", "121"],
+        ["+2 (→Lightning Storm)", "1,422,714", "+9.6%", "64.6", "6.81", "29,666", "75/75/75", "120"],
+        ["+3 (→Empowering Remnants)", "1,487,814", "+14.6%", "66.4", "6.98", "29,666", "75/75/75", "120"]
+      ]
+    },
+    {
+      "id": "construction-caveats",
+      "title": "構築の注意（under-claim / 適用条件）",
+      "type": "markdown",
+      "content": "- 指標限定: +14.6% は「ボス単体ミニオン hit DPS」。移す3点のうち Minion Area 45343 = AoE/周回速度、Puppet Master chance 53795 = utility proc を犠牲にする。Int 11248 のみ純粋に DPS 寄与ゼロ。Minion Life(40894)は DPS 寄与あり(net −23k)なので標的不適。\n- 必要レベル: PoE2 0.5 のポイント予算 =(level−1)+quest23(+bandit1)。121点 ≈ Lv99-100 前提（B は used=120 で L99 相当）。Lv97 で組むなら 1-2 点を別所から捻出する必要。\n- スタッキングは crit 66% でまだほぼ線形（逓減せず）。さらに進めると dealloc 標的が値を持ち始め、crit がキャップに近づくため逓減。安全圏は ~3 notable。\n- ボス特化なら純益、汎用周回ビルドなら Int 11248 の1点だけ移すのが安全。"
+    },
+    {
+      "id": "artifacts",
+      "title": "成果物（import code, PoB GUI に貼付可）",
+      "type": "markdown",
+      "content": "- A  scratchpad/upgraded_chrono_rota.code = sample 構成(= 1,298,012、現状 Chrono_RotA の 8.55x)。current → トップティアの到達点。\n- B  scratchpad/beyond_reference_chrono_rota.code = A + 上記3スワップ = 1,487,814(+14.6%)。reference を超えた構築版。\n- round-trip 検証済み(mcp/worker/roundtrip_verify.lua): 両 .code を decode→XML→BuildOutput で再測 → A=1,298,012 / B=1,487,814 を厳密一致で再現(exportCode が live spec でなく元 XML をシリアライズする失敗モードが無いことを確認)。import すれば申告 DPS がそのまま出る。\n- 使い方: PoB の Import → Paste import code に B を貼れば即開ける。"
+    },
+    {
+      "id": "conclusion",
+      "title": "結論",
+      "type": "markdown",
+      "content": "- ギャップの正体はクリティカル、その源は Time-Lost ジュエル × ツリー notable 密集の共設計（subtractive 帰属: ジュエル −55% / ツリー −27% が確定）。\n- reference 超え = in-radius notable 再配分。装備/ジュエルは sample が既にほぼ最適、伸び代はツリーのポイント配分にあった。\n- 観察構造の改善（commit 63f2fc66e, branch feature/build-info-jewel-radius-surface）: build_info に jewelSockets[]（radius 内 allocated notable 数/種別）と items[].mods[]（ロール反映後の実 mod）を追加。当初ツリーを軽視した観察欠陥を解消。\n- harness 検証済み: sample.xml 直接測定 = GUI の 1,298,012 を小数まで一致。MCP/calc エンジンは信頼でき、この基盤でビルド構築・最適化が可能。"
+    }
+  ],
+  "scope_out": [
+    "防御スロット入替: current の Body/Focus/Belt は +8.3% DPS だが EHP 半減(29,666→16,203)・Fire 脱キャップ(75→55) → CI ピナクル用に割に合わず不採用、sample の防御スロットを維持",
+    "加算ラダー帰属: piecewise 移植が Time-Lost ジュエル×ツリー共設計を壊し交絡(ツリー~0 と誤報告) → 撤回し subtractive-from-reference に置換",
+    "周回特化で Minion Area/Puppet Master を残す構成は本アドバイス(ボス特化 B)の対象外。汎用周回なら Int 11248 の1点のみ移す"
+  ]
+}
+</script>
+
+<script>
+(function () {
+  'use strict';
+
+  // ---- data model ----
+  var data = {};
+  var debounceTimer = null;
+
+  // ---- utils ----
+  function toast(msg) {
+    var el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(el._timer);
+    el._timer = setTimeout(function () { el.classList.remove('show'); }, 2000);
+  }
+
+  // Escape "<" so a literal U+003C cannot prematurely close the data block.
+  // Also used when serializing back to clipboard so round-trip is safe.
+  function safeJsonStringify(obj) {
+    return JSON.stringify(obj, null, 2).replace(/</g, '\\u003c');
+  }
+
+  // Sanitize html-fragment: remove <script> and <iframe> tags.
+  function sanitizeFragment(html) {
+    return html
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<iframe[\s\S]*?<\/iframe>/gi, '');
+  }
+
+  // ---- DOM render ----
+
+  function renderHeader() {
+    var topicEl = document.getElementById('header-topic');
+    topicEl.textContent = data.topic || '';
+
+    document.querySelector('[data-field="date"]').textContent = data.date || '';
+    document.querySelector('[data-field="repo"]').textContent = data.repo || '';
+
+    var badge = document.getElementById('status-badge');
+    badge.textContent = data.status || 'draft';
+    badge.dataset.status = data.status || 'draft';
+  }
+
+  function renderSection(sec, index) {
+    var section = document.createElement('section');
+    section.className = 'spec-section';
+    section.dataset.sectionId = sec.id || ('s' + index);
+    section.dataset.index = index;
+
+    // title bar
+    var bar = document.createElement('div');
+    bar.className = 'section-title-bar';
+    var titleEl = document.createElement('div');
+    titleEl.className = 'section-title';
+    titleEl.contentEditable = 'true';
+    titleEl.spellcheck = false;
+    titleEl.textContent = sec.title || '';
+    titleEl.dataset.role = 'section-title';
+    var typeTag = document.createElement('span');
+    typeTag.className = 'section-type-tag';
+    typeTag.textContent = sec.type || 'markdown';
+    bar.appendChild(titleEl);
+    bar.appendChild(typeTag);
+    section.appendChild(bar);
+
+    // body
+    var body = document.createElement('div');
+    body.className = 'section-body';
+    body.dataset.type = sec.type || 'markdown';
+    body.dataset.role = 'section-body';
+    body.dataset.index = index;
+
+    if (sec.type === 'table') {
+      body.appendChild(renderTable(sec, index));
+    } else if (sec.type === 'html-fragment') {
+      body.contentEditable = 'true';
+      body.spellcheck = false;
+      body.innerHTML = sanitizeFragment(sec.content || '');
+    } else {
+      // markdown (default)
+      body.contentEditable = 'true';
+      body.spellcheck = false;
+      body.textContent = sec.content || '';
+    }
+
+    section.appendChild(body);
+    return section;
+  }
+
+  function renderTable(sec, sectionIndex) {
+    var table = document.createElement('table');
+    table.className = 'spec-table';
+
+    // header row
+    if (sec.columns && sec.columns.length > 0) {
+      var thead = document.createElement('thead');
+      var headRow = document.createElement('tr');
+      sec.columns.forEach(function (col) {
+        var th = document.createElement('th');
+        th.textContent = col;
+        headRow.appendChild(th);
+      });
+      thead.appendChild(headRow);
+      table.appendChild(thead);
+    }
+
+    // body rows
+    var tbody = document.createElement('tbody');
+    if (sec.rows) {
+      sec.rows.forEach(function (row, ri) {
+        var tr = document.createElement('tr');
+        row.forEach(function (cell, ci) {
+          var td = document.createElement('td');
+          td.contentEditable = 'true';
+          td.spellcheck = false;
+          td.dataset.row = ri;
+          td.dataset.col = ci;
+          td.dataset.sectionIndex = sectionIndex;
+          td.textContent = cell;
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+    }
+    table.appendChild(tbody);
+    return table;
+  }
+
+  function renderAside(listId, items) {
+    var list = document.getElementById(listId);
+    list.innerHTML = '';
+    if (!items || items.length === 0) {
+      var empty = document.createElement('li');
+      empty.className = 'aside-item-empty';
+      empty.textContent = '(none)';
+      list.appendChild(empty);
+      return;
+    }
+    items.forEach(function (text, i) {
+      var li = document.createElement('li');
+      li.className = 'aside-item';
+      li.contentEditable = 'true';
+      li.spellcheck = false;
+      li.dataset.listId = listId;
+      li.dataset.index = i;
+      li.textContent = text;
+      list.appendChild(li);
+    });
+  }
+
+  function renderAll() {
+    renderHeader();
+
+    var container = document.getElementById('sections-container');
+    container.innerHTML = '';
+    if (!data.sections || data.sections.length === 0) {
+      var empty = document.createElement('div');
+      empty.id = 'empty-state';
+      empty.textContent = 'No sections. Reload from JSON to populate.';
+      container.appendChild(empty);
+    } else {
+      data.sections.forEach(function (sec, i) {
+        container.appendChild(renderSection(sec, i));
+      });
+    }
+
+    renderAside('scope-out-list', data.scope_out);
+  }
+
+  // ---- input → data sync (debounced) ----
+
+  function scheduleSync() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(syncDomToData, 200);
+  }
+
+  function syncDomToData() {
+    // header fields
+    var topicEl = document.getElementById('header-topic');
+    if (topicEl) data.topic = topicEl.textContent.trim();
+
+    var dateEl = document.querySelector('[data-field="date"]');
+    if (dateEl) data.date = dateEl.textContent.trim();
+
+    var repoEl = document.querySelector('[data-field="repo"]');
+    if (repoEl) data.repo = repoEl.textContent.trim();
+
+    var statusEl = document.getElementById('status-badge');
+    if (statusEl) {
+      data.status = statusEl.textContent.trim();
+      statusEl.dataset.status = data.status;
+    }
+
+    // sections
+    var sectionEls = document.querySelectorAll('section.spec-section');
+    sectionEls.forEach(function (secEl) {
+      var idx = parseInt(secEl.dataset.index, 10);
+      if (isNaN(idx) || !data.sections[idx]) return;
+      var sec = data.sections[idx];
+
+      var titleEl = secEl.querySelector('[data-role="section-title"]');
+      if (titleEl) sec.title = titleEl.textContent.trim();
+
+      var body = secEl.querySelector('[data-role="section-body"]');
+      if (!body) return;
+
+      if (sec.type === 'table') {
+        // table cells handled via delegated listener (see below)
+      } else if (sec.type === 'html-fragment') {
+        sec.content = sanitizeFragment(body.innerHTML);
+      } else {
+        sec.content = body.textContent;
+      }
+    });
+
+    // aside lists
+    syncAsideList('scope-out-list', 'scope_out');
+  }
+
+  function syncAsideList(listId, field) {
+    var items = document.querySelectorAll('#' + listId + ' .aside-item');
+    data[field] = Array.from(items).map(function (li) { return li.textContent; });
+  }
+
+  // ---- event delegation ----
+
+  document.addEventListener('input', function (e) {
+    var target = e.target;
+
+    // table cell special case — sync immediately (no debounce needed for single cell)
+    if (target.tagName === 'TD' && target.dataset.row !== undefined) {
+      var si = parseInt(target.dataset.sectionIndex, 10);
+      var ri = parseInt(target.dataset.row, 10);
+      var ci = parseInt(target.dataset.col, 10);
+      if (!isNaN(si) && data.sections[si] && data.sections[si].rows) {
+        data.sections[si].rows[ri][ci] = target.textContent;
+      }
+      return;
+    }
+
+    scheduleSync();
+  });
+
+  // ---- clipboard buttons ----
+
+  document.getElementById('btn-copy-data').addEventListener('click', function () {
+    var json = safeJsonStringify(data);
+    navigator.clipboard.writeText(json).then(function () {
+      toast('Copied spec data to clipboard');
+    }).catch(function () {
+      // Fallback for file:// where clipboard may be restricted
+      var ta = document.createElement('textarea');
+      ta.value = json;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      toast('Copied spec data (fallback)');
+    });
+  });
+
+  document.getElementById('btn-copy-md').addEventListener('click', function () {
+    var lines = [];
+    lines.push('# ' + (data.topic || '(no topic)'));
+    lines.push('');
+    if (data.date) lines.push('date: ' + data.date);
+    if (data.status) lines.push('status: ' + data.status);
+    lines.push('');
+
+    if (data.sections) {
+      data.sections.forEach(function (sec) {
+        lines.push('## ' + (sec.title || '(untitled)'));
+        lines.push('');
+        if (sec.type === 'table') {
+          if (sec.columns && sec.columns.length) {
+            lines.push('| ' + sec.columns.join(' | ') + ' |');
+            lines.push('|' + sec.columns.map(function () { return '---|'; }).join(''));
+          }
+          if (sec.rows) {
+            sec.rows.forEach(function (row) {
+              lines.push('| ' + row.join(' | ') + ' |');
+            });
+          }
+        } else {
+          lines.push(sec.content || '');
+        }
+        lines.push('');
+      });
+    }
+
+    if (data.scope_out && data.scope_out.length) {
+      lines.push('## Scope Out');
+      lines.push('');
+      data.scope_out.forEach(function (s) { lines.push('- ' + s); });
+      lines.push('');
+    }
+
+    var md = lines.join('\n');
+    navigator.clipboard.writeText(md).then(function () {
+      toast('Copied Markdown summary to clipboard');
+    }).catch(function () {
+      var ta = document.createElement('textarea');
+      ta.value = md;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      toast('Copied Markdown (fallback)');
+    });
+  });
+
+  document.getElementById('btn-reload').addEventListener('click', function () {
+    loadFromScript();
+    toast('Reloaded from JSON');
+  });
+
+  // ---- initial load ----
+
+  function loadFromScript() {
+    var scriptEl = document.getElementById('spec-data');
+    var raw = scriptEl ? scriptEl.textContent : '{}';
+    try {
+      data = JSON.parse(raw);
+    } catch (err) {
+      data = { kind: 'spec', version: 1, topic: '', date: '', status: 'draft', repo: '', sections: [], scope_out: [] };
+      toast('ERROR: spec-data JSON invalid — ' + err.message);
+    }
+    renderAll();
+  }
+
+  loadFromScript();
+
+})();
+</script>
+
+</body>
+</html>
