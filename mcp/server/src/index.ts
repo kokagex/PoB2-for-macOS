@@ -107,7 +107,15 @@ server.tool(
   "build_info",
   "Structural summary of a PoB2 build: character (class/ascendancy/level), " +
     "equipped items per slot, skill socket groups with gems, allocated " +
-    "passives (keystones + notables), and config. Read this before giving " +
+    "passives (keystones + notables), and config. passives.jewelSockets lists " +
+    "each allocated jewel socket with the jewel in it, its radius, and the " +
+    "ALLOCATED notables inside that radius (notableCount + names; totalInRadius " +
+    "is the geometric upper bound) -- the lever for radius jewels like Time-Lost " +
+    "Sapphire, whose 'Notable Passive Skills in Radius also grant ...' mods fire " +
+    "per allocated notable, so notableCount is the multiplier (0 = converts " +
+    "nothing). It is allocation-filtered, so the SAME jewels over a denser tree " +
+    "show a higher count -- that is how the tree's contribution becomes visible. " +
+    "Read this before giving " +
     "build advice. Optional patch is applied first, so you can also inspect " +
     "what a variant would look like.",
   { ...buildSource, patch: patchSchema },

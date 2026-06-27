@@ -51,6 +51,40 @@ On a pure-player build (golden_build.xml, Orb of Storms) every Minion* key is 0
 and EffectiveDPS collapses to the player CombinedDPS — verified by the
 "leaves a pure-player build unchanged" test, so the change is non-breaking.
 
+## build_info observation surfaces (added 2026-06-27)
+build_info (calc.lua readInfo) gained two surfaces so advice can see the levers
+that piecewise item lists hide — added after a top-tier minion build's ~8.5x DPS
+edge was traced to its passive tree and a confident "tree isn't the lever"
+conclusion turned out wrong (the tree IS decisive: reverting only the tree on the
+real build dropped minion DPS −26.5%, crit 61→46).
+
+- **passives.jewelSockets**: per allocated jewel socket, `{ socket, slot, jewel,
+  base, radius, notableCount, totalAllocInRadius, totalInRadius, notables[] }`.
+  radius jewels (Time-Lost Sapphire) grant "Notable Passive Skills in Radius also
+  grant ..." to every ALLOCATED notable in radius, so notableCount (allocated-only)
+  is the multiplier. The engine's `spec.nodes[socketId].nodesInRadius[item
+  .jewelRadiusIndex]` (populated at build load; no re-parse) is GEOMETRIC — every
+  node physically in range — so it is filtered by `spec.allocNodes`. This filter
+  is load-bearing: without it two trees with the same socket geometry report the
+  same count and the tree's role is invisible (the bug that made "tree isn't the
+  lever" look true). totalInRadius = geometric upper bound; totalAllocInRadius =
+  allocated nodes in radius. Non-radius jewels have no `radius` field, count 0.
+- **items[].mods**: each item's resolved mod lines `{ kind, text }` (kind =
+  enchant/implicit/explicit/rune). On a normal load `modLine.line` already carries
+  the rolled value, so the text is the reliable signal (the stored ModRange scalar
+  is uniformly 0.5 metadata on game-copied items and is NOT surfaced).
+
+- fixture: mcp/server/test/fixtures/golden_toptier_build.xml
+  (the user's "sample" ideal — Disciple of Varashta / Navira summon, ~1.3M minion
+  DPS, two Time-Lost Sapphires). Tested in test/build-info.test.ts:
+  - the two Time-Lost sockets show radius "Very Large" and allocated notableCount
+    21984 → 12, 61419 → 4 (re-baseline on an upstream tree-data sync, like the DPS
+    goldens), each strictly below its geometric totalInRadius (filter is live).
+  - swapping in the current tree (same jewels) drops these to 3 + 2 = 5 allocated
+    notables — the surfaced form of the −26.5% / crit 61→46 tree lever.
+  - the current build's (golden_minion_build.xml) plain Sapphires show no radius,
+    notableCount 0 — the differential that explains the crit gap, made legible.
+
 ---
 
 ## History: 2026-06-01 golden (Lich_FotV) — INVALIDATED
