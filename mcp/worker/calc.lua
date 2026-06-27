@@ -7,6 +7,28 @@ local TOPLINE_KEYS = {
   "BleedDPS", "IgniteDPS", "PoisonDPS", "CritChance", "Speed",
 }
 
+-- Minion/summon builds put ~0 in the player keys above and the real DPS in the
+-- minion sub-table (build.calcsTab.mainOutput.Minion), the same object PoB saves
+-- as <MinionStat> (Build.lua:1997: mainOutput.Minion[stat]). Surface it under a
+-- "Minion" prefix so a single calc serves both player and minion builds.
+local MINION_TOPLINE_KEYS = {
+  "CombinedDPS", "TotalDPS", "AverageDamage", "Speed",
+  "CritChance", "CritMultiplier",
+}
+
+-- Append minion keys (prefixed) + an EffectiveDPS that combines player and
+-- minion CombinedDPS exactly as PoB does (CalcsTab.lua:693), so the headline DPS
+-- is non-zero for both build types. Missing keys default to 0 (never nil), and
+-- on a pure-player build (out.Minion nil) every Minion* key is 0 and
+-- EffectiveDPS == CombinedDPS, leaving player builds unchanged.
+local function appendMinion(t, out)
+  local m = out.Minion
+  for _, k in ipairs(MINION_TOPLINE_KEYS) do
+    t["Minion" .. k] = (m and m[k]) or 0
+  end
+  t.EffectiveDPS = (out.CombinedDPS or 0) + (m and m.CombinedDPS or 0)
+end
+
 -- Pull the v1 output keys; missing keys default to 0 (never nil).
 function M.readTopline(build)
   local out = (build.calcsTab and build.calcsTab.mainOutput) or {}
@@ -14,6 +36,7 @@ function M.readTopline(build)
   for _, k in ipairs(TOPLINE_KEYS) do
     t[k] = out[k] or 0
   end
+  appendMinion(t, out)
   return t
 end
 
@@ -40,12 +63,30 @@ local BREAKDOWN_KEYS = {
   "BlockChance", "SpellBlockChance", "BlockChanceMax", "SpellSuppressionChance",
 }
 
+-- Minion breakdown: the levers behind a minion build's DPS (crit, speed, hit,
+-- per-element hit averages, DoT) plus minion survivability. All verified present
+-- on a real mainOutput.Minion dump; absent keys default to 0. Emitted under a
+-- "Minion" prefix alongside the player keys so one breakdown explains both.
+local MINION_BREAKDOWN_KEYS = {
+  "CombinedDPS", "TotalDPS", "AverageDamage", "AverageHit", "Speed",
+  "CritChance", "CritMultiplier", "CritEffect", "HitChance", "AccuracyHitChance",
+  "PhysicalHitAverage", "FireHitAverage", "ColdHitAverage",
+  "LightningHitAverage", "ChaosHitAverage",
+  "WithBleedDPS", "WithIgniteDPS", "WithPoisonDPS", "TotalDotDPS",
+  "Life", "EnergyShield",
+}
+
 function M.readBreakdown(build)
   local out = (build.calcsTab and build.calcsTab.mainOutput) or {}
   local t = {}
   for _, k in ipairs(BREAKDOWN_KEYS) do
     t[k] = out[k] or 0
   end
+  local m = out.Minion
+  for _, k in ipairs(MINION_BREAKDOWN_KEYS) do
+    t["Minion" .. k] = (m and m[k]) or 0
+  end
+  t.EffectiveDPS = (out.CombinedDPS or 0) + (m and m.CombinedDPS or 0)
   return t
 end
 

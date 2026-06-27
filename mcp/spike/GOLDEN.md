@@ -36,6 +36,21 @@ within 1%, so it is left as-is.
 Unknown names must be a hard worker error ("not found in build" + gem list),
 never silently ignored — that silent ignore was the original calc bug.
 
+## Minion-DPS golden (added 2026-06-27)
+Minion/summon builds put ~0 in the player DPS keys and the real damage in the
+minion sub-table (mainOutput.Minion), which PoB saves as <MinionStat>. The
+worker now surfaces it via Minion* keys + EffectiveDPS (= player CombinedDPS +
+minion CombinedDPS, mirroring CalcsTab.lua:693).
+
+- fixture: mcp/server/test/fixtures/golden_minion_build.xml
+  (Chrono_RotA snapshot, saved main group = Navira / Water Djinn summon)
+- MinionCombinedDPS: 151802.31538745  <- minion-build regression oracle
+- player CombinedDPS == 0, EffectiveDPS == MinionCombinedDPS for this build
+
+On a pure-player build (golden_build.xml, Orb of Storms) every Minion* key is 0
+and EffectiveDPS collapses to the player CombinedDPS — verified by the
+"leaves a pure-player build unchanged" test, so the change is non-breaking.
+
 ---
 
 ## History: 2026-06-01 golden (Lich_FotV) — INVALIDATED

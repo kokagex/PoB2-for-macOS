@@ -14,6 +14,16 @@ const skillNameBaseline = parseFloat(
 );
 const buildXml = readFileSync(buildPath, "utf8");
 
+// Minion-build fixture (Chrono_RotA snapshot whose saved main group is the
+// Navira / Water Djinn summon): player DPS is ~0 and the real damage lives in
+// the minion sub-table. Snapshotted into fixtures/ for the same reason as the
+// player golden — a live PoB build can be saved over and invalidate the number.
+const minionBuildXml = readFileSync(
+  `${repoRoot}mcp/server/test/fixtures/golden_minion_build.xml`,
+  "utf8",
+);
+const MINION_COMBINED_DPS = 151802.31538745; // headless-measured baseline (Navira)
+
 const worker = new Worker(repoRoot);
 
 afterAll(() => worker.dispose());
@@ -27,6 +37,42 @@ describe("Worker.calc", () => {
       expect(Math.abs(out.TotalDPS - baseline) / baseline).toBeLessThan(0.01);
     },
     60_000, // first call boots the engine (slow)
+  );
+});
+
+describe("minion DPS surfacing", () => {
+  // The fix: the worker used to read only player mainOutput, so a minion build
+  // (player CombinedDPS ~0) reported ~0 DPS. It must now surface the minion
+  // sub-table. EffectiveDPS = player CombinedDPS + minion CombinedDPS.
+  it(
+    "surfaces the minion's DPS for a minion build (player DPS is ~0)",
+    async () => {
+      const out = await worker.calc({ buildXml: minionBuildXml });
+      // player-side hit DPS is ~0 on this summon build
+      expect(out.CombinedDPS).toBe(0);
+      // the real damage shows up under the Minion* keys
+      expect(out.MinionCombinedDPS).toBeGreaterThan(0);
+      expect(
+        Math.abs(out.MinionCombinedDPS - MINION_COMBINED_DPS) /
+          MINION_COMBINED_DPS,
+      ).toBeLessThan(0.01);
+      // EffectiveDPS folds player + minion, so it leads with the minion number
+      expect(out.EffectiveDPS).toBeCloseTo(out.MinionCombinedDPS, 6);
+      expect(out.MinionCritMultiplier).toBeGreaterThan(0);
+    },
+    60_000,
+  );
+
+  // Non-breaking guard for player builds: with no minion, every Minion* key is
+  // 0 and EffectiveDPS collapses to the player CombinedDPS (no double counting).
+  it(
+    "leaves a pure-player build unchanged (EffectiveDPS == CombinedDPS, no minion)",
+    async () => {
+      const out = await worker.calc({ buildXml });
+      expect(out.MinionCombinedDPS).toBe(0);
+      expect(out.EffectiveDPS).toBeCloseTo(out.CombinedDPS, 6);
+    },
+    60_000,
   );
 });
 

@@ -27,7 +27,12 @@ server.tool(
     "engine (headless). Provide buildPath (absolute) or buildXml. Optional patch " +
     "applies before calc: { config, enemyLevel, treeURL, skillName }. skillName " +
     "selects which skill the DPS is computed for (gem name, e.g. 'Eye of Winter'); " +
-    "without it the build's saved main skill is used.",
+    "without it the build's saved main skill is used. For minion/summon builds the " +
+    "player DPS keys (CombinedDPS/TotalDPS) are ~0 — read EffectiveDPS (player + " +
+    "minion combined) or the Minion* keys (MinionCombinedDPS, MinionAverageDamage, " +
+    "MinionCritChance, ...) for the real damage. Select the SUMMON gem as the main " +
+    "skill, not the minion's cast skill (a bare cast gem computes a contextless " +
+    "player cast with no minion).",
   { ...buildSource, patch: patchSchema },
   async ({ buildPath, buildXml, patch }) => {
     const xml = resolveXml(buildPath, buildXml);
@@ -40,7 +45,10 @@ server.tool(
   "Detailed DPS breakdown (crit, speed, hit chance, per-damage-type hit averages, " +
     "DoT, costs) for a PoB2 build — use to explain why a number is what it is and " +
     "where the levers are. Provide buildPath (absolute) or buildXml; optional patch " +
-    "{ config, enemyLevel, treeURL, skillName } — skillName picks the skill to analyse.",
+    "{ config, enemyLevel, treeURL, skillName } — skillName picks the skill to analyse. " +
+    "Minion/summon builds: the Minion* keys (MinionCombinedDPS, MinionCritChance, " +
+    "MinionCritMultiplier, MinionColdHitAverage, ...) carry the real levers since the " +
+    "player keys are ~0; EffectiveDPS combines player + minion CombinedDPS.",
   { ...buildSource, patch: patchSchema },
   async ({ buildPath, buildXml, patch }) => {
     const xml = resolveXml(buildPath, buildXml);
@@ -56,7 +64,8 @@ server.tool(
     "enemyLevel, treeURL, skillName, items, gems, allocNodes, deallocNodes }. " +
     "metrics picks the report: 'offence' (default, DPS top-line), 'defence' " +
     "(EHP-first: EHP, life/ES, resists, max hits, block), 'full' (everything). " +
-    "Returns each metric as { a, b, delta, pct }.",
+    "Returns each metric as { a, b, delta, pct }. For minion builds read the " +
+    "EffectiveDPS / Minion* rows (player CombinedDPS is ~0).",
   {
     ...compareInputShape,
     metrics: z.enum(["offence", "defence", "full"]).optional(),
