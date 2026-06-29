@@ -1019,6 +1019,7 @@ return {
 			sibilant = "シビラント (術者)",
 			skittering = "スキタリング (速度)",
 			adaptive = "アダプティブ (能力値)",
+			necrotic = "ネクロティック (ミニオン)",
 		},
 		crafting = {
 			affix = "Affix",

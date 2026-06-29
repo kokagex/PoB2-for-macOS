@@ -466,6 +466,7 @@ return {
 			sibilant = "Sibilant (Caster)",
 			skittering = "Skittering (Speed)",
 			adaptive = "Adaptive (Attribute)",
+			necrotic = "Necrotic (Minion)",
 		},
 		crafting = {
 			affix = "Affix",

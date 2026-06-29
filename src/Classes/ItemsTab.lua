@@ -14,6 +14,7 @@ local m_min = math.min
 local m_ceil = math.ceil
 local m_floor = math.floor
 local m_modf = math.modf
+local buySimilar = LoadModule("Classes/CompareBuySimilar")
 
 local gemTooltip = LoadModule("Classes/GemTooltip")
 local rarityDropList = {
@@ -43,6 +44,7 @@ local catalystQualityFormat = {
 	"^x7F7F7FQuality (Caster Modifiers): "..colorCodes.MAGIC.."+%d%% (augmented)",
 	"^x7F7F7FQuality (Speed Modifiers): "..colorCodes.MAGIC.."+%d%% (augmented)",
 	"^x7F7F7FQuality (Attribute Modifiers): "..colorCodes.MAGIC.."+%d%% (augmented)",
+	"^x7F7F7FQuality (Minion Modifiers): "..colorCodes.MAGIC.."+%d%% (augmented)",
 }
 
 local flavourLookup = {}
@@ -399,6 +401,15 @@ local ItemsTabClass = newClass("ItemsTab", "UndoHandler", "ControlHost", "Contro
 		self:SetDisplayItem()
 	end)
 
+	self.controls.displayItemBuySimilar = new("ButtonControl",
+		{ "LEFT", self.controls.removeDisplayItem, "RIGHT", true },
+		{ 8, 0, 100, 20 }, "Buy similar", function()
+			local itemSlot = self:GetComparisonSlotNameForItem(self.displayItem)
+			buySimilar.openPopup(self.displayItem, itemSlot, self.build)
+		end)
+	self.controls.displayItemBuySimilar.shown = function()
+		return self.displayItem
+	end
 	-- Section: Variant(s)
 
 	self.controls.displayItemSectionVariant = new("Control", {"TOPLEFT",self.controls.addDisplayItem,"BOTTOMLEFT"}, {0, 8, 0, function()
@@ -561,6 +572,7 @@ local ItemsTabClass = newClass("ItemsTab", "UndoHandler", "ControlHost", "Contro
 		i18n.t("items.catalyst.sibilant"),
 		i18n.t("items.catalyst.skittering"),
 		i18n.t("items.catalyst.adaptive"),
+		i18n.t("items.catalyst.necrotic"),
 		},
 		function(index, value)
 			self.displayItem.catalyst = index - 1
@@ -2252,6 +2264,9 @@ function ItemsTabClass:IsItemValidForSlot(item, slotName, itemSet, flagState)
 		local node = self.build.spec.tree.nodes[tonumber(slotId)] or self.build.spec.nodes[tonumber(slotId)]
 		if not node or item.type ~= "Jewel" then
 			return false
+		elseif node.sinister and (item.rarity == "UNIQUE" or item.rarity == "RELIC") then
+			-- Sinister Jewel Sockets can only accept non-unique jewels
+			return false
 		elseif node.containJewelSocket  then
 			if item.rarity == "UNIQUE" or item.rarity == "RELIC" or (item.base and item.base.subType ~= nil) then
 				-- Lich socket can only accept basic non-unique jewels
@@ -3677,12 +3692,18 @@ function ItemsTabClass:AddItemTooltip(tooltip, item, slot, dbMode)
 						tooltip:AddLine(fontSizeBig, formattedModLine, "FONTIN SC", bg)
 					end
 
-					-- Show mods from granted Notables
+					-- Show mods from granted passives
 					if modLine.modList[1] and modLine.modList[1].name == "GrantedPassive" then
-						local node = self.build.spec.tree.notableMap[modLine.modList[1].value]
-						if node then
-							for _, stat in ipairs(node.sd) do
-								tooltip:AddLine(fontSizeBig, "^x7F7F7F"..stat, "FONTIN SC")
+						for _, node in ipairs(self.build.spec:ResolveGrantedPassiveNodes(modLine.modList[1].value)) do
+							local displayed = false
+							if node.sd then
+								for _, stat in ipairs(node.sd) do
+									tooltip:AddLine(fontSizeBig, "^x7F7F7F"..stat, "FONTIN SC")
+									displayed = true
+								end
+							end
+							if not displayed and node.isJewelSocket then
+								tooltip:AddLine(fontSizeBig, "^x7F7F7F"..(node.name or "Jewel Socket"), "FONTIN SC")
 							end
 						end
 						-- Add separator only for anoints
