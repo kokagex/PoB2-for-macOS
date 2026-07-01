@@ -6,6 +6,7 @@
 
 
 local dkjson = require "dkjson"
+local itemSlotHelper = LoadModule("Modules/ItemSlotHelper")
 
 local get_time = os.time
 local t_insert = table.insert
@@ -905,6 +906,21 @@ function TradeQueryClass:PriceItemRowDisplay(row_idx, top_pane_alignment_ref, ro
 	controls["bestButton"..row_idx].shown = function() return not self.resultTbl[row_idx] end
 	controls["bestButton"..row_idx].enabled = function() return self.pbLeague end
 	controls["bestButton"..row_idx].tooltipText = "Creates a weighted search to find the highest Stat Value items for this slot."
+	controls["bestButton"..row_idx].onHover = function()
+		local nodeId = slotTbl.nodeId
+		if not nodeId then return end
+		local button = controls["bestButton"..row_idx]
+		local x, y = button:GetPos()
+		local buttonWidth = button:GetSize()
+		local boxSize = 250
+		-- anchor the preview above the button
+		local viewerY = y - boxSize - 4
+		local viewerX = x - boxSize / 2 + buttonWidth / 2
+		-- suppressTooltip: a preview thumbnail must not show the passive tree's node tooltips
+		self.itemsTab.socketViewer.suppressTooltip = true
+		itemSlotHelper.DrawViewer(self.itemsTab, nodeId, viewerX, viewerY, boxSize, boxSize)
+		self.itemsTab.socketViewer.suppressTooltip = false
+	end
 	local pbURL
 	controls["uri"..row_idx] = new("EditControl", { "TOPLEFT", controls["bestButton"..row_idx], "TOPRIGHT"}, {8, 0, 514, row_height}, nil, nil, "^%C\t\n", nil, function(buf)
 		local subpath = buf:match(self.hostName .. "trade2/search/(.+)$") or ""
