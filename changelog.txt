@@ -1,3 +1,20 @@
+VERSION[0.16.0][2026/07/01]
+
+--- 上流でドロップしていた UI PR 4 件を fork に統合 + socket viewer 白飛び修正 / Integrate 4 previously-dropped upstream UI PRs + fix socket-viewer white-wash (macOS) ---
+* 方針転換: v0.15.0 で「fork 固有 UI 維持のため」ドロップした上流 UI PR 4 件を、fork の Metal 制約を保ったまま統合(以後は上流を削らず取り込む方針へ)
+* socket viewer (#2194): アイテム/ジュエルのソケット位置プレビューを上流 DrawViewer で統合(重複していた DrawJewelThumbnail を置換)+ Trade の bestButton にも socket 位置プレビューを追加
+* Trade (#2157): TradeQuery を上流版そのまま(wholesale)取り込み、POESESSID の fork divergence を解消
+* gem tooltip (#2333 / #2184): Gemling additional-quality 表示を統合 + gem dropdown の sort/tooltip 高速化 + tooltip maxWidth 修正
+* 白飛び修正(macOS): socket viewer が Metal 上で白く飛ぶバグを修正 — SetViewport 後に不透明黒 backdrop を敷き、タイル背景が覆いきれない領域で白 fill が透過するのを解消。同機構の TimelessJewelSocketControl / CalcBreakdown にも再発防止を適用
+* ※データ/Lua のみの変更。zip の再ダウンロード(再インストール)が必要です
+
+* Direction change: integrated the 4 upstream UI PRs that v0.15.0 had dropped "to keep fork-specific UI", now folded in while preserving the fork's Metal constraints (going forward we take upstream wholesale instead of stripping it).
+* Socket viewer (#2194): integrated the item/jewel socket-position preview via the upstream DrawViewer (replacing the duplicated DrawJewelThumbnail); also added a socket-position preview to the Trade bestButton.
+* Trade (#2157): took TradeQuery wholesale from upstream, resolving the fork's POESESSID divergence.
+* Gem tooltip (#2333 / #2184): integrated the Gemling additional-quality display, sped up gem dropdown sort/tooltip, and fixed the tooltip maxWidth.
+* White-wash fix (macOS): fixed the socket viewer rendering white on Metal — paint an opaque black backdrop after SetViewport so the white fill no longer shows through where the tiled tree background doesn't reach; applied the same guard to TimelessJewelSocketControl / CalcBreakdown as recurrence prevention.
+* Note: data / Lua-only changes. A fresh zip download (reinstall) is required.
+
 VERSION[0.15.0][2026/07/01]
 
 --- 上流 PoE2 0.5系 データ同期 (dev v0.22.0) — スペクター/仲間データ拡充 + Trade 比較タブ + Time-Lost 修正 / Upstream PoE2 0.5.x sync (dev v0.22.0) — spectre/companion data, trade compare tab, Time-Lost fixes ---
