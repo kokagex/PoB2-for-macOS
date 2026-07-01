@@ -7,6 +7,7 @@ local pairs = pairs
 local t_insert = table.insert
 local m_min = math.min
 
+local itemSlotHelper = LoadModule("Modules/ItemSlotHelper")
 local ItemSlotClass = newClass("ItemSlotControl", "DropDownControl", function(self, anchor, x, y, itemsTab, slotName, slotLabel, nodeId)
 	self.DropDownControl(anchor, {x, y, 310, 20}, { }, function(index, value)
 		if self.items[index] ~= self.selItemId then
@@ -161,53 +162,29 @@ function ItemSlotClass:Draw(viewPort)
 	self.DropDownControl:Draw(viewPort)
 	self:DrawControls(viewPort)
 	if not main.popups[1] and self.nodeId and (self.dropped or (self:IsMouseOver() and (self.otherDragSource or not self.itemsTab.selControl))) then
-		-- Defer thumbnail drawing so it renders on top of other controls
-		-- (Metal backend: SetDrawLayer is NO-OP, so draw order = z-order)
-		if main.deferTooltips and main.tooltipQueue then
-			local slot = self
-			local _viewPort = viewPort
-			t_insert(main.tooltipQueue, function()
-				slot:DrawJewelThumbnail(_viewPort)
-			end)
+		local viewerWidth = 308
+		local viewerHeight = 280
+		local viewerY
+		if self.DropDownControl.dropUp and self.DropDownControl.dropped then
+			viewerY = y + 20
 		else
-			self:DrawJewelThumbnail(viewPort)
+			viewerY = m_min(y - viewerHeight - 4, viewPort.y + viewPort.height - viewerHeight)
+		end
+		-- Defer so the socket viewer renders on top of other controls
+		-- (Metal backend: SetDrawLayer is NO-OP, so draw order = z-order)
+		local itemsTab, nodeId = self.itemsTab, self.nodeId
+		local drawViewer = function()
+			-- suppressTooltip: a preview thumbnail must not show the passive tree's node tooltips
+			itemsTab.socketViewer.suppressTooltip = true
+			itemSlotHelper.DrawViewer(itemsTab, nodeId, x, viewerY, viewerWidth, viewerHeight)
+			itemsTab.socketViewer.suppressTooltip = false
+		end
+		if main.deferTooltips and main.tooltipQueue then
+			t_insert(main.tooltipQueue, drawViewer)
+		else
+			drawViewer()
 		end
 	end
-end
-
-function ItemSlotClass:DrawJewelThumbnail(viewPort)
-	local x, y = self:GetPos()
-	SetDrawLayer(nil, 15)
-	local viewerY
-	if self.DropDownControl.dropUp and self.DropDownControl.dropped then
-		viewerY = y + 20
-	else
-		viewerY = m_min(y - 300 - 5, viewPort.y + viewPort.height - 304)
-	end
-	local viewerX = x
-	SetDrawColor(0, 0, 0)
-	DrawImage(nil, viewerX, viewerY, 304, 304)
-	local viewer = self.itemsTab.socketViewer
-	local node = self.itemsTab.build.spec.nodes[self.nodeId]
-	viewer.zoom = 20
-	local scale = self.itemsTab.build.spec.tree.size / 6000
-	viewer.zoomX = -node.x / scale
-	viewer.zoomY = -node.y / scale
-	SetViewport(viewerX + 2, viewerY + 2, 300, 300)
-	viewer.suppressTooltip = true
-	viewer:Draw(self.itemsTab.build, { x = 0, y = 0, width = 300, height = 300 }, { })
-	viewer.suppressTooltip = false
-	SetDrawLayer(nil, 30)
-	SetDrawColor(1, 1, 1, 0.2)
-	DrawImage(nil, 149, 0, 2, 300)
-	DrawImage(nil, 0, 149, 300, 2)
-	SetViewport()
-	SetDrawColor(1, 1, 1)
-	DrawImage(nil, viewerX, viewerY, 304, 2)
-	DrawImage(nil, viewerX, viewerY + 302, 304, 2)
-	DrawImage(nil, viewerX, viewerY + 2, 2, 300)
-	DrawImage(nil, viewerX + 302, viewerY + 2, 2, 300)
-	SetDrawLayer(nil, 0)
 end
 
 function ItemSlotClass:OnKeyDown(key)
