@@ -17,7 +17,7 @@ export type Topline = {
   Speed: number;
   // Minion/summon builds: the player keys above are ~0 and the real DPS lives
   // here (mirrors PoB's <MinionStat>). EffectiveDPS = player CombinedDPS +
-  // minion CombinedDPS (CalcsTab.lua:693) — the headline number for either
+  // minion CombinedDPS (Classes/CalcsTab.lua:700-701) — the headline number for either
   // build type. On a pure-player build every Minion* key is 0 and
   // EffectiveDPS == CombinedDPS.
   EffectiveDPS: number;

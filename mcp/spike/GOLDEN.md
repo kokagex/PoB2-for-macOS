@@ -109,3 +109,14 @@ The file at `~/Library/Application Support/Path of Building/Builds/Lich_FotV.xml
 was overwritten in the GUI with the Chronomancer build sometime before
 2026-06-06 18:58 (identical bytes to Chrono_RotA.xml); the original Lich build
 XML is not recoverable from disk.
+
+## Top-tier minion golden (added 2026-07-02)
+Third topline oracle, added after the upstream dev v0.22.0 sync (e019ae536) to
+widen drift detection beyond the two 2026-06 goldens: a fully-optimised minion
+build exercises Time-Lost jewel conversion + minion crit scaling, the paths a
+data sync is most likely to move.
+
+- fixture: mcp/server/test/fixtures/golden_toptier_build.xml
+  (Disciple of Varashta / Navira summon, two Time-Lost Sapphires)
+- toptier EffectiveDPS: 1486244.0161953  <- headless-measured 2026-07-02
+  (pre-sync session measurement was 1,487,814 — 0.1% data-sync shift, re-based)

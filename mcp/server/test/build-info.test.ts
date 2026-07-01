@@ -40,6 +40,7 @@ type ItemInfo = {
 };
 type BuildInfo = {
   items: ItemInfo[];
+  spectres: string[];
   passives: { jewelSockets: JewelSocket[] };
 };
 
@@ -102,6 +103,24 @@ describe("build_info: jewel-socket radius surface", () => {
         expect(s.radius).toBeUndefined();
         expect(s.notableCount).toBe(0);
       }
+    },
+    60_000,
+  );
+});
+
+describe("build_info: spectres surface (upstream v0.22.0)", () => {
+  // Upstream v0.22.0 added spectre support; the chosen spectres live in
+  // build.spectreList and are surfaced so advice on a spectre build can see
+  // which spectres are in play. Neither golden fixture uses spectres, so the
+  // guard here is shape-only: the key exists and is an empty list.
+  it(
+    "surfaces an empty spectre list on a non-spectre build",
+    async () => {
+      const info = (await worker.info({
+        buildXml: toptierXml,
+      })) as unknown as BuildInfo;
+      expect(Array.isArray(info.spectres)).toBe(true);
+      expect(info.spectres.length).toBe(0);
     },
     60_000,
   );

@@ -24,6 +24,17 @@ const minionBuildXml = readFileSync(
 );
 const MINION_COMBINED_DPS = 151802.31538745; // headless-measured baseline (Navira)
 
+// Top-tier minion fixture (Varashta/Navira, two Time-Lost Sapphires): third
+// oracle covering jewel conversion + minion crit, the paths a data sync moves
+// first. The golden value lives in GOLDEN.md next to the other baselines.
+const toptierBuildXml = readFileSync(
+  `${repoRoot}mcp/server/test/fixtures/golden_toptier_build.xml`,
+  "utf8",
+);
+const TOPTIER_EFFECTIVE_DPS = parseFloat(
+  /toptier EffectiveDPS:\s*([\d.]+)/.exec(golden)![1],
+);
+
 const worker = new Worker(repoRoot);
 
 afterAll(() => worker.dispose());
@@ -71,6 +82,21 @@ describe("minion DPS surfacing", () => {
       const out = await worker.calc({ buildXml });
       expect(out.MinionCombinedDPS).toBe(0);
       expect(out.EffectiveDPS).toBeCloseTo(out.CombinedDPS, 6);
+    },
+    60_000,
+  );
+});
+
+describe("toptier minion golden", () => {
+  it(
+    "reproduces the top-tier build's EffectiveDPS within 1%",
+    async () => {
+      const out = await worker.calc({ buildXml: toptierBuildXml });
+      expect(out.EffectiveDPS).toBeGreaterThan(0);
+      expect(
+        Math.abs(out.EffectiveDPS - TOPTIER_EFFECTIVE_DPS) /
+          TOPTIER_EFFECTIVE_DPS,
+      ).toBeLessThan(0.01);
     },
     60_000,
   );

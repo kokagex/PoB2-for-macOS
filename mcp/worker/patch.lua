@@ -1,0 +1,288 @@
+-- Patch application for the headless calc worker: main-skill select, passive
+-- node edits, item equip, gem edits, config writes. Split out of calc.lua
+-- (2026-07-02); calc.lua re-exports applyPatch/resolveSkillGroup so callers
+-- keep requiring "calc". Assumes boot.lua has run (globals available).
+local M = {}
+
+-- Resolve a gem name to its socket-group index. mainOutput is computed for the
+-- group build.mainSocketGroup points at (Modules/CalcSetup.lua:1709-1712, mode
+-- "MAIN"), so selecting a skill by name means moving that pointer. Matching is
+-- case-insensitive on gem nameSpec; the FIRST matching group wins, and the
+-- group's main active skill stays whatever the build saved (a name that only
+-- appears as a support still selects its group). Unknown names are a hard
+-- error -- silently keeping the XML's group is exactly the bug this fixes.
+function M.resolveSkillGroup(build, skillName)
+  local want = skillName:lower()
+  local seen, names = {}, {}
+  for index, group in ipairs(build.skillsTab.socketGroupList) do
+    for _, gem in ipairs(group.gemList or {}) do
+      local name = gem.nameSpec
+      if name and name ~= "" then
+        if name:lower() == want then
+          return index
+        end
+        if not seen[name] then
+          seen[name] = true
+          names[#names + 1] = name
+        end
+      end
+    end
+  end
+  error(string.format("skillName %q not found in build; gems present: %s",
+    skillName, table.concat(names, ", ")))
+end
+
+-- Resolve a node reference (numeric id, or exact node name case-insensitive)
+-- to a node in the build's spec. Names are not unique on the tree (small nodes
+-- like "Cast Speed" repeat), so name matches are first narrowed to nodes in
+-- the state the operation wants (wantAlloc: dealloc targets allocated nodes,
+-- alloc targets unallocated ones); a still-ambiguous name is a hard error
+-- listing the candidate ids -- the caller retries with an id. Unknown refs are
+-- hard errors too, mirroring skillName: a silently ignored node is a
+-- plausible-looking wrong answer.
+local function resolveNode(spec, ref, wantAlloc)
+  if type(ref) == "number" then
+    local node = spec.nodes[ref]
+    if not node then
+      error(string.format("passive node id %d not found in tree", ref))
+    end
+    return node
+  end
+  local want = tostring(ref):lower()
+  local matches = {}
+  for _, node in pairs(spec.nodes) do
+    local name = node.dn or node.name
+    if name and name:lower() == want then
+      matches[#matches + 1] = node
+    end
+  end
+  if #matches > 1 then
+    local narrowed = {}
+    for _, node in ipairs(matches) do
+      if (not node.alloc) == (not wantAlloc) then
+        narrowed[#narrowed + 1] = node
+      end
+    end
+    if #narrowed > 0 then matches = narrowed end
+  end
+  if #matches == 0 then
+    error(string.format(
+      "passive node %q not found (exact name or numeric id; data_passives lists candidates)",
+      tostring(ref)))
+  end
+  if #matches > 1 then
+    local ids = {}
+    for _, node in ipairs(matches) do ids[#ids + 1] = tostring(node.id) end
+    error(string.format("passive node name %q is ambiguous; use an id: %s",
+      tostring(ref), table.concat(ids, ", ")))
+  end
+  return matches[1]
+end
+
+-- Equip items given as raw PoB item text (e.g. data_uniques detail `raw`).
+-- Each entry needs an explicit slot; fit is validated before equipping so a
+-- mismatched slot errors instead of silently calculating the old item.
+-- Tree jewel sockets are addressed as "Jewel <nodeId>" and must be allocated:
+-- an unallocated socket is excluded from the calc (ItemsTab activeSocketList),
+-- so equipping there would silently change nothing.
+local function applyItems(build, items)
+  local itemsTab = build.itemsTab
+  for _, entry in ipairs(items) do
+    assert(type(entry) == "table" and entry.raw and entry.slot,
+      "patch.items entries require { slot, raw }")
+    local slot = itemsTab.slots[entry.slot]
+    if not slot then
+      local names = {}
+      for name, s in pairs(itemsTab.slots) do
+        if not s.nodeId then names[#names + 1] = name end
+      end
+      table.sort(names)
+      error(string.format(
+        "slot %q not found; slots: %s (tree jewel sockets: \"Jewel <nodeId>\")",
+        tostring(entry.slot), table.concat(names, ", ")))
+    end
+    if slot.nodeId and not build.spec.allocNodes[slot.nodeId] then
+      error(string.format(
+        "jewel socket %q is not allocated; allocate node %d first (patch.allocNodes)",
+        entry.slot, slot.nodeId))
+    end
+    local item = new("Item", entry.raw)
+    if not item.base then
+      error(string.format("could not parse item text: unknown base %q (item %q)",
+        tostring(item.baseName), tostring(item.name)))
+    end
+    if not itemsTab:IsItemValidForSlot(item, entry.slot) then
+      error(string.format("item %q (%s) does not fit slot %q",
+        tostring(item.name), tostring(item.baseName), entry.slot))
+    end
+    itemsTab:AddItem(item, true)
+    slot:SetSelItemId(item.id)
+  end
+end
+
+-- Resolve a gems entry's target socket group: 1-based index, a gem name in
+-- the group (via resolveSkillGroup), or the build's main group when omitted.
+local function resolveGemGroup(build, ref)
+  if ref == nil then
+    local group = build.skillsTab.socketGroupList[build.mainSocketGroup]
+    if not group then
+      error("build has no main socket group; pass gems[].group explicitly")
+    end
+    return group
+  end
+  if type(ref) == "number" then
+    local group = build.skillsTab.socketGroupList[ref]
+    if not group then
+      error(string.format("socket group %d not found (build has %d groups)",
+        ref, #build.skillsTab.socketGroupList))
+    end
+    return group
+  end
+  return build.skillsTab.socketGroupList[M.resolveSkillGroup(build, tostring(ref))]
+end
+
+-- Edit gems inside socket groups. A name already in the target group is
+-- modified (level/quality/enabled) or removed; an absent name is added after
+-- exact-name validation against data.gems -- a typo must error, not insert a
+-- dead gem the calc silently ignores. ProcessSocketGroup re-resolves gemData
+-- afterwards so the edit is visible to the next BuildOutput.
+local function applyGems(build, gems)
+  local touched = {}
+  for _, entry in ipairs(gems) do
+    assert(type(entry) == "table" and entry.name, "patch.gems entries require { name }")
+    local group = resolveGemGroup(build, entry.group)
+    local want = entry.name:lower()
+    local found
+    for _, gemInstance in ipairs(group.gemList or {}) do
+      if gemInstance.nameSpec and gemInstance.nameSpec:lower() == want then
+        found = gemInstance
+        break
+      end
+    end
+    if entry.remove then
+      if not found then
+        error(string.format("gem %q is not in socket group; nothing to remove",
+          entry.name))
+      end
+      for i, gemInstance in ipairs(group.gemList) do
+        if gemInstance == found then
+          table.remove(group.gemList, i)
+          break
+        end
+      end
+    elseif found then
+      if entry.level then found.level = entry.level end
+      if entry.quality then found.quality = entry.quality end
+      if entry.enabled ~= nil then found.enabled = entry.enabled end
+    else
+      local gemData
+      for _, gem in pairs(data.gems) do
+        if gem.name and gem.name:lower() == want then
+          gemData = gem
+          break
+        end
+      end
+      if not gemData then
+        error(string.format(
+          "gem %q not found in gem database; data_gems lists valid names",
+          entry.name))
+      end
+      group.gemList[#group.gemList + 1] = {
+        nameSpec = gemData.name,
+        level = entry.level or gemData.naturalMaxLevel or 20,
+        quality = entry.quality or 0,
+        enabled = entry.enabled ~= false,
+        count = 1,
+        enableGlobal1 = true,
+        enableGlobal2 = true,
+      }
+    end
+    touched[group] = true
+  end
+  for group in pairs(touched) do
+    build.skillsTab:ProcessSocketGroup(group)
+  end
+end
+
+-- Deallocate then allocate passive nodes by ref. AllocNode pays the travel
+-- path to the node (matching a real respec). It returns silently when no path
+-- exists, so allocation is verified afterwards -- a no-op alloc must error,
+-- not produce an unchanged "comparison".
+local function applyNodes(build, deallocRefs, allocRefs)
+  local spec = build.spec
+  for _, ref in ipairs(deallocRefs or {}) do
+    local node = resolveNode(spec, ref, true)
+    if not node.alloc then
+      error(string.format("deallocNodes: node %q (%d) is not allocated",
+        tostring(node.dn or node.name), node.id))
+    end
+    spec:DeallocNode(node)
+  end
+  for _, ref in ipairs(allocRefs or {}) do
+    local node = resolveNode(spec, ref, false)
+    if node.alloc then
+      error(string.format("allocNodes: node %q (%d) is already allocated",
+        tostring(node.dn or node.name), node.id))
+    end
+    spec:AllocNode(node)
+    if not spec.allocNodes[node.id] then
+      error(string.format(
+        "allocNodes: no path to node %q (%d) from the current tree",
+        tostring(node.dn or node.name), node.id))
+    end
+  end
+end
+
+-- Patch surface: config input keys, enemyLevel, full passive-tree replace,
+-- incremental node alloc/dealloc, item equip from raw text, main-skill select
+-- by gem name.
+--   patch = { config = {k=v,...}, enemyLevel = N, treeURL = "https://...",
+--             allocNodes = { "Heavy Buffer", 12345 }, deallocNodes = {...},
+--             items = { { slot = "Body Armour", raw = "..." } },
+--             skillName = "Eye of Winter" }
+function M.applyPatch(build, patch)
+  if not patch then return end
+  if patch.treeURL and patch.treeURL ~= "" then
+    -- A tree URL imports a complete node set, so there is no pathing problem.
+    build.treeTab:LoadURL(patch.treeURL)
+  end
+  if patch.deallocNodes or patch.allocNodes then
+    -- After treeURL, so incremental edits apply to the replaced tree.
+    applyNodes(build, patch.deallocNodes, patch.allocNodes)
+  end
+  if patch.items then
+    applyItems(build, patch.items)
+  end
+  if patch.gems then
+    -- After items (slots exist), before skillName so a freshly added gem can
+    -- be selected as the main skill in the same patch.
+    applyGems(build, patch.gems)
+  end
+  if patch.skillName and patch.skillName ~= "" then
+    build.mainSocketGroup = M.resolveSkillGroup(build, patch.skillName)
+  end
+  -- configTab.input is aliased to the active config set's input
+  -- (Classes/ConfigTab.lua:1103), so writing here targets the right table. But
+  -- the compiled config modList is only rebuilt by BuildModList() --
+  -- buildFlag/BuildOutput alone leaves it stale, which silently no-ops the
+  -- config. So always rebuild after touching config.
+  local configTouched = false
+  if patch.config then
+    for k, v in pairs(patch.config) do
+      build.configTab.input[k] = v
+    end
+    configTouched = true
+  end
+  if patch.enemyLevel then
+    -- UpdateLevel() (called by BuildModList) reads input.enemyLevel
+    -- (Classes/ConfigTab.lua:930-931).
+    build.configTab.input.enemyLevel = patch.enemyLevel
+    configTouched = true
+  end
+  if configTouched then
+    build.configTab:BuildModList()
+  end
+  build.buildFlag = true
+end
+
+return M
