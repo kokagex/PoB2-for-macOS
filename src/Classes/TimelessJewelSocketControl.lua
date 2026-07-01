@@ -34,6 +34,11 @@ function TimelessJewelSocketClass:Draw(viewPort, noTooltip)
 		self.socketViewer.zoomX = -node.x / scale
 		self.socketViewer.zoomY = -node.y / scale
 		SetViewport(viewerX + 2, viewerY + 2, 300, 300)
+		-- Metal delta: SetDrawLayer is a NO-OP and the tree's tiled background does not fully
+		-- cover this viewport, so the white frame fill above shows through as a white wash.
+		-- Paint an opaque black backdrop first so any uncovered area matches the tree background.
+		SetDrawColor(0, 0, 0)
+		DrawImage(nil, 0, 0, 300, 300)
 		self.socketViewer:Draw(self.build, { x = 0, y = 0, width = 300, height = 300 }, { })
 		SetDrawLayer(nil, 30)
 		SetDrawColor(1, 1, 1, 0.2)

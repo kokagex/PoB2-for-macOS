@@ -25,6 +25,11 @@ function M.DrawViewer(itemsTab, nodeId, x, y, w, h)
 	viewer.zoomY = -node.y / scale
 	-- offset viewport to be inside borders
 	SetViewport(x + borderWidth, y + borderWidth, w, h)
+	-- Metal delta: SetDrawLayer is a NO-OP and the tree's tiled Background2 does not fully
+	-- cover this viewport, so the white frame fill above shows through as a white wash.
+	-- Paint an opaque black backdrop first so any uncovered area matches the tree background.
+	SetDrawColor(0, 0, 0)
+	DrawImage(nil, 0, 0, w, h)
 	-- draw the actual image
 	viewer:Draw(itemsTab.build, { x = 0, y = 0, width = w, height = h }, {})
 	SetDrawLayer(nil, 30)
