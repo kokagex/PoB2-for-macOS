@@ -1,3 +1,26 @@
+VERSION[0.15.0][2026/07/01]
+
+--- 上流 PoE2 0.5系 データ同期 (dev v0.22.0) — スペクター/仲間データ拡充 + Trade 比較タブ + Time-Lost 修正 / Upstream PoE2 0.5.x sync (dev v0.22.0) — spectre/companion data, trade compare tab, Time-Lost fixes ---
+* 上流 PathOfBuilding-PoE2 を 2 段階同期: v0.14.0 (0.5.4) → dev 1840fc132 (0.5系 15commit) → dev 7e90df14e (v0.22.0, 24commit)。データ層は blob-membership 検証で逐語一致を証明した 30 ファイルを wholesale 取込
+* スペクター/ミニオン: 新規スペクター（Spectres）データを大量追加 + 仲間（companion）サポート — minion 系スキル・データを拡充
+* Trade: 「Buy similar（類似品を購入）」機能とアイテム比較タブを上流から取込（CompareBuySimilar / CompareTab / TradeHelpers / 新規 ItemSlotHelper モジュール）
+* calc 修正: Time-Lost ジュエルの上流バグ修正 2 件を取込 — Adorned によるスケーリング（#2327）と、weapon set 間へのボーナス漏れ（#2331）
+* クラッシュ修正: minion ビルドで main skill を import する際のクラッシュを修正（上流 #2244 を fork body へ移植）
+* i18n: necrotic catalyst（ネクロティック カタリスト）を日本語化
+* 検証: golden DPS 回帰テスト全 51 件 green。Chrono_RotA_derived は per-hit / DPS / ES / crit 完全一致（delta 0）、全体 TotalDPS は 1% 許容内 → 再 baseline 不要
+* 非取込（fork 固有 UI 維持のためドロップ）: socket viewer リファクタ（#2194, fork は Metal 遅延描画を維持）/ socket-bound rune（#2157, fork は Trade UI 簡素化版）/ Gemling additional-quality 表示（#2333, fork は Gemling 非対応）/ gem-sort perf（#2184）
+* ※データ／Lua のみの変更。zip の再ダウンロード（再インストール）が必要です
+
+* Synced upstream PathOfBuilding-PoE2 in two stages: v0.14.0 (0.5.4) -> dev 1840fc132 (0.5.x, 15 commits) -> dev 7e90df14e (v0.22.0, 24 commits). Data layer: 30 files taken wholesale, each proven byte-identical to upstream via blob-membership.
+* Spectres / minions: added a large batch of new Spectres data + companion support — expanded minion skills and data.
+* Trade: brought in the "Buy similar" feature and the item compare tab from upstream (CompareBuySimilar / CompareTab / TradeHelpers / new ItemSlotHelper module).
+* Calc fixes: pulled in two upstream Time-Lost jewel bug fixes — Adorned now scales Time-Lost jewels (#2327), and Time-Lost bonuses no longer leak across weapon sets (#2331).
+* Crash fix: fixed a crash when importing the main skill of a minion build (upstream #2244 grafted into the fork body).
+* i18n: localised the necrotic catalyst into Japanese.
+* Verified: all 51 golden DPS regression tests green. Chrono_RotA_derived matches per-hit / DPS / ES / crit exactly (delta 0); overall TotalDPS stays within 1%, so no re-baseline needed.
+* Not included (dropped to keep fork-specific UI): socket-viewer refactor (#2194, fork keeps Metal deferred drawing) / socket-bound rune (#2157, fork runs a stripped Trade UI) / Gemling additional-quality display (#2333, fork is not Gemling) / gem-sort perf (#2184).
+* Note: data / Lua-only changes. A fresh zip download (reinstall) is required.
+
 VERSION[0.14.0][2026/06/27]
 
 --- 上流 PoE2 0.5.4 (PathOfBuilding dev) データ同期 + calc/UI リファクタ取込 / Upstream PoE2 0.5.4 (PoB dev) data sync + calc/UI refactor ---
