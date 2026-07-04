@@ -1,3 +1,16 @@
+VERSION[0.17.0][2026/07/05]
+
+--- 上流スキルデータ修正 2 件を同期 (dev 11337eddc) / Sync 2 upstream skill-data fixes (dev 11337eddc) ---
+* スキルデータ修正 (#2340): 一部スキルのクリティカル率と基礎ダメージの誤りを修正 — act_dex / act_int / act_str / other の広範なデータ更新 (DPS 計算値が変わる場合があります)
+* Conductive Runes 修正 (#2341): 武器ダメージでスケールしてしまう誤りを修正
+* 検証: golden DPS 回帰テスト全 53 件 green (toptier Varashta minion 含む) — advisor/calc にドリフトなし
+* ※データ/Lua のみの変更。zip の再ダウンロード(再インストール)が必要です
+
+* Skill data fixes (#2340): corrected crit chance and base damage for some skills — broad data update across act_dex / act_int / act_str / other (calculated DPS may change for affected skills).
+* Conductive Runes fix (#2341): no longer incorrectly scales with weapon damage.
+* Verification: all 53 golden DPS regression tests green (incl. toptier Varashta minion) — no drift in advisor/calc.
+* Note: data / Lua-only changes. A fresh zip download (reinstall) is required.
+
 VERSION[0.16.0][2026/07/01]
 
 --- 上流でドロップしていた UI PR 4 件を fork に統合 + socket viewer 白飛び修正 / Integrate 4 previously-dropped upstream UI PRs + fix socket-viewer white-wash (macOS) ---
