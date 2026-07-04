@@ -1,3 +1,12 @@
+VERSION[0.17.1][2026/07/05]
+
+--- 武器ツールチップのクラッシュ修正 / Fix weapon tooltip crash ---
+* クラッシュ修正: origin 付きユニーク武器 (Vaal 等) のツールチップ表示で "attempt to concatenate local 'typeStr' (a nil value)" になるクラッシュを修正 — label を持たない武器タイプ (弓/ワンド/クロー/斧/メイス/剣 等) でタイプ名のフォールバックが失われていた (v0.15.0 以降の潜在バグ)。通常武器のタイプ行が "nil" と表示される不具合も同時に解消
+* ※データ/Lua のみの変更。zip の再ダウンロード(再インストール)が必要です
+
+* Crash fix: fixed "attempt to concatenate local 'typeStr' (a nil value)" when hovering origin-flavoured unique weapons (e.g. Vaal) — the base-type fallback was lost for weapon types without a display label (bows, wands, claws, axes, maces, swords, …), a latent bug since v0.15.0. Also fixes plain weapon tooltips showing "nil" as the type line.
+* Note: data / Lua-only changes. A fresh zip download (reinstall) is required.
+
 VERSION[0.17.0][2026/07/05]
 
 --- 上流スキルデータ修正 2 件を同期 (dev 11337eddc) / Sync 2 upstream skill-data fixes (dev 11337eddc) ---
