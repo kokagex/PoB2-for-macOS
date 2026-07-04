@@ -3454,7 +3454,7 @@ function ItemsTabClass:AddItemTooltip(tooltip, item, slot, dbMode)
 
 	-- Combine base type with origin if available (macOS fork: nil-guard on weaponTypeInfo + i18n type label)
 	local baseTypeLabel = base.type
-	if base.weapon and self.build.data.weaponTypeInfo[base.type] then
+	if base.weapon and self.build.data.weaponTypeInfo[base.type] and self.build.data.weaponTypeInfo[base.type].label then
 		baseTypeLabel = self.build.data.weaponTypeInfo[base.type].label
 	end
 	local typeStr = i18n.lookup("items.typeNames", baseTypeLabel) or baseTypeLabel
