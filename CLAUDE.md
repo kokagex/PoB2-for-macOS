@@ -1,6 +1,7 @@
 ## Skill routing
 
 - `/brain-spec`, `spec を html 化`, `html spec 出して` → invoke `brain-spec`
+- `mcp/` 配下 (pob2-advisor / worker / probes) のリファクタ・整理依頼 → invoke `refactor-prep`。オリジナル開発領域 (上流 fork 制約なし) のため skill 規律をフル適用する。既存 ledger の完了確認だけで済みそうな場合も skill 入口から判定 (1 行バグ修正は `investigate` 側)
 
 ## MCP Brain（opti-brain）
 
