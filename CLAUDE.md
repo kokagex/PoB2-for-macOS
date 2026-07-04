@@ -3,6 +3,13 @@
 - `/brain-spec`, `spec を html 化`, `html spec 出して` → invoke `brain-spec`
 - `mcp/` 配下 (pob2-advisor / worker / probes) のリファクタ・整理依頼 → invoke `refactor-prep`。オリジナル開発領域 (上流 fork 制約なし) のため skill 規律をフル適用する。既存 ledger の完了確認だけで済みそうな場合も skill 入口から判定 (1 行バグ修正は `investigate` 側)
 
+## refactor-prep 用コマンド (repo 固有 — skill 本文から参照される)
+
+- **構造マップ (Step 0)**: 生成スクリプトなし — rg ベースの簡易マップで代替 (mcp/ 配下は小規模。`rg 'require|dofile' mcp/worker/` + `rg 'import' mcp/server/src/` で依存方向を列挙)
+- **quick gate (Step 6 反復中)**: `cd mcp/server && npx tsc --noEmit` (型チェックのみ)
+- **full gate (Step 6 commit 前)**: `cd mcp/server && npm test` (golden 含む全テスト。2026-07-05 時点 53 件)
+- 対象は mcp/ 配下 (オリジナル開発領域) のみ。src/ (上流 fork) はリファクタ対象外 — 上流 wholesale 方針
+
 ## MCP Brain（opti-brain）
 
 セッション間の記憶を Supabase に蓄積する。
