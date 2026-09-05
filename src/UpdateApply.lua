@@ -4,7 +4,6 @@
 -- Module: Update Apply
 -- Applies updates.
 --
-local opFileName = ...
 
 local function normalizePath(path)
 	if type(path) ~= "string" then
@@ -61,13 +60,15 @@ local function validateUpdateSourcePath(path)
 	return normalized
 end
 
+---@param opFileName string
+local function applyUpdate(opFileName)
 print("Applying update...")
 local opFile = io.open(opFileName, "r")
 if not opFile then
 	print("No operations list present.\n")
 	return
 end
-local lines = { }
+	local lines = {}
 for line in opFile:lines() do
 	table.insert(lines, line)
 end
@@ -126,3 +127,15 @@ for _, line in ipairs(lines) do
 		end
 	end
 end
+end
+
+-- this file is used both as a module and as a script depending on the update
+-- mode. basic mode will spawn a process, while normal mode will use this as a
+-- module.
+
+local opFileName = ...
+if opFileName then
+	return applyUpdate(opFileName)
+end
+
+return applyUpdate

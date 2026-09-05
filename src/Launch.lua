@@ -12,10 +12,12 @@ SetWindowTitle(APP_NAME)
 ConExecute("set vid_mode 8")
 ConExecute("set vid_resizable 3")
 
+
+---@diagnostic disable-next-line: lowercase-global
 launch = { }
 launch.errorLogPath = os.tmpname()  -- Generate unique temp file path for error logging
 SetMainObject(launch)
-jit.opt.start('maxtrace=4000','maxmcode=8192')
+jit.opt.start('maxtrace=20000', 'maxmcode=8192')
 collectgarbage("setpause", 400)
 
 function launch:OnInit()
@@ -372,12 +374,12 @@ end
 function launch:ApplyUpdate(mode)
 	if mode == "basic" then
 		-- Need to revert to the basic environment to fully apply the update
-		LoadModule("UpdateApply", "Update/opFile.txt")
-		SpawnProcess(GetRuntimePath()..'/Update', "UpdateApply.lua", "Update/opFileRuntime.txt")
+		LoadModule("UpdateApply")("Update/opFile.txt")
+		SpawnProcess(GetRuntimePath()..'/Update', 'UpdateApply.lua Update/opFileRuntime.txt')
 		Exit()
 	elseif mode == "normal" then
 		-- Update can be applied while normal environment is running
-		LoadModule("UpdateApply", "Update/opFile.txt")
+		LoadModule("UpdateApply")("Update/opFile.txt")
 		Restart()
 		self.doRestart = "Updating..."
 	end

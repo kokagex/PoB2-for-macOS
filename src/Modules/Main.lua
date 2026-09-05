@@ -70,7 +70,7 @@ end
 local tempTable1 = { }
 local tempTable2 = { }
 
-main = new("ControlHost")
+main = new("ControlHost"):ControlHost()
 
 function main:Init()
 	-- Initialize screen scale early for control creation
@@ -165,7 +165,9 @@ function main:Init()
 		self.saveNewModCache = true
 	else
 		-- Load mod cache
-		LoadModule("Data/ModCache", modLib.parseModCache)
+		for k, v in pairs(LoadModule("Data/ModCache")) do
+			modLib.parseModCache[k] = v
+		end
 	end
 
 	--[[ this does not work properly anymore see PR #7675
@@ -184,13 +186,15 @@ function main:Init()
 		self:ChangeUserPath(self.userPath, ignoreBuild)
 	end
 
-	self.uniqueDB = { list = { }, loading = true }
-	self.rareDB = { list = { }, loading = true }
+	---@type ItemDBData
+	self.uniqueDB = { list = {}, loading = true }
+	---@type ItemDBData
+	self.rareDB = { list = {}, loading = true }
 
 	local function loadItemDBs()
 		for type, typeList in pairsYield(data.uniques) do
 			for _, raw in pairsYield(typeList) do
-				local ok, result = pcall(new, "Item", raw, "UNIQUE", true)
+				local ok, result = pcall(function() return new("Item"):Item(raw, "UNIQUE", true) end)
 				if ok then
 					newItem = result
 					if newItem.base then
@@ -210,7 +214,7 @@ function main:Init()
 		ConPrintf("Uniques loaded")
 
 		for _, raw in pairsYield(data.rares) do
-			newItem = new("Item", raw, "RARE", true)
+			newItem = new("Item"):Item(raw, "RARE", true)
 			if newItem.base then
 				if newItem.crafted then
 					if newItem.base.implicit and #newItem.implicitModLines == 0 then
@@ -237,28 +241,42 @@ function main:Init()
 		local saved = self.defaultItemAffixQuality
 		self.defaultItemAffixQuality = 0.5
 		loadItemDBs()
+		local ignoredCats = { Item = true, Runes = true }
+		for modCategoryName, mods in pairs(data.itemMods) do
+			if not ignoredCats[modCategoryName] then
+				for _, mod in pairs(mods) do
+					-- the trade hash field is split by stat descriptor, which
+					-- means we shouldn't have problems with long stats being
+					-- split
+					for _, line in pairs(mod.tradeHashes) do
+						local rangedLine = itemLib.applyRange(table.concat(line, " "), 0.5)
+						modLib.parseMod(rangedLine)
+					end
+				end
+			end
+		end
 		self:SaveModCache()
 		self.defaultItemAffixQuality = saved
 	end
 
 	local s = self.screenScale
-	self.anchorMain = new("Control", nil, {4 * s, 0, 0, 0})
+	self.anchorMain = new("Control"):Control(nil, { 4 * s, 0, 0, 0 })
 	self.anchorMain.y = function()
 		return self.screenH - 4 * s
 	end
-	self.controls.options = new("ButtonControl", {"BOTTOMLEFT",self.anchorMain,"BOTTOMLEFT"}, {0, 0, 68 * s, 20 * s}, i18n.t("general.options"), function()
+	self.controls.options = new("ButtonControl"):ButtonControl({ "BOTTOMLEFT", self.anchorMain, "BOTTOMLEFT" }, { 0, 0, 68 * s, 20 * s }, i18n.t("general.options"), function()
 		self:OpenOptionsPopup()
 	end)
-	self.controls.about = new("ButtonControl", {"BOTTOMLEFT",self.anchorMain,"BOTTOMLEFT"}, {72 * s, 0, 68 * s, 20 * s}, i18n.t("general.about"), function()
+	self.controls.about = new("ButtonControl"):ButtonControl({ "BOTTOMLEFT", self.anchorMain, "BOTTOMLEFT" }, { 72 * s, 0, 68 * s, 20 * s }, i18n.t("general.about"), function()
 		self:OpenAboutPopup()
 	end)
-	self.controls.applyUpdate = new("ButtonControl", {"BOTTOMLEFT",self.anchorMain,"BOTTOMLEFT"}, {0, -24 * s, 140 * s, 20 * s}, "^x50E050" .. i18n.t("general.updateReady"), function()
+	self.controls.applyUpdate = new("ButtonControl"):ButtonControl({ "BOTTOMLEFT", self.anchorMain, "BOTTOMLEFT" }, { 0, -24 * s, 140 * s, 20 * s }, "^x50E050" .. i18n.t("general.updateReady"), function()
 		self:OpenUpdatePopup()
 	end)
 	self.controls.applyUpdate.shown = function()
 		return launch.updateAvailable and launch.updateAvailable ~= "none"
 	end
-	self.controls.checkUpdate = new("ButtonControl", {"BOTTOMLEFT",self.anchorMain,"BOTTOMLEFT"}, {0, -24 * s, 140 * s, 20 * s}, "", function()
+	self.controls.checkUpdate = new("ButtonControl"):ButtonControl({ "BOTTOMLEFT", self.anchorMain, "BOTTOMLEFT" }, { 0, -24 * s, 140 * s, 20 * s }, "", function()
 		launch:CheckForUpdate()
 	end)
 	self.controls.checkUpdate.shown = function()
@@ -270,19 +288,19 @@ function main:Init()
 	self.controls.checkUpdate.enabled = function()
 		return not launch.updateCheckRunning
 	end
-	self.controls.forkLabel = new("LabelControl", {"BOTTOMLEFT",self.anchorMain,"BOTTOMLEFT"}, {148 * s, -26 * s, 0, 16 * s}, "")
+	self.controls.forkLabel = new("LabelControl"):LabelControl({ "BOTTOMLEFT", self.anchorMain, "BOTTOMLEFT" }, { 148 * s, -26 * s, 0, 16 * s }, "")
 	self.controls.forkLabel.label = function()
 		return "^8PoB Community Fork"
 	end
-	self.controls.versionLabel = new("LabelControl", {"BOTTOMLEFT",self.anchorMain,"BOTTOMLEFT"}, {148 * s, -2 * s, 0, 16 * s}, "")
+	self.controls.versionLabel = new("LabelControl"):LabelControl({ "BOTTOMLEFT", self.anchorMain, "BOTTOMLEFT" }, { 148 * s, -2 * s, 0, 16 * s }, "")
 	self.controls.versionLabel.label = function()
 		return "^8" .. (launch.versionBranch == "beta" and "Beta: " or "Version: ") .. launch.versionNumber .. (launch.versionBranch == "dev" and " (Dev)" or "")
 	end
-	self.controls.devMode = new("LabelControl", {"BOTTOMLEFT",self.anchorMain,"BOTTOMLEFT"}, {0, -26 * s, 0, 20 * s}, colorCodes.NEGATIVE.."Dev Mode")
+	self.controls.devMode = new("LabelControl"):LabelControl({ "BOTTOMLEFT", self.anchorMain, "BOTTOMLEFT" }, { 0, -26 * s, 0, 20 * s }, colorCodes.NEGATIVE .. "Dev Mode")
 	self.controls.devMode.shown = function()
 		return launch.devMode
 	end
-	self.controls.dismissToast = new("ButtonControl", {"BOTTOMLEFT",self.anchorMain,"BOTTOMLEFT"}, {0, function() return -self.mainBarHeight + self.toastHeight end, 80 * s, 20 * s}, i18n.t("general.dismiss"), function()
+	self.controls.dismissToast = new("ButtonControl"):ButtonControl({ "BOTTOMLEFT", self.anchorMain, "BOTTOMLEFT" }, { 0, function() return -self.mainBarHeight + self.toastHeight end, 80 * s, 20 * s }, i18n.t("general.dismiss"), function()
 		self.toastMode = "HIDING"
 		self.toastStart = GetTime()
 	end)
@@ -345,7 +363,13 @@ end
 function main:SaveModCache()
 	-- Update mod cache
 	local out = io.open("Data/ModCache.lua", "w")
-	out:write('local c=...')
+	out:write('local c = {}\n')
+	-- luajit has problems with loading large tables due to require() and
+	-- LoadModule wrapping the loaded file in a function, which means the
+	-- program runs out of constants and crashes. this works around that by
+	-- splitting the mod cache into functions of 5k statements
+	local count = 0
+	out:write("(function()\n")
 	for line, dat in pairsSortByKey(modLib.parseModCache) do
 		if not dat[1] or not dat[1][1] or (dat[1][1].name ~= "JewelFunc" and dat[1][1].name ~= "ExtraJewelFunc") then
 			out:write('c["', line:gsub("\n","\\n"), '"]={')
@@ -359,8 +383,15 @@ function main:SaveModCache()
 			else
 				out:write(',nil}\n')
 			end
+			if count == 5000 then
+				out:write("end)();(function()\n")
+				count = 0
+			else
+				count = count + 1
+			end
 		end
 	end
+	out:write("end)();\nreturn c\n")
 	out:close()
 end
 
@@ -371,7 +402,7 @@ function main:LoadTree(treeVersion)
 	elseif isValueInTable(treeVersionList, treeVersion) then
 		data.setJewelRadiiGlobally(treeVersion)
 		--ConPrintf("[main:LoadTree] - Lazy Loading Tree " .. treeVersion)
-		self.tree[treeVersion] = new("PassiveTree", treeVersion)
+		self.tree[treeVersion] = new("PassiveTree"):PassiveTree(treeVersion)
 		return self.tree[treeVersion]
 	end
 	return nil
@@ -558,7 +589,7 @@ function main:OnFrame()
 	SetDrawColor(0, 0, 0)
 	DrawImage(nil, par + 500, 200, 2, 750)
 	DrawImage(nil, 500, par + 200, 759, 2)]]
-	
+
 	if self.inputEvents and not itemLib.wiki.triggered then
 		for _, event in ipairs(self.inputEvents) do
 			if event.type == "KeyUp" and event.key == "F1" then
@@ -817,7 +848,7 @@ function main:LoadSharedItems()
 								rawItem.raw = subChild
 							end
 						end
-						local newItem = new("Item", rawItem.raw)
+						local newItem = new("Item"):Item(rawItem.raw)
 						t_insert(self.sharedItemList, newItem)
 					elseif child.elem == "ItemSet" then
 						local sharedItemSet = { title = child.attrib.title, slots = { } }
@@ -829,7 +860,7 @@ function main:LoadSharedItems()
 										rawItem.raw = subChild
 									end
 								end
-								local newItem = new("Item", rawItem.raw)
+								local newItem = new("Item"):Item(rawItem.raw)
 								sharedItemSet.slots[grandChild.attrib.slotName] = newItem
 							end
 						end
@@ -926,14 +957,14 @@ function main:OpenPathPopup(invalidPath, errMsg, ignoreBuild)
 	local controls = { }
 	local defaultLabelPlacementX = 8
 
-	controls.label = new("LabelControl", { "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, 20, 206, 16 }, function()
+	controls.label = new("LabelControl"):LabelControl({ "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, 20, 206, 16 }, function()
 		return i18n.t("general.settingsPathCannotLoad").. errMsg ..
 		i18n.t("general.settingsPathCurrentPath")..invalidPath:gsub("?", "^1?^7").."/Path of Building/"..
 		i18n.t("general.settingsPathOneDrive1") ..
 		i18n.t("general.settingsPathOneDrive2") ..
 		i18n.t("general.settingsPathNewLocation")
 	end)
-	controls.userPath = new("EditControl", { "TOPLEFT", controls.label, "TOPLEFT" }, { 0, 60, 206, 20 }, invalidPath, nil, nil, nil, function(buf)
+	controls.userPath = new("EditControl"):EditControl({ "TOPLEFT", controls.label, "TOPLEFT" }, { 0, 60, 206, 20 }, invalidPath, nil, nil, nil, function(buf)
 		invalidPath = sanitiseText(buf)
 		if not invalidPath:match("?") then
 			controls.save.enabled = true
@@ -941,7 +972,7 @@ function main:OpenPathPopup(invalidPath, errMsg, ignoreBuild)
 			controls.save.enabled = false
 		end
 	end)
-	controls.save = new("ButtonControl", { "TOPLEFT", controls.userPath, "TOPLEFT" }, { 0, 26, 206, 20 }, i18n.t("general.save"), function()
+	controls.save = new("ButtonControl"):ButtonControl({ "TOPLEFT", controls.userPath, "TOPLEFT" }, { 0, 26, 206, 20 }, i18n.t("general.save"), function()
 		local res, msg = MakeDir(controls.userPath.buf)
 		if not res and msg ~= "No error" then
 			self:OpenMessagePopup(i18n.t("general.error"), "Couldn't create '"..controls.userPath.buf.."' : "..msg)
@@ -951,7 +982,7 @@ function main:OpenPathPopup(invalidPath, errMsg, ignoreBuild)
 		end
 	end)
 	controls.save.enabled = false
-	controls.cancel = new("ButtonControl", nil, { 0, 0, 0, 0 }, i18n.t("general.cancel"), function()
+	controls.cancel = new("ButtonControl"):ButtonControl(nil, { 0, 0, 0, 0 }, i18n.t("general.cancel"), function()
 		-- Do nothing, require user to enter a location
 	end)
 	self:OpenPopup(600, 150, i18n.t("general.changeSettingsPath"), controls, "save", nil, "cancel")
@@ -987,9 +1018,9 @@ function main:OpenOptionsPopup(savedState)
 	-- local func to make a new section header
 	local function drawSectionHeader(id, title, omitHorizontalLine)
 		local headerBGColor ={ .6, .6, .6}
-		controls["section-"..id .. "-bg"] = new("RectangleOutlineControl", { "TOPLEFT", nil, "TOPLEFT" }, { 8 * s, currentY, popupWidth - 17 * s, 26 * s }, headerBGColor, 1)
+		controls["section-" .. id .. "-bg"] = new("RectangleOutlineControl"):RectangleOutlineControl({ "TOPLEFT", nil, "TOPLEFT" }, { 8 * s, currentY, popupWidth - 17 * s, 26 * s }, headerBGColor, 1)
 		nextRow(.2)
-		controls["section-"..id .. "-label"] = new("LabelControl", { "TOPLEFT", nil, "TOPLEFT" }, { popupWidth / 2 - 60 * s, currentY, 0, 16 * s }, "^7" .. title)
+		controls["section-" .. id .. "-label"] = new("LabelControl"):LabelControl({ "TOPLEFT", nil, "TOPLEFT" }, { popupWidth / 2 - 60 * s, currentY, 0, 16 * s }, "^7" .. title)
 		nextRow(1.5)
 	end
 
@@ -998,7 +1029,7 @@ function main:OpenOptionsPopup(savedState)
 
 	drawSectionHeader("app", i18n.t("options.app.header"))
 
-	controls.language = new("DropDownControl", { "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 150 * s, 18 * s }, {
+	controls.language = new("DropDownControl"):DropDownControl({ "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 150 * s, 18 * s }, {
 		{ label = "English", code = "en" },
 		{ label = "日本語 (Japanese)", code = "ja" },
 	}, function(index, value)
@@ -1011,28 +1042,28 @@ function main:OpenOptionsPopup(savedState)
 			SetFontScale(value.code == "ja" and 0.93 or 1.0)
 		end
 	end)
-	controls.languageLabel = new("LabelControl", { "RIGHT", controls.language, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 * s }, "^7" .. i18n.t("options.language"))
+	controls.languageLabel = new("LabelControl"):LabelControl({ "RIGHT", controls.language, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 * s }, "^7" .. i18n.t("options.language"))
 	controls.language:SelByValue(self.language, "code")
 
-	controls.connectionProtocol = new("DropDownControl", { "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 100, 18 }, {
+	controls.connectionProtocol = new("DropDownControl"):DropDownControl({ "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 100, 18 }, {
 		{ label = "Auto", protocol = 0 },
 		{ label = "IPv4", protocol = 1 },
 		{ label = "IPv6", protocol = 2 },
 	}, function(index, value)
 		self.connectionProtocol = value.protocol
 	end)
-	controls.connectionProtocolLabel = new("LabelControl", { "RIGHT", controls.connectionProtocol, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 * s }, "^7" .. i18n.t("options.app.connectionProtocol"))
+	controls.connectionProtocolLabel = new("LabelControl"):LabelControl({ "RIGHT", controls.connectionProtocol, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 * s }, "^7" .. i18n.t("options.app.connectionProtocol"))
 	controls.connectionProtocol.tooltipText = i18n.t("options.app.tooltipConnectionProtocol")
 	controls.connectionProtocol:SelByValue(launch.connectionProtocol, "protocol")
 
 	nextRow()
-	controls.proxyType = new("DropDownControl", { "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 80, 18 }, {
+	controls.proxyType = new("DropDownControl"):DropDownControl({ "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 80, 18 }, {
 		{ label = "HTTP", scheme = "http" },
 		{ label = "SOCKS", scheme = "socks5" },
 		{ label = "SOCKS5H", scheme = "socks5h" },
 	})
-	controls.proxyLabel = new("LabelControl", { "RIGHT", controls.proxyType, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 * s }, "^7" .. i18n.t("options.app.proxyServer"))
-	controls.proxyURL = new("EditControl", { "LEFT", controls.proxyType, "RIGHT" }, { 4 * s, 0, 206 * s, 18 * s })
+	controls.proxyLabel = new("LabelControl"):LabelControl({ "RIGHT", controls.proxyType, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 * s }, "^7" .. i18n.t("options.app.proxyServer"))
+	controls.proxyURL = new("EditControl"):EditControl({ "LEFT", controls.proxyType, "RIGHT" }, { 4 * s, 0, 206 * s, 18 * s })
 
 	if launch.proxyURL then
 		local scheme, url = launch.proxyURL:match("(%w+)://(.+)")
@@ -1041,7 +1072,7 @@ function main:OpenOptionsPopup(savedState)
 	end
 
 	nextRow()
-	controls.dpiScaleOverride = new("DropDownControl", { "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 150 * s, 18 * s }, {
+	controls.dpiScaleOverride = new("DropDownControl"):DropDownControl({ "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 150 * s, 18 * s }, {
 		{ label = i18n.t("options.app.useSystemDefault"), percent = 0 },
 		{ label = "100%", percent = 100 },
 		{ label = "125%", percent = 125 },
@@ -1057,98 +1088,98 @@ function main:OpenOptionsPopup(savedState)
 		self:ClosePopup()
 		self:OpenOptionsPopup(savedState)
 	end)
-	controls.dpiScaleOverrideLabel = new("LabelControl", { "RIGHT", controls.dpiScaleOverride, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 * s }, "^7" .. i18n.t("options.app.uiScaling"))
+	controls.dpiScaleOverrideLabel = new("LabelControl"):LabelControl({ "RIGHT", controls.dpiScaleOverride, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 * s }, "^7" .. i18n.t("options.app.uiScaling"))
 	controls.dpiScaleOverride.tooltipText = i18n.t("options.app.tooltipDpiScale")
 	controls.dpiScaleOverride:SelByValue(self.dpiScaleOverridePercent, "percent")
 
 	nextRow()
-	controls.buildPath = new("EditControl", { "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 290 * s, 18 * s })
-	controls.buildPathLabel = new("LabelControl", { "RIGHT", controls.buildPath, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 * s }, "^7" .. i18n.t("options.app.buildSavePath"))
+	controls.buildPath = new("EditControl"):EditControl({ "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 290 * s, 18 * s })
+	controls.buildPathLabel = new("LabelControl"):LabelControl({ "RIGHT", controls.buildPath, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 * s }, "^7" .. i18n.t("options.app.buildSavePath"))
 	if self.buildPath ~= self.defaultBuildPath then
 		controls.buildPath:SetText(self.buildPath)
 	end
 	controls.buildPath.tooltipText = i18n.t("options.app.tooltipBuildPath")..self.defaultBuildPath.."'"
 
 	nextRow()
-	controls.nodePowerTheme = new("DropDownControl", { "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 100 * s, 18 * s }, {
+	controls.nodePowerTheme = new("DropDownControl"):DropDownControl({ "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 100 * s, 18 * s }, {
 		{ label = i18n.t("options.app.nodePowerRedBlue"), theme = "RED/BLUE" },
 		{ label = i18n.t("options.app.nodePowerRedGreen"), theme = "RED/GREEN" },
 		{ label = i18n.t("options.app.nodePowerGreenBlue"), theme = "GREEN/BLUE" },
 	}, function(index, value)
 		self.nodePowerTheme = value.theme
 	end)
-	controls.nodePowerThemeLabel = new("LabelControl", { "RIGHT", controls.nodePowerTheme, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 * s }, "^7" .. i18n.t("options.app.nodePowerColours"))
+	controls.nodePowerThemeLabel = new("LabelControl"):LabelControl({ "RIGHT", controls.nodePowerTheme, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 * s }, "^7" .. i18n.t("options.app.nodePowerColours"))
 	controls.nodePowerTheme.tooltipText = i18n.t("options.app.tooltipNodePowerTheme")
 	controls.nodePowerTheme:SelByValue(self.nodePowerTheme, "theme")
 
 	nextRow()
-	controls.colorPositive = new("EditControl", { "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 100, 18 }, tostring(self.colorPositive:gsub('^(^)', '0')), nil, nil, 8, function(buf)
+	controls.colorPositive = new("EditControl"):EditControl({ "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 100, 18 }, tostring(self.colorPositive:gsub('^(^)', '0')), nil, nil, 8, function(buf)
 		local match = string.match(buf, "0x%x+")
 		if match and #match == 8 then
 			updateColorCode("POSITIVE", buf)
 			self.colorPositive = buf
 		end
 	end)
-	controls.colorPositiveLabel = new("LabelControl", { "RIGHT", controls.colorPositive, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 * s }, "^7" .. i18n.t("options.app.colorPositive"))
+	controls.colorPositiveLabel = new("LabelControl"):LabelControl({ "RIGHT", controls.colorPositive, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 * s }, "^7" .. i18n.t("options.app.colorPositive"))
 	controls.colorPositive.tooltipText = i18n.t("options.app.tooltipColorPrefix") .. i18n.t("options.app.tooltipColorPositiveDesc") .. i18n.t("options.app.tooltipColorFormat") .. tostring(defaultColorCodes.POSITIVE:gsub('^(^)', '0')) .. i18n.t("options.app.tooltipColorReload")
 
 	nextRow()
-	controls.colorNegative = new("EditControl", { "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 100, 18 }, tostring(self.colorNegative:gsub('^(^)', '0')), nil, nil, 8, function(buf)
+	controls.colorNegative = new("EditControl"):EditControl({ "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 100, 18 }, tostring(self.colorNegative:gsub('^(^)', '0')), nil, nil, 8, function(buf)
 		local match = string.match(buf, "0x%x+")
 		if match and #match == 8 then
 			updateColorCode("NEGATIVE", buf)
 			self.colorNegative = buf
 		end
 	end)
-	controls.colorNegativeLabel = new("LabelControl", { "RIGHT", controls.colorNegative, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 * s }, "^7" .. i18n.t("options.app.colorNegative"))
+	controls.colorNegativeLabel = new("LabelControl"):LabelControl({ "RIGHT", controls.colorNegative, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 * s }, "^7" .. i18n.t("options.app.colorNegative"))
 	controls.colorNegative.tooltipText = i18n.t("options.app.tooltipColorPrefix") .. i18n.t("options.app.tooltipColorNegativeDesc") .. i18n.t("options.app.tooltipColorFormat") .. tostring(defaultColorCodes.NEGATIVE:gsub('^(^)', '0')) .. i18n.t("options.app.tooltipColorReload")
 
 	nextRow()
 
-	controls.colorHighlight = new("EditControl", { "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 100, 18 }, tostring(self.colorHighlight:gsub('^(^)', '0')), nil, nil, 8, function(buf)
+	controls.colorHighlight = new("EditControl"):EditControl({ "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 100, 18 }, tostring(self.colorHighlight:gsub('^(^)', '0')), nil, nil, 8, function(buf)
 		local match = string.match(buf, "0x%x+")
 		if match and #match == 8 then
 			updateColorCode("HIGHLIGHT", buf)
 			self.colorHighlight = buf
 		end
 	end)
-	controls.colorHighlightLabel = new("LabelControl", { "RIGHT", controls.colorHighlight, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 * s }, "^7" .. i18n.t("options.app.colorHighlight"))
+	controls.colorHighlightLabel = new("LabelControl"):LabelControl({ "RIGHT", controls.colorHighlight, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 * s }, "^7" .. i18n.t("options.app.colorHighlight"))
 	controls.colorHighlight.tooltipText = i18n.t("options.app.tooltipColorPrefix") .. i18n.t("options.app.tooltipColorHighlightDesc") .. i18n.t("options.app.tooltipColorFormat") .. tostring(defaultColorCodes.HIGHLIGHT:gsub('^(^)', '0')) .. i18n.t("options.app.tooltipColorReload")
 
 	nextRow()
-	controls.betaTest = new("CheckBoxControl", { "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 20 * s }, "^7" .. i18n.t("options.app.betaTest"), function(state)
+	controls.betaTest = new("CheckBoxControl"):CheckBoxControl({ "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 20 * s }, "^7" .. i18n.t("options.app.betaTest"), function(state)
 		self.betaTest = state
 	end)
 
 	nextRow()
-	controls.edgeSearchHighlight = new("CheckBoxControl", { "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 20 * s}, "^7" .. i18n.t("options.build.edgeSearchHighlight"), function(state)
+	controls.edgeSearchHighlight = new("CheckBoxControl"):CheckBoxControl({ "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 20 * s }, "^7" .. i18n.t("options.build.edgeSearchHighlight"), function(state)
 		self.edgeSearchHighlight = state
 	end)
 
 	nextRow()
-	controls.showPublicBuilds = new("CheckBoxControl", { "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 20 * s }, "^7" .. i18n.t("options.build.showPublicBuilds"), function(state)
+	controls.showPublicBuilds = new("CheckBoxControl"):CheckBoxControl({ "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 20 * s }, "^7" .. i18n.t("options.build.showPublicBuilds"), function(state)
 		self.showPublicBuilds = state
 	end)
 
 	nextRow()
-	controls.showFlavourText = new("CheckBoxControl", { "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 20 * s }, "^7" .. i18n.t("options.build.showFlavourText"), function(state)
+	controls.showFlavourText = new("CheckBoxControl"):CheckBoxControl({ "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 20 * s }, "^7" .. i18n.t("options.build.showFlavourText"), function(state)
 		self.showFlavourText = state
 	end)
 	controls.showFlavourText.tooltipText = i18n.t("options.build.tooltipFlavourText")
 
 	nextRow()
-	controls.showAnimations = new("CheckBoxControl", { "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 20 * s }, "^7" .. i18n.t("options.build.showAnimations"), function(state)
+	controls.showAnimations = new("CheckBoxControl"):CheckBoxControl({ "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 20 * s }, "^7" .. i18n.t("options.build.showAnimations"), function(state)
 		self.showAnimations = state
 	end)
 
 	nextRow()
-	controls.showAllItemAffixes = new("CheckBoxControl", { "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 20 * s }, "^7" .. i18n.t("options.build.showAllItemAffixes"), function(state)
+	controls.showAllItemAffixes = new("CheckBoxControl"):CheckBoxControl({ "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 20 * s }, "^7" .. i18n.t("options.build.showAllItemAffixes"), function(state)
 		self.showAllItemAffixes = state
 	end)
 	controls.showAllItemAffixes.tooltipText = i18n.t("options.build.tooltipShowAllAffixes")
 
 	nextRow()
-	controls.disableScrollControlInteraction = new("CheckBoxControl", { "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 20 }, "^7Disable control scroll interaction:", function(state)
+	controls.disableScrollControlInteraction = new("CheckBoxControl"):CheckBoxControl({ "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 20 }, "^7Disable control scroll interaction:", function(state)
 		self.disableScrollControlInteraction = state
 	end)
 	controls.disableScrollControlInteraction.tooltipText = "Disable changing the values in controls such as dropdowns or numeric inputs when using the scroll wheel."
@@ -1157,87 +1188,87 @@ function main:OpenOptionsPopup(savedState)
 	local leftColumnMaxY = currentY -- store left column height (no-op in single-column layout)
 	drawSectionHeader("build", i18n.t("options.build.header"))
 
-	controls.showThousandsSeparators = new("CheckBoxControl", { "TOPLEFT", nil, "TOPLEFT"}, { defaultLabelPlacementX, currentY, 20 * s }, "^7" .. i18n.t("options.build.showThousandsSeparators"), function(state)
+	controls.showThousandsSeparators = new("CheckBoxControl"):CheckBoxControl({ "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 20 * s }, "^7" .. i18n.t("options.build.showThousandsSeparators"), function(state)
 	self.showThousandsSeparators = state
 	end)
 	controls.showThousandsSeparators.state = self.showThousandsSeparators
 
 	nextRow()
-	controls.thousandsSeparator = new("EditControl", { "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 30, 20 }, self.thousandsSeparator, nil, "%w", 1, function(buf)
+	controls.thousandsSeparator = new("EditControl"):EditControl({ "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 30, 20 }, self.thousandsSeparator, nil, "%w", 1, function(buf)
 		self.thousandsSeparator = buf
 	end)
-	controls.thousandsSeparatorLabel = new("LabelControl", { "RIGHT", controls.thousandsSeparator, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 * s }, "^7" .. i18n.t("options.build.thousandsSeparator"))
+	controls.thousandsSeparatorLabel = new("LabelControl"):LabelControl({ "RIGHT", controls.thousandsSeparator, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 * s }, "^7" .. i18n.t("options.build.thousandsSeparator"))
 
 	nextRow()
-	controls.decimalSeparator = new("EditControl", { "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 30, 20 }, self.decimalSeparator, nil, "%w", 1, function(buf)
+	controls.decimalSeparator = new("EditControl"):EditControl({ "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 30, 20 }, self.decimalSeparator, nil, "%w", 1, function(buf)
 		self.decimalSeparator = buf
 	end)
-	controls.decimalSeparatorLabel = new("LabelControl", { "RIGHT", controls.decimalSeparator, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 * s }, "^7" .. i18n.t("options.build.decimalSeparator"))
+	controls.decimalSeparatorLabel = new("LabelControl"):LabelControl({ "RIGHT", controls.decimalSeparator, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 * s }, "^7" .. i18n.t("options.build.decimalSeparator"))
 
 	nextRow()
-	controls.titlebarName = new("CheckBoxControl", { "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 20 * s }, "^7" .. i18n.t("options.build.showTitlebarName"), function(state)
+	controls.titlebarName = new("CheckBoxControl"):CheckBoxControl({ "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 20 * s }, "^7" .. i18n.t("options.build.showTitlebarName"), function(state)
 		self.showTitlebarName = state
 	end)
 
 	nextRow()
-	controls.defaultGemQuality = new("EditControl", { "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 80, 20 }, self.defaultGemQuality, nil, "%D", 2, function(gemQuality)
+	controls.defaultGemQuality = new("EditControl"):EditControl({ "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 80, 20 }, self.defaultGemQuality, nil, "%D", 2, function(gemQuality)
 		self.defaultGemQuality = m_min(tonumber(gemQuality) or 0, 23)
 	end)
 	controls.defaultGemQuality.tooltipText = i18n.t("options.build.tooltipGemQuality")
-	controls.defaultGemQualityLabel = new("LabelControl", { "RIGHT", controls.defaultGemQuality, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 * s }, "^7" .. i18n.t("options.build.defaultGemQuality"))
+	controls.defaultGemQualityLabel = new("LabelControl"):LabelControl({ "RIGHT", controls.defaultGemQuality, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 * s }, "^7" .. i18n.t("options.build.defaultGemQuality"))
 
 	nextRow()
-	controls.defaultItemQuality = new("EditControl", { "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 80, 20 }, self.defaultItemQuality, nil, "%D", 2, function(itemQuality)
+	controls.defaultItemQuality = new("EditControl"):EditControl({ "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 80, 20 }, self.defaultItemQuality, nil, "%D", 2, function(itemQuality)
 		self.defaultItemQuality = m_min(tonumber(itemQuality) or 0, 20)
 	end)
 	controls.defaultItemQuality.tooltipText = "Set the default quality that will be applied to newly created or pasted items."
-	controls.defaultItemQualityLabel = new("LabelControl", { "RIGHT", controls.defaultItemQuality, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 }, "^7Default item quality:")
+	controls.defaultItemQualityLabel = new("LabelControl"):LabelControl({ "RIGHT", controls.defaultItemQuality, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 }, "^7Default item quality:")
 
 	nextRow()
-	controls.defaultCharLevel = new("EditControl", { "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 80, 20 }, self.defaultCharLevel, nil, "%D", 3, function(charLevel)
+	controls.defaultCharLevel = new("EditControl"):EditControl({ "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 80, 20 }, self.defaultCharLevel, nil, "%D", 3, function(charLevel)
 		self.defaultCharLevel = m_min(m_max(tonumber(charLevel) or 1, 1), 100)
 	end)
 	controls.defaultCharLevel.tooltipText = i18n.t("options.build.tooltipCharLevel")
-	controls.defaultCharLevelLabel = new("LabelControl", { "RIGHT", controls.defaultCharLevel, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 * s }, "^7" .. i18n.t("options.build.defaultCharLevel"))
+	controls.defaultCharLevelLabel = new("LabelControl"):LabelControl({ "RIGHT", controls.defaultCharLevel, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 * s }, "^7" .. i18n.t("options.build.defaultCharLevel"))
 
 	nextRow()
-	controls.defaultItemAffixQualitySlider = new("SliderControl", { "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 200, 20 }, function(value)
+	controls.defaultItemAffixQualitySlider = new("SliderControl"):SliderControl({ "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 200, 20 }, function(value)
 		self.defaultItemAffixQuality = round(value, 2)
 		controls.defaultItemAffixQualityValue.label = (self.defaultItemAffixQuality * 100) .. "%"
 	end)
-	controls.defaultItemAffixQualityLabel = new("LabelControl", { "RIGHT", controls.defaultItemAffixQualitySlider, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 * s }, "^7" .. i18n.t("options.build.defaultItemAffixQuality"))
-	controls.defaultItemAffixQualityValue = new("LabelControl", { "LEFT", controls.defaultItemAffixQualitySlider, "RIGHT" }, { -defaultLabelSpacingPx, 0, 92 * s, 16 * s }, "50%")
+	controls.defaultItemAffixQualityLabel = new("LabelControl"):LabelControl({ "RIGHT", controls.defaultItemAffixQualitySlider, "LEFT" }, { defaultLabelSpacingPx, 0, 0, 16 * s }, "^7" .. i18n.t("options.build.defaultItemAffixQuality"))
+	controls.defaultItemAffixQualityValue = new("LabelControl"):LabelControl({ "LEFT", controls.defaultItemAffixQualitySlider, "RIGHT" }, { -defaultLabelSpacingPx, 0, 92 * s, 16 * s }, "50%")
 	controls.defaultItemAffixQualitySlider.val = self.defaultItemAffixQuality
 	controls.defaultItemAffixQualityValue.label = (self.defaultItemAffixQuality * 100) .. "%"
 
 	nextRow()
-	controls.showWarnings = new("CheckBoxControl", { "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 20 * s }, "^7" .. i18n.t("options.build.showWarnings"), function(state)
+	controls.showWarnings = new("CheckBoxControl"):CheckBoxControl({ "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 20 * s }, "^7" .. i18n.t("options.build.showWarnings"), function(state)
 		self.showWarnings = state
 	end)
 	controls.showWarnings.state = self.showWarnings
 
 	nextRow()
-	controls.slotOnlyTooltips = new("CheckBoxControl", { "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 20 * s }, "^7" .. i18n.t("options.build.slotOnlyTooltips"), function(state)
+	controls.slotOnlyTooltips = new("CheckBoxControl"):CheckBoxControl({ "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 20 * s }, "^7" .. i18n.t("options.build.slotOnlyTooltips"), function(state)
 		self.slotOnlyTooltips = state
 	end, "Shows comparisons in tooltips only for the slot you are currently placing the item in, instead of all slots.")
 	controls.slotOnlyTooltips.state = self.slotOnlyTooltips
 
 	nextRow()
-	controls.migrateAugments = new("CheckBoxControl", { "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 20 }, "^7Copy augments onto display item:", function(state)
+	controls.migrateAugments = new("CheckBoxControl"):CheckBoxControl({ "TOPLEFT", controls.sectionAnchor, "TOPLEFT" }, { currentX + defaultLabelPlacementX, currentY, 20 }, "^7Copy augments onto display item:", function(state)
 		self.migrateAugments = state
 	end)
 	controls.migrateAugments.tooltipText = "Apply augments and anoints from current gear when comparing new gear, given they are possible to add to the new item."
 	controls.migrateAugments.state = self.migrateAugments
 
 	nextRow()
-	controls.notSupportedModTooltips = new("CheckBoxControl", { "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 20 * s }, "^7" .. i18n.t("options.build.notSupportedModTooltips"), function(state)
+	controls.notSupportedModTooltips = new("CheckBoxControl"):CheckBoxControl({ "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 20 * s }, "^7" .. i18n.t("options.build.notSupportedModTooltips"), function(state)
 		self.notSupportedModTooltips = state
 	end)
 	controls.notSupportedModTooltips.tooltipText = i18n.t("options.build.tooltipNotSupportedMod")
 	controls.notSupportedModTooltips.state = self.notSupportedModTooltips
 
 	nextRow()
-	controls.invertSliderScrollDirection = new("CheckBoxControl", { "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 20 * s }, "^7" .. i18n.t("options.build.invertSliderScroll"), function(state)
+	controls.invertSliderScrollDirection = new("CheckBoxControl"):CheckBoxControl({ "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 20 * s }, "^7" .. i18n.t("options.build.invertSliderScroll"), function(state)
 		self.invertSliderScrollDirection = state
 	end)
 	controls.invertSliderScrollDirection.tooltipText = i18n.t("options.build.tooltipInvertSlider")
@@ -1245,7 +1276,7 @@ function main:OpenOptionsPopup(savedState)
 
 	if launch.devMode then
 		nextRow()
-		controls.disableDevAutoSave = new("CheckBoxControl", { "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 20 * s }, "^7" .. i18n.t("options.app.disableDevAutoSave"), function(state)
+		controls.disableDevAutoSave = new("CheckBoxControl"):CheckBoxControl({ "TOPLEFT", nil, "TOPLEFT" }, { defaultLabelPlacementX, currentY, 20 * s }, "^7" .. i18n.t("options.app.disableDevAutoSave"), function(state)
 			self.disableDevAutoSave = state
 		end)
 		controls.disableDevAutoSave.tooltipText = i18n.t("options.app.tooltipDevAutoSave")
@@ -1267,7 +1298,7 @@ function main:OpenOptionsPopup(savedState)
 	-- last line with buttons has more spacing
 	nextRow(1.5)
 
-	controls.save = new("ButtonControl", nil, {-45, currentY, 80, 20}, i18n.t("options.save"), function()
+	controls.save = new("ButtonControl"):ButtonControl(nil, { -45, currentY, 80, 20 }, i18n.t("options.save"), function()
 		launch.connectionProtocol = tonumber(self.connectionProtocol)
 		if controls.proxyURL.buf:match("%w") then
 			launch.proxyURL = controls.proxyType.list[controls.proxyType.selIndex].scheme .. "://" .. controls.proxyURL.buf
@@ -1295,7 +1326,7 @@ function main:OpenOptionsPopup(savedState)
 		main:ClosePopup()
 		main:SaveSettings()
 	end)
-	controls.cancel = new("ButtonControl", nil, {45, currentY, 80, 20}, i18n.t("options.cancel"), function()
+	controls.cancel = new("ButtonControl"):ButtonControl(nil, { 45, currentY, 80, 20 }, i18n.t("options.cancel"), function()
 		self.language = initialLanguage
 		if i18n and i18n.setLocale then
 			i18n.setLocale(self.language)
@@ -1381,15 +1412,15 @@ function main:OpenUpdatePopup()
 		end
 	end
 	local controls = { }
-	controls.changeLog = new("TextListControl", nil, {0, 20 * s, 780 * s, 542 * s}, nil, changeList)
-	controls.update = new("ButtonControl", nil, {-45 * s, 570 * s, 80 * s, 20 * s}, i18n.t("general.update"), function()
+	controls.changeLog = new("TextListControl"):TextListControl(nil, { 0, 20 * s, 780 * s, 542 * s }, nil, changeList)
+	controls.update = new("ButtonControl"):ButtonControl(nil, { -45 * s, 570 * s, 80 * s, 20 * s }, i18n.t("general.update"), function()
 		self:ClosePopup()
 		local ret = self:CallMode("CanExit", "UPDATE")
 		if ret == nil or ret == true then
 			launch:ApplyUpdate(launch.updateAvailable)
 		end
 	end)
-	controls.cancel = new("ButtonControl", nil, {45 * s, 570 * s, 80 * s, 20 * s}, i18n.t("general.cancel"), function()
+	controls.cancel = new("ButtonControl"):ButtonControl(nil, { 45 * s, 570 * s, 80 * s, 20 * s }, i18n.t("general.cancel"), function()
 		self:ClosePopup()
 	end)
 	self:OpenPopup(800 * s, 600 * s, i18n.t("general.updateAvailable"), controls)
@@ -1486,24 +1517,24 @@ function main:OpenAboutPopup(helpSectionIndex)
 		helpSectionIndex = newIndex
 	end
 	local controls = { }
-	controls.close = new("ButtonControl", {"TOPRIGHT",nil,"TOPRIGHT"}, {-10 * s, 10 * s, 50 * s, 20 * s}, i18n.t("general.close"), function()
+	controls.close = new("ButtonControl"):ButtonControl({ "TOPRIGHT", nil, "TOPRIGHT" }, { -10 * s, 10 * s, 50 * s, 20 * s }, i18n.t("general.close"), function()
 		self:ClosePopup()
 	end)
-	controls.version = new("LabelControl", nil, {0, 20 * s, 0, 18 * s}, i18n.t("general.aboutVersion")..launch.versionNumber)
-	controls.forum = new("LabelControl", nil, {0, 40 * s, 0, 18 * s}, i18n.t("general.aboutCredit"))
-	controls.poe2db = new("LabelControl", nil, {0, 56 * s, 0, 14 * s}, i18n.t("general.aboutCreditPoe2db"))
-	controls.github = new("ButtonControl", nil, {0, 78 * s, 438 * s, 18 * s}, "^7" .. i18n.t("general.githubPage") .. " ^x4040FFhttps://github.com/kokagex/PoB2-for-macOS", function(control)
+	controls.version = new("LabelControl"):LabelControl(nil, { 0, 20 * s, 0, 18 * s }, i18n.t("general.aboutVersion") .. launch.versionNumber)
+	controls.forum = new("LabelControl"):LabelControl(nil, { 0, 40 * s, 0, 18 * s }, i18n.t("general.aboutCredit"))
+	controls.poe2db = new("LabelControl"):LabelControl(nil, { 0, 56 * s, 0, 14 * s }, i18n.t("general.aboutCreditPoe2db"))
+	controls.github = new("ButtonControl"):ButtonControl(nil, { 0, 78 * s, 438 * s, 18 * s }, "^7" .. i18n.t("general.githubPage") .. " ^x4040FFhttps://github.com/kokagex/PoB2-for-macOS", function(control)
 		OpenURL("https://github.com/kokagex/PoB2-for-macOS")
 	end)
-	controls.verLabel = new("ButtonControl", {"TOPLEFT", nil, "TOPLEFT"}, {10 * s, 102 * s, 100 * s, 18 * s}, "^7" .. i18n.t("general.versionHistory"), function()
+	controls.verLabel = new("ButtonControl"):ButtonControl({ "TOPLEFT", nil, "TOPLEFT" }, { 10 * s, 102 * s, 100 * s, 18 * s }, "^7" .. i18n.t("general.versionHistory"), function()
 		controls.changelog.list = changeList
 		controls.changelog.sectionHeights = changeVersionHeights
 	end)
-	controls.helpLabel = new("ButtonControl", {"TOPRIGHT", nil, "TOPRIGHT"}, {-10 * s, 102 * s, 40 * s, 18 * s}, "^7" .. i18n.t("general.help"), function()
+	controls.helpLabel = new("ButtonControl"):ButtonControl({ "TOPRIGHT", nil, "TOPRIGHT" }, { -10 * s, 102 * s, 40 * s, 18 * s }, "^7" .. i18n.t("general.help"), function()
 		controls.changelog.list = helpList
 		controls.changelog.sectionHeights = helpSectionHeights
 	end)
-	controls.changelog = new("TextListControl", nil, {0, 120 * s, popupWidth - 20 * s, 498 * s}, {{ x = 1, align = "LEFT" }, { x = 135 * s, align = "LEFT" }}, helpSectionIndex and helpList or changeList, helpSectionIndex and helpSectionHeights or changeVersionHeights)
+	controls.changelog = new("TextListControl"):TextListControl(nil, { 0, 120 * s, popupWidth - 20 * s, 498 * s }, { { x = 1, align = "LEFT" }, { x = 135 * s, align = "LEFT" } }, helpSectionIndex and helpList or changeList, helpSectionIndex and helpSectionHeights or changeVersionHeights)
 	if helpSectionIndex then
 		controls.changelog.controls.scrollBar.offset = helpSections[helpSectionIndex].height * textSize
 	end
@@ -1685,7 +1716,7 @@ function main:CopyFolder(srcName, dstName)
 end
 
 function main:OpenPopup(width, height, title, controls, enterControl, defaultControl, escapeControl, scrollBarFunc, resizeFunc)
-	local popup = new("PopupDialog", width, height, title, controls, enterControl, defaultControl, escapeControl, scrollBarFunc, resizeFunc)
+	local popup = new("PopupDialog"):PopupDialog(width, height, title, controls, enterControl, defaultControl, escapeControl, scrollBarFunc, resizeFunc)
 	t_insert(self.popups, 1, popup)
 	return popup
 end
@@ -1698,10 +1729,10 @@ function main:OpenMessagePopup(title, msg)
 	local controls = { }
 	local numMsgLines = 0
 	for line in string.gmatch(msg .. "\n", "([^\n]*)\n") do
-		t_insert(controls, new("LabelControl", nil, {0, 20 + numMsgLines * 16, 0, 16}, line))
+		t_insert(controls, new("LabelControl"):LabelControl(nil, { 0, 20 + numMsgLines * 16, 0, 16 }, line))
 		numMsgLines = numMsgLines + 1
 	end
-	controls.close = new("ButtonControl", nil, {0, 40 + numMsgLines * 16, 80, 20}, i18n.t("general.ok"), function()
+	controls.close = new("ButtonControl"):ButtonControl(nil, { 0, 40 + numMsgLines * 16, 80, 20 }, i18n.t("general.ok"), function()
 		main:ClosePopup()
 	end)
 	return self:OpenPopup(m_max(DrawStringWidth(16, "VAR", msg) + 30, 190), 70 + numMsgLines * 16, title, controls, "close")
@@ -1711,11 +1742,11 @@ function main:OpenConfirmPopup(title, msg, confirmLabel, onConfirm, extraLabel, 
 	local controls = { }
 	local numMsgLines = 0
 	for line in string.gmatch(msg .. "\n", "([^\n]*)\n") do
-		t_insert(controls, new("LabelControl", nil, {0, 20 + numMsgLines * 16, 0, 16}, line))
+		t_insert(controls, new("LabelControl"):LabelControl(nil, { 0, 20 + numMsgLines * 16, 0, 16 }, line))
 		numMsgLines = numMsgLines + 1
 	end
 	local confirmWidth = m_max(80, DrawStringWidth(16, "VAR", confirmLabel) + 10)
-	
+
 	if extraLabel and onExtra then
 		-- Three button layout: Continue (left), Connect Path (center), Cancel (right)
 		local extraWidth = m_max(80, DrawStringWidth(16, "VAR", extraLabel) + 10)
@@ -1726,7 +1757,7 @@ function main:OpenConfirmPopup(title, msg, confirmLabel, onConfirm, extraLabel, 
 		local buttonY = 40 + numMsgLines * 16
 		local function placeButton(width, label, onClick, isConfirm)
 			local centerX = leftEdge + width / 2
-			local ctrl = new("ButtonControl", nil, {centerX, buttonY, width, 20}, label, function()
+			local ctrl = new("ButtonControl"):ButtonControl(nil, { centerX, buttonY, width, 20 }, label, function()
 				main:ClosePopup()
 				onClick()
 			end)
@@ -1743,24 +1774,114 @@ function main:OpenConfirmPopup(title, msg, confirmLabel, onConfirm, extraLabel, 
 		return self:OpenPopup(m_max(DrawStringWidth(16, "VAR", msg) + 30, totalWidth + 40), 70 + numMsgLines * 16, title, controls, "confirm")
 	else
 		-- Two button layout (original)
-		controls.confirm = new("ButtonControl", nil, {-5 - m_ceil(confirmWidth/2), 40 + numMsgLines * 16, confirmWidth, 20}, confirmLabel, function()
+		controls.confirm = new("ButtonControl"):ButtonControl(nil, { -5 - m_ceil(confirmWidth/2), 40 + numMsgLines * 16, confirmWidth, 20 }, confirmLabel, function()
 			main:ClosePopup()
 			onConfirm()
 		end)
-		t_insert(controls, new("ButtonControl", nil, {5 + m_ceil(confirmWidth/2), 40 + numMsgLines * 16, confirmWidth, 20}, i18n.t("general.cancel"), function()
+		t_insert(controls, new("ButtonControl"):ButtonControl(nil, { 5 + m_ceil(confirmWidth/2), 40 + numMsgLines * 16, confirmWidth, 20 }, i18n.t("general.cancel"), function()
 			main:ClosePopup()
 		end))
 		return self:OpenPopup(m_max(DrawStringWidth(16, "VAR", msg) + 30, 190), 70 + numMsgLines * 16, title, controls, "confirm")
 	end
 end
 
+-- https://www.pathofexile.com/developer/docs/game#markup-Font
+local noteFontTags = {
+	{ tag = "r", label = "Regular" },
+	{ tag = "b", label = "Bold" },
+	{ tag = "i", label = "Italic" },
+	{ tag = "u", label = "Underline" },
+	{ tag = "s", label = "Small" },
+	{ tag = "m", label = "Medium" },
+	{ tag = "l", label = "Large" },
+}
+
+-- A list of practical color code keys. These use the colorCodes table and rgb(r, g, b) tags
+local noteColorCodes = {
+	"NORMAL", "MAGIC", "RARE", "UNIQUE", "RELIC", "GEM",
+	"FIRE", "COLD", "LIGHTNING", "CHAOS", "STRENGTH", "DEXTERITY",
+	"INTELLIGENCE", "POSITIVE", "NEGATIVE", "WARNING", "TIP", "CURRENCY",
+}
+local markupButtonsPerRow = 6
+function main:OpenNoteEditPopup(title, initial, onSave, generatedText)
+	local controls = { }
+	local function insertMarkup(openTag)
+		local edit = controls.edit
+		if edit.sel and edit.sel ~= edit.caret then
+			edit:ReplaceSel(openTag .. "{" .. edit:GetSelText() .. "}")
+		else
+			edit:Insert(openTag .. "{}")
+			edit.caret = edit.caret - 1
+			edit:ScrollCaretIntoView()
+		end
+		return edit
+	end
+
+	controls.label = new("LabelControl"):LabelControl(nil, { 0, 20, 0, 16 }, "^7Note shown on this entry in the exported .build (BuildPlanner) file.\nLeave blank to remove.\n^8Buttons below wrap the selected text in BuildPlanner markup.")
+
+	local hoverText = "Click to insert tag, then type inside the curly braces."
+
+	controls.fontLabel = new("LabelControl"):LabelControl({ "TOPLEFT", nil, "TOPLEFT" }, { 14, 72, 0, 16 }, "^7Font")
+	for index, style in ipairs(noteFontTags) do
+		controls["font" .. style.label] = new("ButtonControl"):ButtonControl(nil, { -258 + (index - 1) * 86, 90, 82, 18 }, "^7" .. style.label, function()
+			return insertMarkup("<" .. style.tag .. ">")
+		end)
+		controls["font" .. style.label].tooltipText = hoverText
+		controls["font" .. style.label].forceTooltip = true
+	end
+
+	controls.colorLabel = new("LabelControl"):LabelControl({ "TOPLEFT", nil, "TOPLEFT" }, { 14, 114, 0, 16 }, "^7Colour")
+	for index, code in ipairs(noteColorCodes) do
+		local col = (index - 1) % markupButtonsPerRow
+		local row = m_floor((index - 1) / markupButtonsPerRow)
+		controls["color" .. code] = new("ButtonControl"):ButtonControl(nil, { -250 + col * 100, 132 + row * 20, 96, 18 }, colorCodes[code] .. code, function()
+			return insertMarkup(colorCodeToMarkupColour(colorCodes[code]))
+		end)
+		controls["color" .. code].tooltipText = hoverText
+		controls["color" .. code].forceTooltip = true
+	end
+
+	local editY = generatedText and 222 or 198
+	if generatedText then
+		controls.addItemText = new("ButtonControl"):ButtonControl({ "TOPLEFT", nil, "TOPLEFT" }, { 14, 198, 120, 18 }, "Add Item Text", function()
+			controls.edit:Insert(generatedText)
+			return controls.edit
+		end)
+		controls.addItemText.tooltipText = "Insert the generated item text at the caret"
+		controls.addItemText.forceTooltip = true
+	end
+	controls.edit = new("EditControl"):EditControl(nil, { 0, editY, 598, 240 }, initial or "", nil, "^%C\t\n", nil, function(buf)
+		controls.save.enabled = true
+	end, 16)
+	local buttonY = editY + 250
+	controls.save = new("ButtonControl"):ButtonControl(nil, { -45, buttonY, 80, 20 }, "Save", function()
+		local buf = controls.edit.buf
+		if buf == "" then buf = nil end
+		onSave(buf)
+		main:ClosePopup()
+	end)
+	controls.save.tooltipFunc = function(tooltip)
+		tooltip:Clear()
+		if controls.edit.buf ~= "" then
+			tooltip:AddBuildPlannerNote(14, controls.edit.buf)
+		else
+			tooltip:AddLine(14, "Save an empty note to remove it.")
+		end
+	end
+	controls.save.forceTooltip = true
+	controls.cancel = new("ButtonControl"):ButtonControl(nil, { 45, buttonY, 80, 20 }, "Cancel", function()
+		main:ClosePopup()
+	end)
+	self:OpenPopup(624, buttonY + 40, title or "Edit Note", controls, "save", "edit", "cancel")
+end
+
 function main:OpenNewFolderPopup(path, onClose)
 	local controls = { }
-	controls.label = new("LabelControl", nil, {0, 20, 0, 16}, "^7" .. i18n.t("general.enterFolderName"))
-	controls.edit = new("EditControl", nil, {0, 40, 350, 20}, nil, nil, "\\/:%*%?\"<>|%c", 100, function(buf)
+	controls.label = new("LabelControl"):LabelControl(nil, { 0, 20, 0, 16 }, "^7" .. i18n.t("general.enterFolderName"))
+	controls.edit = new("EditControl"):EditControl(nil, { 0, 40, 350, 20 }, nil, nil, "\\/:%*%?\"<>|%c", 100, function(buf)
 		controls.create.enabled = buf:match("%S")
 	end)
-	controls.create = new("ButtonControl", nil, {-45, 70, 80, 20}, i18n.t("general.create"), function()
+	controls.create = new("ButtonControl"):ButtonControl(nil, { -45, 70, 80, 20 }, i18n.t("general.create"), function()
 		local newFolderName = controls.edit.buf
 		local res, msg = MakeDir(path..newFolderName)
 		if not res then
@@ -1773,7 +1894,7 @@ function main:OpenNewFolderPopup(path, onClose)
 		main:ClosePopup()
 	end)
 	controls.create.enabled = false
-	controls.cancel = new("ButtonControl", nil, {45, 70, 80, 20}, i18n.t("general.cancel"), function()
+	controls.cancel = new("ButtonControl"):ButtonControl(nil, { 45, 70, 80, 20 }, i18n.t("general.cancel"), function()
 		if onClose then
 			onClose()
 		end
@@ -1798,14 +1919,14 @@ function main:OpenCloudErrorPopup(fileName)
 	local controls = { }
 	local numMsgLines = 0
 	for line in string.gmatch(msg .. "\n", "([^\n]*)\n") do
-		t_insert(controls, new("LabelControl", nil, {0, 20 + numMsgLines * 16, 0, 16}, line))
+		t_insert(controls, new("LabelControl"):LabelControl(nil, { 0, 20 + numMsgLines * 16, 0, 16 }, line))
 		numMsgLines = numMsgLines + 1
 	end
-	controls.help = new("ButtonControl", nil, {-55, 40 + numMsgLines * 16, 80, 20}, i18n.t("general.helpWeb"), function()
+	controls.help = new("ButtonControl"):ButtonControl(nil, { -55, 40 + numMsgLines * 16, 80, 20 }, i18n.t("general.helpWeb"), function()
 		OpenURL(url)
 	end)
 	controls.help.tooltipText = url
-	controls.close = new("ButtonControl", nil, {55, 40 + numMsgLines * 16, 80, 20}, i18n.t("general.ok"), function()
+	controls.close = new("ButtonControl"):ButtonControl(nil, { 55, 40 + numMsgLines * 16, 80, 20 }, i18n.t("general.ok"), function()
 		main:ClosePopup()
 	end)
 	return self:OpenPopup(m_max(DrawStringWidth(16, "VAR", msg) + 30, 190), 70 + numMsgLines * 16, title, controls, "close")

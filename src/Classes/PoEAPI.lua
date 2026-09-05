@@ -33,16 +33,19 @@ local function url_decode(str)
 	end))
 end
 
-local PoEAPIClass = newClass("PoEAPI", function(self, authToken, refreshToken, tokenExpiry)
+local PoEAPIClass = newClass("PoEAPI")
+
+function PoEAPIClass:PoEAPI(authToken, refreshToken, tokenExpiry)
 	self.retries = 0
 	self.authToken = authToken
 	self.refreshToken = refreshToken
 	self.tokenExpiry = tokenExpiry or 0
 	self.baseUrl = "https://api.pathofexile.com"
-	self.rateLimiter = new("TradeQueryRateLimiter")
+	self.rateLimiter = new("TradeQueryRateLimiter"):TradeQueryRateLimiter()
 
 	self.ERROR_NO_AUTH = "No auth token"
-end)
+	return self
+end
 
 function PoEAPIClass:HttpRequest(url, headerText, body)
 	local ok, curl = pcall(require, "lcurl.safe")

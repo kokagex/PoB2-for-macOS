@@ -8,37 +8,41 @@ local t_remove = table.remove
 local m_max = math.max
 local s_format = string.format
 
-local SharedItemSetListClass = newClass("SharedItemSetListControl", "ListControl", function(self, anchor, rect, itemsTab)
-	self.ListControl(anchor, rect, 16, "VERTICAL", true, main.sharedItemSetList)
+---@class SharedItemSetListControl: ListControl
+local SharedItemSetListClass = newClass("SharedItemSetListControl", "ListControl")
+
+function SharedItemSetListClass:SharedItemSetListControl(anchor, rect, itemsTab)
+	self:ListControl(anchor, rect, 16, "VERTICAL", true, main.sharedItemSetList)
 	self.itemsTab = itemsTab
 	self.defaultText = i18n.t("items.setList.sharedListHelp")
-	self.controls.delete = new("ButtonControl", {"BOTTOMLEFT",self,"TOP"}, {2, -4, 60, 18}, i18n.t("items.buttons.delete"), function()
+	self.controls.delete = new("ButtonControl"):ButtonControl({ "BOTTOMLEFT", self, "TOP" }, { 2, -4, 60, 18 }, i18n.t("items.buttons.delete"), function()
 		self:OnSelDelete(self.selIndex, self.selValue)
 	end)
 	self.controls.delete.enabled = function()
 		return self.selValue ~= nil
 	end
-	self.controls.rename = new("ButtonControl", {"BOTTOMRIGHT",self,"TOP"}, {-2, -4, 60, 18}, i18n.t("items.buttons.rename"), function()
+	self.controls.rename = new("ButtonControl"):ButtonControl({ "BOTTOMRIGHT", self, "TOP" }, { -2, -4, 60, 18 }, i18n.t("items.buttons.rename"), function()
 		self:RenameSet(self.selValue)
 	end)
 	self.controls.rename.enabled = function()
 		return self.selValue ~= nil
 	end
-end)
+	return self
+end
 
 function SharedItemSetListClass:RenameSet(sharedItemSet)
 	local controls = { }
-	controls.label = new("LabelControl", nil, {0, 20, 0, 16}, i18n.t("items.popups.enterSetName"))
-	controls.edit = new("EditControl", nil, {0, 40, 350, 20}, sharedItemSet.title, nil, nil, 100, function(buf)
+	controls.label = new("LabelControl"):LabelControl(nil, { 0, 20, 0, 16 }, i18n.t("items.popups.enterSetName"))
+	controls.edit = new("EditControl"):EditControl(nil, { 0, 40, 350, 20 }, sharedItemSet.title, nil, nil, 100, function(buf)
 		controls.save.enabled = buf:match("%S")
 	end)
-	controls.save = new("ButtonControl", nil, {-45, 70, 80, 20}, i18n.t("items.buttons.save"), function()
+	controls.save = new("ButtonControl"):ButtonControl(nil, { -45, 70, 80, 20 }, i18n.t("items.buttons.save"), function()
 		sharedItemSet.title = controls.edit.buf
 		self.itemsTab.modFlag = true
 		main:ClosePopup()
 	end)
 	controls.save.enabled = false
-	controls.cancel = new("ButtonControl", nil, {45, 70, 80, 20}, i18n.t("items.buttons.cancel"), function()
+	controls.cancel = new("ButtonControl"):ButtonControl(nil, { 45, 70, 80, 20 }, i18n.t("items.buttons.cancel"), function()
 		main:ClosePopup()
 	end)
 	main:OpenPopup(370, 100, sharedItemSet.title and i18n.t("items.popups.renameTitle") or i18n.t("items.popups.setNameTitle"), controls, "save", "edit")
@@ -82,7 +86,7 @@ function SharedItemSetListClass:ReceiveDrag(type, value, source)
 				if slot.selItemId ~= 0 then
 					local item = self.itemsTab.items[slot.selItemId]
 					local rawItem = { raw = item:BuildRaw() }
-					local newItem = new("Item", rawItem.raw)
+					local newItem = new("Item"):Item(rawItem.raw)
 					if not value.id then
 						newItem:NormaliseQuality()
 					end

@@ -36,7 +36,6 @@ local function newlineCount(str)
 	end
 end
 
--- DEBUG: Text input diagnostics
 local _edit_debug_enabled = os.getenv("POB_EDIT_DEBUG") == "1"
 _edit_debug_file = _edit_debug_enabled and io.open("/tmp/pob_edit_debug.txt", "w") or nil
 function _edit_debug(msg)
@@ -46,11 +45,14 @@ function _edit_debug(msg)
 	end
 end
 
-local EditClass = newClass("EditControl", "ControlHost", "Control", "UndoHandler", "TooltipHost", function(self, anchor, rect, init, prompt, filter, limit, changeFunc, lineHeight, allowZoom, clearable)
-	self.ControlHost()
-	self.Control(anchor, rect)
-	self.UndoHandler()
-	self.TooltipHost()
+---@class EditControl: ControlHost, Control, UndoHandler, TooltipHost
+local EditClass = newClass("EditControl", "ControlHost", "Control", "UndoHandler", "TooltipHost")
+
+function EditClass:EditControl(anchor, rect, init, prompt, filter, limit, changeFunc, lineHeight, allowZoom, clearable)
+	self:ControlHost()
+	self:Control(anchor, rect)
+	self:UndoHandler()
+	self:TooltipHost()
 	self:SetText(init or "")
 	self.prompt = prompt
 	self.filter = filter or (main.unicode and "%c" or "^%w%p ")
@@ -74,24 +76,24 @@ local EditClass = newClass("EditControl", "ControlHost", "Control", "UndoHandler
 	if self.filter == "%D" or self.filter == "^%-%d" or self.filter == "^%d." then
 		-- Add +/- buttons for integer number edits
 		self.isNumeric = true
-		self.controls.buttonDown = new("ButtonControl", {"RIGHT",self,"RIGHT"}, {-2, 0, buttonSize, buttonSize}, "-", function()
+		self.controls.buttonDown = new("ButtonControl"):ButtonControl({ "RIGHT", self, "RIGHT" }, { -2, 0, buttonSize, buttonSize }, "-", function()
 			self:OnKeyUp("DOWN")
 		end)
-		self.controls.buttonUp = new("ButtonControl", {"RIGHT",self.controls.buttonDown,"LEFT"}, {-1, 0, buttonSize, buttonSize}, "+", function()
+		self.controls.buttonUp = new("ButtonControl"):ButtonControl({ "RIGHT", self.controls.buttonDown, "LEFT" }, { -1, 0, buttonSize, buttonSize }, "+", function()
 			self:OnKeyUp("UP")
 		end)
 	elseif clearable then
-		self.controls.buttonClear = new("ButtonControl", {"RIGHT",self,"RIGHT"}, {-2, 0, buttonSize, buttonSize}, "x", function()
+		self.controls.buttonClear = new("ButtonControl"):ButtonControl({ "RIGHT", self, "RIGHT" }, { -2, 0, buttonSize, buttonSize }, "x", function()
 			self:SetText("", true)
 		end)
 		self.controls.buttonClear.shown = function() return #self.buf > 0 and self:IsMouseInBounds() end
 	end
-	self.controls.scrollBarH = new("ScrollBarControl", {"BOTTOMLEFT",self,"BOTTOMLEFT"}, {1, -1, 0, 14}, 60, "HORIZONTAL", true)
+	self.controls.scrollBarH = new("ScrollBarControl"):ScrollBarControl({ "BOTTOMLEFT", self, "BOTTOMLEFT" }, { 1, -1, 0, 14 }, 60, "HORIZONTAL", true)
 	self.controls.scrollBarH.width = function()
 		local width, height = self:GetSize()
 		return width - (self.controls.scrollBarV.enabled and 16 or 2)
 	end
-	self.controls.scrollBarV = new("ScrollBarControl", {"TOPRIGHT",self,"TOPRIGHT"}, {-1, 1, 14, 0}, (lineHeight or 0) * 3, "VERTICAL", true)
+	self.controls.scrollBarV = new("ScrollBarControl"):ScrollBarControl({ "TOPRIGHT", self, "TOPRIGHT" }, { -1, 1, 14, 0 }, (lineHeight or 0) * 3, "VERTICAL", true)
 	self.controls.scrollBarV.height = function()
 		local width, height = self:GetSize()
 		return height - (self.controls.scrollBarH.enabled and 16 or 2)
@@ -102,7 +104,8 @@ local EditClass = newClass("EditControl", "ControlHost", "Control", "UndoHandler
 	end
 	self.protected = false
 	self.ctrlDown = false
-end)
+	return self
+end
 
 function EditClass:SetText(text, notify)
 	self.buf = tostring(text)
@@ -422,6 +425,10 @@ function EditClass:Draw(viewPort, noTooltip)
 			DrawImage(nil, caretX, textY, caretWidth, textHeight)
 		end
 	else
+		if self.buf == '' and self.placeholder then
+			SetDrawColor(self.disableCol)
+			DrawString(textX, textY, "LEFT", textHeight, self.font, self.placeholder)
+		end
 		local pre = self.textCol .. self.buf:sub(1, self.caret - 1)
 		local post = self.textCol .. self.buf:sub(self.caret)
 		if self.protected then

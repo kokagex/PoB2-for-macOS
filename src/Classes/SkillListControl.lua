@@ -26,17 +26,23 @@ local slot_map = {
 	["Belt"] 			= { icon = NewImageHandle(), path = "Assets/icon_belt.png" },
 }
 
-local SkillListClass = newClass("SkillListControl", "ListControl", function(self, anchor, rect, skillsTab)
-	self.ListControl(anchor, rect, 16, "VERTICAL", true, skillsTab.socketGroupList)
+---@class SkillListControl: ListControl
+local SkillListClass = newClass("SkillListControl", "ListControl")
+
+---@param anchor Anchor?
+---@param rect Rect?
+---@param skillsTab SkillsTab
+function SkillListClass:SkillListControl(anchor, rect, skillsTab)
+	self:ListControl(anchor, rect, 16, "VERTICAL", true, skillsTab.socketGroupList)
 	self.skillsTab = skillsTab
 	self.label = "^7" .. i18n.t("skills.ui.socketGroups")
-	self.controls.delete = new("ButtonControl", {"BOTTOMRIGHT",self,"TOPRIGHT"}, {0, -2, 60, 18}, i18n.t("skills.buttons.delete"), function()
+	self.controls.delete = new("ButtonControl"):ButtonControl({ "BOTTOMRIGHT", self, "TOPRIGHT" }, { 0, -2, 60, 18 }, i18n.t("skills.buttons.delete"), function()
 		self:OnSelDelete(self.selIndex, self.selValue)
 	end)
 	self.controls.delete.enabled = function()
 		return self.selValue ~= nil and self.selValue.source == nil
 	end
-	self.controls.deleteAll = new("ButtonControl", {"RIGHT",self.controls.delete,"LEFT"}, {-4, 0, 70, 18}, i18n.t("skills.buttons.deleteAll"), function()
+	self.controls.deleteAll = new("ButtonControl"):ButtonControl({ "RIGHT", self.controls.delete, "LEFT" }, { -4, 0, 70, 18 }, i18n.t("skills.buttons.deleteAll"), function()
 		main:OpenConfirmPopup(i18n.t("skills.popups.deleteAllTitle"), i18n.t("skills.popups.deleteAllMsg"), i18n.t("skills.buttons.delete"), function()
 			wipeTable(self.list)
 			skillsTab:SetDisplayGroup()
@@ -49,7 +55,7 @@ local SkillListClass = newClass("SkillListControl", "ListControl", function(self
 	self.controls.deleteAll.enabled = function()
 		return #self.list > 0 
 	end
-	self.controls.new = new("ButtonControl", {"RIGHT",self.controls.deleteAll,"LEFT"}, {-4, 0, 60, 18}, i18n.t("skills.buttons.new"), function()
+	self.controls.new = new("ButtonControl"):ButtonControl({ "RIGHT", self.controls.deleteAll, "LEFT" }, { -4, 0, 60, 18 }, i18n.t("skills.buttons.new"), function()
 		local newGroup = { 
 			label = "", 
 			enabled = true, 
@@ -66,7 +72,8 @@ local SkillListClass = newClass("SkillListControl", "ListControl", function(self
 	for k, x in pairs(slot_map) do
 		x.icon:Load(x.path)
 	end
-end)
+	return self
+end
 
 function SkillListClass:GetRowValue(column, index, socketGroup)
 	if column == 1 then

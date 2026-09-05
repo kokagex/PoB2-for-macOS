@@ -5,45 +5,49 @@
 --
 local t_insert = table.insert
 
-local ItemSetListClass = newClass("ItemSetListControl", "ListControl", function(self, anchor, rect, itemsTab)
-	self.ListControl(anchor, rect, 16, "VERTICAL", true, itemsTab.itemSetOrderList)
+---@class ItemSetListControl: ListControl
+local ItemSetListClass = newClass("ItemSetListControl", "ListControl")
+
+function ItemSetListClass:ItemSetListControl(anchor, rect, itemsTab)
+	self:ListControl(anchor, rect, 16, "VERTICAL", true, itemsTab.itemSetOrderList)
 	self.itemsTab = itemsTab
-	self.itemSetService = new("ItemSetService", itemsTab)
-	self.controls.copy = new("ButtonControl", {"BOTTOMLEFT",self,"TOP"}, {2, -4, 60, 18}, i18n.t("items.buttons.copy"), function()
+	self.itemSetService = new("ItemSetService"):ItemSetService(itemsTab)
+	self.controls.copy = new("ButtonControl"):ButtonControl({ "BOTTOMLEFT", self, "TOP" }, { 2, -4, 60, 18 }, i18n.t("items.buttons.copy"), function()
 		self:CopyItemSet(self.selValue)
 	end)
 	self.controls.copy.enabled = function()
 		return self.selValue ~= nil
 	end
-	self.controls.delete = new("ButtonControl", {"LEFT",self.controls.copy,"RIGHT"}, {4, 0, 60, 18}, i18n.t("items.buttons.delete"), function()
+	self.controls.delete = new("ButtonControl"):ButtonControl({ "LEFT", self.controls.copy, "RIGHT" }, { 4, 0, 60, 18 }, i18n.t("items.buttons.delete"), function()
 		self:OnSelDelete(self.selIndex, self.selValue)
 	end)
 	self.controls.delete.enabled = function()
 		return self.selValue ~= nil and #self.list > 1
 	end
-	self.controls.rename = new("ButtonControl", {"BOTTOMRIGHT",self,"TOP"}, {-2, -4, 60, 18}, i18n.t("items.buttons.rename"), function()
+	self.controls.rename = new("ButtonControl"):ButtonControl({ "BOTTOMRIGHT", self, "TOP" }, { -2, -4, 60, 18 }, i18n.t("items.buttons.rename"), function()
 		self:RenameItemSet(self.selValue)
 	end)
 	self.controls.rename.enabled = function()
 		return self.selValue ~= nil
 	end
-	self.controls.new = new("ButtonControl", {"RIGHT",self.controls.rename,"LEFT"}, {-4, 0, 60, 18}, i18n.t("items.buttons.new"), function()
+	self.controls.new = new("ButtonControl"):ButtonControl({ "RIGHT", self.controls.rename, "LEFT" }, { -4, 0, 60, 18 }, i18n.t("items.buttons.new"), function()
 		self:CreateItemSet()
 	end)
-end)
+	return self
+end
 
 function ItemSetListClass:CreateItemSet()
 	local controls = {}
-	controls.label = new("LabelControl", nil, { 0, 20, 0, 16 }, i18n.t("items.popups.enterNewSetName"))
-	controls.edit = new("EditControl", nil, { 0, 40, 350, 20 }, i18n.t("items.popups.newItemSetDefault"), nil, nil, 100, function(buf)
+	controls.label = new("LabelControl"):LabelControl(nil, { 0, 20, 0, 16 }, i18n.t("items.popups.enterNewSetName"))
+	controls.edit = new("EditControl"):EditControl(nil, { 0, 40, 350, 20 }, i18n.t("items.popups.newItemSetDefault"), nil, nil, 100, function(buf)
 		controls.save.enabled = buf:match("%S")
 	end)
-	controls.save = new("ButtonControl", nil, { -45, 70, 80, 20 }, i18n.t("items.buttons.save"), function()
+	controls.save = new("ButtonControl"):ButtonControl(nil, { -45, 70, 80, 20 }, i18n.t("items.buttons.save"), function()
 		self.itemSetService:NewItemSet(controls.edit.buf)
 		main:ClosePopup()
 	end)
 	controls.save.enabled = false
-	controls.cancel = new("ButtonControl", nil, { 45, 70, 80, 20 }, i18n.t("items.buttons.cancel"), function()
+	controls.cancel = new("ButtonControl"):ButtonControl(nil, { 45, 70, 80, 20 }, i18n.t("items.buttons.cancel"), function()
 		main:ClosePopup()
 	end)
 	main:OpenPopup(370, 100, i18n.t("items.popups.createItemSetTitle"), controls, "save", "edit", "cancel")
@@ -52,16 +56,16 @@ end
 function ItemSetListClass:CopyItemSet(selValue)
 	local itemSet = self.itemsTab.itemSets[selValue]
 	local controls = {}
-	controls.label = new("LabelControl", nil, { 0, 20, 0, 16 }, i18n.t("items.popups.enterSetName"))
-	controls.edit = new("EditControl", nil, { 0, 40, 350, 20 }, itemSet.title or i18n.t("items.status.default"), nil, nil, 100, function(buf)
+	controls.label = new("LabelControl"):LabelControl(nil, { 0, 20, 0, 16 }, i18n.t("items.popups.enterSetName"))
+	controls.edit = new("EditControl"):EditControl(nil, { 0, 40, 350, 20 }, itemSet.title or i18n.t("items.status.default"), nil, nil, 100, function(buf)
 		controls.save.enabled = buf:match("%S")
 	end)
-	controls.save = new("ButtonControl", nil, { -45, 70, 80, 20 }, i18n.t("items.buttons.save"), function()
+	controls.save = new("ButtonControl"):ButtonControl(nil, { -45, 70, 80, 20 }, i18n.t("items.buttons.save"), function()
 		self.itemSetService:CopyItemSet(selValue, controls.edit.buf)
 		main:ClosePopup()
 	end)
 	controls.save.enabled = false
-	controls.cancel = new("ButtonControl", nil, { 45, 70, 80, 20 }, i18n.t("items.buttons.cancel"), function()
+	controls.cancel = new("ButtonControl"):ButtonControl(nil, { 45, 70, 80, 20 }, i18n.t("items.buttons.cancel"), function()
 		main:ClosePopup()
 	end)
 	main:OpenPopup(370, 100, i18n.t("items.popups.copyItemSetTitle"), controls, "save", "edit", "cancel")
@@ -71,16 +75,16 @@ function ItemSetListClass:RenameItemSet(selValue)
 	local itemSet = self.itemsTab.itemSets[selValue]
 	local controls = {}
 	local setName = itemSet.title or i18n.t("items.status.default")
-	controls.label = new("LabelControl", nil, { 0, 20, 0, 16 }, i18n.t("items.popups.enterSetName"))
-	controls.edit = new("EditControl", nil, { 0, 40, 350, 20 }, setName, nil, nil, 100, function(buf)
+	controls.label = new("LabelControl"):LabelControl(nil, { 0, 20, 0, 16 }, i18n.t("items.popups.enterSetName"))
+	controls.edit = new("EditControl"):EditControl(nil, { 0, 40, 350, 20 }, setName, nil, nil, 100, function(buf)
 		controls.save.enabled = buf:match("%S")
 	end)
-	controls.save = new("ButtonControl", nil, { -45, 70, 80, 20 }, i18n.t("items.buttons.save"), function()
+	controls.save = new("ButtonControl"):ButtonControl(nil, { -45, 70, 80, 20 }, i18n.t("items.buttons.save"), function()
 		self.itemSetService:RenameItemSet(selValue, controls.edit.buf)
 		main:ClosePopup()
 	end)
 	controls.save.enabled = false
-	controls.cancel = new("ButtonControl", nil, { 45, 70, 80, 20 }, i18n.t("items.buttons.cancel"), function()
+	controls.cancel = new("ButtonControl"):ButtonControl(nil, { 45, 70, 80, 20 }, i18n.t("items.buttons.cancel"), function()
 		main:ClosePopup()
 	end)
 	main:OpenPopup(370, 100, setName and i18n.t("items.popups.renameTitle") or i18n.t("items.popups.setNameTitle"), controls, "save", "edit", "cancel")
@@ -112,7 +116,7 @@ function ItemSetListClass:ReceiveDrag(type, value, source)
 		local itemSet = self.itemsTab:CreateItemSet()
 		itemSet.title = value.title
 		for slotName, item in pairs(value.slots) do
-			local newItem = new("Item", item.raw)
+			local newItem = new("Item"):Item(item.raw)
 			newItem:NormaliseQuality()
 			self.itemsTab:AddItem(newItem, true)
 			itemSet[slotName].selItemId = newItem.id

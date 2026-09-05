@@ -10,8 +10,20 @@ local m_max = math.max
 local m_floor = math.floor
 
 
-local ItemDBClass = newClass("ItemDBControl", "ListControl", function(self, anchor, rect, itemsTab, db, dbType)
-	self.ListControl(anchor, rect, 16, "VERTICAL", false)
+---@class ItemDBControl: ListControl
+local ItemDBClass = newClass("ItemDBControl", "ListControl")
+
+---@class ItemDBData
+---@field list table<string, Item>
+---@field loading boolean?
+
+---@param anchor Anchor?
+---@param rect Rect?
+---@param itemsTab ItemsTab
+---@param db ItemDBData
+---@param dbType "RARE"|"UNIQUE"
+function ItemDBClass:ItemDBControl(anchor, rect, itemsTab, db, dbType)
+	self:ListControl(anchor, rect, 16, "VERTICAL", false)
 	self.itemsTab = itemsTab
 	self.db = db
 	self.dbType = dbType
@@ -32,36 +44,37 @@ local ItemDBClass = newClass("ItemDBControl", "ListControl", function(self, anch
 		table.insert(self.slotList, { label = i18n.lookup("items.slots", name) or name, slotName = name })
 	end
 	local baseY = dbType == "RARE" and -22 or -62
-	self.controls.slot = new("DropDownControl", {"BOTTOMLEFT",self,"TOPLEFT"}, {0, baseY, 179, 18}, self.slotList, function(index, value)
+	self.controls.slot = new("DropDownControl"):DropDownControl({ "BOTTOMLEFT", self, "TOPLEFT" }, { 0, baseY, 179, 18 }, self.slotList, function(index, value)
 		self.listBuildFlag = true
 	end)
-	self.controls.type = new("DropDownControl", {"LEFT",self.controls.slot,"RIGHT"}, {2, 0, 179, 18}, self.typeList, function(index, value)
+	self.controls.type = new("DropDownControl"):DropDownControl({ "LEFT", self.controls.slot, "RIGHT" }, { 2, 0, 179, 18 }, self.typeList, function(index, value)
 		self.listBuildFlag = true
 	end)
 	if dbType == "UNIQUE" then
-		self.controls.sort = new("DropDownControl", {"BOTTOMLEFT",self,"TOPLEFT"}, {0, baseY + 20, 179, 18}, self.sortDropList, function(index, value)
+		self.controls.sort = new("DropDownControl"):DropDownControl({ "BOTTOMLEFT", self, "TOPLEFT" }, { 0, baseY + 20, 179, 18 }, self.sortDropList, function(index, value)
 			self:SetSortMode(value.sortMode)
 			self.listBuildFlag = true
 		end)
-		self.controls.league = new("DropDownControl", {"LEFT",self.controls.sort,"RIGHT"}, {2, 0, 179, 18}, self.leagueList, function(index, value)
+		self.controls.league = new("DropDownControl"):DropDownControl({ "LEFT", self.controls.sort, "RIGHT" }, { 2, 0, 179, 18 }, self.leagueList, function(index, value)
 			self.listBuildFlag = true
 		end)
-		self.controls.requirement = new("DropDownControl", {"LEFT",self.controls.sort,"BOTTOMLEFT"}, {0, 11, 179, 18}, { i18n.t("items.filter.anyRequirements"), i18n.t("items.filter.currentLevel"), i18n.t("items.filter.currentAttributes"), i18n.t("items.filter.currentUseable") }, function(index, value)
+		self.controls.requirement = new("DropDownControl"):DropDownControl({ "LEFT", self.controls.sort, "BOTTOMLEFT" }, { 0, 11, 179, 18 }, { i18n.t("items.filter.anyRequirements"), i18n.t("items.filter.currentLevel"), i18n.t("items.filter.currentAttributes"), i18n.t("items.filter.currentUseable") }, function(index, value)
 			self.listBuildFlag = true
 		end)
-		self.controls.obtainable = new("DropDownControl", {"LEFT",self.controls.requirement,"RIGHT"}, {2, 0, 179, 18}, { i18n.t("items.filter.obtainable"), i18n.t("items.filter.anySource"), i18n.t("items.filter.unobtainable"), i18n.t("items.filter.vendorRecipe"), i18n.t("items.filter.upgraded"), i18n.t("items.filter.bossItem"), i18n.t("items.filter.corruption")}, function(index, value)
+		self.controls.obtainable = new("DropDownControl"):DropDownControl({ "LEFT", self.controls.requirement, "RIGHT" }, { 2, 0, 179, 18 }, { i18n.t("items.filter.obtainable"), i18n.t("items.filter.anySource"), i18n.t("items.filter.unobtainable"), i18n.t("items.filter.vendorRecipe"), i18n.t("items.filter.upgraded"), i18n.t("items.filter.bossItem"), i18n.t("items.filter.corruption") }, function(index, value)
 			self.listBuildFlag = true
 		end)
 	end
-	self.controls.search = new("EditControl", {"BOTTOMLEFT",self,"TOPLEFT"}, {0, -2, 258, 18}, "", "Search", "%c", 100, function()
+	self.controls.search = new("EditControl"):EditControl({ "BOTTOMLEFT", self, "TOPLEFT" }, { 0, -2, 258, 18 }, "", "Search", "%c", 100, function()
 		self.listBuildFlag = true
 	end, nil, nil, true)
-	self.controls.searchMode = new("DropDownControl", {"LEFT",self.controls.search,"RIGHT"}, {2, 0, 100, 18}, { i18n.t("items.filter.anywhere"), i18n.t("items.filter.names"), i18n.t("items.filter.modifiers") }, function(index, value)
+	self.controls.searchMode = new("DropDownControl"):DropDownControl({ "LEFT", self.controls.search, "RIGHT" }, { 2, 0, 100, 18 }, { i18n.t("items.filter.anywhere"), i18n.t("items.filter.names"), i18n.t("items.filter.modifiers") }, function(index, value)
 		self.listBuildFlag = true
 	end)
 	self:BuildSortOrder()
 	self.listBuildFlag = true
-end)
+	return self
+end
 
 function ItemDBClass:LoadLeaguesAndTypes()
 	local leagueFlag = { }
@@ -342,7 +355,7 @@ function ItemDBClass:Draw(viewPort)
 end
 
 function ItemDBClass:GetRowValue(column, index, item)
-	if column == 1 then
+	if item and column == 1 then
 		local displayName = item.name
 		if item.title and i18n then
 			local jTitle = i18n.lookup("uniqueNames", item.title)
@@ -379,7 +392,7 @@ end
 function ItemDBClass:OnSelClick(index, item, doubleClick)
 	if IsKeyDown("CTRL") then
 		-- Add item
-		local newItem = new("Item", item.raw)
+		local newItem = new("Item"):Item(item.raw)
 		newItem:NormaliseQuality()
 		self.itemsTab:AddItem(newItem, true)
 
@@ -404,7 +417,12 @@ function ItemDBClass:OnSelClick(index, item, doubleClick)
 		self.itemsTab:AddUndoState()
 		self.itemsTab.build.buildFlag = true
 	elseif doubleClick then
+		-- disallow dragging after double click since the window can jump when
+		-- the display item tooltip is created, which might cause the drag item
+		-- to get stuck to the cursor
+		self.selDragging = false
 		self.itemsTab:CreateDisplayItemFromRaw(item.raw, true)
+		return false
 	end
 end
 

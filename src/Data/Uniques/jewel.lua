@@ -17,6 +17,9 @@ Limited to: 1
 Controlled Metamorphosis
 Diamond
 Source: Drops from unique{Xesht, We That Are One} in normal{Twisted Domain}
+Version: Pre 0.4.0
+Version: Current
+Selected Variant: 4
 Variant: Very Small Ring
 Variant: Small Ring
 Variant: Medium-Small Ring
@@ -37,7 +40,7 @@ Radius: Variable
 {variant:8}Only affects Passives in Massive Ring
 Passives in Radius can be Allocated without being connected to your tree
 -(20-5)% to all Elemental Resistances
--(23-3)% to Chaos Resistance
+{version:1}-(23-3)% to Chaos Resistance
 ]],[[
 Grand Spectrum
 Ruby

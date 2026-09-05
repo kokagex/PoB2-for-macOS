@@ -6,9 +6,11 @@ return {
 Bijouborne
 Double Belt
 League: Dawn of the Hunt
-Implicits: 2
-+(50-100) to maximum Mana
+Implicits: 3
+Grants Skill: Level (1-20) Cast on Charm Use
 Has (1-3) Charm Slot
+(20-30)% increased Charm Charges gained
++(50-100) to maximum Mana
 (10-50)% reduced Charm Effect Duration
 +2 Charm Slots
 +(15-25) to Dexterity
@@ -68,6 +70,7 @@ Variant: Body Armour
 Variant: Gloves
 Variant: Boots
 Variant: Shield
+Sockets: S S
 Implicits: 2
 Has (1-3) Charm Slot
 Flasks gain 0.17 charges per Second
@@ -95,10 +98,10 @@ Plate Belt
 League: Dawn of the Hunt
 Variant: Pre 0.5.0
 Variant: Current
-Implicits: 2
+Implicits: 3
 {variant:2}+(140-180) to Armour
-Has (1-3) Charm Slot
 {variant:1}+(100-140) to Armour
+Has (1-3) Charm Slot
 +(20-30) to Strength
 (10-20) Life Regeneration per second
 Defend with 200% of Armour
@@ -120,10 +123,10 @@ Source: No longer obtainable
 Variant: Pre 0.1.1
 Variant: Pre 0.5.0
 Variant: Current
-Implicits: 2
+Implicits: 3
 {variant:3}+(140-180) to Armour
-Has (1-3) Charm Slot
 {variant:1,2}+(100-140) to Armour
+Has (1-3) Charm Slot
 +(100-150) to Armour
 +(10-20) to Strength
 +(3-5)% to Maximum Fire Resistance

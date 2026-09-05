@@ -7,18 +7,22 @@
 local dkjson = require "dkjson"
 local m_min = math.min
 local m_max = math.max
+local utils = LoadModule("Modules/Utils")
 
 ---@class TradeQueryRequests
-local TradeQueryRequestsClass = newClass("TradeQueryRequests", function(self, rateLimiter)
+local TradeQueryRequestsClass = newClass("TradeQueryRequests")
+
+function TradeQueryRequestsClass:TradeQueryRequests(rateLimiter)
 	self.maxFetchPerSearch = 10
 	self.tradeQuery = tradeQuery
-	self.rateLimiter = rateLimiter or new("TradeQueryRateLimiter")
+	self.rateLimiter = rateLimiter or new("TradeQueryRateLimiter"):TradeQueryRateLimiter()
 	self.requestQueue = {
 		["search"] = {},
 		["fetch"] = {},
 	}
 	self.hostName = "https://www.pathofexile.com/"
-end)
+	return self
+end
 
 ---Main routine for processing request queue
 function TradeQueryRequestsClass:ProcessQueue()
@@ -227,7 +231,7 @@ function TradeQueryRequestsClass:PerformSearch(realm, league, query, callback)
 				if response.error then
 					if not (response.error.code and response.error.message) then
 						errMsg = "Encountered unknown error, check console for details."
-						ConPrintf("Unknown error: %s", stringify(response.error))
+						ConPrintf("Unknown error: %s", utils.stringify(response.error))
 						callback(response, errMsg)
 					end
 					if response.error.message:find("Logging in will increase this limit") then
@@ -414,27 +418,27 @@ function TradeQueryRequestsClass:FetchResultBlock(url, callback)
 				item.implicitMods = item.implicitMods or { }
 				item.explicitMods = item.explicitMods or { }
 
+				local function processLine(modLine)
+					local s = ""
+					for flagName, flag in pairs(modLine.flags or {}) do
+						if flag then
+							s = s .. string.format("{%s}", flagName)
+						end
+					end
+					return s .. escapeGGGString(modLine.description)
+				end
 				t_insert(rawLines, "Implicits: " .. (#item.enchantMods + #item.runeMods + #item.implicitMods))
-				for _, modLine in ipairs(item.enchantMods) do
-					t_insert(rawLines, "{enchant}"	.. escapeGGGString(modLine))
+				for _, modLine in ipairs(item.enchantMods or {}) do
+					t_insert(rawLines, "{enchant}" .. processLine(modLine))
 				end
-				for _, modLine in ipairs(item.runeMods) do
-					t_insert(rawLines, "{enchant}{rune}"	.. escapeGGGString(modLine))
+				for _, modLine in ipairs(item.runeMods or {}) do
+					t_insert(rawLines, "{enchant}{rune}" .. processLine(modLine))
 				end
-				for _, modLine in ipairs(item.implicitMods) do
-					t_insert(rawLines, escapeGGGString(modLine))
+				for _, modLine in ipairs(item.implicitMods or {}) do
+					t_insert(rawLines, processLine(modLine))
 				end
-				for _, modLine in ipairs(item.fracturedMods) do
-					t_insert(rawLines, "{fractured}"	.. escapeGGGString(modLine))
-				end
-				for _, modLine in ipairs(item.explicitMods) do
-					t_insert(rawLines, escapeGGGString(modLine))
-				end
-				for _, modLine in ipairs(item.desecratedMods) do
-					t_insert(rawLines, "{desecrated}"	.. escapeGGGString(modLine))
-				end
-				for _, modLine in ipairs(item.craftedMods) do
-					t_insert(rawLines, "{crafted}"	.. escapeGGGString(modLine))
+				for _, modLine in ipairs(item.explicitMods or {}) do
+					t_insert(rawLines, processLine(modLine))
 				end
 				if item.mirrored then
 					t_insert(rawLines, "Mirrored")
@@ -444,12 +448,15 @@ function TradeQueryRequestsClass:FetchResultBlock(url, callback)
 				end
 				
 
+				local pseudoMod = trade_entry.item.pseudoMods and trade_entry.item.pseudoMods[1]
+				local pseudoModLine = pseudoMod and (pseudoMod.description or pseudoMod)
 				table.insert(items, {
 					amount = trade_entry.listing.price.amount,
 					currency = trade_entry.listing.price.currency,
 					item_string = table.concat(rawLines, "\n"),
 					whisper = trade_entry.listing.whisper,
-					weight = trade_entry.item.pseudoMods and trade_entry.item.pseudoMods[1]:match("Sum: (.+)") or "0",
+					trader = trade_entry.listing.account and trade_entry.listing.account.name,
+					weight = trade_entry.item.pseudoMods and pseudoModLine:match("Sum: (.+)") or "0",
 					id = trade_entry.id
 				})
 			end

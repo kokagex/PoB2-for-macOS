@@ -9,7 +9,8 @@ local curl = require("lcurl.safe")
 local m_max = math.max
 local s_format = string.format
 local t_insert = table.insert
-local tradeHelpers = LoadModule("Classes/TradeQueryHelpers")
+local tradeHelpers = LoadModule("Classes/TradeHelpers")
+local utils = LoadModule("Modules/Utils")
 
 -- string are an any type while tables require all fields to be matched with type and subType require both to be matched exactly. [1] type, [2] subType, subType is optional and must be nil if not present.
 local tradeCategoryNames = {
@@ -23,11 +24,11 @@ local tradeCategoryNames = {
 	["Quiver"] = { "Quiver" },
 	["Shield"] = { "Shield", "Shield: Armour", "Shield: Armour/Energy Shield", "Shield: Armour/Evasion", "Shield: Evasion" },
 	["Focus"] = { "Focus" },
-	["1HWeapon"] = { "One Handed Mace", "Wand", "Sceptre", "Flail", "Spear" },
-	["2HWeapon"] = { "Staff", "Staff: Warstaff", "Two Handed Mace", "Crossbow", "Bow", "Talisman" },
-	-- ["1HAxe"] = { "One Handed Axe" },
-	-- ["1HSword"] = { "One Handed Sword", "Thrusting One Handed Sword" },
-	["1HMace"] = { "One Handed Mace" },
+	["1HWeapon"] = { "One Hand Mace", "Wand", "Sceptre", "Flail", "Spear" },
+	["2HWeapon"] = { "Staff", "Staff: Warstaff", "Two Hand Mace", "Crossbow", "Bow", "Talisman" },
+	-- ["1HAxe"] = { "One Hand Axe" },
+	-- ["1HSword"] = { "One Hand Sword", "Thrusting One Hand Sword" },
+	["1HMace"] = { "One Hand Mace" },
 	["Sceptre"] = { "Sceptre" },
 	-- ["Dagger"] = { "Dagger" },
 	["Wand"] = { "Wand" },
@@ -37,9 +38,9 @@ local tradeCategoryNames = {
 	["Quarterstaff"] = { "Staff: Warstaff" },
 	["Bow"] = { "Bow" },
 	["Crossbow"] = { "Crossbow"},
-	-- ["2HAxe"] = { "Two Handed Axe" },
-	-- ["2HSword"] = { "Two Handed Sword" },
-	["2HMace"] = { "Two Handed Mace" },
+	-- ["2HAxe"] = { "Two Hand Axe" },
+	-- ["2HSword"] = { "Two Hand Sword" },
+	["2HMace"] = { "Two Hand Mace" },
 	-- ["FishingRod"] = { "Fishing Rod" },
 	["BaseJewel"] = { "Jewel" },
 	["RadiusJewel"] = { "Jewel: Radius" },
@@ -81,21 +82,40 @@ for type, bases in pairs(data.itemBaseLists) do
 	end
 end
 
-local tradeStatCategoryIndices = {
-	["Explicit"] = 2,
-	["Implicit"] = 3,
-	["Corrupted"] = 4,
-	["AllocatesXEnchant"] = 5,
-	["Rune"] = 6,
-}
 
-local MAX_FILTERS = 35
+---@return table[]? category list of entries for the mod type
+local function getStatEntries(modType)
+	local tradeStats = tradeHelpers.getTradeStats()
+	local tradeStatCategoryIndices = {
+		["Explicit"] = "explicit",
+		["Implicit"] = "implicit",
+		["Corrupted"] = "enchant",
+		["AllocatesXEnchant"] = "enchant",
+		-- note that in the json the label is augment while the id is rune
+		["Rune"] = "rune",
+		["HeartOfTheWell"] = "explicit",
+		["AgainstTheDarkness"] = "explicit",
+		["pseudo"] = "pseudo",
+		["Enchant"] = "enchant",
+	}
+	if tradeStatCategoryIndices[modType] then
+		for i, cat in ipairs(tradeStats) do
+			if cat.id == tradeStatCategoryIndices[modType] then
+				return cat.entries
+			end
+		end
+	end
+end
+
 
 local function logToFile(...)
 	ConPrintf(...)
 end
 
-local TradeQueryGeneratorClass = newClass("TradeQueryGenerator", function(self, queryTab)
+---@class TradeQueryGenerator
+local TradeQueryGeneratorClass = newClass("TradeQueryGenerator")
+
+function TradeQueryGeneratorClass:TradeQueryGenerator(queryTab)
 	self:InitMods()
 	self.queryTab = queryTab
 	self.itemsTab = queryTab.itemsTab
@@ -103,20 +123,7 @@ local TradeQueryGeneratorClass = newClass("TradeQueryGenerator", function(self, 
 	self.lastMaxPrice = nil
 	self.lastMaxPriceTypeIndex = nil
 	self.lastMaxLevel = nil
-end)
-
-local function fetchStats()
-	local tradeStats = ""
-	local easy = common.curl.easy()
-	easy:setopt_url("https://www.pathofexile.com/api/trade2/data/stats")
-	easy:setopt_useragent("Path of Building/" .. launch.versionNumber)
-	easy:setopt_writefunction(function(data)
-		tradeStats = tradeStats..data
-		return true
-	end)
-	easy:perform()
-	easy:close()
-	return tradeStats
+	return self
 end
 
 local function canModSpawnForItemCategory(mod, names)
@@ -191,16 +198,35 @@ function TradeQueryGeneratorClass.WeightedRatioOutputs(baseOutput, newOutput, st
 	return meanStatDiff
 end
 
-function TradeQueryGeneratorClass:ProcessMod(mod, tradeQueryStatsParsed, itemCategoriesMask, itemCategoriesOverride)
-	if mod.statOrder == nil then mod.statOrder = { } end
-	if mod.group == nil then mod.group = "" end
 
-	for index, modLine in ipairs(mod) do
+function TradeQueryGeneratorClass:ProcessMod(mod, itemCategoriesMask, itemCategoriesOverride)
+-- processes mods from the data exports to a format that is more useful for
+-- generating weights.
+
+-- this function generally uses the .tradeHashes field of each exported mod,
+-- which contains a map from the trade hash to the mod lines/stats
+
+-- at a high level, this function matches each stat / mod line to an entry in
+-- https://www.pathofexile.com/api/trade2/data/stats via the trade hash. that
+-- entry is then used to determine if the mod is inverted, i.e. that the mod
+-- here is x increased by y, while the trade site has x decreased by -y. the
+-- function also records the minimum and maximum values of each stat, so we can
+-- later test for a midpoint of those values to generate a weight
+	for tradeHash, modLines in pairs(mod.tradeHashes) do
+		-- the mod export sometimes splits stats to multiple lines. they should
+		-- still get parsed correctly if we combine them, and that makes it
+		-- simpler to process them
+		local modLine = table.concat(modLines, " ")
 		if modLine:find("Grants Level") or modLine:find("inflict Decay") then -- skip mods that grant skills / decay, as they will often be overwhelmingly powerful but don't actually fit into the build
 			goto nextModLine
 		end
 
 		local modType = (mod.type == "Prefix" or mod.type == "Suffix") and "Explicit" or mod.type == "SpecialCorrupted" and "Corrupted" or mod.type
+
+		if not modType then
+			ConPrintf("Unable to match mod due to missing mod type: %s", modLine)
+			goto continue
+		end
 
 		-- Special cases
 		local specialCaseData = { }
@@ -215,46 +241,43 @@ function TradeQueryGeneratorClass:ProcessMod(mod, tradeQueryStatsParsed, itemCat
 			modLine = modLine:gsub("Slots", "Slot")
 		end
 
-		-- If this is the first tier for this mod, find matching trade mod and init the entry
-		if not self.modData[modType] then
-			logToFile("Unhandled Mod Type: %s", modType)
-			goto continue
-		end
-
 		-- iterate trade mod category to find mod with matching text.
 		local function getTradeMod()
-			-- try matching to global mods.
-			local matchStr = modLine:gsub("[#()0-9%-%+%.]","")
-			for _, entry in ipairs(tradeQueryStatsParsed.result[tradeStatCategoryIndices[modType]].entries) do
-				if entry.text:gsub("[#()0-9%-%+%.]","") == matchStr then
-					return entry
+			local entry
+			local tradeHashStr = tostring(tradeHash)
+			for _, v in ipairs(getStatEntries(modType) or {}) do
+				-- prefix removed
+				local ids = v.id:gsub(".+..stat_", "").."|"
+				-- split by non-integer
+				for id in ids:gmatch("%d+") do
+					if tradeHashStr == id then
+						entry = v
+						goto finish
+					end
 				end
 			end
-			-- check reverse
-			matchStr = swapInverse(matchStr)
-			for _, entry in ipairs(tradeQueryStatsParsed.result[tradeStatCategoryIndices[modType]].entries) do
-				if entry.text:gsub("[#()0-9%-%+%.]","") == matchStr then
-					return entry, true
-				end
+			::finish::
+
+			if not entry then
+				return nil
 			end
 
-			return nil
+			-- determine if the mod is inversed, i.e. increased here -> reduced on trade
+			local pattern = "[#()0-9%-%+%.]"
+			local matchStr = modLine:gsub(pattern,"")
+			local inverseMatchStr = swapInverse(matchStr)
+			if entry.text:gsub(pattern, "") == matchStr then
+				return entry, false
+			elseif entry.text:gsub(pattern, "") == inverseMatchStr then
+				return entry, true
+			end
+			return entry
 		end
 
 		local tradeMod = nil
 		local invert
 
-		if mod.statOrder[index] == nil then -- if there isn't a mod order we have to use the trade id instead e.g. implicits.
-			tradeMod, invert = getTradeMod()
-			if tradeMod == nil then
-				logToFile("Unable to match %s mod: %s", modType, modLine)
-				goto nextModLine
-			end
-			mod.statOrder[index] = tradeMod.id
-		end
-
-		local statOrder = modLine:find("Nearby Enemies have %-") ~= nil and mod.statOrder[index + 1] or mod.statOrder[index] -- hack to get minus res mods associated with the correct statOrder
-		local uniqueIndex = mod.group ~= "" and tostring(statOrder).."_"..mod.group or tostring(statOrder)
+		local uniqueIndex = tostring(tradeHash)
 
 		if self.modData[modType][uniqueIndex] == nil then
 			if tradeMod == nil then
@@ -298,7 +321,7 @@ function TradeQueryGeneratorClass:ProcessMod(mod, tradeQueryStatsParsed, itemCat
 			max = #max > 0 and tonumber(max) or tonumber(min)
 
 			tokenizeOffset = tokenizeOffset + (endPos - startPos)
-			
+
 			-- the values are negative record its ranges as such.
 			if (invert or sign == "-") and not (invert and sign == "-") then
 				local temp = max
@@ -307,13 +330,13 @@ function TradeQueryGeneratorClass:ProcessMod(mod, tradeQueryStatsParsed, itemCat
 			end
 
 			if sign == "+" then self.modData[modType][uniqueIndex].usePositiveSign = true end
-			
+
 			t_insert(tokens, min)
 			t_insert(tokens, max)
 		end
 
 		if #tokens ~= 0 and #tokens ~= 2 and #tokens ~= 4 then
-			logToFile("Unexpected # of tokens found for mod: %s", mod[index])
+			logToFile("Unexpected # of tokens found for mod: %s", modLine)
 			goto nextModLine
 		end
 
@@ -342,9 +365,9 @@ function TradeQueryGeneratorClass:ProcessMod(mod, tradeQueryStatsParsed, itemCat
 	::continue::
 end
 
-function TradeQueryGeneratorClass:GenerateModData(mods, tradeQueryStatsParsed, itemCategoriesMask, itemCategoriesOverride)
+function TradeQueryGeneratorClass:GenerateModData(mods, itemCategoriesMask, itemCategoriesOverride)
 	for _, mod in pairsSortByKey(mods) do
-		self:ProcessMod( mod, tradeQueryStatsParsed, itemCategoriesMask, itemCategoriesOverride)
+		self:ProcessMod( mod, itemCategoriesMask, itemCategoriesOverride)
 	end
 end
 
@@ -358,24 +381,48 @@ function TradeQueryGeneratorClass:InitMods()
 		return
 	end
 
+	-- Download stats JSON from GGG API. Do not use launch:DownloadPage here as it is async, and QueryMods.lua must use the freshly downloaded stats.
+	local tradeStats = ""
+	local easy = curl.easy()
+	easy:setopt_url("https://www.pathofexile.com/api/trade2/data/stats")
+	easy:setopt_useragent("Path of Building/" .. launch.versionNumber)
+	easy:setopt_writefunction(function(data)
+		tradeStats = tradeStats..data
+		return true
+	end)
+	local ok = easy:perform()
+	easy:close()
+	if not ok or tradeStats == "" then
+		error("Error while downloading stats.json")
+	end
+	local body = dkjson.decode(tradeStats)
+
+	if body.error then
+		error("Error received from api/trade2/data/stats: "..body.error.message)
+	end
+
+	for catIdx, _ in ipairs(body.result) do
+		table.sort(body.result[catIdx].entries, function(a, b)
+			if a.text == b.text then
+				return a.id < b.id
+			end
+			return a.text < b.text
+		end)
+	end
+
+	local description = "This file contains the trade site data from https://www.pathofexile.com/api/trade2/data/stats"
+	utils.saveTableToFile("./Data/TradeSiteStats.lua", body.result, description)
+
 	self.modData = {
 		["Explicit"] = { },
 		["Implicit"] = { },
+		["Corrupted"] = { },
 		["Enchant"] = { },
 		["AllocatesXEnchant"] = { },
-		["Corrupted"] = { },
 		["Rune"] = { },
+		["HeartOfTheWell"] = { },
+		["AgainstTheDarkness"] = { },
 	}
-
-	-- originates from: https://www.pathofexile.com/api/trade2/data/stats
-	local tradeStats = fetchStats()
-	tradeStats:gsub("\n", " ")
-	local tradeQueryStatsParsed = dkjson.decode(tradeStats)
-	for _, modDomain in ipairs(tradeQueryStatsParsed.result) do
-		for _, mod in ipairs(modDomain.entries) do
-			mod.text = escapeGGGString(mod.text)
-		end
-	end
 
 	-- create mask for regular mods
 	local regularItemMask = { }
@@ -383,15 +430,62 @@ function TradeQueryGeneratorClass:InitMods()
 		regularItemMask[category] = true
 	end
 
-	self:GenerateModData(data.itemMods.Item, tradeQueryStatsParsed, regularItemMask)
-	if data.itemMods.Corruption then
-		self:GenerateModData(data.itemMods.Corruption, tradeQueryStatsParsed, regularItemMask)
-	end
-	self:GenerateModData(data.itemMods.Jewel, tradeQueryStatsParsed, { ["BaseJewel"] = true, ["AnyJewel"] = true, ["RadiusJewel"] = true })
-	self:GenerateModData(data.itemMods.Flask, tradeQueryStatsParsed, { ["LifeFlask"] = true, ["ManaFlask"] = true })
-	self:GenerateModData(data.itemMods.Charm, tradeQueryStatsParsed, { ["Charm"] = true })
+	self:GenerateModData(data.itemMods.Item, regularItemMask)
+	self:GenerateModData(data.itemMods.Desecrated, regularItemMask)
+	self:GenerateModData(data.itemMods.Corruption, regularItemMask)
+	self:GenerateModData(data.itemMods.Jewel, { ["BaseJewel"] = true, ["AnyJewel"] = true, ["RadiusJewel"] = true })
+	self:GenerateModData(data.itemMods.Flask, { ["LifeFlask"] = true, ["ManaFlask"] = true })
+	self:GenerateModData(data.itemMods.Charm, { ["Charm"] = true })
 
-	for _, entry in ipairs(tradeQueryStatsParsed.result[tradeStatCategoryIndices.AllocatesXEnchant].entries) do
+	-- add breach mods which lack proper weights. these mods spawn for either belts or rings, but
+	-- have weights of zero for ones they cannot spawn on
+	for name, mod in pairs(data.itemMods.Item) do
+		local treeMod = false
+		local slots = {Ring = true, Belt = true}
+		for i, v in ipairs(mod.weightKey) do
+			if v == "genesis_tree_minion" or v == "genesis_tree_caster" then
+				treeMod = true
+			end
+			if (v == "belt") and mod.weightVal[i] == 0 then
+				slots.Belt = nil
+			end
+			if (v == "ring") and mod.weightVal[i] == 0 then
+				slots.Ring = nil
+			end
+		end
+		if treeMod then
+			self:ProcessMod(mod, regularItemMask, slots)
+			goto continueBreach
+		end
+
+		-- there are also crafted mods which can be identified based on the name
+		if name:match("^GenesisTreeRing") then
+			self:ProcessMod(mod, regularItemMask, {Ring = true})
+		end
+		if name:match("^GenesisTreeBelt") then
+			self:ProcessMod(mod, regularItemMask, {Belt = true})
+		end
+		::continueBreach::
+	end
+
+	-- essences, because in item mod data they don't have equipment tags
+	for name, essence in pairs(data.essences) do
+		-- weird exception: linked to mod that says "% dex int or str"
+		if name:find("Perfect") and not (name == "Metadata/Items/Currency/CurrencyPerfectEssenceAttribute") then
+			for itemType, modName in pairs(essence.mods) do
+				local mask = {}
+				local itemType = itemType == "Warstaff" and "Quarterstaff" or itemType
+				mask[itemType] = true
+				self:ProcessMod(data.itemMods.Item[modName], regularItemMask, mask)
+			end
+		end
+	end
+	-- fix the weird exception
+	for _, v in ipairs({"EssencePercentStrength1", "EssencePercentDexterity1", "EssencePercentIntelligence1"}) do
+		self:ProcessMod(data.itemMods.Item[v], regularItemMask, { Amulet = true }, "explicit")
+	end
+
+	for _, entry in ipairs(getStatEntries("AllocatesXEnchant") or {}) do
 		if entry.text:sub(1, 10) == "Allocates " then
 			-- The trade id for allocatesX enchants end with "|[nodeID]" for the allocated node.
 			local nodeId = entry.id:sub(entry.id:find("|") + 1)
@@ -399,12 +493,60 @@ function TradeQueryGeneratorClass:InitMods()
 		end
 	end
 
+	-- heart of the well mods
+	local heartMods = {}
+	for name, mod in pairsSortByKey(data.itemMods.Desecrated) do
+		if name:match("^UniqueHeart") then
+			local modCopy = copyTable(mod)
+			modCopy.type = "HeartOfTheWell"
+			t_insert(heartMods, modCopy)
+		end
+	end
+	self:GenerateModData(heartMods, { ["BaseJewel"] = true, ["AnyJewel"] = true }, { ["AnyJewel"] = "AnyJewel" })
+
+	-- against the darkness mods
+	local darknessMods = {}
+	for name, mod in pairsSortByKey(data.itemMods.Exclusive) do
+		-- this name prefix is not very unique and already matches some mods that don't exist on the
+		-- jewel. this might cause problems later
+		if name:match("^UniqueJewelRadius") then
+			local modCopy = copyTable(mod)
+			modCopy.type = "AgainstTheDarkness"
+			t_insert(darknessMods, modCopy)
+		end
+	end
+	self:GenerateModData(darknessMods, { ["RadiusJewel"] = true, ["AnyJewel"] = true }, { ["AnyJewel"] = "AnyJewel" })
+
 	-- implicit mods
 	for baseName, entry in pairsSortByKey(data.itemBases) do
-		if entry.implicit ~= nil then
+		if entry.implicit ~= nil and entry.type ~= "Transcendent Limb" then
 			local mod = { type = "Implicit" }
 			for modLine in string.gmatch(entry.implicit, "([^".."\n".."]+)") do
 				t_insert(mod, modLine)
+			end
+
+			local found = false
+			for _, modLine in ipairs(mod) do
+				if modLine:find("Grants Skill:") then
+					goto continue
+				end
+				for _, v in pairs(data.itemMods.Exclusive) do
+					if v[1] == modLine then
+						found = true
+						mod = v
+						mod.type = "Implicit"
+						-- it is possible for there to be multiple matches. For example "+(20-30) to
+						-- maximum Energy Shield" tends to match both the amulet implicit and some
+						-- other unique mod which is local energy shield instead. in that case it
+						-- incorrectly gets mapped to the local stat. this is however super rare as
+						-- it needs the ranges to match exactly.
+						break
+					end
+				end
+			end
+			if not found then
+				ConPrintf("unknown implicit mod: %s", mod[1])
+				goto continue
 			end
 
 			-- create trade type mask for base type
@@ -424,47 +566,77 @@ function TradeQueryGeneratorClass:InitMods()
 
 			-- mask found process implicit mod this avoids processing unimplemented bases i.e. two handed axes.
 			if next(maskOverride) ~= nil then
-				self:ProcessMod(mod, tradeQueryStatsParsed, regularItemMask, maskOverride)
+				self:ProcessMod(mod, regularItemMask, maskOverride)
+			end
+		end
+		::continue::
+	end
+
+	-- -- rune mods
+	for name, runeMods in pairsSortByKey(data.itemMods.Runes) do
+		for slotType, mods in pairs(runeMods) do
+			for i, modLine in ipairs(mods) do
+				local mod = {modLine, tradeHashes = mods.tradeHashes, type = "Rune"}
+				if slotType == "weapon" then
+					self:ProcessMod(mod, regularItemMask, { ["1HWeapon"] = true, ["2HWeapon"] = true, ["1HMace"] = true, ["Claw"] = true, ["Quarterstaff"] = true, ["Bow"] = true, ["2HMace"] = true, ["Crossbow"] = true, ["Spear"] = true, ["Flail"] = true, ["Talisman"] = true  })
+				elseif slotType == "armour" then
+					self:ProcessMod(mod, regularItemMask, { ["Shield"] = true, ["Chest"] = true, ["Helmet"] = true, ["Gloves"] = true, ["Boots"] = true, ["Focus"] = true })
+				elseif slotType == "caster" then
+					self:ProcessMod(mod, regularItemMask, { ["Wand"] = true, ["Staff"] = true })
+				else
+					-- Mod is slot specific, try to match against a value in tradeCategoryNames
+					local matchedCategories = {}
+					for category, categoryOptions in pairs(tradeCategoryNames) do
+						for _, opt in ipairs(categoryOptions) do
+							-- warstaves have inconsistent naming and need special handling
+							if opt:lower() == slotType or ((opt == "Staff: Warstaff") and (slotType == "warstaff")) then
+								matchedCategories[category] = true
+							end
+						end
+					end
+					if next(matchedCategories) then
+						self:ProcessMod(mod, regularItemMask, matchedCategories)
+					else
+						ConPrintf("TradeQuery: Unmatched category for modifier. Slot type: %s Modifier: %s Mod line: %s", mods.slotType, mods.name, modLine)
+					end
+				end
 			end
 		end
 	end
 
-	-- rune mods
-	for name, runeMods in pairsSortByKey(data.itemMods.Runes) do
-		for slotType, mods in pairs(runeMods) do
-			if slotType == "weapon" then
-				self:ProcessMod(mods, tradeQueryStatsParsed, regularItemMask, { ["1HWeapon"] = true, ["2HWeapon"] = true, ["1HMace"] = true, ["Claw"] = true, ["Quarterstaff"] = true, ["Bow"] = true, ["2HMace"] = true, ["Crossbow"] = true, ["Spear"] = true, ["Flail"] = true, ["Talisman"] = true  })
-			elseif slotType == "armour" then
-				self:ProcessMod(mods, tradeQueryStatsParsed, regularItemMask, { ["Shield"] = true, ["Chest"] = true, ["Helmet"] = true, ["Gloves"] = true, ["Boots"] = true, ["Focus"] = true })
-			elseif slotType == "caster" then
-				self:ProcessMod(mods, tradeQueryStatsParsed, regularItemMask, { ["Wand"] = true, ["Staff"] = true })
-			else
-				-- Mod is slot specific, try to match against a value in tradeCategoryNames
-				local matchedCategory = nil
-				for category, categoryOptions in pairs(tradeCategoryNames) do
-					for i, opt in pairs(categoryOptions) do
-						if opt:lower():match(slotType) then
-							matchedCategory = category
-							break
-						end
-					end
-					if matchedCategory then
-						break
-					end
-				end
-				if matchedCategory then
-					self:ProcessMod(mods, tradeQueryStatsParsed, regularItemMask, { [matchedCategory] = true })
-				else
-					ConPrintf("TradeQuery: Unmatched category for modifier. Slot type: %s Modifier: %s", mods.slotType, mods.name)
+	-- 0.5 rune influence mods. e.g. can roll chronomancy modifiers
+
+	-- a map of slot to weight key which is on the mods
+	local runeInfluences = { Boots = { "chronomancy" }, Gloves = { "marksman", "decay" }, Helmets = { "berserking" }, Weapon = { "destruction" }, ["Body Armour"] = { "soul" } }
+	local function hasSpawnTag(mod, tag)
+		local idx = 1
+		while mod.weightKey[idx] do
+			if (mod.weightKey[idx] == tag) and (mod.weightVal[idx] > 0) then
+				return true
+			end
+			idx = idx + 1
+		end
+		return false
+	end
+	for slot, tags in pairsSortByKey(runeInfluences) do
+		for _, tag in ipairs(tags) do
+			local mods = {}
+			for _, mod in pairsSortByKey(data.itemMods.Item) do
+				if hasSpawnTag(mod, tag) then
+					t_insert(mods, mod)
 				end
 			end
-		end		
+			local itemCategories = (slot == "Weapon") and ({ ["1HWeapon"] = true, ["2HWeapon"] = true, ["1HMace"] = true, ["Claw"] = true, ["Quarterstaff"] = true, ["Bow"] = true, ["2HMace"] = true, ["Crossbow"] = true, ["Spear"] = true, ["Flail"] = true, ["Talisman"] = true }) or { [slot] = true }
+			self:GenerateModData(mods, regularItemMask, itemCategories)
+		end
 	end
 
-	local queryModsFile = io.open(queryModFilePath, 'w')
-	queryModsFile:write("-- This file is automatically generated, do not edit!\n-- Stat data (c) Grinding Gear Games\n\n")
-	queryModsFile:write("return " .. stringify(self.modData))
-	queryModsFile:close()
+	local qmDescription = [[This file contains categories of stats, mapped from trade hash to details
+relevant for generating search weights Note that the trade site requires a
+prefix of e.g. explicit.stat_{hash}. See
+TradeSiteStats.lua for a list of all trade
+site stats.]]
+	utils.saveTableToFile(queryModFilePath, self.modData, qmDescription)
 end
 
 function TradeQueryGeneratorClass:GenerateModWeights(modsToTest)
@@ -505,6 +677,9 @@ function TradeQueryGeneratorClass:GenerateModWeights(modsToTest)
 					modLine = modLine:gsub("+?#", modValue)
 				end
 			end
+
+			-- remove (Local) suffix so pob parses the mod correctly
+			modLine = modLine:gsub("%(Local%)", "")
 
 			self.calcContext.testItem.explicitModLines[1] = { line = modLine, custom = true }
 			self.calcContext.testItem:BuildAndParseRaw()
@@ -548,7 +723,7 @@ function TradeQueryGeneratorClass:GeneratePassiveNodeWeights(nodesToTest)
 				goto continue
 			end
 		end
-		
+
 		local baseOutput = self.calcContext.baseOutput
 		local output = self.calcContext.calcFunc({ addNodes = { [node] = true } })
 		local meanStatDiff = TradeQueryGeneratorClass.WeightedRatioOutputs(baseOutput, output, self.calcContext.options.statWeights) * 1000 - (self.calcContext.baseStatValue or 0)
@@ -556,7 +731,7 @@ function TradeQueryGeneratorClass:GeneratePassiveNodeWeights(nodesToTest)
 			t_insert(self.modWeights, { tradeModId = entry.tradeMod.id, weight = meanStatDiff, meanStatDiff = meanStatDiff, invert = false })
 		end
 		self.alreadyWeightedMods[entry.tradeMod.id] = true
-		
+
 		local now = GetTime()
 		if now - start > 50 then
 			-- Would be nice to update x/y progress on the popup here, but getting y ahead of time has a cost, and the visual seems to update on a significant delay anyways so it's not very useful
@@ -583,7 +758,7 @@ function TradeQueryGeneratorClass:OnFrame()
 end
 
 local currencyTable = {
-	{ name = "Relative", id = nil },
+	{ name = "Exalted Orb Equivalent", id = nil },
 	{ name = "Exalted Orb", id = "exalted" },
 	{ name = "Chaos Orb", id = "chaos" },
 	{ name = "Divine Orb", id = "divine" },
@@ -591,7 +766,7 @@ local currencyTable = {
 	{ name = "Orb of Transmutation", id = "transmute" },
 	{ name = "Regal Orb", id = "regal" },
 	{ name = "Vaal Orb", id = "vaal" },
-	{ name = "Annulment Orb", id = "annul" },
+	{ name = "Orb of Annulment", id = "annul" },
 	{ name = "Orb of Alchemy", id = "alch" },
 	{ name = "Mirror of Kalandra", id = "mirror" }
 }
@@ -624,8 +799,32 @@ function TradeQueryGeneratorClass:StartQuery(slot, options)
 				calcNodesInsteadOfMods = true,
 			}
 		end
+		if options.special.itemName == "Heart of the Well" then
+			special = {
+				queryFilters = {},
+				queryExtra = {
+					name = options.special.itemName,
+					type = "Diamond"
+				},
+				HeartOfTheWell = true
+			}
+			itemCategory = "AnyJewel"
+			itemCategoryQueryStr = "jewel"
+		end
+		if options.special.itemName == "Against the Darkness" then
+			special = {
+				queryFilters = {},
+				queryExtra = {
+					name = options.special.itemName,
+					type = "Time-Lost Diamond"
+				},
+				AgainstTheDarkness = true
+			}
+			itemCategory = "AnyJewel"
+			itemCategoryQueryStr = "jewel"
+		end
 	else
-		itemCategoryQueryStr, itemCategory = tradeHelpers.GetTradeCategory(slot.slotName, existingItem)
+		itemCategoryQueryStr, itemCategory = tradeHelpers.getTradeCategory(slot.slotName, existingItem)
 		if not itemCategory then
 			logToFile("'%s' is not supported for weighted trade query generation", existingItem and existingItem.type or "n/a")
 			return
@@ -637,7 +836,14 @@ function TradeQueryGeneratorClass:StartQuery(slot, options)
 
 	-- Create a temp item for the slot with no mods
 	local itemRawStr = "Rarity: RARE\nStat Tester\n" .. testItemType
-	local testItem = new("Item", itemRawStr)
+	if options.jewelType == "Radius" or (options.special and options.special.itemName) then
+		itemRawStr = [[Rarity: RARE
+Stat Tester
+Time-Lost Sapphire
+Radius: Small
+Implicits: 0]]
+	end
+	local testItem = new("Item"):Item(itemRawStr)
 
 	-- Calculate base output with a blank item
 	local calcFunc, baseOutput = self.itemsTab.build.calcsTab:GetMiscCalculator()
@@ -659,6 +865,8 @@ function TradeQueryGeneratorClass:StartQuery(slot, options)
 		calcFunc = calcFunc,
 		options = options,
 		slot = slot,
+		requiredMods = options.requiredMods,
+		blockedMods = options.blockedMods
 	}
 
 	-- OnFrame will pick this up and begin the work
@@ -666,7 +874,7 @@ function TradeQueryGeneratorClass:StartQuery(slot, options)
 
 	-- Open progress tracking blocker popup
 	local controls = { }
-	controls.progressText = new("LabelControl", {"TOP",nil,"TOP"}, {0, 30, 0, 16}, string.format("Calculating Mod Weights..."))
+	controls.progressText = new("LabelControl"):LabelControl({ "TOP", nil, "TOP" }, { 0, 30, 0, 16 }, string.format("Calculating Mod Weights..."))
 	self.calcContext.popup = main:OpenPopup(280, 65, "Please Wait", controls)
 end
 
@@ -675,7 +883,39 @@ function TradeQueryGeneratorClass:ExecuteQuery()
 		self:GeneratePassiveNodeWeights(self.modData.AllocatesXEnchant)
 		return
 	end
-	self:GenerateModWeights(self.modData["Explicit"])
+	if self.calcContext.special.HeartOfTheWell then
+		self:GenerateModWeights(self.modData.HeartOfTheWell)
+		if self.calcContext.options.includeCorrupted then
+			self:GenerateModWeights(self.modData["Corrupted"])
+		end
+		return
+	end
+	if self.calcContext.special.AgainstTheDarkness then
+		self:GenerateModWeights(self.modData.AgainstTheDarkness)
+		if self.calcContext.options.includeCorrupted then
+			self:GenerateModWeights(self.modData["Corrupted"])
+		end
+		return
+	end
+
+	-- the trade site has no filters for jewel categories, so we can remove the
+	-- other mods to filter the category. this should also free up some filter slots.
+	if self.calcContext.options.jewelType == "Radius" then
+		local radiusMods = {}
+		-- local baseMods = {}
+		for k, v in pairs(self.modData["Explicit"]) do
+			if v.RadiusJewel then
+				radiusMods[k] = v
+			end
+		end
+
+		self:GenerateModWeights(radiusMods)
+	else
+	-- radius mods are not filtered out here, but they are valued at zero and
+	-- ignored as the base item won't have a "radius:" line
+		self:GenerateModWeights(self.modData["Explicit"])
+	end
+
 	self:GenerateModWeights(self.modData["Implicit"])
 	if self.calcContext.options.includeCorrupted then
 		self:GenerateModWeights(self.modData["Corrupted"])
@@ -701,23 +941,33 @@ function TradeQueryGeneratorClass:FinishQuery()
 
 	local originalOutput = originalItem and self.calcContext.calcFunc({ repSlotName = self.calcContext.slot.slotName, repItem = self.calcContext.testItem }) or self.calcContext.baseOutput
 	local currentStatDiff = TradeQueryGeneratorClass.WeightedRatioOutputs(self.calcContext.baseOutput, originalOutput, self.calcContext.options.statWeights) * 1000 - (self.calcContext.baseStatValue or 0)
-	
+
 	-- Sort by mean Stat diff rather than weight to more accurately prioritize stats that can contribute more
-	table.sort(self.modWeights, function(a, b)
+	table.sort(self.modWeights, function (a, b)
 		if a.meanStatDiff == b.meanStatDiff then
 			return math.abs(a.weight) > math.abs(b.weight)
 		end
 		return a.meanStatDiff > b.meanStatDiff
 	end)
-	
+
 	-- A megalomaniac is not being compared to anything and the currentStatDiff will be 0, so just go for an arbitrary min weight - in this case triple the weight of the worst evaluated node.
 	local megalomaniacSpecialMinWeight = self.calcContext.special.itemName == "Megalomaniac" and self.modWeights[#self.modWeights] * 3
 	-- This Stat diff value will generally be higher than the weighted sum of the same item, because the stats are all applied at once and can thus multiply off each other.
 	-- So apply a modifier to get a reasonable min and hopefully approximate that the query will start out with small upgrades.
 	local minWeight = megalomaniacSpecialMinWeight or currentStatDiff * 0.5
-	
+
+	-- what the trade site API uses for instant buyout etc.
+	self.tradeTypes = {
+		"securable",
+		"available",
+		"onlineleague",
+		"online",
+		"any",
+	}
+	local selectedTradeType = self.tradeTypes[self.tradeTypeIndex]
 	-- Generate trade query str and open in browser
-	local filters = 0
+	local requiredMods = self.calcContext.requiredMods or {}
+	local blockedMods = self.calcContext.blockedMods or {}
 	local queryTable = {
 		query = {
 			filters = self.calcContext.special.queryFilters or {
@@ -728,60 +978,99 @@ function TradeQueryGeneratorClass:FinishQuery()
 					}
 				}
 			},
-			status = { option = "available" },
+			status = { option = selectedTradeType },
 			stats = {
 				{
 					type = "weight",
 					value = { min = minWeight },
-					filters = { }
+					filters = {},
+				},
+				{
+					type = "and",
+					filters = {},
+				},
+				{
+					type = "not",
+					filters = {},
 				}
 			}
 		},
 		sort = { ["statgroup.0"] = "desc" },
 		engine = "new"
 	}
+	local weightGroup = queryTable.query.stats[1]
+	local andGroup = queryTable.query.stats[2]
+	local notGroup = queryTable.query.stats[3]
+	-- the trade site has a maximum complexity of 200 for each query. our baseline is 54 for the weighted sum group, 4 for the rarity filter plus category, and 4 for the and group
+	local complexityBudget = 200 - 54 - 4 - 4
 
-	local options = self.calcContext.options
-
-	local num_extra = 2
-	if not options.includeMirrored then
-		num_extra = num_extra + 1
-	end
-	if options.maxPrice and options.maxPrice > 0 then
-		num_extra = num_extra + 1
-	end
-	if options.maxLevel and options.maxLevel > 0 then
-		num_extra = num_extra + 1
-	end
-	if options.sockets and options.sockets > 0 then
-		num_extra = num_extra + 1
-	end
-
-	local effective_max = MAX_FILTERS - num_extra
-
-	local prioritizedMods = {}
-	for _, entry in ipairs(self.modWeights) do
-		if #prioritizedMods < effective_max then
-			table.insert(prioritizedMods, entry)
-		else
-			break
+	local pseudoMap = {
+		-- pseudo stats are disabled for PoE2 due to the trade site counting augment mods in them,
+		-- which would skew results significantly. however, the feature is kept here for PoB1 parity reasons
+	}
+	local ignoredStats = {
+	}
+	-- block all hybrid resistance stats
+	local resElements = {}
+	for _, elem1 in ipairs(resElements) do
+		for _, elem2 in ipairs(resElements) do
+			local stats = { string.format("%s_and_%s_damage_resistance_%%", elem1, elem2) }
+			ignoredStats[tostring(HashStats(stats))] = true
 		end
 	end
+	-- block all hybrid attribute stats
+	local attributeElements = {}
+	for _, elem1 in ipairs(attributeElements) do
+		for _, elem2 in ipairs(attributeElements) do
+			local stats = { string.format("base_%s_and_%s", elem1, elem2) }
+			ignoredStats[tostring(HashStats(stats))] = true
+			stats = { string.format("additional_%s_and_%s", elem1, elem2) }
+			ignoredStats[tostring(HashStats(stats))] = true
+		end
+	end
+	local statFilters = {}
+	local pseudoMods = {}
+	for _, entry in ipairs(self.modWeights) do
+		local hash = entry.tradeModId:match("stat_(%d+)")
+		local filterEntry = { id = entry.tradeModId, value = { weight = (entry.invert == true and entry.weight * -1 or entry.weight) } }
+		-- avoid adding hybrid stats since we get the weight for them from
+		-- individual stats
+		if ignoredStats[hash] then
+			goto weightContinue
+		elseif pseudoMap[hash] then
+			local tradeId = pseudoMap[hash]
+			filterEntry.id = tradeId
+			-- avoid adding duplicate pseudo filters: update existing
+			if pseudoMods[tradeId] then
+				pseudoMods[tradeId].value.weight = math.max(filterEntry.value.weight, pseudoMods[tradeId].value.weight)
+			else
+				pseudoMods[tradeId] = filterEntry
+				table.insert(statFilters, filterEntry)
+			end
+		else
+			table.insert(statFilters, filterEntry)
+		end
 
-	self.modWeights = prioritizedMods
+		::weightContinue::
+	end
 
 	for k, v in pairs(self.calcContext.special.queryExtra or {}) do
+		complexityBudget = complexityBudget - 2
 		queryTable.query[k] = v
 	end
 
-	for _, entry in ipairs(self.modWeights) do
-		t_insert(queryTable.query.stats[1].filters, { id = entry.tradeModId, value = { weight = (entry.invert == true and entry.weight * -1 or entry.weight) } })
-		filters = filters + 1
-		if filters == effective_max then
-			break
-		end
+	-- and filters specified by the user
+	for _, entry in ipairs(requiredMods) do
+		complexityBudget = complexityBudget - 4
+		t_insert(andGroup.filters, { id = entry.tradeId, value = { min = entry.value } })
 	end
+	for _, entry in ipairs(blockedMods) do
+		complexityBudget = complexityBudget - 4
+		t_insert(notGroup.filters, { id = entry.tradeId, value = { min = entry.value } })
+	end
+	local options = self.calcContext.options
 	if not options.includeMirrored then
+		complexityBudget = complexityBudget - 3
 		queryTable.query.filters.misc_filters = {
 			disabled = false,
 			filters = {
@@ -791,6 +1080,7 @@ function TradeQueryGeneratorClass:FinishQuery()
 	end
 
 	if options.maxPrice and options.maxPrice > 0 then
+		complexityBudget = complexityBudget - 3
 		queryTable.query.filters.trade_filters = {
 			filters = {
 				price = {
@@ -801,7 +1091,12 @@ function TradeQueryGeneratorClass:FinishQuery()
 		}
 	end
 
+	if options.account then
+		complexityBudget = complexityBudget - 3
+		queryTable.query.filters.trade_filters.filters.account = { input = options.account }
+	end
 	if options.maxLevel and options.maxLevel > 0 then
+		complexityBudget = complexityBudget - 3
 		queryTable.query.filters.req_filters = {
 			disabled = false,
 			filters = {
@@ -813,6 +1108,7 @@ function TradeQueryGeneratorClass:FinishQuery()
 	end
 
 	if options.sockets and options.sockets > 0 then
+		complexityBudget = complexityBudget - 3
 		queryTable.query.filters.equipment_filters = {
 			disabled = false,
 			filters = {
@@ -823,8 +1119,17 @@ function TradeQueryGeneratorClass:FinishQuery()
 		}
 	end
 
+	for _, entry in ipairs(statFilters) do
+		-- leave some room for the exact search account name and price query
+		if complexityBudget < 8 then
+			break
+		end
+		complexityBudget = complexityBudget - 4
+		t_insert(weightGroup.filters, entry)
+	end
 	local errMsg = nil
-	if #queryTable.query.stats[1].filters == 0 then
+	ConPrintf("filters: %d, budget: %d", #weightGroup.filters, complexityBudget)
+	if #weightGroup.filters == 0 then
 		-- No mods to filter
 		errMsg = "Could not generate search, found no mods to search for"
 	end
@@ -843,72 +1148,133 @@ function TradeQueryGeneratorClass:RequestQuery(slot, context, statWeights, callb
 	local controls = { }
 	local options = { }
 	local popupHeight = 110
+	local popupWidth = 480
 
 	local isJewelSlot = slot and slot.slotName:find("Jewel") ~= nil
 
-	controls.includeCorrupted = new("CheckBoxControl", {"TOP",nil,"TOP"}, {-40, 30, 18}, "Corrupted Mods:", function(state) end)
-	controls.includeCorrupted.state = not context.slotTbl.alreadyCorrupted and (self.lastIncludeCorrupted == nil or self.lastIncludeCorrupted == true)
-	controls.includeCorrupted.enabled = not context.slotTbl.alreadyCorrupted
-
-	local canHaveRunes = slot and (slot.slotName:find("Weapon 1") or slot.slotName:find("Weapon 2") or slot.slotName:find("Helmet") or slot.slotName:find("Body Armour") or slot.slotName:find("Gloves") or slot.slotName:find("Boots"))
-	controls.includeRunes = new("CheckBoxControl", {"TOPRIGHT",controls.includeCorrupted,"BOTTOMRIGHT"}, {0, 5, 18}, "Rune Mods:", function(state) end)
-	controls.includeRunes.state = canHaveRunes and (self.lastIncludeRunes == nil or self.lastIncludeRunes == true)
-	controls.includeRunes.enabled = canHaveRunes
-
-	local lastItemAnchor = controls.includeRunes
-
+	local lastItemAnchor
 	local function updateLastAnchor(anchor, height)
 		lastItemAnchor = anchor
 		popupHeight = popupHeight + (height or 23)
+	end
+
+	controls.includeCorrupted = new("CheckBoxControl"):CheckBoxControl({ "TOP", nil, "TOP" }, { -40, 30, 18 }, "Corrupted Mods:", function(state) end, "Includes corruption implicit modifiers in the weighted sum.\nNote that there is a maximum search filter count which means this might cause other weights to not be included.")
+	controls.includeCorrupted.state = not context.slotTbl.alreadyCorrupted and (self.lastIncludeCorrupted == nil or self.lastIncludeCorrupted == true)
+	controls.includeCorrupted.enabled = not context.slotTbl.alreadyCorrupted
+	updateLastAnchor(controls.includeCorrupted)
+
+
+
+
+	controls.includeMirrored = new("CheckBoxControl"):CheckBoxControl({ "TOPRIGHT", lastItemAnchor, "BOTTOMRIGHT" }, { 0, 5, 18 }, "Mirrored Items:", function(state) end)
+	controls.includeMirrored.state = (self.lastIncludeMirrored == nil or self.lastIncludeMirrored == true)
+	updateLastAnchor(controls.includeMirrored)
+
+	-- there are also some exceptions like the darkness enthroned belt, but runes on these are not yet working pob
+	local isAugmentableSlot = slot and (slot.slotName:find("Weapon 1") or slot.slotName:find("Weapon 2") or slot.slotName:find("Helmet") or slot.slotName:find("Body Armour") or slot.slotName:find("Gloves") or slot.slotName:find("Boots"))
+	if isAugmentableSlot then
+		local augmentTooltip = [[Controls how augments are used in the search.
+
+Copy Current: augments in weights are skipped and augments are replaced with the current augments when possible.
+Usually the best opinion as this ensures the augments makes sense for your build.
+
+Keep: augments will be included in weights and will not be changed on items.
+Best used when you value an augment greatly, and cannot add it yourself.
+
+Remove: augments are completely ignored, and removed from items.]]
+		controls.augmentBehaviour = new("DropDownControl"):DropDownControl({ "TOPLEFT", lastItemAnchor, "BOTTOMLEFT" }, { 0, 5, 110, 18 }, { "Copy Current", "Keep", "Remove" }, function(state) end, augmentTooltip)
+		controls.augmentBehaviour:SetSel(self.lastAugmentBehaviourIdx or 1)
+		controls.augmentBehaviourLabel = new("LabelControl"):LabelControl({ "RIGHT", controls.augmentBehaviour, "LEFT" },
+			{ -4, 0, 80, 16 }, "Rune Behaviour:")
+		updateLastAnchor(controls.augmentBehaviour)
+	end
+
+	local isAmulet = slot and (slot.slotName:find("Amulet"))
+	if isAmulet then
+		local augmentTooltip = [[Controls how anoints are used in the search.
+
+Copy Current: anoints are replaced with the current anoint when possible.
+Usually the best opinion as this ensures the anoint makes sense for your build.
+
+Keep: anoints will not be changed on items.
+Best used when you cannot add one yourself. Note that weights cannot be generated for anoints.
+
+Remove: anoints are completely ignored, and removed from items.]]
+		controls.anointBehaviour = new("DropDownControl"):DropDownControl({ "TOPLEFT", lastItemAnchor, "BOTTOMLEFT" }, { 0, 5, 110, 18 }, { "Copy Current", "Keep", "Remove" }, function(state) end, augmentTooltip)
+		controls.anointBehaviour:SetSel(self.lastAnointBehaviourIdx or 1)
+		controls.anointBehaviourLabel = new("LabelControl"):LabelControl({ "RIGHT", controls.anointBehaviour, "LEFT" },
+			{ -4, 0, 80, 16 }, "Anoint Behaviour:")
+		updateLastAnchor(controls.anointBehaviour)
 	end
 
 	if context.slotTbl.unique then
 		options.special = { itemName = context.slotTbl.slotName }
 	end
 
-	controls.includeMirrored = new("CheckBoxControl", {"TOPRIGHT",lastItemAnchor,"BOTTOMRIGHT"}, {0, 5, 18}, "Mirrored items:", function(state) end)
-	controls.includeMirrored.state = (self.lastIncludeMirrored == nil or self.lastIncludeMirrored == true)
-	updateLastAnchor(controls.includeMirrored)
-
-
-	if isJewelSlot then
-		controls.jewelType = new("DropDownControl", {"TOPLEFT",lastItemAnchor,"BOTTOMLEFT"}, {0, 5, 100, 18}, { "Any", "Base", "Radius" }, function(index, value) end) -- this does nothing atm
+	if context.slotTbl.slotName == "Megalomaniac" or context.slotTbl.slotName == "Heart of the Well" or context.slotTbl.slotName == "Against the Darkness" then
+		local activeSocketList = { }
+		for nodeId, jewelSlot in pairs(self.itemsTab.sockets) do
+			if not jewelSlot.inactive and not self.itemsTab.build.spec.nodes[nodeId].containJewelSocket then
+				t_insert(activeSocketList, jewelSlot)
+			end
+		end
+		table.sort(activeSocketList, function(a, b)
+			return a.label < b.label
+		end)
+		controls.jewelSlot = new("DropDownControl"):DropDownControl({ "TOPLEFT", lastItemAnchor, "BOTTOMLEFT" }, { 0, 5, 100, 18 }, activeSocketList, function(idx, value) end)
+		controls.jewelSlotLabel = new("LabelControl"):LabelControl({ "RIGHT", controls.jewelSlot, "LEFT" }, { -5, 0, 0, 16 }, "Jewel Slot:")
+		for index, jewelSlot in ipairs(activeSocketList) do
+			if jewelSlot.nodeId == context.slotTbl.selectedJewelNodeId then
+				controls.jewelSlot.selIndex = index
+				break
+			end
+		end
+		updateLastAnchor(controls.jewelSlot)
+	end
+	-- forward declarations for functions interacting with mod filter selectors
+	---@type fun()
+	local setAllModSelectors
+	-- jewel type selector
+	if isJewelSlot and not context.slotTbl.unique then
+		controls.jewelType = new("DropDownControl"):DropDownControl({ "TOPLEFT", lastItemAnchor, "BOTTOMLEFT" }, { 0, 5, 100, 18 }, { "Base", "Radius" }, function(index, value)
+			-- update mod list for selectors
+			setAllModSelectors()
+		end)
 		controls.jewelType.selIndex = self.lastJewelType or 1
-		controls.jewelTypeLabel = new("LabelControl", {"RIGHT",controls.jewelType,"LEFT"}, {-5, 0, 0, 16}, "Jewel Type:")
+		controls.jewelTypeLabel = new("LabelControl"):LabelControl({ "RIGHT", controls.jewelType, "LEFT" }, { -5, 0, 0, 16 }, "Jewel Type:")
 		updateLastAnchor(controls.jewelType)
 	end
-
 	-- Add max price limit selection dropbox
 	local currencyDropdownNames = { }
 	for _, currency in ipairs(currencyTable) do
 		t_insert(currencyDropdownNames, currency.name)
 	end
-	controls.maxPrice = new("EditControl", {"TOPLEFT",lastItemAnchor,"BOTTOMLEFT"}, {0, 5, 70, 18}, nil, nil, "%D")
+	controls.maxPrice = new("EditControl"):EditControl({ "TOPLEFT", lastItemAnchor, "BOTTOMLEFT" }, { 0, 5, 70, 18 }, nil, nil, "%D")
 	controls.maxPrice.buf = self.lastMaxPrice and tostring(self.lastMaxPrice) or ""
-	controls.maxPriceType = new("DropDownControl", {"LEFT",controls.maxPrice,"RIGHT"}, {5, 0, 150, 18}, currencyDropdownNames, nil)
+	controls.maxPriceType = new("DropDownControl"):DropDownControl({ "LEFT", controls.maxPrice, "RIGHT" }, { 5, 0, 150, 18 }, currencyDropdownNames, nil, "The trade site will filter out listings with other currencies,\nif anything other than \"Exalted Orb Equivalent\" is chosen and a maximum is specified.")
 	controls.maxPriceType.selIndex = self.lastMaxPriceTypeIndex or 1
-	controls.maxPriceLabel = new("LabelControl", {"RIGHT",controls.maxPrice,"LEFT"}, {-5, 0, 0, 16}, "^7Max Price:")
+	controls.maxPriceLabel = new("LabelControl"):LabelControl({ "RIGHT", controls.maxPrice, "LEFT" }, { -5, 0, 0, 16 }, "^7Max Price:")
 	updateLastAnchor(controls.maxPrice)
 
-	controls.maxLevel = new("EditControl", {"TOPLEFT",lastItemAnchor,"BOTTOMLEFT"}, {0, 5, 100, 18}, nil, nil, "%D")
+	controls.maxLevel = new("EditControl"):EditControl({ "TOPLEFT", lastItemAnchor, "BOTTOMLEFT" }, { 0, 5, 100, 18 }, nil, nil, "%D")
 	controls.maxLevel.buf = self.lastMaxLevel and tostring(self.lastMaxLevel) or ""
-	controls.maxLevelLabel = new("LabelControl", {"RIGHT",controls.maxLevel,"LEFT"}, {-5, 0, 0, 16}, "Max Level:")
+	controls.maxLevelLabel = new("LabelControl"):LabelControl({ "RIGHT", controls.maxLevel, "LEFT" }, { -5, 0, 0, 16 }, "Max Level:")
 	updateLastAnchor(controls.maxLevel)
 
 	-- basic filtering by slot for sockets Megalomaniac does not have slot and Sockets use "Jewel nodeId"
 	if slot and not isJewelSlot and not slot.slotName:find("Flask") and not slot.slotName:find("Belt") and not slot.slotName:find("Ring") and not slot.slotName:find("Amulet") and not slot.slotName:find("Charm") then
-		controls.sockets = new("EditControl", {"TOPLEFT",lastItemAnchor,"BOTTOMLEFT"}, {0, 5, 70, 18}, nil, nil, "%D")
+		controls.sockets = new("EditControl"):EditControl({ "TOPLEFT", lastItemAnchor, "BOTTOMLEFT" }, { 0, 5, 70, 18 }, nil, nil, "%D")
 		controls.sockets.buf = self.lastSockets and tostring(self.lastSockets) or ""
-		controls.socketsLabel = new("LabelControl", {"RIGHT",controls.sockets,"LEFT"}, {-5, 0, 0, 16}, "# of Empty Sockets:")
+		controls.socketsLabel = new("LabelControl"):LabelControl({ "RIGHT", controls.sockets, "LEFT" }, { -5, 0, 0, 16 }, "^7# of Empty Sockets:")
 		updateLastAnchor(controls.sockets)
 	end
 
 	for i, stat in ipairs(statWeights) do
-		controls["sortStatType"..tostring(i)] = new("LabelControl", {"TOPLEFT",lastItemAnchor,"BOTTOMLEFT"}, {0, i == 1 and 5 or 3, 70, 16}, i < (#statWeights < 6 and 10 or 5) and s_format("^7%.2f: %s", stat.weightMult, stat.label) or ("+ "..tostring(#statWeights - 4).." Additional Stats"))
+		controls["sortStatType" .. tostring(i)] = new("LabelControl"):LabelControl({ "TOPLEFT", lastItemAnchor, "BOTTOMLEFT" }, { 0, i == 1 and 5 or 3, 70, 16 }, i < (#statWeights < 6 and 10 or 5) and s_format("^7%.2f: %s", stat.weightMult, stat.label) or ("+ " .. tostring(#statWeights - 4) .. " Additional Stats"))
 		lastItemAnchor = controls["sortStatType"..tostring(i)]
 		popupHeight = popupHeight + 19
 		if i == 1 then
-			controls.sortStatLabel = new("LabelControl", {"RIGHT",lastItemAnchor,"LEFT"}, {-5, 0, 0, 16}, "^7Stat to Sort By:")
+			controls.sortStatLabel = new("LabelControl"):LabelControl({ "RIGHT", lastItemAnchor, "LEFT" }, { -5, 0, 0, 16 }, "^7Stat to Sort By:")
 		elseif i == 5 then
 			-- tooltips do not actually work for labels
 			lastItemAnchor.tooltipFunc = function(tooltip)
@@ -926,8 +1292,16 @@ function TradeQueryGeneratorClass:RequestQuery(slot, context, statWeights, callb
 	end
 	popupHeight = popupHeight + 4
 
-	controls.generateQuery = new("ButtonControl", { "BOTTOM", nil, "BOTTOM" }, {-45, -10, 80, 20}, "Execute", function()
+	local selectedMods = {}
+	local notMods = {}
+	controls.generateQuery = new("ButtonControl"):ButtonControl({ "BOTTOM", nil, "BOTTOM" }, { -45, -10, 80, 20 }, "Execute", function()
+		local selectedJewelSlot = controls.jewelSlot and controls.jewelSlot:GetSelValue()
+		if controls.jewelSlot and not selectedJewelSlot then
+			return
+		end
 		main:ClosePopup()
+
+		self.tradeTypeIndex = context.controls.tradeTypeSelection.selIndex
 
 		if controls.includeMirrored then
 			self.lastIncludeMirrored, options.includeMirrored = controls.includeMirrored.state, controls.includeMirrored.state
@@ -935,12 +1309,27 @@ function TradeQueryGeneratorClass:RequestQuery(slot, context, statWeights, callb
 		if controls.includeCorrupted then
 			self.lastIncludeCorrupted, options.includeCorrupted = controls.includeCorrupted.state, controls.includeCorrupted.state
 		end
-		if controls.includeRunes  then
-			self.lastIncludeRunes, options.includeRunes = controls.includeRunes.state, controls.includeRunes.state
+		if controls.augmentBehaviour then
+			-- remember setting
+			self.lastAugmentBehaviourIdx = controls.augmentBehaviour.selIndex
+			-- used by TradeQuery to change augments accordingly
+			self.lastAugmentBehaviour = controls.augmentBehaviour:GetSelValue()
+			-- whether weights should be generated
+			options.includeRunes = controls.augmentBehaviour:GetSelValue() == "Keep"
+		end
+		if controls.anointBehaviour then
+			-- remember setting
+			self.lastAnointBehaviourIdx = controls.anointBehaviour.selIndex
+			-- used by TradeQuery to change anoints accordingly
+			self.lastAnointBehaviour = controls.anointBehaviour:GetSelValue()
 		end
 		if controls.jewelType then
 			self.lastJewelType = controls.jewelType.selIndex
-			options.jewelType = controls.jewelType.list[controls.jewelType.selIndex]
+			options.jewelType = controls.jewelType:GetSelValue()
+		end
+		if controls.jewelSlot then
+			slot = selectedJewelSlot
+			context.slotTbl.selectedJewelNodeId = slot.nodeId
 		end
 		if controls.maxPrice.buf then
 			options.maxPrice = tonumber(controls.maxPrice.buf)
@@ -956,12 +1345,186 @@ function TradeQueryGeneratorClass:RequestQuery(slot, context, statWeights, callb
 			options.sockets = tonumber(controls.sockets.buf)
 			self.lastSockets = options.sockets
 		end
+		if #selectedMods > 0 then
+			options.requiredMods = copyTable(selectedMods)
+		end
+		if #notMods > 0 then
+			options.blockedMods = copyTable(notMods)
+		end
 		options.statWeights = statWeights
 
 		self:StartQuery(slot, options)
 	end)
-	controls.cancel = new("ButtonControl", { "BOTTOM", nil, "BOTTOM" }, {45, -10, 80, 20}, "Cancel", function()
+	controls.generateQuery.enabled = function()
+		return not controls.jewelSlot or controls.jewelSlot:GetSelValue() ~= nil
+	end
+	controls.generateQuery.tooltipText = controls.jewelSlot and "Requires an active Jewel Socket." or nil
+	controls.cancel = new("ButtonControl"):ButtonControl({ "BOTTOM", nil, "BOTTOM" }, { 45, -10, 80, 20 }, "Cancel", function()
 		main:ClosePopup()
 	end)
-	main:OpenPopup(400, popupHeight, "Query Options", controls)
+
+	if context.slotTbl.unique then
+		main:OpenPopup(popupWidth, popupHeight, "Query Options", controls)
+		return
+	end
+
+	local _, headerYPos = lastItemAnchor:GetPos()
+	-- intended width of the whole row, including dropdown and aux controls
+	local totalWidth = 420
+	-- size of min value input
+	local fieldWidth = 60
+	-- size of clear button
+	local buttonSize = 20
+	-- gap between controls
+	local xSpacing = 4
+	local auxControlWidth = buttonSize + fieldWidth + 2 * xSpacing
+
+	local _, lastItemY = lastItemAnchor:GetPos()
+	local _, lastItemH = lastItemAnchor:GetSize()
+	controls.modSelectorHeaderAnchor = new("Control"):Control({ "TOPLEFT", nil, "TOPLEFT" },
+		-- position right below last item, centered horizontally
+		{ (popupWidth - totalWidth) / 2, lastItemH + lastItemY, 0, 0 })
+	updateLastAnchor(controls.modSelectorHeaderAnchor)
+	-- get mod selector list
+	local function getModList(firstLabel)
+		local _, itemCategory = tradeHelpers.getTradeCategory(slot.slotName, slot and self.itemsTab.items[slot.selItemId])
+		-- add radius/base as they have different mods
+		if controls.jewelType then
+			itemCategory = controls.jewelType:GetSelValue() .. itemCategory
+		end
+		local mods = { { label = firstLabel } }
+		-- pob1 uses ids in QueryMods.lua which are based on mod names and stat
+		-- orders. these result in duplicates
+		local includedIds = {}
+		for _, modType in ipairs({ "Explicit", "Implicit", "Corrupted" }) do
+			for _, modData in pairs(self.modData[modType]) do
+				if modData[itemCategory] ~= nil and not includedIds[modData.tradeMod.id] then
+					local text = colorCodes.MAGIC .. modData.tradeMod.text:gsub("(%a+) Passive Skills in Radius also grant ", "%1: ")
+					includedIds[modData.tradeMod.id] = true
+					if modType ~= "Explicit" then
+						-- dim-ish red or the greenish yellow trade site uses for implicits slightly brightened
+						local colour = modType == "Corrupted" and "^x9E3E38" or "^x989654"
+						text = text .. string.format(" %s(%s)", colour, modType)
+					end
+					t_insert(mods, { label = text, tradeId = modData.tradeMod.id })
+				end
+			end
+		end
+		local pseudoStats = getStatEntries("pseudo")
+		-- map stats and such which are clearly not relevant here
+		local ignoredStats = {
+			"^pseudo.lake",
+			"^pseudo.pseudo_lake",
+			"^pseudo.pseudo_logbook",
+			"^pseudo.pseudo_temple",
+			"^pseudo.pseudo_map",
+			"^pseudo.pseudo_ritual",
+		}
+		for _, entry in ipairs(pseudoStats or {}) do
+			for _, ignored in ipairs(ignoredStats) do
+				if entry.id:find(ignored) then
+					goto pseudoContinue
+				end
+			end
+			t_insert(mods, { label = s_format(colorCodes.MEMORY .. "%s ^7(Pseudo)", entry.text), tradeId = entry.id })
+			::pseudoContinue::
+		end
+		return mods
+	end
+	-- save height so that we can make it dynamic based on how many filters are selected
+	local popupHeightBeforeModControls = popupHeight
+	-- amount of mod selectors: technically we could have 40, but the more we have the fewer
+	-- stats fit in the weighted sum, and this means a static popup size is ok
+	local maxSelectors = 5
+	-- set mod selector dropdown labels, adjust width, and possibly change the mod list
+	local function setModSelectors(controls, modList, prefix, selectedList)
+		-- reset selections
+		if modList then
+			wipeTable(selectedList)
+		end
+		for i = 1, maxSelectors do
+			local mod = selectedList[i]
+			local selector = controls[prefix .. i]
+			local minimumBox = controls[prefix .. "Min" .. i]
+			if modList then
+				selector:SetList(modList)
+			end
+			if mod then
+				selector:SelByValue(mod.label, "label")
+				selector.width = totalWidth - auxControlWidth
+				minimumBox.buf = mod.value and tostring(mod.value) or ""
+			else
+				selector.selIndex = 1
+				selector.width = totalWidth
+			end
+			selector:CheckDroppedWidth(true)
+		end
+	end
+	function setAllModSelectors()
+		setModSelectors(controls, getModList("^7+ Add Required Stat"), "modSelector", selectedMods)
+		setModSelectors(controls, getModList("^7+ Add Blocked Stat"), "modNotSelector", notMods)
+	end
+
+	local function createDropdownRow(selectedList, prefix, i)
+		-- dropdown which lists all mods that fit
+		local dropdown = new("DropDownControl"):DropDownControl({ "TOPLEFT", lastItemAnchor, "BOTTOMLEFT", true },
+			{ 0, 4, totalWidth, 20 }, nil,
+			function(idx, val)
+				if idx == 1 then
+					table.remove(selectedList, i)
+				else
+					selectedList[i] = copyTable(val)
+				end
+				setModSelectors(controls, nil, prefix, selectedList)
+			end, nil, true)
+		dropdown.shown = function()
+			return not not selectedList[i - 1] or i == 1
+		end
+		updateLastAnchor(dropdown)
+		dropdown:SetList({})
+		controls[prefix .. i] = dropdown
+
+		-- box that sets minimum value for filter
+		local minimumBox = tradeHelpers.newPlainNumericEdit({ "LEFT", lastItemAnchor, "RIGHT" },
+			{ xSpacing, 0, fieldWidth, buttonSize }, "", "Min", 6, false, function(val)
+				selectedList[i].value = tonumber(val)
+			end)
+		minimumBox.shown = function()
+			return not not selectedList[i]
+		end
+		controls[prefix .. "Min" .. i] = minimumBox
+
+		-- button which removes the mod row
+		local clearButton = new("ButtonControl"):ButtonControl({ "LEFT", minimumBox, "RIGHT" }, { xSpacing, 0, buttonSize, buttonSize },
+			"x", function()
+				table.remove(selectedList, i)
+				setModSelectors(controls, nil, prefix, selectedList)
+			end)
+		clearButton.shown = function()
+			return not not selectedList[i]
+		end
+		controls[prefix .. "Clear" .. i] = clearButton
+	end
+	controls.andLabel = new("LabelControl"):LabelControl({ "TOPLEFT", lastItemAnchor, "BOTTOMLEFT" }, { 0, 8, totalWidth, 16 }, "^7Required Stats")
+	updateLastAnchor(controls.andLabel, 18)
+	-- mod filter dropdown and aux controls
+	for i = 1, maxSelectors do
+		createDropdownRow(selectedMods, "modSelector", i)
+	end
+
+	controls.notLabel = new("LabelControl"):LabelControl({ "TOPLEFT", lastItemAnchor, "BOTTOMLEFT", true }, { 0, 4, totalWidth, 16 }, "^7Blocked Stats")
+	controls.notLabel.collapseY = 8
+	updateLastAnchor(controls.notLabel, 18)
+
+	-- not filters
+	for i = 1, maxSelectors do
+		createDropdownRow(notMods, "modNotSelector", i)
+	end
+
+	setAllModSelectors()
+
+	main:OpenPopup(popupWidth, popupHeight, "Query Options", controls, nil, nil, nil, nil, function()
+		local height = math.min(#selectedMods, maxSelectors - 1) * 23 + math.min(#notMods, maxSelectors - 1) * 23 + 2 * 18
+		main.popups[1].height = popupHeightBeforeModControls + height
+	end)
 end

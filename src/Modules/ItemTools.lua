@@ -73,20 +73,77 @@ function itemLib.isZeroValueLine(line)
 	return line:match("^%+?0%%? ") or (line:match(" %+?0%%? ") and not line:match("0 to [1-9]") and not line:match("0%% to %d+%%")) or line:match(" 0%-0 ") or line:match(" 0 to 0 ")
 end
 
+local function replaceNthInstance(input, pattern, replacement, n)
+	local count = 0
+	return input:gsub(pattern, function(match)
+		count = count + 1
+		if count == n then
+			return replacement
+		else
+			return match
+		end
+	end)
+end
+-- check combinations recursively largest to smallest
+local function checkSubstitutionCombinations(i, numSubstitutions, indices, line, values)
+	if #indices == numSubstitutions then
+		local modifiedLine = line
+		local substituted = 0
+		for _, i in ipairs(indices) do
+			modifiedLine = replaceNthInstance(modifiedLine, "#", values[i], i - substituted)
+			substituted = substituted + 1
+		end
+
+		-- Check if the modified line matches any scalability data
+		local key = modifiedLine:gsub("+#", "#")
+		if data.modScalability[key] then
+			-- Return modified line and remaining values (those not substituted)
+			local remainingValues = {}
+			local used = {}
+			for _, index in ipairs(indices) do
+				used[index] = true
+			end
+			for i, value in ipairs(values) do
+				if not used[i] then
+					table.insert(remainingValues, value)
+				end
+			end
+			return modifiedLine, remainingValues
+		end
+		return
+	end
+	for j = i, #values do
+		table.insert(indices, j)
+		local modifiedLine, remainingValues = checkSubstitutionCombinations(j + 1, numSubstitutions, indices, line, values)
+		if modifiedLine then
+			return modifiedLine, remainingValues
+		end
+		table.remove(indices)
+	end
+end
+
 -- Apply range value (0 to 1) to a modifier that has a range: "(x-x)" or "(x-x) to (x-x)"
+---@param line string
+---@param range number|number[]
+---@param valueScalar number?
+---@param baseValueScalar number?
 function itemLib.applyRange(line, range, valueScalar, baseValueScalar)
 	-- stripLines down to # in place of any number and store numbers inside values also remove all + signs are kept if value is positive
-	local values = { }
+	local values = {}
+	local rangeIndex = 0
+	local ranges = type(range) == "table" and range
 	local strippedLine = line:gsub("([%+-]?)%((%-?%d+%.?%d*)%-(%-?%d+%.?%d*)%)", function(sign, min, max)
-		local value = min + range * (tonumber(max) - min)
-		if sign == "-" then value = value * -1 end
-		return (sign == "+" and value > 0 ) and sign..tostring(value) or tostring(value)
-	end)
-	:gsub("%-(%d+%.?%d*%%) (%a+)", antonymFunc)
-	:gsub("(%-?%d+%.?%d*)", function(value)
-		t_insert(values, value)
-		return "#"
-	end)
+			rangeIndex = rangeIndex + 1
+			local valueRange = ranges and (ranges[rangeIndex] or 0.5) or range
+			local value = min + valueRange * (tonumber(max) - min)
+			if sign == "-" then value = value * -1 end
+			return (sign == "+" and value > 0) and sign .. tostring(value) or tostring(value)
+		end)
+		:gsub("%-(%d+%.?%d*%%) (%a+)", antonymFunc)
+		:gsub("(%-?%d+%.?%d*)", function(value)
+			t_insert(values, value)
+			return "#"
+		end)
 
 	--- Takes a completely strippedLine where all values and ranges are replaced with a # + signs are kept for consistency upon re-substitution.
 	--- This will then substitute back in the values until a line in scalabilityData is found this start with substituting everything and until none.
@@ -96,58 +153,10 @@ function itemLib.applyRange(line, range, valueScalar, baseValueScalar)
 	---@return scalableLine line with only scalableValues replaced with #
 	---@return scalableValues values which can be scaled and added into scalableLine in place of a #
 	local function findScalableLine(line, values)
-		local function replaceNthInstance(input, pattern, replacement, n)
-			local count = 0
-			return input:gsub(pattern, function(match)
-				count = count + 1
-				if count == n then
-					return replacement
-				else
-					return match
-				end
-			end)
-		end
-
-		-- check combinations recursively largest to smallest
-		local function checkSubstitutionCombinations(i, numSubstitutions, indices)
-			if #indices == numSubstitutions then
-				local modifiedLine = line
-				local substituted = 0
-				for _, i in ipairs(indices) do
-					modifiedLine = replaceNthInstance(modifiedLine, "#", values[i], i - substituted)
-					substituted = substituted + 1
-				end
-
-				-- Check if the modified line matches any scalability data
-				local key = modifiedLine:gsub("+#", "#")
-				if data.modScalability[key] then
-					-- Return modified line and remaining values (those not substituted)
-					local remainingValues = {}
-					local used = { }
-					for _, index in ipairs(indices) do
-						used[index] = true
-					end
-					for i, value in ipairs(values) do
-						if not used[i] then
-							table.insert(remainingValues, value)
-						end
-					end
-					return modifiedLine, remainingValues
-				end
-				return
-			end
-			for j = i, #values do
-				table.insert(indices, j)
-				local modifiedLine, remainingValues = checkSubstitutionCombinations(j + 1, numSubstitutions, indices)
-				if modifiedLine then
-					return modifiedLine, remainingValues
-				end
-				table.remove(indices)
-			end
-		end
-
+		local indices
 		for i = #values, 1, -1 do
-			local modifiedLine, remainingValues = checkSubstitutionCombinations(1, i, {})
+			indices = wipeTable(indices)
+			local modifiedLine, remainingValues = checkSubstitutionCombinations(1, i, indices, line, values)
 			if modifiedLine then
 				return modifiedLine, remainingValues
 			end
@@ -251,6 +260,9 @@ function itemLib.applyRange(line, range, valueScalar, baseValueScalar)
 					elseif format == "milliseconds_to_seconds_2dp" then
 						precision = 1000
 						displayPrecision = 2
+					elseif format == "locations_to_metres" then
+						precision = 10
+						displayPrecision = 1
 					elseif format == "milliseconds_to_seconds_2dp_if_required" then
 						precision = 1000
 						displayPrecision = 2
@@ -325,14 +337,17 @@ function itemLib.applyRange(line, range, valueScalar, baseValueScalar)
 	end
 end
 
-function itemLib.formatModLine(modLine, dbMode)
+function itemLib.formatModLine(modLine, dbMode, skipUnsupported)
 	local valueScalar = modLine.displayValueScalar and (modLine.valueScalar or 1) * modLine.displayValueScalar or modLine.valueScalar
 	local line = (not dbMode and (modLine.range or modLine.displayValueScalar) and itemLib.applyRange(modLine.line, modLine.range or main.defaultItemAffixQuality, valueScalar, modLine.corruptedRange)) or modLine.line
 	if itemLib.isZeroValueLine(line) then -- Hack to hide 0-value modifiers
 		return
 	end
+	if modLine.disabled then
+		return colorCodes.DISABLED .. line
+	end
 	local colorCode
-	if modLine.extra then
+	if modLine.extra and not skipUnsupported then
 		colorCode = colorCodes.UNSUPPORTED
 		line = main.notSupportedModTooltips and (line .. main.notSupportedTooltipText) or line
 		if launch.devModeAlt then

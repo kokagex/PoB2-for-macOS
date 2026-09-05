@@ -35,7 +35,28 @@ local function getFile(URL)
 	return #page > 0 and page
 end
 
-local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
+---@class PassiveTreeGroup
+---@field x number
+---@field y number
+---@field orbits integer[]
+---@field nodes integer[]
+---@field background any?
+---@field isProxy boolean?
+---@class PassiveTree
+---@field classes any[] A list of classes on the tree
+---@field alternate_ascendancies any[]?
+---@field tree "Default"|"DefaultAltAscendancies"
+---@field groups PassiveTreeGroup[]
+---@field nodes table<"root"|integer, Node>
+---@field jewelSlots integer[]
+---@field min_x integer
+---@field min_y integer
+---@field max_x integer
+---@field max_y integer
+---@field constants table<string, any>
+local PassiveTreeClass = newClass("PassiveTree")
+
+function PassiveTreeClass:PassiveTree(treeVersion)
 	self.treeVersion = treeVersion
 	self.scaleImage = 1 -- 0.3835
 
@@ -229,8 +250,10 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 	-- Load passive tree assets (orbits, lines, backgrounds, etc.)
 	ConPrintf("Loading passive tree assets...")
 	self.assets = self.assets or {}
+	local assetsLoaded = 0
 	for name, data in pairs(self.assets) do
 		self:LoadImage(data[1], data, "MIPMAP")
+		assetsLoaded = assetsLoaded + 1
 	end
 	ConPrintf("Loaded %d assets", assetsLoaded)
 
@@ -355,8 +378,11 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 	self.sockets = { }
 	self.masteryEffects = { }
 	local nodeMap = { }
-	for _, node in pairs(self.nodes) do
+	for _, n in pairs(self.nodes) do
+		---@class Node
+		local node = n
 		node.id = node.skill
+		node.iname = node.stringId
 		node.g = node.group
 		node.o = node.orbit
 		node.oidx = node.orbitIndex
@@ -617,7 +643,8 @@ local PassiveTreeClass = newClass("PassiveTree", function(self, treeVersion)
 
 		self:ProcessStats(node)
 	end
-end)
+	return self
+end
 
 function PassiveTreeClass:ProcessStats(node, startIndex)
 	startIndex = startIndex or 1
@@ -632,7 +659,7 @@ function PassiveTreeClass:ProcessStats(node, startIndex)
 	if startIndex == 1 then
 		node.modKey = ""
 		node.mods = { }
-		node.modList = new("ModList")
+		node.modList = new("ModList"):ModList()
 	end
 
 	if not node.sd then
@@ -665,7 +692,7 @@ function PassiveTreeClass:ProcessStats(node, startIndex)
 				if list and not extra then
 					-- Success, add dummy mod lists to the other lines that were combined with this one
 					for ci = i + 1, endI do
-						node.mods[ci] = { list = { } }
+						node.mods[ci] = { list = {}, combined = true }
 					end
 					break
 				end
