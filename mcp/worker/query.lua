@@ -92,7 +92,7 @@ local function modLineTexts(modLines)
 end
 
 local function uniqueDetail(utype, raw)
-  local item = new("Item", raw)
+  local item = new("Item"):Item(raw)
   return {
     name = item.title or item.name,
     base = item.baseName,

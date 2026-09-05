@@ -106,7 +106,7 @@ local function applyItems(build, items)
         "jewel socket %q is not allocated; allocate node %d first (patch.allocNodes)",
         entry.slot, slot.nodeId))
     end
-    local item = new("Item", entry.raw)
+    local item = new("Item"):Item(entry.raw)
     if not item.base then
       error(string.format("could not parse item text: unknown base %q (item %q)",
         tostring(item.baseName), tostring(item.name)))
