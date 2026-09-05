@@ -70,6 +70,46 @@ If you find any bugs or crashes, please report them on [Issues](https://github.c
 
 ## バージョン履歴 / Version History
 
+### v0.18.0 (2026-09-05)
+
+- 上流 PathOfBuilding-PoE2 dev を Release 0.23.0 / 0.23.1 + 後続まで同期（Phase 13、107 commits、上流 commit 3887ae68a）
+- トレード検索の大規模改修（スコア内訳・NOT フィルタ・pseudo stat 重み・Currency Exchange API）、サイドバー数値のマウスオーバー内訳表示（ピン留め可）、BuildPlanner (.build) エクスポート、ツールチップ画像キャッシュ
+- macOS 向け修正: ツールチップヘッダー画像の nil クラッシュ、上流の拡張 LuaJIT 構文（continue / += / ?. / ラムダ）を標準 Lua へ変換、パッシブツリー 0_5 データを上流に再同期
+
+---
+
+- Synced upstream PathOfBuilding-PoE2 dev through Release 0.23.0 / 0.23.1 and later (Phase 13, 107 commits, upstream commit 3887ae68a)
+- Trader overhaul (score breakdown, NOT filters, pseudo-stat weights, Currency Exchange API), sidebar stat breakdowns on mouseover (pinnable), BuildPlanner (.build) export, tooltip asset caching
+- macOS fixes: tooltip header image nil crash, upstream's extended-LuaJIT syntax (continue / += / ?. / lambdas) rewritten to standard Lua, passive tree 0_5 data resynced from upstream
+
+### v0.9.2 〜 v0.17.1 (2026-06-04 〜 2026-07-05)
+
+各版の詳細は同梱の `changelog.txt` を参照 / See the bundled `changelog.txt` for per-version details.
+
+- v0.17.1: 武器ツールチップの typeStr nil クラッシュ修正
+- v0.17.0: 上流スキルデータ修正 2 件を同期（#2340 / #2341）
+- v0.16.0: 上流でドロップしていた UI PR 4 件を統合 + socket viewer 白飛び修正
+- v0.15.0: 上流 dev v0.22.0 同期（スペクター/仲間データ、Trade 比較タブ、Time-Lost 修正）
+- v0.14.0: 上流 PoE2 0.5.4 データ同期 + calc/UI リファクタ取込
+- v0.13.0: 上流 PoE2 0.5.3（PoB v0.21.1）データ同期 + calc 修正
+- v0.11.1: 全域バグ監査 9 件修正 + 再発防止テスト 3 種
+- v0.11.0: 上流 PoE2 0.5.1 データ同期 + パッシブツリー日本語化を完全網羅 + クラッシュ 2 件修正
+- v0.10.x: 上流 PoB2 0.18.0 同期、Hollow Form / Deflect 上限修正、ツリー表示の CPU 過負荷削減、耐性貫通除外 Config 追加、Options 画面クラッシュ修正
+- v0.9.x: Metal autoreleasepool リーク修正、LaunchSubScript クラッシュ修正（オンライン機能復旧）、スキルパネルのログ氾濫・フリーズ修正
+
+---
+
+- v0.17.1: Fix weapon tooltip typeStr nil crash
+- v0.17.0: Sync 2 upstream skill-data fixes (#2340 / #2341)
+- v0.16.0: Integrate 4 previously-dropped upstream UI PRs + fix socket-viewer white-wash
+- v0.15.0: Sync upstream dev v0.22.0 (spectre/companion data, trade compare tab, Time-Lost fixes)
+- v0.14.0: Sync upstream PoE2 0.5.4 data + calc/UI refactors
+- v0.13.0: Sync upstream PoE2 0.5.3 (PoB v0.21.1) data + calc fixes
+- v0.11.1: Full-repo bug audit, 9 fixes + 3 regression guards
+- v0.11.0: Sync PoE2 0.5.1 upstream data, complete passive-tree JP localization, fix 2 crashes
+- v0.10.x: Sync upstream PoB2 0.18.0, Hollow Form / Deflect cap fixes, lower passive-tree CPU load, add resistance-penetration-exclusion config, fix Options popup crash
+- v0.9.x: Fix Metal autoreleasepool leak, fix LaunchSubScript crash (restores online features), fix skill-panel log flooding and freeze
+
 ### v0.9.1 (2026-06-03)
 
 - PoE2 0.5（Return of the Ancients）新スキル 93 件の日本語訳を追加
