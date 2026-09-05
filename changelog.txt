@@ -1,3 +1,14 @@
+VERSION[0.18.0][2026/09/05]
+
+--- 上流 dev 3887ae68a (Release 0.23.1 + 後続) を同期 / Sync upstream dev 3887ae68a (Release 0.23.1 and later) ---
+* 上流 107 commits を取り込み: Release 0.23.0 / 0.23.1 のデータ・計算更新、トレード検索の大規模改修 (スコア内訳・NOT フィルタ・pseudo stat 重み・Currency Exchange API)、サイドバー数値のマウスオーバー内訳表示 (ピン留め可)、BuildPlanner (.build) エクスポート、ツールチップ画像キャッシュ
+* macOS 向け修正: ツールチップヘッダー画像の nil クラッシュ修正、上流の拡張 LuaJIT 構文 (continue / += / ?. / ラムダ) を標準 Lua へ変換、パッシブツリー 0_5 データを上流に再同期
+* ※ Lua/データのみの変更。zip の再ダウンロード(再インストール)が必要です
+
+* Synced 107 upstream commits: Release 0.23.0 / 0.23.1 data and calc updates, the trader overhaul (score breakdown, NOT filters, pseudo-stat weights, Currency Exchange API), sidebar stat breakdowns on mouseover (pinnable), BuildPlanner (.build) export, tooltip asset caching
+* macOS fixes: tooltip header image nil crash, upstream's extended-LuaJIT syntax (continue / += / ?. / lambdas) rewritten to standard Lua, passive tree 0_5 data resynced from upstream
+* Note: Lua / data-only changes. A fresh zip download (reinstall) is required.
+
 VERSION[0.17.1][2026/07/05]
 
 --- 武器ツールチップのクラッシュ修正 / Fix weapon tooltip crash ---

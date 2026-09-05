@@ -2,7 +2,7 @@
 
 上流: `PathOfBuildingCommunity/PathOfBuilding-PoE2` `dev` ブランチ
 ローカル: `kokagex/PoB2-for-macOS` `main` ブランチ
-最終同期: 2026-06-06 (Phase 12, 上流 commit `2df5a7433` / dev = Release 0.18.0 + bugfix 3件)
+最終同期: 2026-09-05 (Phase 13, 上流 commit `3887ae68a` / dev = Release 0.23.1 + 後続 dev)
 
 ---
 
@@ -546,6 +546,71 @@ TradeQueryRequests.lua のみ先行同期済のため、trade タブの実機起
 - `git diff` で #2100 reorder / #2099 2エントリ swap のみ取り込み確認 (余分な変更なし)
 - dylib リビルド不要 (Lua はソースから実行)。deflect 計算式 + support statMap swap は構文チェック +
   upstream テスト済 diff とバイト一致で担保
+
+---
+
+### ✅ Phase 13 — v0.18.0 (2026-09-05): upstream/dev `3887ae68a` まで同期
+
+上流 `11337eddc` → `3887ae68a` の 107 commits (Release 0.23.0 / 0.23.1 + 後続 dev) を worktree
+`sync/upstream-dev-3887ae68a` で取り込み。196 files / +60,689 / −40,764。
+
+主要 upstream 変更:
+- ctor 規約変更 `new("X", args)` → `new("X"):X(args)` (#2384) + 型ヒント全面付与 (#2414)。
+  `Modules/Common.lua` の `new()` は余分な引数を **エラーにする** ため、旧規約の呼び出しは全滅する
+- trade 大規模改修 (#2374 スコア breakdown / #2447 NOT filter / #2445 pseudo stat weights / #2442
+  Currency Exchange API)。`TradeQueryGenerator.lua` は上流 wholesale、`TradeQueryHelpers.lua` は削除
+- サイドバー stat の mouseover breakdown + pin (#2435)、BuildPlanner `.build` export (#2432)
+- ツールチップ画像キャッシュ (#2493)、SimpleGraphic 2.5.4 (#2391、Lua 側の `_SimpleGraphic.def.lua` 新規)
+- 新規: `Modules/BuildExportPoE2.lua` `CalcBase.lua` `ConfigModBrowser.lua` `Utils.lua`、
+  `Data/CurrencyNames.lua` `InventorySlots.lua`
+
+#### 方針別の扱い
+
+| 区分 | 対象 | 扱い |
+|---|---|---|
+| CLEAN (wholesale) | `src/Data/*` 77 files、`Classes/*` の fork 未改変分、`HeadlessWrapper.lua` (stub は `_SimpleGraphic.def.lua` へ移動) | `git checkout 3887ae68a -- <file>` |
+| FORK-EDIT (3-way) | `Modules/Main.lua` `Modules/Build.lua` `Classes/ItemsTab.lua` `Classes/Tooltip.lua` `Classes/Item.lua` `Modules/CalcSetup.lua` `Modules/CalcOffence.lua` 等 | diff3 hunk 単位で theirs/ours/両方 を選択 |
+| keep-ours | `src/Export/*`、`PoEAPI.lua`/`ImportTab.lua` の認証、`GemSelectControl` ツールチップ、`Pantheons`、Main.lua オプション popup (単一カラム)、Build.lua の InitMinimal/OnFrameMinimal 前段 + fork 簡易 spectre popup | 上流変更を捨てる |
+| 新規 FORK-EDIT | `src/_SimpleGraphic.def.lua` | 上流新規だが nil 耐性 `ConPrintf` (pcall(string.format)) を fork 側で上書き。headless worker の Init で `%d` に nil が渡ると落ちるため |
+
+#### macOS (Homebrew stock LuaJIT 2.1) 向け構文変換
+
+上流は拡張 LuaJIT 前提で `continue` / `+=` `-=` / `?.` / `|a,b| -> expr` を使う。全て標準 Lua へ書き換え:
+- `continue` → `goto continue_<name>` + ループ末尾直前の `::continue_<name>::` (Item.lua 3 箇所、BuildExportPoE2.lua)
+- `x += n` → `x = x + n` (Item.lua / CalcSetup.lua / Tooltip.lua / Main.lua)
+- `a?.b` → `(a or {}).b` (BuildExportPoE2.lua)
+- ラムダ → `function` (CalcOffence.lua `critMetatable`)
+
+#### fork 側で追加対応した回帰
+
+- `Tooltip.lua`: #2493 で `self.headerLeft/Middle/Right` `influenceIcon1/2` が消え、fork の `IsValid()` ガード付き描画が nil index に。`getHeaderImage` / `getInfluenceIconImage` を取得してから 5 箇所すべて `IsValid()` ガードで再実装 (無効ハンドルは Metal で白矩形になるため必須)
+- `ItemsTab.lua`: 上流の tooltip mod トグルを fork の Metal 遅延描画に合わせ `ProcessDisplayItemTooltipModToggle(inputEvents)` として切り出し、`Build.lua` の `displayItemTooltip:Draw` 直後で呼ぶ
+- `PassiveTree.lua`: `assetsLoaded` 未定義 (fork 既存バグ、C 側 ConPrintf が黙認) → local で計数
+- `mcp/worker/patch.lua` `query.lua`: `new("Item", raw)` → `new("Item"):Item(raw)`
+- `tree-data/0_5/tree.{lua,json}`: 上流 TreeData を overlay → `scripts/convert-tree-dds.sh` で spriteCoords 化
+
+#### 既知ギャップ
+
+- `src/Export/*` は keep-ours のまま旧 ctor 規約 (`new("LabelControl", nil, ...)`) で、`../Modules/Common.lua` を共有するため上流 Common では起動時にエラーになる。ランタイム非使用の GGPK→Lua 生成ツールなので据え置き (Phase 6-12 と同じ別 sprint 扱い)。復活させる場合は上流 `src/Export/` を wholesale で取る
+- `ItemsTab.lua` の stat 差分 "enable" ヒント 1 行は英語のまま (`tree.tooltip.tipEnableStatDiff` を当てれば i18n 化可能)
+- manifest.xml / Info.plist のバージョンは 0.17.1 のまま (release 時に bump)
+
+#### worktree でビルド/テストする際の注意 (今回の「UI がおかしい」の原因)
+
+以下は gitignored で worktree に存在しないため、main checkout からコピー/symlink しないと
+テストビルドが壊れる:
+- `pob2macos/` (symlink 可) — SGPAK rebuild ツール
+- `tree-data/*.png` (トップレベル 180 枚) — 無いと `rebuild_archives.sh` が途中で落ち `treedata_0_5.sgpak` が作られない
+- `runtime/fonts/LiberationSans-*.ttf` — 無いと文字が一切描画されない
+- `src/TreeData -> ../tree-data` symlink — 無いと headless worker が tree.lua を開けず mcp テストが全滅
+
+#### 検証
+
+- 変更全 Lua ファイル `luajit -bl` PASS (stock LuaJIT 2.1)
+- `cd mcp/server && npm test` 53/53 PASS
+- `scripts/build-app.sh --release` (SGPAK 3 archive 生成) + `scripts/smoke-test.sh 30` PASS
+- 実機 .app: ツリー / アイテムツールチップ (unique ヘッダー、granted-skill サブツールチップ) / トレード検索 popup (league 一覧取得) / サイドバー breakdown hover を目視確認、ログに Lua エラーなし
+  (rare/magic/runic ヘッダーは同じ `IsValid()` ガード経路のため目視は unique のみ)
 
 ---
 
