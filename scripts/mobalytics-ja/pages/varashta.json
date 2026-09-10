@@ -1,0 +1,38 @@
+{
+  "slug": "varashta",
+  "url": "https://mobalytics.gg/poe-2/builds/minion2win-varashta-campaign-build-guide",
+  "prose_html": "tasks/2026-09-09-varashta-djinn-build-guide-ja.html",
+  "out_html": "tasks/2026-09-10-varashta-djinn-build-guide-ja-ui.html",
+  "asset_dir": "tasks/2026-09-10-varashta-djinn-build-guide-ja-ui",
+  "made_on": "2026-09-10",
+  "page_title": "[0.5.5] SSF Sand & Fire Djinn Varashta ビルドガイド (日本語版)",
+  "title_ja": "[0.5.5] SSF Sand & Fire Djinn Varashta — キャンペーン & エンドゲーム ビルドガイド",
+  "buttons": [
+    {"label": "武器セット解説動画", "url": "https://www.youtube.com/watch?v=BtzgJVSFLB4"}
+  ],
+  "variant_titles_ja": {
+    "Level 1 to 21 (Grenades)": "Lv1〜21 (グレネード)",
+    "Level 1 to 21 (ED/C & Minions)": "Lv1〜21 (ED/C & ミニオン)",
+    "Level 1 to 21 (ED/C & Elemental)": "Lv1〜21 (ED/C & エレメンタル)",
+    "Level 22 to 36 (Varashta Swap)": "Lv22〜36 (Varashta へ切替)",
+    "Level 36 to 65 (Maps)": "Lv36〜65 (マップ)",
+    "Early Endgame (65 - 85)": "Early Endgame (65〜85)",
+    "Late Endgame (90+)": "Late Endgame (90+)",
+    "Min-Maxed Endgame": "Min-Maxed Endgame"
+  },
+  "gem_name_subst": {"{0}": "Powered Zealot"},
+  "runes": {
+    "soulcore-runelightninglesser": "Lesser Storm Rune",
+    "soulcore-runelightninggreater": "Greater Storm Rune",
+    "soulcore-runeenhancelesser": "Lesser Iron Rune",
+    "soulcore-runeenhancegreater": "Greater Iron Rune",
+    "soulcore-runeenhanceperfect": "Perfect Iron Rune",
+    "soulcore-talismanrabbit": "Rabbit Talisman",
+    "soulcore-talismanmonkey": "Monkey Talisman",
+    "soulcore-runespecial11": "runespecial11 (名称不明)"
+  },
+  "anoints": {
+    "anointment-minion_offence15": "Splintering Force",
+    "anointment-DeliriumAnoint_Dominion": "Dominion"
+  }
+}
